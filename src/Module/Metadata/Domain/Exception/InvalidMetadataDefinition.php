@@ -1,0 +1,80 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Module\Metadata\Domain\Exception;
+
+use App\Module\Metadata\Contract\Exception\MetadataException;
+
+final class InvalidMetadataDefinition extends MetadataException
+{
+    public static function invalidName(string $name, int $maxLength): self
+    {
+        return new self(\sprintf(
+            'Invalid name "%s": use 2 to %d lowercase letters, digits and single underscores, starting with a letter.',
+            $name,
+            $maxLength,
+        ));
+    }
+
+    public static function emptyLabel(): self
+    {
+        return new self('Labels cannot be empty.');
+    }
+
+    public static function reservedFieldName(string $name): self
+    {
+        return new self(\sprintf('Field name "%s" is reserved for a system column.', $name));
+    }
+
+    public static function duplicateField(string $objectName, string $fieldName): self
+    {
+        return new self(\sprintf('Object "%s" already has a field named "%s".', $objectName, $fieldName));
+    }
+
+    public static function duplicateObject(string $name): self
+    {
+        return new self(\sprintf('An object named "%s" already exists.', $name));
+    }
+
+    /**
+     * @param list<string> $available
+     */
+    public static function unknownFieldType(string $type, array $available): self
+    {
+        return new self(\sprintf('Unknown field type "%s". Available types: %s.', $type, implode(', ', $available)));
+    }
+
+    public static function unknownSearchField(string $objectName, string $fieldName): self
+    {
+        return new self(\sprintf('Object "%s" has no field "%s" to search.', $objectName, $fieldName));
+    }
+
+    /**
+     * @param list<string> $available
+     */
+    public static function unknownSearchHandler(string $handler, array $available): self
+    {
+        return new self(\sprintf('Unknown search handler "%s". Available handlers: %s.', $handler, implode(', ', $available)));
+    }
+
+    public static function unknownLabelField(string $objectName, string $fieldName): self
+    {
+        return new self(\sprintf('Object "%s" has no field "%s" to use as label.', $objectName, $fieldName));
+    }
+
+    public static function unknownRelationTarget(string $target): self
+    {
+        return new self(\sprintf('The related object "%s" does not exist.', $target));
+    }
+
+    public static function inverseNameTaken(string $targetName, string $inverseName): self
+    {
+        return new self(\sprintf('Object "%s" already has a field or an inverse relation named "%s".', $targetName, $inverseName));
+    }
+
+    public static function unknownField(string $objectName, string $fieldName): self
+    {
+        return new self(\sprintf('Object "%s" has no field "%s".', $objectName, $fieldName));
+    }
+}

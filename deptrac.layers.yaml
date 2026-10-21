@@ -1,0 +1,74 @@
+# Layer rules, applied uniformly inside every module.
+# Run: vendor/bin/deptrac analyse --config-file=deptrac.layers.yaml
+deptrac:
+  paths:
+    - ./src
+  exclude_files:
+    - '#src/Kernel\.php$#'
+
+  layers:
+    # Shared kernel: framework-free conventions and ports used by every module.
+    - name: Shared
+      collectors:
+        - type: bool
+          must:
+            - type: directory
+              value: src/Shared/.*
+          must_not:
+            - type: directory
+              value: src/Shared/Infrastructure/.*
+
+    # Framework implementations of the shared ports.
+    - name: SharedInfrastructure
+      collectors:
+        - type: directory
+          value: src/Shared/Infrastructure/.*
+
+    - name: Contract
+      collectors:
+        - type: directory
+          value: src/Module/[^/]+/Contract/.*
+
+    - name: Domain
+      collectors:
+        - type: directory
+          value: src/Module/[^/]+/Domain/.*
+
+    - name: Application
+      collectors:
+        - type: directory
+          value: src/Module/[^/]+/Application/.*
+
+    - name: Infrastructure
+      collectors:
+        - type: directory
+          value: src/Module/[^/]+/Infrastructure/.*
+
+    - name: UI
+      collectors:
+        - type: directory
+          value: src/Module/[^/]+/UI/.*
+
+    # Framework code that Contract and Domain must not touch.
+    # Uid, Collections and Validator constraints are tolerated as plain value objects:
+    # field types describe their rules with standard Symfony constraints.
+    - name: Framework
+      collectors:
+        - type: bool
+          must:
+            - type: classNameRegex
+              value: '#^(Symfony|Doctrine|Fedale)\\#'
+          must_not:
+            - type: classNameRegex
+              value: '#^(Symfony\\Component\\Uid|Doctrine\\Common\\Collections)\\#'
+            - type: classNameRegex
+              value: '#^Symfony\\Component\\Validator\\Constraints?(\\|$)#'
+
+  ruleset:
+    Shared: ~
+    SharedInfrastructure: [Shared, Framework]
+    Contract: [Shared]
+    Domain: [Contract, Shared]
+    Application: [Domain, Contract, Shared, Framework]
+    Infrastructure: [Application, Domain, Contract, Shared, Framework]
+    UI: [Application, Domain, Contract, Shared, Framework]

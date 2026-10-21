@@ -1,0 +1,268 @@
+# Console commands
+
+Every command runs through the Symfony CLI, which hands PHP the database URL of the Docker
+container:
+
+```bash
+symfony console <command> [arguments] [options]
+symfony console <command> --help        # the same reference, from the command itself
+```
+
+| Command | Purpose |
+|---|---|
+| [`metadata:object:create`](#metadataobjectcreate) | Create an object, and its table |
+| [`metadata:field:create`](#metadatafieldcreate) | Add a field to an object, and its column |
+| [`metadata:object:label`](#metadataobjectlabel) | Choose the field that names the records of an object |
+| [`metadata:object:search`](#metadataobjectsearch) | Choose how the records of an object are searched |
+| [`metadata:list`](#metadatalist) | List the objects, or the fields of one object |
+| [`schema:sync`](#schemasync) | Align the record tables with the metadata |
+| `user:create` | Create a user who can sign in — see [Users and permissions](access.md#usercreate) |
+| `access:sync` | Create the permissions of every object, the admin permission and the super admin role — see [Users and permissions](access.md#permissions) |
+| `rbac:*` | Roles, permissions and assignments (`fedale/rbac-bundle`) — see [Users and permissions](access.md#roles) |
+
+## How the commands change the database
+
+The `metadata:*` commands that write a definition run in **one PostgreSQL transaction**: they save
+the definition in the `core` schema, then the Schema module applies the matching DDL to the record
+table in the `data` schema. If the DDL fails, the definition is rolled back too (PostgreSQL DDL is
+transactional), so metadata and tables never disagree. Every DDL statement applied is logged in
+`core.schema_change_log`.
+
+Names (objects, fields, inverse relations) become SQL identifiers, so they follow one rule:
+2 to 50 characters, lowercase letters, digits and single underscores, starting with a letter
+(`first_name`, `address2`; not `FirstName`, `_tmp`, `a__b`). They are quoted in SQL as well, so
+reserved words such as `order` or `select` are fine. Names cannot be changed once created.
+
+Errors are printed in red and the command exits with a non-zero code; nothing is saved.
+
+---
+
+## `metadata:object:create`
+
+Create an object (a record type) and its table.
+
+```
+metadata:object:create [--icon=ICON] <name> <label-singular> <label-plural>
+```
+
+| Argument / option | Description |
+|---|---|
+| `name` | Machine name, e.g. `pet`. The table is `data.c_<name>`. |
+| `label-singular` | Shown in the UI, e.g. `Pet` ("New pet", "Pet created.") |
+| `label-plural` | Shown in the UI, e.g. `Pets` (grid title, home page) |
+| `--icon` | Icon name, stored for the admin UI (not shown yet) |
+
+```bash
+symfony console metadata:object:create pet Pet Pets
+symfony console metadata:object:create contact Contatto Contatti --icon=user
+```
+
+The table starts with the system columns: `id` (UUID, primary key), `created_at`, `updated_at`,
+`created_by`, `deleted_at` (records are soft deleted).
+
+Fails when the name is invalid or already used.
+
+## `metadata:field:create`
+
+Add a field to an object, and the matching column to its table.
+
+```
+metadata:field:create [--required] [--unique] [--settings=JSON] <object> <name> <type> <label>
+```
+
+| Argument / option | Description |
+|---|---|
+| `object` | The object's machine name |
+| `name` | The field's machine name; also the column name. `id`, `created_at`, `updated_at`, `created_by`, `deleted_at` are reserved. |
+| `type` | `text`, `number`, `boolean`, `date`, `email`, `select` or `relation`: see [field types](field-types.md) |
+| `label` | Shown in forms, grid headers and errors |
+| `--required` | A value is mandatory. Checked by validation; the column stays nullable, so a required field can be added to a table that already has records. |
+| `--unique` | Values must be unique: a unique index, plus a readable error on save. Values of deleted records stay reserved. |
+| `--settings` | The type's settings as a JSON object (default `{}`); missing keys take their default |
+
+```bash
+# Text, at most 80 characters, mandatory
+symfony console metadata:field:create pet name text Name --required --settings='{"maxLength":80}'
+
+# Long text
+symfony console metadata:field:create pet notes text Notes --settings='{"multiline":true}'
+
+# Decimal number with 2 decimals
+symfony console metadata:field:create pet weight number Weight --settings='{"decimals":2}'
+
+# Date and time
+symfony console metadata:field:create visit starts_at date "Starts at" --settings='{"includeTime":true}'
+
+# Single choice
+symfony console metadata:field:create pet species select Species \
+  --settings='{"options":[{"value":"dog","label":"Dog"},{"value":"cat","label":"Cat"}]}'
+
+# Unique code
+symfony console metadata:field:create pet chip_code text "Microchip" --unique --settings='{"maxLength":15}'
+
+# Relation (many-to-one) to another object
+symfony console metadata:field:create pet owner relation Owner \
+  --settings='{"target":"contact","onDelete":"set_null","inverseName":"pets","inverseLabel":"Pets"}'
+```
+
+What it changes in the table:
+
+- a column of the type's SQL type (`varchar(n)`, `text`, `integer`, `numeric(18,d)`, `boolean`,
+  `date`, `timestamp`, `uuid`);
+- `--unique`: a unique index `uniq_<table>_<column>`;
+- `relation`: an index `idx_<table>_<column>` and a foreign key `fk_<table>_<column>` to the target table;
+- a text field searched by the object (see `metadata:object:search`): a trigram index
+  `trgm_<table>_<column>`.
+
+Fails when the object does not exist, the name is invalid, reserved or already used, the type is
+unknown, or the settings are invalid; every settings error is listed. A relation also fails when the
+target object does not exist, or when the inverse name is already a field or an inverse relation of
+the target.
+
+## `metadata:object:label`
+
+Choose the field that names the records of an object wherever they are referenced: relation
+fields, the autocomplete, the grid cells of a relation, the "related records" lists.
+
+```
+metadata:object:label <object> [<field>]
+```
+
+| Argument | Description |
+|---|---|
+| `object` | The object's machine name |
+| `field` | The field to use. Omit it to go back to the default: the first text (or email) field. |
+
+```bash
+symfony console metadata:object:label contact full_name
+symfony console metadata:object:label contact            # back to the default
+```
+
+A record whose label field is empty, or an object with no text field, is shown as `#` plus the
+first 8 characters of its id.
+
+## `metadata:object:search`
+
+Choose how the search box of an object's grid works.
+
+```
+metadata:object:search [--handler=HANDLER] [--fields=FIELDS] <object>
+```
+
+| Argument / option | Description |
+|---|---|
+| `object` | The object's machine name |
+| `--handler` | `free_text_multi_field` (default) or `phrase` |
+| `--fields` | Comma separated fields to search. Default: every text-like field (text, multiline text, email). |
+
+The handlers:
+
+- **`free_text_multi_field`**: every word must occur in at least one of the fields, in any order,
+  case-insensitively. `John London` finds first name John and city London, and so does `London John`.
+  A word matches inside a value too (`john` finds `Johnson`). Quotes keep a phrase together:
+  `"new york" john`. At most 8 words are used.
+- **`phrase`**: the whole term, in the order typed, must occur in one field. For codes and
+  identifiers.
+
+```bash
+symfony console metadata:object:search contact --fields=first_name,last_name,city
+symfony console metadata:object:search pet --handler=phrase --fields=chip_code
+symfony console metadata:object:search contact                 # back to the defaults
+```
+
+Running it also re-synchronizes the table's trigram indexes: one GIN index per searched text
+column, so that the search uses an index instead of scanning the table. Number and date fields can
+be searched but get no index (PostgreSQL refuses their text cast in an index).
+
+Fails when a field does not exist or the handler is unknown.
+
+## `metadata:list`
+
+List the objects, or the fields of one object, as the application sees them (from the metadata
+cache).
+
+```
+metadata:list [<object>]
+```
+
+```bash
+symfony console metadata:list
+symfony console metadata:list pet
+```
+
+```
+ ------ --------- ------- --------
+  Name   Label     Table   Fields
+ ------ --------- ------- --------
+  pet    Animali   c_pet   3
+ ------ --------- ------- --------
+```
+
+With an object, every field with its type, label, required and unique flags and resolved settings
+(defaults included).
+
+## `schema:sync`
+
+Align the record tables with the metadata. The `metadata:*` commands already do it for the table
+they change; run it by hand after restoring a database, to check for drift, or to repair a table.
+
+```
+schema:sync [--dry-run] [--allow-destructive] [<objects>...]
+```
+
+| Argument / option | Description |
+|---|---|
+| `objects` | The objects to synchronize; all of them when omitted |
+| `--dry-run` | Print the SQL without executing it |
+| `--allow-destructive` | Also drop or alter what differs from the metadata |
+
+```bash
+symfony console schema:sync --dry-run          # what would change, for every object
+symfony console schema:sync pet                # apply, for one object
+symfony console schema:sync pet --allow-destructive
+```
+
+```
+pet (data.c_pet)
+----------------
+
+ * ALTER TABLE data.c_pet ADD owner UUID DEFAULT NULL
+ * ALTER TABLE data.c_pet ADD CONSTRAINT fk_c_pet_owner FOREIGN KEY (owner) REFERENCES data.c_contact (id) ON DELETE SET NULL
+ * CREATE INDEX idx_c_pet_owner ON data.c_pet (owner)
+
+ Executed.
+```
+
+**Destructive changes are never applied by default.** A column or an index the metadata does not
+define is kept, a column whose definition differs is not altered, and each one is reported as a
+warning:
+
+```
+ [WARNING] Column "legacy_code" is not defined in the metadata: not dropped. Use --allow-destructive to apply it.
+```
+
+With `--allow-destructive` they are applied: a dropped column loses its data. Trigram search
+indexes hold no data and always follow the search configuration, both ways.
+
+Every applied change is logged in `core.schema_change_log` (object, table, statements, skipped
+changes, date).
+
+---
+
+## Make targets
+
+| Target | What it does |
+|---|---|
+| `make up` / `make down` | Start / stop the PostgreSQL container |
+| `make db` | Create the dev database and run the migrations of the `core` schema |
+| `make db-test` | The same for the test database |
+| `make assets` | Compile the Sass stylesheets |
+| `make cs` / `make cs-fix` | Check / fix the coding standard |
+| `make phpstan` | Static analysis, level max |
+| `make deptrac` | Check layer and module boundaries (two rulesets) |
+| `make test` | The test suite (starts the database and builds the styles first) |
+| `make qa` | All of the above checks |
+
+The `core` schema (definitions, logs, settings) is managed by Doctrine migrations; the `data`
+schema (record tables) only by the commands above. Doctrine's schema tools ignore `data`, so
+`doctrine:migrations:diff` never proposes to drop a record table.

@@ -1,0 +1,7 @@
+symfonycasts_sass:
+    root_sass:
+        - 'assets/styles/grid.scss'
+    sass_options:
+        load_path:
+            # Lets grid.scss `@use 'gridview'`, the framework-agnostic stylesheet of the grid bundle.
+            - '%kernel.project_dir%/vendor/fedale/gridview-bundle/assets/styles'

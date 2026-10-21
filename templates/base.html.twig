@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{% block title %}Metadata-driven{% endblock %}</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>◆</text></svg>">
+        {% block stylesheets %}
+        {% endblock %}
+
+        {% block javascripts %}
+            {% block importmap %}{{ importmap('app') }}{% endblock %}
+        {% endblock %}
+
+        {% set frankenphp_hot_reload = app.request.server.get('FRANKENPHP_HOT_RELOAD') %}
+        {% if frankenphp_hot_reload %}
+        <meta name="frankenphp-hot-reload:url" content="{{ frankenphp_hot_reload }}">
+        <script src="https://cdn.jsdelivr.net/npm/idiomorph"></script>
+        <script src="https://cdn.jsdelivr.net/npm/frankenphp-hot-reload/+esm" type="module"></script>
+        {% endif %}
+    </head>
+    <body>
+        <header class="topbar">
+            <a href="{{ path('app_home') }}" class="brand">Metadata-driven</a>
+            {% if app.user %}
+                <nav class="topnav">
+                    <a href="{{ path('app_home') }}">Records</a>
+                    {% if can('admin.metadata') %}<a href="{{ path('admin_index') }}">Admin</a>{% endif %}
+                </nav>
+                <div class="topuser">
+                    <span>{{ app.user.displayName }}</span>
+                    <a href="{{ path('app_logout') }}">Sign out</a>
+                </div>
+            {% endif %}
+        </header>
+        <main class="page">
+            {% for message in app.flashes('success') %}
+                <p class="flash flash-success" role="status">{{ message }}</p>
+            {% endfor %}
+            {% for message in app.flashes('error') %}
+                <p class="flash flash-error" role="alert">{{ message }}</p>
+            {% endfor %}
+            {% block body %}{% endblock %}
+        </main>
+    </body>
+</html>

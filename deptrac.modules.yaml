@@ -1,0 +1,148 @@
+# Module rules: a module may only see the Contract namespace of the modules it depends on.
+# The dependency graph must stay acyclic.
+# Run: vendor/bin/deptrac analyse --config-file=deptrac.modules.yaml
+deptrac:
+  paths:
+    - ./src
+  exclude_files:
+    - '#src/Kernel\.php$#'
+
+  layers:
+    - name: Shared
+      collectors:
+        - { type: directory, value: src/Shared/.* }
+
+    - name: Metadata
+      collectors:
+        - type: bool
+          must: [{ type: directory, value: src/Module/Metadata/.* }]
+          must_not: [{ type: directory, value: src/Module/Metadata/Contract/.* }]
+    - name: MetadataContract
+      collectors:
+        - { type: directory, value: src/Module/Metadata/Contract/.* }
+
+    - name: FieldType
+      collectors:
+        - type: bool
+          must: [{ type: directory, value: src/Module/FieldType/.* }]
+          must_not: [{ type: directory, value: src/Module/FieldType/Contract/.* }]
+    - name: FieldTypeContract
+      collectors:
+        - { type: directory, value: src/Module/FieldType/Contract/.* }
+
+    - name: Schema
+      collectors:
+        - type: bool
+          must: [{ type: directory, value: src/Module/Schema/.* }]
+          must_not: [{ type: directory, value: src/Module/Schema/Contract/.* }]
+    - name: SchemaContract
+      collectors:
+        - { type: directory, value: src/Module/Schema/Contract/.* }
+
+    - name: Validation
+      collectors:
+        - type: bool
+          must: [{ type: directory, value: src/Module/Validation/.* }]
+          must_not: [{ type: directory, value: src/Module/Validation/Contract/.* }]
+    - name: ValidationContract
+      collectors:
+        - { type: directory, value: src/Module/Validation/Contract/.* }
+
+    - name: Search
+      collectors:
+        - type: bool
+          must: [{ type: directory, value: src/Module/Search/.* }]
+          must_not: [{ type: directory, value: src/Module/Search/Contract/.* }]
+    - name: SearchContract
+      collectors:
+        - { type: directory, value: src/Module/Search/Contract/.* }
+
+    - name: Record
+      collectors:
+        - type: bool
+          must: [{ type: directory, value: src/Module/Record/.* }]
+          must_not: [{ type: directory, value: src/Module/Record/Contract/.* }]
+    - name: RecordContract
+      collectors:
+        - { type: directory, value: src/Module/Record/Contract/.* }
+
+    - name: View
+      collectors:
+        - type: bool
+          must: [{ type: directory, value: src/Module/View/.* }]
+          must_not: [{ type: directory, value: src/Module/View/Contract/.* }]
+    - name: ViewContract
+      collectors:
+        - { type: directory, value: src/Module/View/Contract/.* }
+
+    - name: Settings
+      collectors:
+        - type: bool
+          must: [{ type: directory, value: src/Module/Settings/.* }]
+          must_not: [{ type: directory, value: src/Module/Settings/Contract/.* }]
+    - name: SettingsContract
+      collectors:
+        - { type: directory, value: src/Module/Settings/Contract/.* }
+
+    - name: Access
+      collectors:
+        - type: bool
+          must: [{ type: directory, value: src/Module/Access/.* }]
+          must_not: [{ type: directory, value: src/Module/Access/Contract/.* }]
+    - name: AccessContract
+      collectors:
+        - { type: directory, value: src/Module/Access/Contract/.* }
+
+    - name: User
+      collectors:
+        - type: bool
+          must: [{ type: directory, value: src/Module/User/.* }]
+          must_not: [{ type: directory, value: src/Module/User/Contract/.* }]
+    - name: UserContract
+      collectors:
+        - { type: directory, value: src/Module/User/Contract/.* }
+
+    - name: Admin
+      collectors:
+        - type: bool
+          must: [{ type: directory, value: src/Module/Admin/.* }]
+          must_not: [{ type: directory, value: src/Module/Admin/Contract/.* }]
+    - name: AdminContract
+      collectors:
+        - { type: directory, value: src/Module/Admin/Contract/.* }
+
+  ruleset:
+    Shared: ~
+
+    Metadata: [MetadataContract, Shared]
+    MetadataContract: [Shared]
+
+    FieldType: [FieldTypeContract, MetadataContract, Shared]
+    FieldTypeContract: [MetadataContract, Shared]
+
+    Schema: [SchemaContract, MetadataContract, FieldTypeContract, SearchContract, Shared]
+    SchemaContract: [MetadataContract, Shared]
+
+    Validation: [ValidationContract, MetadataContract, FieldTypeContract, Shared]
+    ValidationContract: [MetadataContract, Shared]
+
+    Search: [SearchContract, MetadataContract, FieldTypeContract, Shared]
+    SearchContract: [MetadataContract, Shared]
+
+    Record: [RecordContract, MetadataContract, FieldTypeContract, ValidationContract, SearchContract, AccessContract, Shared]
+    RecordContract: [MetadataContract, Shared]
+
+    View: [ViewContract, MetadataContract, FieldTypeContract, RecordContract, SearchContract, AccessContract, Shared]
+    ViewContract: [MetadataContract, RecordContract, Shared]
+
+    Settings: [SettingsContract, Shared]
+    SettingsContract: [Shared]
+
+    Access: [AccessContract, MetadataContract, Shared]
+    AccessContract: [Shared]
+
+    User: [UserContract, Shared]
+    UserContract: [Shared]
+
+    Admin: [AdminContract, MetadataContract, FieldTypeContract, SchemaContract, ViewContract, SettingsContract, AccessContract, Shared]
+    AdminContract: [Shared]

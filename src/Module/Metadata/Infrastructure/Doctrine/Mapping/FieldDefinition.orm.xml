@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <entity name="App\Module\Metadata\Domain\Model\FieldDefinition" table="metadata_field" schema="core">
+        <unique-constraints>
+            <unique-constraint name="uniq_metadata_field_object_name" columns="object_id,name"/>
+        </unique-constraints>
+
+        <id name="id" type="uuid"/>
+
+        <field name="name" length="50"/>
+        <field name="columnName" length="63"/>
+        <field name="type" length="50"/>
+        <field name="label" length="100"/>
+        <field name="isRequired" type="boolean"/>
+        <field name="isUnique" type="boolean"/>
+        <field name="settings" type="json">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+        <field name="position" type="integer"/>
+        <field name="isSystem" type="boolean"/>
+        <field name="createdAt" type="datetime_immutable"/>
+        <field name="updatedAt" type="datetime_immutable"/>
+
+        <many-to-one field="object" target-entity="App\Module\Metadata\Domain\Model\ObjectDefinition" inversed-by="fields">
+            <join-column name="object_id" referenced-column-name="id" nullable="false" on-delete="CASCADE"/>
+        </many-to-one>
+    </entity>
+</doctrine-mapping>

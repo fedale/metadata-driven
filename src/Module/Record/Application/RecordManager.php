@@ -1,0 +1,186 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Module\Record\Application;
+
+use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
+use App\Module\Metadata\Contract\Dto\OnDelete;
+use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Record\Contract\Dto\RecordInput;
+use App\Module\Record\Contract\Dto\RecordLabel;
+use App\Module\Record\Contract\Dto\RecordOutput;
+use App\Module\Record\Contract\Dto\ReferencingGroup;
+use App\Module\Record\Contract\Exception\RecordDeleteRestricted;
+use App\Module\Record\Contract\Exception\RecordNotFound;
+use App\Module\Record\Contract\Exception\RecordValidationFailed;
+use App\Module\Record\Contract\RecordFinderInterface;
+use App\Module\Record\Contract\RecordLookupInterface;
+use App\Module\Record\Contract\RecordManagerInterface;
+use App\Module\Record\Domain\Exception\UniqueValueConflict;
+use App\Module\Record\Domain\Repository\RecordStore;
+use App\Module\Validation\Contract\RecordValidatorInterface;
+use App\Shared\Transaction\TransactionRunner;
+use Symfony\Component\Uid\Uuid;
+
+/**
+ * Pipeline of every record write: RecordInput → denormalization → validation → storage.
+ */
+final class RecordManager implements RecordManagerInterface, RecordFinderInterface
+{
+    public const string CONFLICT_MESSAGE = 'This record conflicts with an existing one, please try again.';
+
+    public function __construct(
+        private readonly MetadataRegistryInterface $metadata,
+        private readonly RecordInputDenormalizer $denormalizer,
+        private readonly RecordValidatorInterface $validator,
+        private readonly RecordStore $store,
+        private readonly RecordLookupInterface $lookup,
+        private readonly TransactionRunner $transactions,
+    ) {
+    }
+
+    public function create(RecordInput $input): RecordOutput
+    {
+        $object = $this->metadata->getObject($input->objectName);
+        $values = $this->validValues($object, $input, null);
+
+        $id = Uuid::v7()->toRfc4122();
+        $this->write($object, $values, null, fn () => $this->store->insert($object, $id, $values, new \DateTimeImmutable()));
+
+        return $this->store->find($object, $id) ?? throw new \LogicException('The record just created cannot be read back.');
+    }
+
+    public function update(string $id, RecordInput $input): RecordOutput
+    {
+        $object = $this->metadata->getObject($input->objectName);
+        if (null === $this->store->find($object, $id)) {
+            throw RecordNotFound::withId($object->name, $id);
+        }
+        $values = $this->validValues($object, $input, $id);
+
+        if ([] !== $values) {
+            $updated = $this->write($object, $values, $id, fn (): bool => $this->store->update($object, $id, $values, new \DateTimeImmutable()));
+            if (!$updated) {
+                throw RecordNotFound::withId($object->name, $id);
+            }
+        }
+
+        return $this->store->find($object, $id) ?? throw RecordNotFound::withId($object->name, $id);
+    }
+
+    public function delete(string $objectName, string $id): void
+    {
+        $object = $this->metadata->getObject($objectName);
+        $visited = [];
+        $this->transactions->run(fn () => $this->deleteWithRules($object, $id, new \DateTimeImmutable(), $visited));
+    }
+
+    public function referencing(string $objectName, string $id, int $limit = 20): array
+    {
+        $this->metadata->getObject($objectName);
+        $groups = [];
+        foreach ($this->metadata->incomingRelations($objectName) as $reference) {
+            $total = $this->store->countReferencing($reference->object, $reference->field, $id);
+            if (0 === $total) {
+                continue;
+            }
+            $ids = $this->store->referencingIds($reference->object, $reference->field, $id, $limit);
+            $labels = $this->lookup->labels($reference->object->name, $ids);
+            $records = array_map(static fn (string $recordId): RecordLabel => new RecordLabel($recordId, $labels[$recordId] ?? RecordLabels::fallback($recordId)), $ids);
+            usort($records, static fn (RecordLabel $a, RecordLabel $b): int => strnatcasecmp($a->label, $b->label));
+
+            $groups[] = new ReferencingGroup($reference->object->name, $reference->field->name, $reference->inverseLabel(), $records, $total);
+        }
+
+        return $groups;
+    }
+
+    public function find(string $objectName, string $id): ?RecordOutput
+    {
+        return Uuid::isValid($id) ? $this->store->find($this->metadata->getObject($objectName), $id) : null;
+    }
+
+    public function latest(string $objectName, int $limit = 50): array
+    {
+        return $this->store->latest($this->metadata->getObject($objectName), $limit);
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RecordValidationFailed
+     */
+    private function validValues(ObjectDefinitionDto $object, RecordInput $input, ?string $recordId): array
+    {
+        ['values' => $values, 'errors' => $errors] = $this->denormalizer->denormalize($object, $input, complete: null === $recordId);
+
+        // Fields that could not be converted are already reported: validate the others only.
+        $errors += $this->validator->validate($object, array_diff_key($values, $errors), $recordId);
+        if ([] !== $errors) {
+            throw new RecordValidationFailed($object->name, $errors);
+        }
+
+        return $values;
+    }
+
+    /**
+     * Runs a write; a unique index violation that slipped past validation (concurrent
+     * write) is reported on the offending fields, found by validating again.
+     *
+     * @template T
+     *
+     * @param array<string, mixed> $values
+     * @param callable(): T        $write
+     *
+     * @return T
+     */
+    private function write(ObjectDefinitionDto $object, array $values, ?string $recordId, callable $write): mixed
+    {
+        try {
+            return $write();
+        } catch (UniqueValueConflict) {
+            $errors = $this->validator->validate($object, $values, $recordId);
+
+            throw new RecordValidationFailed($object->name, [] !== $errors ? $errors : [RecordValidationFailed::GLOBAL_ERRORS => [self::CONFLICT_MESSAGE]]);
+        }
+    }
+
+    /**
+     * Restrict rules are all checked before anything changes; cascades recurse, and
+     * $visited stops cycles (a record pointing at itself, or two records at each other).
+     *
+     * @param array<string, true> $visited
+     */
+    private function deleteWithRules(ObjectDefinitionDto $object, string $id, \DateTimeImmutable $now, array &$visited): void
+    {
+        $key = $object->name.':'.$id;
+        if (isset($visited[$key])) {
+            return;
+        }
+        $visited[$key] = true;
+
+        $references = $this->metadata->incomingRelations($object->name);
+        foreach ($references as $reference) {
+            if (OnDelete::Restrict === $reference->settings->onDelete
+                && 0 < $count = $this->store->countReferencing($reference->object, $reference->field, $id)) {
+                throw RecordDeleteRestricted::referencedBy($count, $reference->inverseLabel());
+            }
+        }
+
+        if (!$this->store->softDelete($object, $id, $now)) {
+            throw RecordNotFound::withId($object->name, $id);
+        }
+
+        foreach ($references as $reference) {
+            match ($reference->settings->onDelete) {
+                OnDelete::SetNull => $this->store->clearReferences($reference->object, $reference->field, $id, $now),
+                OnDelete::Cascade => array_map(
+                    fn (string $referencingId) => $this->deleteWithRules($reference->object, $referencingId, $now, $visited),
+                    $this->store->referencingIds($reference->object, $reference->field, $id),
+                ),
+                OnDelete::Restrict => null,
+            };
+        }
+    }
+}

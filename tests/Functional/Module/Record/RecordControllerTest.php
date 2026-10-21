@@ -1,0 +1,211 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tests\Functional\Module\Record;
+
+use App\Module\Record\Contract\Dto\RecordInput;
+use App\Module\Record\Contract\RecordFinderInterface;
+use App\Module\Record\Contract\RecordManagerInterface;
+use App\Tests\Support\CreatesContactObject;
+use App\Tests\Support\CreatesPetObject;
+use App\Tests\Support\SignsIn;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
+use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+
+/**
+ * Drives the dynamic record forms through HTTP, as a browser would.
+ */
+final class RecordControllerTest extends WebTestCase
+{
+    use SignsIn;
+    use CreatesContactObject;
+    use CreatesPetObject;
+
+    private KernelBrowser $client;
+
+    protected function setUp(): void
+    {
+        $this->client = self::createClient();
+        // Stateless CSRF protection accepts same-origin requests.
+        $this->client->setServerParameter('HTTP_ORIGIN', 'http://localhost');
+        self::signInAsSuperAdmin($this->client);
+        self::createPetObject(self::getContainer());
+    }
+
+    public function testHomeListsObjects(): void
+    {
+        $this->client->request('GET', '/');
+
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('.object-list a', 'Pets');
+    }
+
+    public function testFormIsBuiltFromMetadata(): void
+    {
+        $crawler = $this->client->request('GET', '/o/pet/new');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame('20', $crawler->filter('input[name="record[name]"]')->attr('maxlength'));
+        self::assertSame('required', $crawler->filter('input[name="record[name]"]')->attr('required'));
+        self::assertCount(3, $crawler->filter('select[name="record[species]"] option'));
+        self::assertSame('number', $crawler->filter('input[name="record[weight]"]')->attr('type'));
+        self::assertSame('0.01', $crawler->filter('input[name="record[weight]"]')->attr('step'));
+        self::assertSame('checkbox', $crawler->filter('input[name="record[vaccinated]"]')->attr('type'));
+        self::assertSame('date', $crawler->filter('input[name="record[born_on]"]')->attr('type'));
+        self::assertSame('email', $crawler->filter('input[name="record[owner_email]"]')->attr('type'));
+    }
+
+    public function testCreatesARecord(): void
+    {
+        $this->client->request('GET', '/o/pet/new');
+        $this->client->submitForm('Save', [
+            'record[name]' => 'Rex',
+            'record[species]' => 'dog',
+            'record[weight]' => '12.5',
+            'record[vaccinated]' => true,
+            'record[born_on]' => '2023-04-01',
+        ]);
+
+        self::assertResponseRedirects('/o/pet', 303);
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.flash-success', 'Pet created.');
+        self::assertSelectorTextSame('#gv-tbody-record_pet td[data-col-key="name"]', 'Rex');
+        self::assertSelectorTextSame('#gv-tbody-record_pet td[data-col-key="species"]', 'Dog');
+        self::assertSelectorTextSame('#gv-tbody-record_pet td[data-col-key="weight"]', '12.50');
+        self::assertSelectorTextSame('#gv-tbody-record_pet td[data-col-key="vaccinated"]', '✓');
+    }
+
+    public function testGridFiltersSearchesAndSorts(): void
+    {
+        foreach ([['Rex', 'dog', 3], ['Fido', 'dog', 7], ['Micia', 'cat', 4]] as [$name, $species, $age]) {
+            $this->records()->create(new RecordInput('pet', ['name' => $name, 'species' => $species, 'age' => $age]));
+        }
+
+        $this->client->request('GET', '/o/pet', ['sort' => '-name']);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['Rex', 'Micia', 'Fido'], $this->gridNames());
+
+        // Column filters use the same syntax as on any gridview grid.
+        $this->client->request('GET', '/o/pet', ['fedaleForm' => ['species' => 'dog', 'age' => '>=5']]);
+        self::assertSame(['Fido'], $this->gridNames());
+
+        $this->client->request('GET', '/o/pet', ['fedaleForm' => ['_q' => 'MIC']]);
+        self::assertSame(['Micia'], $this->gridNames());
+    }
+
+    public function testTheSearchBoxMatchesWordsAcrossFieldsInAnyOrder(): void
+    {
+        self::createContacts(self::getContainer());
+
+        $this->client->request('GET', '/o/contact', ['fedaleForm' => ['_q' => 'London John']]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['John'], $this->client->getCrawler()
+            ->filter('#gv-tbody-record_contact td[data-col-key="first_name"]')
+            ->each(static fn ($cell): string => trim($cell->text())));
+        self::assertSelectorTextSame('#gv-tbody-record_contact td[data-col-key="city"]', 'London');
+    }
+
+    public function testEditLinksPointToTheRecordForm(): void
+    {
+        $record = $this->records()->create(new RecordInput('pet', ['name' => 'Rex']));
+
+        $crawler = $this->client->request('GET', '/o/pet');
+
+        self::assertSame(\sprintf('/o/pet/%s/edit', $record->id), $crawler->filter('#gv-tbody-record_pet a:contains("Edit")')->attr('href'));
+    }
+
+    public function testExportsTheFilteredRowsAsCsv(): void
+    {
+        $this->records()->create(new RecordInput('pet', ['name' => 'Rex', 'species' => 'dog']));
+        $this->records()->create(new RecordInput('pet', ['name' => 'Micia', 'species' => 'cat']));
+
+        $this->client->request('GET', '/o/pet/export', ['format' => 'csv', 'fedaleForm' => ['species' => 'cat'], 'cols' => 'name,species']);
+
+        self::assertResponseIsSuccessful();
+        $lines = array_map(trim(...), explode("\n", trim((string) $this->client->getInternalResponse()->getContent(), "\u{FEFF}\n")));
+        self::assertSame(['Name,Species', 'Micia,Cat'], $lines);
+    }
+
+    public function testEachObjectGridIsAUiSettingsScope(): void
+    {
+        $crawler = $this->client->request('GET', '/o/pet');
+        self::assertSame('record_pet', $crawler->filter('[data-controller="gridview-ui-settings"]')->attr('data-gridview-ui-settings-grid-value'));
+
+        $crawler = $this->client->request('GET', '/gridview/_settings/', ['scope' => 'record_pet']);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame('record_pet', $crawler->filter('select option[selected]')->attr('value'));
+        self::assertSelectorTextContains('select option[selected]', 'Pets');
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function gridNames(): array
+    {
+        return $this->client->getCrawler()
+            ->filter('#gv-tbody-record_pet td[data-col-key="name"]')
+            ->each(static fn ($cell): string => trim($cell->text()));
+    }
+
+    public function testShowsValidationErrorsFromMetadata(): void
+    {
+        $this->records()->create(new RecordInput('pet', ['name' => 'Rex', 'chip_code' => 'IT-001']));
+
+        $this->client->request('GET', '/o/pet/new');
+        $this->client->submitForm('Save', [
+            'record[name]' => '',
+            'record[chip_code]' => 'IT-001',
+            'record[owner_email]' => 'nope',
+            'record[weight]' => '1.234',
+        ]);
+
+        self::assertResponseStatusCodeSame(422);
+        // Extra decimals are reported, never silently rounded by the form.
+        self::assertAnySelectorTextContains('ul li', 'This value should have at most 2 decimal places.');
+        self::assertSelectorTextContains('#record_name + ul, ul:has(+ #record_name)', 'This value is required.');
+        self::assertAnySelectorTextContains('ul li', 'This value is already used.');
+        self::assertAnySelectorTextContains('ul li', 'This value is not a valid email address.');
+        self::assertSame('nope', $this->client->getCrawler()->filter('input[name="record[owner_email]"]')->attr('value'));
+    }
+
+    public function testEditsAndDeletesARecord(): void
+    {
+        $record = $this->records()->create(new RecordInput('pet', ['name' => 'Rex', 'age' => 3]));
+
+        $this->client->request('GET', \sprintf('/o/pet/%s/edit', $record->id));
+        self::assertInputValueSame('record[name]', 'Rex');
+        $this->client->submitForm('Save', ['record[name]' => 'Rex II']);
+        self::assertResponseRedirects('/o/pet', 303);
+        $updated = $this->finder()->find('pet', $record->id);
+        self::assertNotNull($updated);
+        self::assertSame('Rex II', $updated->get('name'));
+        self::assertSame(3, $updated->get('age'));
+
+        $this->client->request('GET', \sprintf('/o/pet/%s/edit', $record->id));
+        $this->client->submitForm('Delete');
+        self::assertResponseRedirects('/o/pet', 303);
+        self::assertNull($this->finder()->find('pet', $record->id));
+    }
+
+    public function testUnknownObjectsAndRecordsAre404(): void
+    {
+        $this->client->request('GET', '/o/ghost');
+        self::assertResponseStatusCodeSame(404);
+
+        $this->client->request('GET', '/o/pet/01a14b6b-f371-729f-8e48-9a43d9f04c84/edit');
+        self::assertResponseStatusCodeSame(404);
+    }
+
+    private function records(): RecordManagerInterface
+    {
+        return self::getContainer()->get(RecordManagerInterface::class);
+    }
+
+    private function finder(): RecordFinderInterface
+    {
+        return self::getContainer()->get(RecordFinderInterface::class);
+    }
+}

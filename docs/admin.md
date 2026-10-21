@@ -1,0 +1,45 @@
+# Admin UI
+
+The no-code builder at `/admin` does what the [console commands](console.md) do, from the browser.
+Every change takes effect at once, in one transaction with the DDL it triggers, exactly as from the
+console. It needs the `admin.metadata` permission (or `ROLE_SUPER_ADMIN`), see
+[Users and permissions](access.md).
+
+## Objects — `/admin`
+
+The list of objects, with their machine name, table and number of fields, and a link to their
+records. **New object** asks for the machine name and the two labels.
+
+## An object — `/admin/objects/<object>`
+
+| Section | What it does | Console equivalent |
+|---|---|---|
+| Fields | Every field with its column, type, rules and settings; **Add a field**, **Edit** (label) | `metadata:field:create`, `metadata:list <object>` |
+| Pointed at by | The relation fields of other objects pointing at this one, with their delete rule | |
+| Labels | Rename the singular and plural labels | |
+| Record label | The field that names the records in relations and lookups | `metadata:object:label` |
+| Search | The search handler and the searched fields; the search indexes follow | `metadata:object:search` |
+| Table | Whether the table matches the metadata; **Apply** adds what is missing | `schema:sync <object>` |
+
+The **Table** section never drops anything: differences that would lose data (a column the metadata
+does not define, a column defined differently) are listed, and only
+`schema:sync --allow-destructive` applies them.
+
+## A new field
+
+1. **Add a field** shows the field types with a one-line description.
+2. The form of the chosen type asks for the machine name, the label, *required* and *unique*, then
+   the type's own settings: maximum length for a text, decimals for a number, the options of a
+   choice (one per line, `value | label`), the related object and the delete rule of a relation...
+
+The settings part of the form is generated from the settings each field type declares
+(`FieldTypeInterface::settingDefinitions()`): a new field type shows up in the admin with its
+settings without any change to the admin.
+
+Errors appear next to the input they concern: an invalid or taken name, a missing label, a
+setting the field type refuses (duplicated option, decimals out of range, unknown related object).
+
+## What cannot be changed
+
+Once a field exists its name, type and rules are fixed (the label can change), and objects and
+fields cannot be deleted yet.

@@ -1,0 +1,5 @@
+# Serves the body of the grid UI settings modal (fedale/gridview-bundle + fedale/setting-bundle).
+gridview_ui_settings:
+    resource: '@FedaleGridviewBundle/src/Controller/UiSettingsController.php'
+    type: attribute
+    prefix: /gridview/_settings

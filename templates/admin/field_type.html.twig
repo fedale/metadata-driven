@@ -1,0 +1,19 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}New field · {{ object.labelPlural }}{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('admin_object_show', {object: object.name}) }}">&larr; {{ object.labelPlural }}</a></p>
+    <h1>New field: choose its type</h1>
+
+    <ul class="type-list">
+        {% for type in types %}
+            <li>
+                <a class="type-card" href="{{ path('admin_field_new', {object: object.name, type: type.name}) }}">
+                    <strong>{{ type.label }}</strong>
+                    <span class="muted">{{ type.description }}</span>
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}New {{ type.label|lower }} field · {{ object.labelPlural }}{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('admin_field_type', {object: object.name}) }}">&larr; Field types</a></p>
+    <h1>New {{ type.label|lower }} field on {{ object.labelPlural }}</h1>
+    <p class="muted">{{ type.description }}</p>
+
+    {{ form_start(form, {attr: {class: 'record-form', novalidate: 'novalidate'}}) }}
+        {{ form_errors(form) }}
+        {{ form_row(form.name) }}
+        {{ form_row(form.label) }}
+        {{ form_row(form.required) }}
+        {{ form_row(form.unique) }}
+        {% if form.settings|length > 0 %}
+            <fieldset>
+                <legend>Settings</legend>
+                {{ form_errors(form.settings) }}
+                {{ form_widget(form.settings) }}
+            </fieldset>
+        {% else %}
+            {% do form.settings.setRendered %}
+        {% endif %}
+        <button type="submit" class="button">Create</button>
+    {{ form_end(form) }}
+{% endblock %}

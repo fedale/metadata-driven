@@ -1,0 +1,121 @@
+:root {
+    --bg: #f7f7f8;
+    --surface: #ffffff;
+    --text: #1d1d22;
+    --muted: #6b6b76;
+    --border: #dcdce2;
+    --accent: #3b5bdb;
+    --danger: #c92a2a;
+    --success-bg: #ebfbee;
+    --success-text: #2b8a3e;
+    --error-text: #c92a2a;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #16161a;
+        --surface: #1f1f24;
+        --text: #ececf1;
+        --muted: #9a9aa6;
+        --border: #34343c;
+        --accent: #748ffc;
+        --danger: #ff6b6b;
+        --success-bg: #1b3326;
+        --success-text: #8ce99a;
+        --error-text: #ff8787;
+    }
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+a { color: var(--accent); }
+
+.topbar {
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+.topbar { display: flex; align-items: center; gap: 1.5rem; }
+.brand { font-weight: 600; text-decoration: none; color: var(--text); }
+.topnav { display: flex; gap: 1rem; }
+.topnav a { text-decoration: none; }
+.topuser { margin-left: auto; display: flex; gap: 1rem; color: var(--muted); }
+
+.login { max-width: 24rem; margin: 3rem auto; }
+
+.page { max-width: 64rem; margin: 0 auto; padding: 1.5rem 1rem; }
+
+.page-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+
+.muted { color: var(--muted); }
+
+.flash { padding: 0.5rem 0.75rem; border-radius: 6px; }
+.flash-success { background: var(--success-bg); color: var(--success-text); }
+.flash-error { background: var(--surface); color: var(--error-text); border: 1px solid var(--error-text); }
+
+.related { margin-top: 2rem; }
+.related h2 { font-size: 1.1rem; }
+
+.button {
+    display: inline-block;
+    padding: 0.45rem 0.9rem;
+    border: 0;
+    border-radius: 6px;
+    background: var(--accent);
+    color: #fff;
+    font: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+.button-danger { background: var(--danger); }
+.button-secondary { background: transparent; color: var(--accent); border: 1px solid var(--border); }
+
+.page-actions { display: flex; gap: 0.5rem; margin-left: auto; }
+
+.object-list { padding-left: 1.2rem; }
+
+.records { width: 100%; border-collapse: collapse; background: var(--surface); }
+.records th, .records td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); text-align: left; }
+.records th { font-weight: 600; color: var(--muted); }
+
+.record-form { display: grid; gap: 0.9rem; max-width: 32rem; }
+.record-form > div > label { display: block; font-weight: 500; margin-bottom: 0.25rem; }
+.record-form input:not([type=checkbox]), .record-form select, .record-form textarea {
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+}
+.record-form ul { margin: 0.25rem 0 0; padding: 0; list-style: none; color: var(--error-text); }
+.record-form > .button { justify-self: start; }
+
+.delete-form { margin-top: 2rem; }
+
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* Admin */
+.admin-section { margin-top: 2rem; }
+.admin-section h2 { font-size: 1.15rem; }
+.admin-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 0 2rem; }
+.settings { font-size: 0.85em; color: var(--muted); word-break: break-all; }
+.sql code { font-size: 0.85em; word-break: break-all; }
+.type-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 0.75rem; padding: 0; list-style: none; }
+.type-card { display: grid; gap: 0.25rem; padding: 0.9rem 1rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); text-decoration: none; }
+.type-card:hover { border-color: var(--accent); }
+.record-form fieldset { display: grid; gap: 0.9rem; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+.record-form fieldset > div { display: grid; gap: 0.9rem; }
+.record-form .help-text, .record-form small { color: var(--muted); font-size: 0.85em; }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; }

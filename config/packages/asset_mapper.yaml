@@ -1,0 +1,18 @@
+framework:
+    asset_mapper:
+        # The paths to make available to the asset mapper.
+        paths:
+            - assets/
+            # Stimulus controllers and styles of the grid, declared in the bundle's
+            # assets/package.json and picked up through assets/controllers.json.
+            - namespace: '@fedale/gridview-bundle'
+              value: vendor/fedale/gridview-bundle/assets
+        missing_import_mode: strict
+        excluded_patterns:
+            # Sass partials are compiled into grid.scss, never served on their own.
+            - '*/assets/styles/**/_*.scss'
+
+when@prod:
+    framework:
+        asset_mapper:
+            missing_import_mode: warn

@@ -1,0 +1,4 @@
+// Styles of fedale/gridview-bundle (gv-* classes and --gv-* design tokens).
+// Named differently from the bundle's own `gridview.scss`, which it loads through
+// the Sass load path, to avoid a module self-reference.
+@use 'gridview';

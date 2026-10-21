@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+# See also https://symfony.com/doc/current/service_container/import.html
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    # Tagging is configured here (not with attributes) so that Contract and Domain
+    # layers stay free of framework dependencies.
+    _instanceof:
+        App\Module\FieldType\Contract\FieldTypeInterface:
+            tags: ['app.field_type']
+        App\Module\Search\Contract\SearchHandlerInterface:
+            tags: ['app.search_handler']
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Module/*/Contract/Dto/'
+            - '../src/Module/*/Contract/Event/'
+            - '../src/Module/*/Contract/Exception/'
+            - '../src/Module/*/Domain/Model/'
+            - '../src/Module/*/Domain/Exception/'
+            - '../src/Module/*/Application/Command/'
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones

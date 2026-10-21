@@ -1,0 +1,14 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}New object{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('admin_index') }}">&larr; Objects</a></p>
+    <h1>New object</h1>
+
+    {{ form_start(form, {attr: {class: 'record-form', novalidate: 'novalidate'}}) }}
+        {{ form_errors(form) }}
+        {{ form_rest(form) }}
+        <button type="submit" class="button">Create</button>
+    {{ form_end(form) }}
+{% endblock %}

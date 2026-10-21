@@ -1,0 +1,111 @@
+{
+    "controllers": {
+        "@fedale/gridview-bundle": {
+            "crud": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "dropdown": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "export": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "visibility": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "saved-search": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "selection": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "infinite-scroll": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "inline-edit": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "column-order": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "responsive": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "grouping": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "filter": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "date-filter": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "relation-filter": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "form-validate": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "page-jump": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "i18n": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "locale-switcher": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "mercure": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "ui-settings": {
+                "enabled": true,
+                "fetch": "lazy"
+            }
+        },
+        "@symfony/ux-autocomplete": {
+            "autocomplete": {
+                "enabled": true,
+                "fetch": "eager",
+                "autoimport": {
+                    "tom-select/dist/css/tom-select.default.css": true,
+                    "tom-select/dist/css/tom-select.bootstrap4.css": false,
+                    "tom-select/dist/css/tom-select.bootstrap5.css": false
+                }
+            }
+        },
+        "@symfony/ux-turbo": {
+            "turbo-core": {
+                "enabled": true,
+                "fetch": "eager",
+                "autoimport": {
+                    "@symfony/ux-turbo/dist/mercure_stream_source_element.js": true
+                }
+            },
+            "mercure-turbo-stream": {
+                "enabled": false,
+                "fetch": "eager"
+            }
+        }
+    },
+    "entrypoints": []
+}

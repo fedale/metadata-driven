@@ -1,0 +1,7 @@
+# Runtime settings stored in the database (fedale/setting-bundle).
+# The grid UI settings modal stores its values as scoped settings
+# (namespace `gridview.ui`, scopes `global` and `grid:<id>`).
+fedale_setting:
+    provider: doctrine
+    scoped:
+        store: doctrine

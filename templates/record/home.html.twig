@@ -1,0 +1,20 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Objects{% endblock %}
+
+{% block body %}
+    <h1>Objects</h1>
+    {% if objects is empty %}
+        {% if can_administer %}
+            <p class="muted">No objects yet. <a href="{{ path('admin_object_new') }}">Create the first one</a>.</p>
+        {% else %}
+            <p class="muted">There is nothing you can open yet: ask an administrator for access.</p>
+        {% endif %}
+    {% else %}
+        <ul class="object-list">
+            {% for object in objects %}
+                <li><a href="{{ path('record_index', {object: object.name}) }}">{{ object.labelPlural }}</a></li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endblock %}

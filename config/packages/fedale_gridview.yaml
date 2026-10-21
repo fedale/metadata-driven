@@ -1,0 +1,12 @@
+# Defaults shared by every record grid; each grid is built at runtime from the
+# metadata (see App\Module\Record\UI\Grid\RecordGridFactory), so no per-grid entry.
+fedale_gridview:
+    # Framework-agnostic gv-* look: the app ships no CSS framework.
+    theme: default
+
+    defaults:
+        behavior:
+            useTurbo: true
+        pagination:
+            pageSizeOptions: [10, 25, 50, 100]
+            maxPageSize: 100
