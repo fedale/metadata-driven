@@ -34,6 +34,8 @@ security:
     # permissions, checked by the controllers (App\Module\Access).
     access_control:
         - { path: ^/login$, roles: PUBLIC_ACCESS }
+        # The grid UI settings (fedale/gridview-bundle) apply to every user: administrators only.
+        - { path: ^/gridview/_settings, allow_if: "is_granted('ROLE_SUPER_ADMIN') or is_granted('admin.metadata')" }
         - { path: ^/, roles: ROLE_USER }
 
 when@test:

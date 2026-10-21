@@ -10,10 +10,12 @@
             {% if can_create %}
                 <a class="button" href="{{ path('record_new', {object: object.name}) }}">New {{ object.labelSingular|lower }}</a>
             {% endif %}
-            <button type="button" class="button button-secondary" data-action="gridview-ui-settings#open">
-                {{ 'ui_settings.menu'|trans({}, 'GridviewBundle') }}
-            </button>
-            {% include '@FedaleGridview/ui_settings/_modal.html.twig' %}
+            {% if can('admin.metadata') %}
+                <button type="button" class="button button-secondary" data-action="gridview-ui-settings#open">
+                    {{ 'ui_settings.menu'|trans({}, 'GridviewBundle') }}
+                </button>
+                {% include '@FedaleGridview/ui_settings/_modal.html.twig' %}
+            {% endif %}
         </div>
     </div>
 

@@ -57,6 +57,14 @@ A user without `read` does not see the object on the home page; without `create`
 "New" button; without `update` a record opens read-only; without `delete` it has no "Delete"
 button. Every action is checked on the server as well (403).
 
+Where objects meet:
+
+- The "related records" lists of a record only show the objects the user may read.
+- A deletion that cascades (a relation with `onDelete: cascade`) needs the `delete` permission of
+  every object it can reach; otherwise it is refused, and nothing is deleted. Clearing references
+  (`set_null`) is part of the deletion and needs no extra permission.
+- The grid UI settings modal changes the grids of every user: it needs `admin.metadata`.
+
 ## Roles
 
 Roles are groups of permissions and of other roles, defined at runtime with the commands of the
