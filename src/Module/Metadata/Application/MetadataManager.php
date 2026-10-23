@@ -8,10 +8,15 @@ use App\Module\Metadata\Application\Command\ConfigureObjectLabelCommand;
 use App\Module\Metadata\Application\Command\ConfigureObjectSearchCommand;
 use App\Module\Metadata\Application\Command\CreateFieldCommand;
 use App\Module\Metadata\Application\Command\CreateObjectCommand;
+use App\Module\Metadata\Application\Command\DeleteViewCommand;
+use App\Module\Metadata\Application\Command\SaveViewCommand;
 use App\Module\Metadata\Application\Handler\ConfigureObjectLabelHandler;
 use App\Module\Metadata\Application\Handler\ConfigureObjectSearchHandler;
 use App\Module\Metadata\Application\Handler\CreateFieldHandler;
 use App\Module\Metadata\Application\Handler\CreateObjectHandler;
+use App\Module\Metadata\Application\Handler\DeleteViewHandler;
+use App\Module\Metadata\Application\Handler\SaveViewHandler;
+use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\Event\MetadataChanged;
 use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
@@ -36,6 +41,8 @@ final class MetadataManager implements MetadataManagerInterface
         private readonly CreateFieldHandler $createField,
         private readonly ConfigureObjectLabelHandler $configureLabel,
         private readonly ConfigureObjectSearchHandler $configureSearch,
+        private readonly SaveViewHandler $saveView,
+        private readonly DeleteViewHandler $deleteView,
         private readonly ObjectDefinitionRepository $objects,
         private readonly TransactionRunner $transactions,
         private readonly EventDispatcherInterface $events,
@@ -72,6 +79,16 @@ final class MetadataManager implements MetadataManagerInterface
     public function configureSearch(string $objectName, ?string $handler, ?array $fields): void
     {
         ($this->configureSearch)($this->valid(new ConfigureObjectSearchCommand($objectName, $handler, $fields)));
+    }
+
+    public function saveView(string $objectName, ViewKind $kind, string $name, string $template, bool $isDefault = false): string
+    {
+        return ($this->saveView)($this->valid(new SaveViewCommand($objectName, $name, $template, $kind, $isDefault)));
+    }
+
+    public function deleteView(string $objectName, ViewKind $kind, string $name): void
+    {
+        ($this->deleteView)($this->valid(new DeleteViewCommand($objectName, $name, $kind)));
     }
 
     /**

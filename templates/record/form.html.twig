@@ -10,6 +10,9 @@
 
     {{ form_start(form, {attr: {class: 'record-form', novalidate: 'novalidate'}}) }}
         {{ form_errors(form) }}
+        {% if layout|default(null) %}
+            <div class="record-layout">{{ record_form_layout(form, layout) }}</div>
+        {% endif %}
         {{ form_rest(form) }}
         {% if record is null or can_update|default(false) %}
             <button type="submit" class="button">Save</button>

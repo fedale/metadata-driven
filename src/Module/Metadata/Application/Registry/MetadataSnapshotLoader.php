@@ -6,8 +6,10 @@ namespace App\Module\Metadata\Application\Registry;
 
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
+use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Metadata\Domain\Model\FieldDefinition;
 use App\Module\Metadata\Domain\Model\ObjectDefinition;
+use App\Module\Metadata\Domain\Model\ViewDefinition;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
 
 /**
@@ -53,6 +55,7 @@ final class MetadataSnapshotLoader
             $object->getSearchHandler(),
             $object->getSearchFields(),
             $object->getLabelField(),
+            array_map($this->mapView(...), $object->getViews()),
         );
     }
 
@@ -69,6 +72,17 @@ final class MetadataSnapshotLoader
             $field->getSettings(),
             $field->getPosition(),
             $field->isSystem(),
+        );
+    }
+
+    private function mapView(ViewDefinition $view): ViewDefinitionDto
+    {
+        return new ViewDefinitionDto(
+            $view->getId()->toRfc4122(),
+            $view->getKind(),
+            $view->getName(),
+            $view->getTemplate(),
+            $view->isDefault(),
         );
     }
 }

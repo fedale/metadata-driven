@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <entity name="App\Module\Metadata\Domain\Model\ViewDefinition" table="metadata_view" schema="core">
+        <unique-constraints>
+            <unique-constraint name="uniq_metadata_view_object_kind_name" columns="object_id,kind,name"/>
+        </unique-constraints>
+
+        <id name="id" type="uuid"/>
+
+        <field name="kind" length="20" enum-type="App\Module\Metadata\Contract\Dto\ViewKind"/>
+        <field name="name" length="50"/>
+        <field name="template" type="text"/>
+        <field name="isDefault" type="boolean"/>
+        <field name="createdAt" type="datetime_immutable"/>
+        <field name="updatedAt" type="datetime_immutable"/>
+
+        <many-to-one field="object" target-entity="App\Module\Metadata\Domain\Model\ObjectDefinition" inversed-by="views">
+            <join-column name="object_id" referenced-column-name="id" nullable="false" on-delete="CASCADE"/>
+        </many-to-one>
+    </entity>
+</doctrine-mapping>

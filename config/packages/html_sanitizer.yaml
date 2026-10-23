@@ -1,0 +1,12 @@
+framework:
+    html_sanitizer:
+        sanitizers:
+            # Layouts of the views (metadata_view.template): structure and classes only,
+            # no scripts, no inline styles, no event handlers. Injected with #[Target('view_layout')].
+            view_layout:
+                allow_safe_elements: true
+                allow_attributes:
+                    class: '*'
+                # Inside the record form a button would submit it.
+                drop_elements: [button]
+                max_input_length: 20000

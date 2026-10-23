@@ -29,7 +29,7 @@ final class CachedMetadataRegistry implements MetadataRegistryInterface, ResetIn
 {
     // Bump the version whenever the shape of the DTOs changes: the pool outlives deploys
     // (cache:clear does not empty it), and an old serialized snapshot would not hydrate.
-    private const string CACHE_KEY = 'metadata_snapshot.v3';
+    private const string CACHE_KEY = 'metadata_snapshot.v4';
     private const string CACHE_TAG = 'metadata';
 
     /** @var array<string, ObjectDefinitionDto>|null */

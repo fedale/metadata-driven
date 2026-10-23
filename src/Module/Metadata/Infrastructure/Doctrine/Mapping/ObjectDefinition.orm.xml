@@ -36,5 +36,10 @@
                 <order-by-field name="position" direction="ASC"/>
             </order-by>
         </one-to-many>
+        <one-to-many field="views" target-entity="App\Module\Metadata\Domain\Model\ViewDefinition" mapped-by="object" orphan-removal="true">
+            <cascade>
+                <cascade-persist/>
+            </cascade>
+        </one-to-many>
     </entity>
 </doctrine-mapping>

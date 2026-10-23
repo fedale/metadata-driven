@@ -8,6 +8,7 @@ use App\Module\Access\Contract\AccessCheckerInterface;
 use App\Module\Access\Contract\RecordAction;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\OnDelete;
+use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Contract\Dto\RecordInput;
@@ -124,7 +125,12 @@ final class RecordController extends AbstractController
             }
         }
 
-        return $this->render('record/form.html.twig', ['object' => $definition, 'form' => $form, 'record' => null]);
+        return $this->render('record/form.html.twig', [
+            'object' => $definition,
+            'form' => $form,
+            'record' => null,
+            'layout' => $this->formLayout($definition, $request),
+        ]);
     }
 
     #[Route('/{id}/edit', name: 'edit', requirements: ['id' => Requirement::UUID], methods: ['GET', 'POST'])]
@@ -151,6 +157,7 @@ final class RecordController extends AbstractController
             'object' => $definition,
             'form' => $form,
             'record' => $record,
+            'layout' => $this->formLayout($definition, $request),
             'delete_form' => $this->deleteForm($definition, $id),
             // Only the related records the user may read.
             'referencing' => array_values(array_filter(
@@ -231,6 +238,21 @@ final class RecordController extends AbstractController
         }
 
         return $object;
+    }
+
+    /**
+     * The template of the form view picked by "?view=<name>", else of the default one;
+     * null for the plain layout. An unknown view name is a 404.
+     */
+    private function formLayout(ObjectDefinitionDto $object, Request $request): ?string
+    {
+        $name = $request->query->getString('view');
+        $view = $object->view(ViewKind::Form, '' === $name ? null : $name);
+        if ('' !== $name && null === $view) {
+            throw $this->createNotFoundException(\sprintf('Object "%s" has no form view "%s".', $object->name, $name));
+        }
+
+        return $view?->template;
     }
 
     private function recordOr404(ObjectDefinitionDto $object, string $id): RecordOutput
