@@ -162,7 +162,7 @@ symfony console metadata:form:delete registration      # the records stay
 | Read side | `MetadataRegistryInterface::getForm()`, `FormDefinitionDto` / `FormNodeDto`, cached with the metadata |
 | Writes | `CompositeRecordManagerInterface` (Record): plans and checks the whole tree with `RecordManagerInterface::check()`, then writes it with the record pipeline |
 | Page | `CompositeFormController` at `/f/{form}`, `CompositeNodeType` (a node: `values`, `service`, `sections`, a row's `id`), `templates/record/_composite.html.twig` |
-| Rows | The `collection` Stimulus controller: adds a row from the section's prototype under a fresh key, removes one, keeps `min`/`max` |
+| Rows | The `gridview-collection` Stimulus controller and the `gv-collection` classes of fedale/gridview-bundle: adds a row from the section's prototype under a fresh key, removes one, keeps `min`/`max` |
 
 ## Not yet
 

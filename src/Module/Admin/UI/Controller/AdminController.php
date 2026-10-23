@@ -474,7 +474,7 @@ final class AdminController extends AbstractController
             ->add('template', TextareaType::class, [
                 'label' => 'Layout (HTML)',
                 'help' => 'Put a {field} token where each field goes: '.$tokens.'. The fields left out follow the layout. Scripts, styles and event attributes are removed; class attributes are kept.',
-                'attr' => ['rows' => 16, 'class' => 'code'],
+                'attr' => ['rows' => 16, 'class' => 'md-code-input'],
             ])
             ->add('isDefault', CheckboxType::class, [
                 'label' => 'Default view',

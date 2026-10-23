@@ -6,37 +6,37 @@
 
 {% block body %}
     <p><a href="{{ path('admin_form_index') }}">&larr; Forms</a></p>
-    <h1>{{ heading }}{% if definition %} <span class="muted">· <code>{{ definition.name }}</code></span>{% endif %}</h1>
+    <h1>{{ heading }}{% if definition %} <span class="gv-muted">· <code>{{ definition.name }}</code></span>{% endif %}</h1>
 
     {% if definition %}
         <p><a href="{{ path('composite_new', {form: definition.name}) }}">Open the form</a></p>
     {% endif %}
 
-    <div class="admin-columns">
-        <section class="admin-section">
-            {{ form_start(form, {attr: {class: 'record-form', novalidate: 'novalidate'}}) }}
+    <div class="md-admin__columns">
+        <section class="md-admin__section">
+            {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
                 {{ form_errors(form) }}
                 {{ form_rest(form) }}
-                <button type="submit" class="button">Save</button>
+                <button type="submit" class="gv-btn gv-btn-primary">Save</button>
             {{ form_end(form) }}
 
             {% if delete_form is defined %}
-                {{ form_start(delete_form, {attr: {class: 'delete-form', 'data-turbo-confirm': 'Delete the form ' ~ definition.name ~ '? Its records stay.'}}) }}
-                    <button type="submit" class="button button-danger">Delete</button>
+                {{ form_start(delete_form, {attr: {class: 'md-delete-form', 'data-turbo-confirm': 'Delete the form ' ~ definition.name ~ '? Its records stay.'}}) }}
+                    <button type="submit" class="gv-btn gv-btn-danger">Delete</button>
                 {{ form_end(delete_form) }}
             {% endif %}
         </section>
 
-        <section class="admin-section">
+        <section class="md-admin__section">
             <h2>Objects and relations</h2>
-            <p class="muted">A section names an <code>object</code> and the relation field (<code>via</code>) by which it points at the object of its parent.</p>
-            <dl class="facts">
+            <p class="gv-muted">A section names an <code>object</code> and the relation field (<code>via</code>) by which it points at the object of its parent.</p>
+            <dl class="md-facts">
                 {% for object in objects %}
                     <dt><code>{{ object.name }}</code></dt>
                     <dd>
                         {{ object.fields|keys|join(', ') }}
                         {% for name, field in object.fields %}
-                            {% if field.relation %}<br><span class="muted">via <code>{{ name }}</code> → {{ field.relation.target }}</span>{% endif %}
+                            {% if field.relation %}<br><span class="gv-muted">via <code>{{ name }}</code> → {{ field.relation.target }}</span>{% endif %}
                         {% endfor %}
                     </dd>
                 {% endfor %}

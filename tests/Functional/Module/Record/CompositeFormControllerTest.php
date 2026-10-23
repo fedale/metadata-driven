@@ -44,9 +44,9 @@ final class CompositeFormControllerTest extends WebTestCase
         self::assertSelectorTextContains('#section-composite_sections_profile legend', 'Profile');
         // Phones need one row: it is there, with the defaults of its fields.
         self::assertSame('+39', $crawler->filter('select[name="composite[sections][profile][sections][phones][0][values][prefix]"] option[selected]')->attr('value'));
-        self::assertStringContainsString('__phones__', (string) $crawler->filter('[data-collection-prototype-name-value="__phones__"]')->attr('data-collection-prototype-value'));
+        self::assertStringContainsString('__phones__', (string) $crawler->filter('[data-gridview-collection-prototype-name-value="__phones__"]')->attr('data-gridview-collection-prototype-value'));
         // "inline: true": prefix, number and type on one line.
-        self::assertCount(3, $crawler->filter('.composite-inline [name^="composite[sections][profile][sections][phones][0][values]"]'));
+        self::assertCount(3, $crawler->filter('.gv-collection__row--inline [name^="composite[sections][profile][sections][phones][0][values]"]'));
         // An inline row shows its labels as placeholders, the required ones marked.
         self::assertSame('Number *', $crawler->filter('input[name="composite[sections][profile][sections][phones][0][values][number]"]')->attr('placeholder'));
         // The city is required by the form only: marked all the same.
@@ -77,7 +77,7 @@ final class CompositeFormControllerTest extends WebTestCase
         self::assertNotNull($account);
         self::assertResponseRedirects('/f/registration/'.$account->id.'/edit', 303);
         $crawler = $this->client->followRedirect();
-        self::assertSelectorTextContains('.flash-success', 'User registration saved.');
+        self::assertSelectorTextContains('.md-flash--success', 'User registration saved.');
         self::assertSame('Milano', $crawler->filter('input[name="composite[sections][profile][values][city]"]')->attr('value'));
         self::assertSame(['333 123 4567', '044 123 45 67'], $this->numbers($crawler));
         self::assertSame('Computer engineering', $crawler->filter('input[name="composite[sections][qualifications][0][values][title]"]')->attr('value'));
@@ -175,6 +175,6 @@ final class CompositeFormControllerTest extends WebTestCase
     private function errorsOf(Crawler $crawler, string $name): string
     {
         // The errors of an input are listed in its row.
-        return $crawler->filter('[name="'.$name.'"]')->closest('div')?->text() ?? '';
+        return $crawler->filter('[name="'.$name.'"]')->closest('.gv-form-row')?->text() ?? '';
     }
 }

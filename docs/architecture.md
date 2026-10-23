@@ -77,6 +77,21 @@ RecordInput (raw values: form, API)
 Forms carry no validation of their own: they only convert input, so every rule lives once, in the
 metadata.
 
+## Styles
+
+The application follows the CSS grammar of fedale/gridview-bundle, whose stylesheet comes first
+(`assets/styles/grid.scss`):
+
+| Prefix | What | Where |
+|---|---|---|
+| `gv-` | Generic components: form rows, labels, controls and errors (the bundle's form theme, `gv_form_theme.html.twig`, set for every form in `config/packages/twig.yaml`), the required marker and note, buttons (`gv-btn`), the switch, the segmented choice, the password meter and eye, repeatable rows (`gv-collection`) | fedale/gridview-bundle: `_forms.scss` and its Stimulus controllers, see its guide `19_form-components.md` |
+| `md-` | Components of this application only: page, top bar, flash messages, admin, composite form sections, view layouts | `assets/styles/app.css` |
+
+Both follow `block__element--modifier`, and every colour and size comes from the bundle's
+`--gv-*` design tokens, defined on `<body data-gv-scope>`: the grid's theme, its dark mode and its
+Bootstrap or Tailwind presets apply to the whole page. A component useful to any form belongs in
+the bundle; one that exists because of the metadata stays here, with the `md-` prefix.
+
 ## The grid
 
 `RecordGridFactory` builds one grid per object at runtime with `GridviewBuilderFactory`: one

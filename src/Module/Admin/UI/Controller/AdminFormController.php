@@ -158,7 +158,7 @@ final class AdminFormController extends AbstractController
         return $builder
             ->add('definition', TextareaType::class, [
                 'label' => 'Definition (YAML)',
-                'attr' => ['rows' => 24, 'class' => 'code', 'spellcheck' => 'false'],
+                'attr' => ['rows' => 24, 'class' => 'md-code-input', 'spellcheck' => 'false'],
             ])
             ->getForm();
     }

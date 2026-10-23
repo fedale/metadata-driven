@@ -184,13 +184,13 @@ final class RecordFormFactory
             WidgetKind::Decimal => [NumberType::class, $required + ['input' => 'string', 'html5' => true, 'attr' => ['step' => $this->step($widget)] + $bounds['attr']]],
             // A required checkbox would have to be checked: "required" only means "not null" here.
             WidgetKind::Checkbox => [CheckboxType::class, ['required' => false] + ('switch' === ($widget->options['display'] ?? null)
-                ? ['attr' => ['role' => 'switch'], 'row_attr' => ['class' => 'switch-row']]
+                ? ['attr' => ['class' => 'gv-switch', 'role' => 'switch']]
                 : [])],
             WidgetKind::Date => [DateType::class, $required + ['widget' => 'single_text', 'input' => 'datetime_immutable']],
             WidgetKind::DateTime => [DateTimeType::class, $required + ['widget' => 'single_text', 'input' => 'datetime_immutable']],
             WidgetKind::Choice => [ChoiceType::class, $required + ['choices' => array_flip($widget->choices())] + ('radio' === ($widget->options['display'] ?? null)
                 // No placeholder: an empty radio group already means "no value".
-                ? ['expanded' => true, 'placeholder' => false, 'row_attr' => ['class' => 'segmented-row']]
+                ? ['expanded' => true, 'placeholder' => false, 'attr' => ['class' => 'gv-segmented']]
                 : ['placeholder' => $field->isRequired ? 'Choose an option' : '—'])],
             WidgetKind::Relation => [ChoiceType::class, $required + [
                 'choices' => \is_string($value) ? array_flip($this->lookup->labels($this->target($widget), [$value])) : [],
@@ -216,13 +216,14 @@ final class RecordFormFactory
         // The meter and the eye go on the password typed first, never on its confirmation.
         $controllers = [];
         $first = $attr;
+        // The meter and the eye are fedale/gridview-bundle components (19_form-components.md).
         if (true === ($widget->options['strengthMeter'] ?? false)) {
-            $controllers[] = 'password-strength';
-            $first['data-action'] = 'password-strength#update';
-            $first['data-password-strength-min-length-value'] = \is_int($widget->options['minLength'] ?? null) ? $widget->options['minLength'] : 8;
+            $controllers[] = 'gridview-password-strength';
+            $first['data-action'] = 'gridview-password-strength#update';
+            $first['data-gridview-password-strength-min-length-value'] = \is_int($widget->options['minLength'] ?? null) ? $widget->options['minLength'] : 8;
         }
         if (true === ($widget->options['revealToggle'] ?? false)) {
-            $controllers[] = 'password-reveal';
+            $controllers[] = 'gridview-password-reveal';
         }
         if ([] !== $controllers) {
             $first['data-controller'] = implode(' ', $controllers);

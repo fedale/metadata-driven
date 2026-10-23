@@ -51,15 +51,15 @@ final class AccessControlTest extends WebTestCase
         $this->client->request('GET', '/login');
         $this->client->submitForm('Sign in', ['email' => 'anna@example.com', 'password' => 'wrong password here']);
         $this->client->followRedirect();
-        self::assertSelectorExists('.flash-error');
+        self::assertSelectorExists('.md-flash--error');
 
         $this->client->submitForm('Sign in', ['email' => 'ANNA@example.com', 'password' => self::PASSWORD]);
         self::assertResponseRedirects('/', 302);
         $this->client->followRedirect();
-        self::assertSelectorTextContains('.topuser', 'Ada Lovelace');
+        self::assertSelectorTextContains('.md-topbar__user', 'Ada Lovelace');
         // Signed in but without any permission: nothing to open, no admin link.
         self::assertSelectorTextContains('main', 'ask an administrator for access');
-        self::assertSelectorNotExists('.topnav a[href="/admin"]');
+        self::assertSelectorNotExists('.md-topbar__nav a[href="/admin"]');
 
         $this->client->clickLink('Sign out');
         $this->client->request('GET', '/o/pet');
@@ -73,7 +73,7 @@ final class AccessControlTest extends WebTestCase
 
         // Read: the grid, the record, the lookups and the export.
         $this->client->request('GET', '/');
-        self::assertSame(['Pets'], $this->client->getCrawler()->filter('.object-list a')->each(static fn ($link): string => $link->text()));
+        self::assertSame(['Pets'], $this->client->getCrawler()->filter('.md-link-list a')->each(static fn ($link): string => $link->text()));
         $this->client->request('GET', '/o/pet');
         self::assertResponseIsSuccessful();
         self::assertSelectorNotExists('a[href="/o/pet/new"]');
@@ -139,7 +139,7 @@ final class AccessControlTest extends WebTestCase
 
         $this->client->request('GET', '/admin');
         self::assertResponseIsSuccessful();
-        self::assertSelectorExists('.topnav a[href="/admin"]');
+        self::assertSelectorExists('.md-topbar__nav a[href="/admin"]');
         // Managing the objects does not open their records.
         $this->client->request('GET', '/o/pet');
         self::assertResponseStatusCodeSame(403);

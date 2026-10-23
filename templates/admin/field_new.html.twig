@@ -5,9 +5,9 @@
 {% block body %}
     <p><a href="{{ path('admin_field_type', {object: object.name}) }}">&larr; Field types</a></p>
     <h1>New {{ type.label|lower }} field on {{ object.labelPlural }}</h1>
-    <p class="muted">{{ type.description }}</p>
+    <p class="gv-muted">{{ type.description }}</p>
 
-    {{ form_start(form, {attr: {class: 'record-form', novalidate: 'novalidate'}}) }}
+    {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
         {{ form_errors(form) }}
         {{ form_row(form.name) }}
         {{ form_row(form.label) }}
@@ -22,6 +22,6 @@
         {% else %}
             {% do form.settings.setRendered %}
         {% endif %}
-        <button type="submit" class="button">Create</button>
+        <button type="submit" class="gv-btn gv-btn-primary">Create</button>
     {{ form_end(form) }}
 {% endblock %}

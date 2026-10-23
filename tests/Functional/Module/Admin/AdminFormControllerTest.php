@@ -33,15 +33,15 @@ final class AdminFormControllerTest extends WebTestCase
         $crawler = $this->client->request('GET', '/admin/forms');
         self::assertSelectorTextContains('table', 'User registration');
         $this->client->click($crawler->selectLink('New form')->link());
-        self::assertSelectorTextContains('.facts', 'via profile → profile');
+        self::assertSelectorTextContains('.md-facts', 'via profile → profile');
 
         $this->client->submitForm('Save', [
             'form_definition[name]' => 'phonebook',
             'form_definition[definition]' => "label: Phone book\nobject: profile\nsections:\n  - { name: phones, label: Phones, object: phone, via: account, mode: many }\n  - { name: notes, object: note }",
         ]);
         self::assertResponseStatusCodeSame(422);
-        self::assertAnySelectorTextContains('ul li', 'phones: "account" is not a relation field of "phone" pointing at "profile" (candidates: profile).');
-        self::assertAnySelectorTextContains('ul li', 'notes: "label" must be a text');
+        self::assertAnySelectorTextContains('.gv-form-error', 'phones: "account" is not a relation field of "phone" pointing at "profile" (candidates: profile).');
+        self::assertAnySelectorTextContains('.gv-form-error', 'notes: "label" must be a text');
         self::assertFalse($this->registry()->hasForm('phonebook'));
 
         $this->client->submitForm('Save', [

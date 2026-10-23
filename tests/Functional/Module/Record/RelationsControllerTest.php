@@ -72,8 +72,8 @@ final class RelationsControllerTest extends WebTestCase
 
         $crawler = $this->client->request('GET', \sprintf('/o/person/%s/edit', $anna->id));
 
-        self::assertSelectorTextContains('.related h2', 'Pets');
-        self::assertSame(\sprintf('/o/pet/%s/edit', $rex->id), $crawler->filter('.related a')->attr('href'));
+        self::assertSelectorTextContains('.md-related h2', 'Pets');
+        self::assertSame(\sprintf('/o/pet/%s/edit', $rex->id), $crawler->filter('.md-related a')->attr('href'));
 
         // The pet's own form shows the current owner by label.
         $crawler = $this->client->request('GET', \sprintf('/o/pet/%s/edit', $rex->id));
@@ -90,7 +90,7 @@ final class RelationsControllerTest extends WebTestCase
 
         self::assertResponseRedirects(\sprintf('/o/person/%s/edit', $anna->id), 303);
         $this->client->followRedirect();
-        self::assertSelectorTextContains('.flash-error', 'cannot be deleted: 1 Invoices (Customer)');
+        self::assertSelectorTextContains('.md-flash--error', 'cannot be deleted: 1 Invoices (Customer)');
         self::assertNotNull(self::getContainer()->get(RecordFinderInterface::class)->find('person', $anna->id));
     }
 

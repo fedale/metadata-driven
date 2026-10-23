@@ -41,7 +41,7 @@ final class RelatedAccessTest extends WebTestCase
         $this->client->request('GET', \sprintf('/o/person/%s/edit', $anna->id));
 
         self::assertResponseIsSuccessful();
-        self::assertSelectorNotExists('.related');
+        self::assertSelectorNotExists('.md-related');
         self::assertSelectorTextNotContains('main', 'Rex');
     }
 
@@ -59,7 +59,7 @@ final class RelatedAccessTest extends WebTestCase
 
         self::assertResponseRedirects(\sprintf('/o/pet/%s/edit', $rex->id), 303);
         $this->client->followRedirect();
-        self::assertSelectorTextContains('.flash-error', 'also deletes Visits, which you may not delete');
+        self::assertSelectorTextContains('.md-flash--error', 'also deletes Visits, which you may not delete');
         $finder = self::getContainer()->get(RecordFinderInterface::class);
         self::assertNotNull($finder->find('pet', $rex->id));
         self::assertNotNull($finder->find('visit', $visit->id));

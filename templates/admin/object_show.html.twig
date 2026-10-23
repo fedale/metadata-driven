@@ -4,20 +4,20 @@
 
 {% block body %}
     <p><a href="{{ path('admin_index') }}">&larr; Objects</a></p>
-    <div class="page-header">
-        <h1>{{ object.labelPlural }} <span class="muted">· <code>{{ object.name }}</code></span></h1>
-        <a class="button button-secondary" href="{{ path('record_index', {object: object.name}) }}">Records</a>
+    <div class="md-page__header">
+        <h1>{{ object.labelPlural }} <span class="gv-muted">· <code>{{ object.name }}</code></span></h1>
+        <a class="gv-btn" href="{{ path('record_index', {object: object.name}) }}">Records</a>
     </div>
 
-    <section class="admin-section">
-        <div class="page-header">
+    <section class="md-admin__section">
+        <div class="md-page__header">
             <h2>Fields</h2>
-            <a class="button" href="{{ path('admin_field_type', {object: object.name}) }}">Add a field</a>
+            <a class="gv-btn gv-btn-primary" href="{{ path('admin_field_type', {object: object.name}) }}">Add a field</a>
         </div>
         {% if object.fields is empty %}
-            <p class="muted">No fields yet. The table only has its system columns (id, created_at, updated_at, created_by, deleted_at).</p>
+            <p class="gv-muted">No fields yet. The table only has its system columns (id, created_at, updated_at, created_by, deleted_at).</p>
         {% else %}
-            <table class="records">
+            <table class="md-table">
                 <thead>
                     <tr>
                         <th scope="col">Label</th>
@@ -25,7 +25,7 @@
                         <th scope="col">Type</th>
                         <th scope="col">Rules</th>
                         <th scope="col">Settings</th>
-                        <th scope="col"><span class="visually-hidden">Actions</span></th>
+                        <th scope="col"><span class="md-visually-hidden">Actions</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -39,7 +39,7 @@
                                 {%- if field.isRequired and field.isUnique %}, {% endif -%}
                                 {%- if field.isUnique %}unique{% endif -%}
                             </td>
-                            <td><code class="settings">{{ field.settings ? field.settings|json_encode : '' }}</code></td>
+                            <td><code class="md-settings">{{ field.settings ? field.settings|json_encode : '' }}</code></td>
                             <td><a href="{{ path('admin_field_edit', {object: object.name, field: name}) }}">Edit</a></td>
                         </tr>
                     {% endfor %}
@@ -48,21 +48,21 @@
         {% endif %}
     </section>
 
-    <section class="admin-section">
-        <div class="page-header">
+    <section class="md-admin__section">
+        <div class="md-page__header">
             <h2>Views</h2>
-            <a class="button" href="{{ path('admin_view_new', {object: object.name}) }}">Add a view</a>
+            <a class="gv-btn gv-btn-primary" href="{{ path('admin_view_new', {object: object.name}) }}">Add a view</a>
         </div>
         {% if object.views is empty %}
-            <p class="muted">No views yet. The record form shows the fields one after another.</p>
+            <p class="gv-muted">No views yet. The record form shows the fields one after another.</p>
         {% else %}
-            <table class="records">
+            <table class="md-table">
                 <thead>
                     <tr>
                         <th scope="col">Name</th>
                         <th scope="col">Used for</th>
                         <th scope="col">Default</th>
-                        <th scope="col"><span class="visually-hidden">Actions</span></th>
+                        <th scope="col"><span class="md-visually-hidden">Actions</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -80,7 +80,7 @@
     </section>
 
     {% if incoming is not empty %}
-        <section class="admin-section">
+        <section class="md-admin__section">
             <h2>Pointed at by</h2>
             <ul>
                 {% for reference in incoming %}
@@ -94,45 +94,45 @@
         </section>
     {% endif %}
 
-    <div class="admin-columns">
-        <section class="admin-section">
+    <div class="md-admin__columns">
+        <section class="md-admin__section">
             <h2>Labels</h2>
-            {{ form_start(labels_form, {attr: {class: 'record-form', novalidate: 'novalidate'}}) }}
+            {{ form_start(labels_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
                 {{ form_rest(labels_form) }}
-                <button type="submit" class="button">Save labels</button>
+                <button type="submit" class="gv-btn gv-btn-primary">Save labels</button>
             {{ form_end(labels_form) }}
         </section>
 
-        <section class="admin-section">
+        <section class="md-admin__section">
             <h2>Record label</h2>
-            <p class="muted">How records are named in relations and lookups.</p>
-            {{ form_start(label_field_form, {attr: {class: 'record-form'}}) }}
+            <p class="gv-muted">How records are named in relations and lookups.</p>
+            {{ form_start(label_field_form, {attr: {class: 'md-form'}}) }}
                 {{ form_rest(label_field_form) }}
-                <button type="submit" class="button">Save record label</button>
+                <button type="submit" class="gv-btn gv-btn-primary">Save record label</button>
             {{ form_end(label_field_form) }}
         </section>
     </div>
 
-    <section class="admin-section">
+    <section class="md-admin__section">
         <h2>Search</h2>
-        {{ form_start(search_form, {attr: {class: 'record-form'}}) }}
+        {{ form_start(search_form, {attr: {class: 'md-form'}}) }}
             {{ form_rest(search_form) }}
-            <button type="submit" class="button">Save search</button>
+            <button type="submit" class="gv-btn gv-btn-primary">Save search</button>
         {{ form_end(search_form) }}
     </section>
 
-    <section class="admin-section">
+    <section class="md-admin__section">
         <h2>Table <code>data.{{ object.tableName }}</code></h2>
         {% if plan.isEmpty and plan.skipped is empty %}
-            <p class="flash flash-success">The table matches the metadata.</p>
+            <p class="md-flash md-flash--success">The table matches the metadata.</p>
         {% else %}
             {% if not plan.isEmpty %}
                 <p>The table is missing these changes:</p>
-                <ul class="sql">
+                <ul class="md-sql">
                     {% for statement in plan.statements %}<li><code>{{ statement }}</code></li>{% endfor %}
                 </ul>
                 {{ form_start(sync_form) }}
-                    <button type="submit" class="button">Apply</button>
+                    <button type="submit" class="gv-btn gv-btn-primary">Apply</button>
                 {{ form_end(sync_form) }}
             {% endif %}
             {% if plan.skipped is not empty %}

@@ -31,7 +31,7 @@ final class AdminControllerTest extends WebTestCase
         $this->createObject('book', 'Book', 'Books');
         self::assertResponseRedirects('/admin/objects/book', 303);
         $this->client->followRedirect();
-        self::assertSelectorTextContains('.flash-success', 'Object "book" created, with its table.');
+        self::assertSelectorTextContains('.md-flash--success', 'Object "book" created, with its table.');
 
         $this->addField('book', 'text', ['name' => 'title', 'label' => 'Title', 'required' => true, 'settings' => ['maxLength' => '200']]);
         $this->addField('book', 'select', ['name' => 'genre', 'label' => 'Genre', 'settings' => ['options' => "novel | Novel\nessay | Essay\npoetry"]]);
@@ -61,18 +61,18 @@ final class AdminControllerTest extends WebTestCase
     {
         $this->createObject('Bad Name', 'Book', '');
         self::assertResponseStatusCodeSame(422);
-        self::assertSelectorTextContains('#object_name + ul, ul:has(+ #object_name), form', 'lowercase letters');
-        self::assertAnySelectorTextContains('ul li', 'This value should not be blank.');
+        self::assertSelectorTextContains('.gv-form-row:has(#object_name) .gv-form-error', 'lowercase letters');
+        self::assertAnySelectorTextContains('.gv-form-error', 'This value should not be blank.');
 
         $this->createObject('book', 'Book', 'Books');
         $this->createObject('book', 'Book', 'Books');
         self::assertResponseStatusCodeSame(422);
-        self::assertAnySelectorTextContains('ul li', 'An object named "book" already exists.');
+        self::assertAnySelectorTextContains('.gv-form-error', 'An object named "book" already exists.');
 
         // Settings errors come from the field type itself.
         $this->addField('book', 'select', ['name' => 'genre', 'label' => 'Genre', 'settings' => ['options' => "novel\nnovel"]]);
         self::assertResponseStatusCodeSame(422);
-        self::assertAnySelectorTextContains('ul li', 'value "novel" is duplicated');
+        self::assertAnySelectorTextContains('.gv-form-error', 'value "novel" is duplicated');
         self::assertFalse($this->registry()->getObject('book')->hasField('genre'));
     }
 
@@ -112,7 +112,7 @@ final class AdminControllerTest extends WebTestCase
         $this->client->followRedirect();
         $this->client->submitForm('Save search', ['search[handler]' => 'phrase', 'search[fields]' => ['full_name']]);
         $this->client->followRedirect();
-        self::assertSelectorTextContains('.flash-success', 'Search saved');
+        self::assertSelectorTextContains('.md-flash--success', 'Search saved');
 
         $author = $this->registry()->getObject('author');
         self::assertSame('Writers', $author->labelPlural);
@@ -130,7 +130,7 @@ final class AdminControllerTest extends WebTestCase
         $this->createObject('member', 'Member', 'Members');
         $crawler = $this->client->request('GET', '/admin/objects/member/fields/new');
         foreach (['Password', 'Link', 'Phone'] as $type) {
-            self::assertStringContainsString($type, $crawler->filter('.type-list')->text());
+            self::assertStringContainsString($type, $crawler->filter('.md-type-list')->text());
         }
 
         $this->addField('member', 'password', ['name' => 'secret', 'label' => 'Secret', 'settings' => ['minLength' => '10', 'requireDigit' => '1', 'confirm' => '1']]);
@@ -162,7 +162,7 @@ final class AdminControllerTest extends WebTestCase
         $this->client->submitForm('Save', ['view[name]' => 'main', 'view[template]' => '<div class="grid">{city}<script>alert(1)</script></div>']);
         self::assertResponseRedirects('/admin/objects/author', 303);
         $this->client->followRedirect();
-        self::assertSelectorTextContains('.flash-success', 'View "main" created.');
+        self::assertSelectorTextContains('.md-flash--success', 'View "main" created.');
 
         $view = $this->registry()->getObject('author')->view(ViewKind::Form);
         self::assertSame('main', $view?->name);
@@ -172,12 +172,12 @@ final class AdminControllerTest extends WebTestCase
         $this->client->click($this->client->getCrawler()->filter('a[href="/admin/objects/author/views/form/main"]')->link());
         $this->client->submitForm('Save', ['view[template]' => '{nickname}']);
         self::assertResponseStatusCodeSame(422);
-        self::assertAnySelectorTextContains('ul li', 'object "author" has no field "nickname"');
+        self::assertAnySelectorTextContains('.gv-form-error', 'object "author" has no field "nickname"');
         self::assertSame('<div class="grid">{city}</div>', $this->registry()->getObject('author')->view(ViewKind::Form)?->template);
 
         $this->client->submitForm('Delete');
         $this->client->followRedirect();
-        self::assertSelectorTextContains('.flash-success', 'View "main" deleted.');
+        self::assertSelectorTextContains('.md-flash--success', 'View "main" deleted.');
         self::assertSame([], $this->registry()->getObject('author')->views);
     }
 
@@ -190,13 +190,13 @@ final class AdminControllerTest extends WebTestCase
         $connection->executeStatement('ALTER TABLE data.c_author ADD legacy TEXT');
 
         $this->client->request('GET', '/admin/objects/author');
-        self::assertSelectorTextContains('.sql', 'ADD full_name');
+        self::assertSelectorTextContains('.md-sql', 'ADD full_name');
         self::assertSelectorTextContains('main', 'Column "legacy" is not defined in the metadata: not dropped.');
 
         $this->client->submitForm('Apply');
         $this->client->followRedirect();
-        self::assertSelectorTextContains('.flash-success', 'change(s) applied');
-        self::assertSelectorNotExists('.sql');
+        self::assertSelectorTextContains('.md-flash--success', 'change(s) applied');
+        self::assertSelectorNotExists('.md-sql');
     }
 
     private function createObject(string $name, string $singular, string $plural): void

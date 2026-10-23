@@ -80,6 +80,18 @@
             "ui-settings": {
                 "enabled": true,
                 "fetch": "lazy"
+            },
+            "collection": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "password-strength": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "password-reveal": {
+                "enabled": true,
+                "fetch": "lazy"
             }
         },
         "@symfony/ux-autocomplete": {

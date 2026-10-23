@@ -19,26 +19,26 @@
         <script src="https://cdn.jsdelivr.net/npm/frankenphp-hot-reload/+esm" type="module"></script>
         {% endif %}
     </head>
-    <body>
-        <header class="topbar">
-            <a href="{{ path('app_home') }}" class="brand">Metadata-driven</a>
+    <body data-gv-scope>
+        <header class="md-topbar">
+            <a href="{{ path('app_home') }}" class="md-topbar__brand">Metadata-driven</a>
             {% if app.user %}
-                <nav class="topnav">
+                <nav class="md-topbar__nav">
                     <a href="{{ path('app_home') }}">Records</a>
                     {% if can('admin.metadata') %}<a href="{{ path('admin_index') }}">Admin</a>{% endif %}
                 </nav>
-                <div class="topuser">
+                <div class="md-topbar__user">
                     <span>{{ app.user.displayName }}</span>
                     <a href="{{ path('app_logout') }}">Sign out</a>
                 </div>
             {% endif %}
         </header>
-        <main class="page">
+        <main class="md-page">
             {% for message in app.flashes('success') %}
-                <p class="flash flash-success" role="status">{{ message }}</p>
+                <p class="md-flash md-flash--success" role="status">{{ message }}</p>
             {% endfor %}
             {% for message in app.flashes('error') %}
-                <p class="flash flash-error" role="alert">{{ message }}</p>
+                <p class="md-flash md-flash--error" role="alert">{{ message }}</p>
             {% endfor %}
             {% block body %}{% endblock %}
         </main>

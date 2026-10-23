@@ -5,7 +5,7 @@ A view is a layout for an object's page, stored with the metadata. Today a view 
 after another. A view is HTML with a `{field}` token where each field goes:
 
 ```html
-<div class="admin-columns">
+<div class="md-columns">
     <fieldset>
         <legend>Book</legend>
         {title} {isbn} {summary}
@@ -65,15 +65,17 @@ structural and text elements are kept, as these were checked on the `view_layout
 
 ### Styling
 
-The layout is placed in a `<div class="record-layout">` inside the form. The app's stylesheet
-already gives a layout two useful tools:
+The layout is placed in a `<div class="md-view-layout">` inside the form. The stylesheet gives a
+layout these tools:
 
 - `<fieldset>` with a `<legend>`: a framed group of fields;
-- `class="admin-columns"`: responsive columns, as many as fit side by side (at least 18rem
+- `class="md-columns"`: responsive columns, as many as fit side by side (at least 18rem
   each), one below the other on a narrow screen.
 
-Any other class, such as `row` or `col`, only has an effect if a stylesheet defines it. Add the
-rules to `assets/styles/app.scss`, under `.record-layout`, then run `make assets`.
+The fields themselves are rendered by the form theme of fedale/gridview-bundle, with its
+`gv-form-*` classes, and coloured by its `--gv-*` design tokens: see
+[Styles](architecture.md#styles). Any other class only has an effect if a stylesheet defines
+it: add the rules to `assets/styles/app.css`, under `.md-view-layout`.
 
 ## Which view a page uses
 

@@ -3,25 +3,25 @@
 {% block title %}Admin{% endblock %}
 
 {% block body %}
-    <div class="page-header">
+    <div class="md-page__header">
         <h1>Objects</h1>
-        <div class="page-actions">
-            <a class="button button-secondary" href="{{ path('admin_form_index') }}">Forms</a>
-            <a class="button" href="{{ path('admin_object_new') }}">New object</a>
+        <div class="md-page__actions">
+            <a class="gv-btn" href="{{ path('admin_form_index') }}">Forms</a>
+            <a class="gv-btn gv-btn-primary" href="{{ path('admin_object_new') }}">New object</a>
         </div>
     </div>
 
     {% if objects is empty %}
-        <p class="muted">No objects yet. Create the first one: it gets its own table at once.</p>
+        <p class="gv-muted">No objects yet. Create the first one: it gets its own table at once.</p>
     {% else %}
-        <table class="records">
+        <table class="md-table">
             <thead>
                 <tr>
                     <th scope="col">Object</th>
                     <th scope="col">Machine name</th>
                     <th scope="col">Table</th>
                     <th scope="col">Fields</th>
-                    <th scope="col"><span class="visually-hidden">Actions</span></th>
+                    <th scope="col"><span class="md-visually-hidden">Actions</span></th>
                 </tr>
             </thead>
             <tbody>

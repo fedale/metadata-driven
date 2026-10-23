@@ -6,11 +6,11 @@
 {% block body %}
     <h1>{{ definition.label }}</h1>
 
-    {{ form_start(form, {attr: {class: 'record-form composite-form', novalidate: 'novalidate'}}) }}
+    {{ form_start(form, {attr: {class: 'md-form md-form--composite', novalidate: 'novalidate'}}) }}
         {{ composite.node(form, definition.root, can_save) }}
-        <p class="muted required-legend"><span class="required-mark">*</span> Required field</p>
+        <p class="gv-required-note"><span class="gv-required-note__mark">*</span> Required field</p>
         {% if can_save %}
-            <button type="submit" class="button">Save</button>
+            <button type="submit" class="gv-btn gv-btn-primary">Save</button>
         {% endif %}
     {{ form_end(form) }}
 {% endblock %}
