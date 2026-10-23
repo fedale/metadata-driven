@@ -6,14 +6,23 @@
     <h1>Objects</h1>
     {% if objects is empty %}
         {% if can_administer %}
-            <p class="muted">No objects yet. <a href="{{ path('admin_object_new') }}">Create the first one</a>.</p>
+            <p class="gv-muted">No objects yet. <a href="{{ path('admin_object_new') }}">Create the first one</a>.</p>
         {% else %}
-            <p class="muted">There is nothing you can open yet: ask an administrator for access.</p>
+            <p class="gv-muted">There is nothing you can open yet: ask an administrator for access.</p>
         {% endif %}
     {% else %}
-        <ul class="object-list">
+        <ul class="md-link-list">
             {% for object in objects %}
                 <li><a href="{{ path('record_index', {object: object.name}) }}">{{ object.labelPlural }}</a></li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    {% if forms is not empty %}
+        <h2>Forms</h2>
+        <ul class="md-link-list">
+            {% for form in forms %}
+                <li><a href="{{ path('composite_new', {form: form.name}) }}">{{ form.label }}</a></li>
             {% endfor %}
         </ul>
     {% endif %}

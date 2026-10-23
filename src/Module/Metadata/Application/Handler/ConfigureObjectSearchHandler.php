@@ -8,6 +8,7 @@ use App\Module\Metadata\Application\Command\ConfigureObjectSearchCommand;
 use App\Module\Metadata\Contract\Event\MetadataChanged;
 use App\Module\Metadata\Contract\Event\ObjectSearchConfigured;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
+use App\Module\Metadata\Contract\FieldTypeCatalogInterface;
 use App\Module\Metadata\Contract\SearchHandlerCatalogInterface;
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
@@ -19,6 +20,7 @@ final class ConfigureObjectSearchHandler
     public function __construct(
         private readonly ObjectDefinitionRepository $objects,
         private readonly SearchHandlerCatalogInterface $searchHandlers,
+        private readonly FieldTypeCatalogInterface $fieldTypes,
         private readonly EventDispatcherInterface $events,
         private readonly TransactionRunner $transactions,
     ) {
@@ -34,6 +36,11 @@ final class ConfigureObjectSearchHandler
             $object = $this->objects->findByName($command->objectName)
                 ?? throw ObjectDefinitionNotFound::named($command->objectName);
 
+            foreach ($command->fields ?? [] as $field) {
+                if ($object->hasField($field) && $this->fieldTypes->isWriteOnly($object->getField($field)->getType())) {
+                    throw InvalidMetadataDefinition::writeOnlyField($field, 'searched');
+                }
+            }
             $object->configureSearch($command->handler, $command->fields);
             $this->objects->save($object);
 

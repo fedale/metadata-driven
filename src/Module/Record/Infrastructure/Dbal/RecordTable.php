@@ -45,6 +45,14 @@ final class RecordTable
     }
 
     /**
+     * A write-only field (a password) is stored but never selected.
+     */
+    public function isWriteOnly(FieldDefinitionDto $field): bool
+    {
+        return $this->fieldTypes->get($field->type)->isWriteOnly();
+    }
+
+    /**
      * A quoted column, qualified by a table alias when given.
      */
     public function column(string $columnName, ?string $alias = null): string
@@ -53,13 +61,15 @@ final class RecordTable
     }
 
     /**
-     * @return string comma separated, quoted list of the columns read by hydrate()
+     * @return string comma separated, quoted list of the columns read by hydrate(), write-only ones left out
      */
     public function selectList(ObjectDefinitionDto $object, ?string $alias = null): string
     {
         $columns = ['id', 'created_at', 'updated_at'];
         foreach ($object->fields as $field) {
-            $columns[] = $field->columnName;
+            if (!$this->isWriteOnly($field)) {
+                $columns[] = $field->columnName;
+            }
         }
 
         return implode(', ', array_map(fn (string $column): string => $this->column($column, $alias), $columns));
@@ -91,6 +101,9 @@ final class RecordTable
     {
         $values = [];
         foreach ($object->fields as $name => $field) {
+            if ($this->isWriteOnly($field)) {
+                continue;
+            }
             $values[$name] = $this->toPhp($row[$field->columnName] ?? null, $this->typeOf($field));
         }
 

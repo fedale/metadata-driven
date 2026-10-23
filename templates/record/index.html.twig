@@ -3,15 +3,15 @@
 {% block title %}{{ object.labelPlural }}{% endblock %}
 
 {% block body %}
-    <div class="page-header">
-        <div class="page-actions" data-controller="gridview-ui-settings"
+    <div class="md-page__header">
+        <div class="md-page__actions" data-controller="gridview-ui-settings"
              data-gridview-ui-settings-url-value="{{ path('fedale_gridview_ui_settings') }}"
              data-gridview-ui-settings-grid-value="{{ gridview.id }}">
             {% if can_create %}
-                <a class="button" href="{{ path('record_new', {object: object.name}) }}">New {{ object.labelSingular|lower }}</a>
+                <a class="gv-btn gv-btn-primary" href="{{ path('record_new', {object: object.name}) }}">New {{ object.labelSingular|lower }}</a>
             {% endif %}
             {% if can('admin.metadata') %}
-                <button type="button" class="button button-secondary" data-action="gridview-ui-settings#open">
+                <button type="button" class="gv-btn" data-action="gridview-ui-settings#open">
                     {{ 'ui_settings.menu'|trans({}, 'GridviewBundle') }}
                 </button>
                 {% include '@FedaleGridview/ui_settings/_modal.html.twig' %}

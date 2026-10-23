@@ -28,6 +28,16 @@ final class MetadataFieldTypeCatalog implements FieldTypeCatalogInterface
         return array_keys($this->registry->all());
     }
 
+    public function defaultSettings(string $type): array
+    {
+        return $this->registry->has($type) ? $this->registry->get($type)->defaultSettings() : [];
+    }
+
+    public function isWriteOnly(string $type): bool
+    {
+        return $this->registry->has($type) && $this->registry->get($type)->isWriteOnly();
+    }
+
     public function resolveSettings(string $type, array $settings): array
     {
         $fieldType = $this->registry->get($type);

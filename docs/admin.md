@@ -48,6 +48,13 @@ layout lists the tokens of the object. **Edit** changes the layout and the defau
 a preview of the form and has the **Delete** button. See [Views](views.md) for how to write a
 layout and which view a page uses.
 
+## Forms — `/admin/forms`
+
+The composite forms: one form writing a record and the records related to it. **New form** starts
+from an example definition (YAML) and lists every object with its fields and relation fields
+next to the editor; saving reports every error of the definition at once. See
+[Composite forms](forms.md).
+
 ## What cannot be changed
 
 Once a field exists its name, type and rules are fixed (the label can change), and objects and

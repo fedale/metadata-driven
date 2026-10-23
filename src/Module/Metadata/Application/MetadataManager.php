@@ -8,13 +8,17 @@ use App\Module\Metadata\Application\Command\ConfigureObjectLabelCommand;
 use App\Module\Metadata\Application\Command\ConfigureObjectSearchCommand;
 use App\Module\Metadata\Application\Command\CreateFieldCommand;
 use App\Module\Metadata\Application\Command\CreateObjectCommand;
+use App\Module\Metadata\Application\Command\DeleteFormCommand;
 use App\Module\Metadata\Application\Command\DeleteViewCommand;
+use App\Module\Metadata\Application\Command\SaveFormCommand;
 use App\Module\Metadata\Application\Command\SaveViewCommand;
 use App\Module\Metadata\Application\Handler\ConfigureObjectLabelHandler;
 use App\Module\Metadata\Application\Handler\ConfigureObjectSearchHandler;
 use App\Module\Metadata\Application\Handler\CreateFieldHandler;
 use App\Module\Metadata\Application\Handler\CreateObjectHandler;
+use App\Module\Metadata\Application\Handler\DeleteFormHandler;
 use App\Module\Metadata\Application\Handler\DeleteViewHandler;
+use App\Module\Metadata\Application\Handler\SaveFormHandler;
 use App\Module\Metadata\Application\Handler\SaveViewHandler;
 use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\Event\MetadataChanged;
@@ -43,6 +47,8 @@ final class MetadataManager implements MetadataManagerInterface
         private readonly ConfigureObjectSearchHandler $configureSearch,
         private readonly SaveViewHandler $saveView,
         private readonly DeleteViewHandler $deleteView,
+        private readonly SaveFormHandler $saveForm,
+        private readonly DeleteFormHandler $deleteForm,
         private readonly ObjectDefinitionRepository $objects,
         private readonly TransactionRunner $transactions,
         private readonly EventDispatcherInterface $events,
@@ -89,6 +95,16 @@ final class MetadataManager implements MetadataManagerInterface
     public function deleteView(string $objectName, ViewKind $kind, string $name): void
     {
         ($this->deleteView)($this->valid(new DeleteViewCommand($objectName, $name, $kind)));
+    }
+
+    public function saveForm(string $name, string $definition): string
+    {
+        return ($this->saveForm)($this->valid(new SaveFormCommand($name, $definition)));
+    }
+
+    public function deleteForm(string $name): void
+    {
+        ($this->deleteForm)($this->valid(new DeleteFormCommand($name)));
     }
 
     /**

@@ -38,6 +38,9 @@ final class CreateFieldHandler
             throw InvalidMetadataDefinition::unknownFieldType($command->type, $this->fieldTypes->names());
         }
         $settings = $this->fieldTypes->resolveSettings($command->type, $command->settings);
+        if ($command->isUnique && $this->fieldTypes->isWriteOnly($command->type)) {
+            throw InvalidMetadataDefinition::writeOnlyField($command->name, 'unique');
+        }
 
         $fieldId = $this->transactions->run(function () use ($command, $settings): string {
             $object = $this->objects->findByName($command->objectName)

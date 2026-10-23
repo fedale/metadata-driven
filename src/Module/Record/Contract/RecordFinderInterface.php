@@ -30,6 +30,15 @@ interface RecordFinderInterface
     public function latest(string $objectName, int $limit = 50): array;
 
     /**
+     * The records of an object whose relation field points at a record, oldest first.
+     *
+     * @return list<RecordOutput>
+     *
+     * @throws ObjectDefinitionNotFound
+     */
+    public function findReferencing(string $objectName, string $fieldName, string $targetId): array;
+
+    /**
      * The inverse side of every relation pointing at a record: one group per relation
      * field, each with its first $limit records.
      *

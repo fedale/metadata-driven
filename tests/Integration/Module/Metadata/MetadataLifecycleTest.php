@@ -52,7 +52,8 @@ final class MetadataLifecycleTest extends KernelTestCase
         $name = $pet->field('name');
         self::assertSame('text', $name->type);
         self::assertTrue($name->isRequired);
-        self::assertSame(['maxLength' => 80, 'multiline' => false], $name->settings);
+        // assertEquals: JSONB does not keep the key order.
+        self::assertEquals(['maxLength' => 80, 'multiline' => false, 'pattern' => null, 'patternMessage' => null], $name->settings);
         self::assertSame(1, $pet->field('species')->position);
     }
 

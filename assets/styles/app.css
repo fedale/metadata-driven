@@ -1,121 +1,111 @@
-:root {
-    --bg: #f7f7f8;
-    --surface: #ffffff;
-    --text: #1d1d22;
-    --muted: #6b6b76;
-    --border: #dcdce2;
-    --accent: #3b5bdb;
-    --danger: #c92a2a;
-    --success-bg: #ebfbee;
-    --success-text: #2b8a3e;
-    --error-text: #c92a2a;
-}
-
-@media (prefers-color-scheme: dark) {
-    :root {
-        --bg: #16161a;
-        --surface: #1f1f24;
-        --text: #ececf1;
-        --muted: #9a9aa6;
-        --border: #34343c;
-        --accent: #748ffc;
-        --danger: #ff6b6b;
-        --success-bg: #1b3326;
-        --success-text: #8ce99a;
-        --error-text: #ff8787;
-    }
-}
+/*
+ * Styles of metadata-driven.
+ *
+ * The same grammar as fedale/gridview-bundle, whose stylesheet (grid.scss) comes first:
+ *   - gv-*  generic components, from the bundle: form rows, labels, controls, errors, required
+ *           marker (gv_form_theme), gv-btn, gv-switch, gv-segmented, gv-password-*, gv-collection;
+ *   - md-*  components of this application only (page, top bar, admin, composite forms),
+ *           named block__element--modifier;
+ *   - every colour and size from the --gv-* design tokens, defined on <body data-gv-scope>:
+ *     the grid's theme and dark mode apply to the whole page.
+ */
 
 * { box-sizing: border-box; }
 
 body {
     margin: 0;
-    background: var(--bg);
-    color: var(--text);
+    background: var(--gv-color-bg-subtle);
+    color: var(--gv-color-text);
     font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
-a { color: var(--accent); }
+a { color: var(--gv-color-link); }
+a:hover { color: var(--gv-color-link-hover); }
 
-.topbar {
-    padding: 0.75rem 1rem;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
+/* ── Page ──────────────────────────────────────────────────────────── */
+
+.md-topbar {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: .75rem 1rem;
+    background: var(--gv-color-bg);
+    border-bottom: 1px solid var(--gv-color-border);
 }
+.md-topbar__brand { font-weight: 600; text-decoration: none; color: var(--gv-color-text); }
+.md-topbar__nav { display: flex; gap: 1rem; }
+.md-topbar__nav a { text-decoration: none; }
+.md-topbar__user { margin-left: auto; display: flex; gap: 1rem; color: var(--gv-color-text-muted); }
 
-.topbar { display: flex; align-items: center; gap: 1.5rem; }
-.brand { font-weight: 600; text-decoration: none; color: var(--text); }
-.topnav { display: flex; gap: 1rem; }
-.topnav a { text-decoration: none; }
-.topuser { margin-left: auto; display: flex; gap: 1rem; color: var(--muted); }
+.md-page { max-width: 64rem; margin: 0 auto; padding: 1.5rem 1rem; }
+.md-page__header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.md-page__actions { display: flex; gap: .5rem; margin-left: auto; }
 
-.login { max-width: 24rem; margin: 3rem auto; }
+.md-flash { padding: .5rem .75rem; border-radius: var(--gv-radius); }
+.md-flash--success { background: var(--gv-success-flash-bg); color: var(--gv-success-color); }
+.md-flash--error { background: var(--gv-error-bg); color: var(--gv-error-color); border: 1px solid var(--gv-error-border); }
 
-.page { max-width: 64rem; margin: 0 auto; padding: 1.5rem 1rem; }
+.md-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-.page-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.md-login { max-width: 24rem; margin: 3rem auto; }
 
-.muted { color: var(--muted); }
+.md-link-list { padding-left: 1.2rem; }
 
-.flash { padding: 0.5rem 0.75rem; border-radius: 6px; }
-.flash-success { background: var(--success-bg); color: var(--success-text); }
-.flash-error { background: var(--surface); color: var(--error-text); border: 1px solid var(--error-text); }
+.md-related { margin-top: 2rem; }
+.md-related h2 { font-size: 1.1rem; }
 
-.related { margin-top: 2rem; }
-.related h2 { font-size: 1.1rem; }
+.md-table { width: 100%; border-collapse: collapse; background: var(--gv-color-bg); }
+.md-table th, .md-table td { padding: .5rem .75rem; border-bottom: 1px solid var(--gv-table-border); text-align: left; }
+.md-table th { background: var(--gv-th-bg); color: var(--gv-th-color); font-weight: 600; }
 
-.button {
-    display: inline-block;
-    padding: 0.45rem 0.9rem;
-    border: 0;
-    border-radius: 6px;
-    background: var(--accent);
-    color: #fff;
-    font: inherit;
+.md-facts { display: grid; grid-template-columns: max-content 1fr; gap: .25rem 1rem; }
+.md-facts dt { color: var(--gv-color-text-muted); }
+.md-facts dd { margin: 0; }
+
+/* ── Forms: the rows come from gv_form_theme; the form only sets the width ── */
+
+.md-form { max-width: 32rem; }
+.md-form--composite { max-width: 44rem; }
+.md-form fieldset:not(.gv-collection__row) {
+    margin: 0 0 1.1rem;
+    padding: 1rem;
+    border: 1px solid var(--gv-color-border);
+    border-radius: calc(var(--gv-radius) + 3px);
+    background: var(--gv-color-bg);
+}
+.md-form legend { padding: 0 .35rem; font-weight: 600; }
+.md-delete-form { margin-top: 2rem; }
+
+/* A layout of fields (a form view), written by an administrator; md-columns lays its groups
+   side by side, as many as fit (at least 18rem each), one below the other on a narrow screen. */
+.md-view-layout { margin-bottom: 1.1rem; }
+.md-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 0 1.5rem; }
+
+/* A section of a composite form: a framed group, titled. */
+.md-composite__section { min-width: 0; }
+.md-composite__title { font-weight: 600; }
+
+/* A textarea holding code (YAML, HTML). */
+.md-code-input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85rem; }
+
+/* ── Admin ─────────────────────────────────────────────────────────── */
+
+.md-admin__section { margin-top: 2rem; }
+.md-admin__section h2 { font-size: 1.15rem; }
+.md-admin__columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 0 2rem; }
+
+.md-settings { font-size: .85em; color: var(--gv-color-text-muted); word-break: break-all; }
+.md-sql code { font-size: .85em; word-break: break-all; }
+
+.md-type-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .75rem; padding: 0; list-style: none; }
+.md-type-list__card {
+    display: grid;
+    gap: .25rem;
+    padding: .9rem 1rem;
+    border: 1px solid var(--gv-color-border);
+    border-radius: calc(var(--gv-radius) + 3px);
+    background: var(--gv-color-bg);
+    color: var(--gv-color-text);
     text-decoration: none;
-    cursor: pointer;
 }
-.button-danger { background: var(--danger); }
-.button-secondary { background: transparent; color: var(--accent); border: 1px solid var(--border); }
-
-.page-actions { display: flex; gap: 0.5rem; margin-left: auto; }
-
-.object-list { padding-left: 1.2rem; }
-
-.records { width: 100%; border-collapse: collapse; background: var(--surface); }
-.records th, .records td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); text-align: left; }
-.records th { font-weight: 600; color: var(--muted); }
-
-.record-form { display: grid; gap: 0.9rem; max-width: 32rem; }
-.record-form > div > label { display: block; font-weight: 500; margin-bottom: 0.25rem; }
-.record-form input:not([type=checkbox]), .record-form select, .record-form textarea {
-    width: 100%;
-    padding: 0.45rem 0.6rem;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--surface);
-    color: var(--text);
-    font: inherit;
-}
-.record-form ul { margin: 0.25rem 0 0; padding: 0; list-style: none; color: var(--error-text); }
-.record-form > .button { justify-self: start; }
-
-.delete-form { margin-top: 2rem; }
-
-.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-
-/* Admin */
-.admin-section { margin-top: 2rem; }
-.admin-section h2 { font-size: 1.15rem; }
-.admin-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 0 2rem; }
-.settings { font-size: 0.85em; color: var(--muted); word-break: break-all; }
-.sql code { font-size: 0.85em; word-break: break-all; }
-.type-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 0.75rem; padding: 0; list-style: none; }
-.type-card { display: grid; gap: 0.25rem; padding: 0.9rem 1rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); text-decoration: none; }
-.type-card:hover { border-color: var(--accent); }
-.record-form fieldset { display: grid; gap: 0.9rem; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
-.record-form fieldset > div { display: grid; gap: 0.9rem; }
-.record-form .help-text, .record-form small { color: var(--muted); font-size: 0.85em; }
-.facts { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; }
-.facts dt { color: var(--muted); }
-.facts dd { margin: 0; }
+.md-type-list__card:hover { border-color: var(--gv-color-primary); }

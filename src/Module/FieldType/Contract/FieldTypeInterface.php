@@ -78,4 +78,27 @@ interface FieldTypeInterface
      * @param array<string, mixed> $settings valid settings, merged with defaults
      */
     public function widget(array $settings): Widget;
+
+    /**
+     * The value a new record starts with when the field is not given, already denormalized;
+     * null for none.
+     *
+     * @param array<string, mixed> $settings valid settings, merged with defaults
+     */
+    public function defaultValue(array $settings): mixed;
+
+    /**
+     * A write-only value (a password) is stored but never read back: it is left out of the
+     * records, the grids, the exports, the search and the labels, and an empty value on
+     * update keeps the stored one.
+     */
+    public function isWriteOnly(): bool;
+
+    /**
+     * Converts a valid, denormalized value to what the column stores (e.g. a password hash).
+     * Called after validation, so the constraints see the value as typed.
+     *
+     * @param array<string, mixed> $settings valid settings, merged with defaults
+     */
+    public function toStorage(mixed $value, array $settings): mixed;
 }

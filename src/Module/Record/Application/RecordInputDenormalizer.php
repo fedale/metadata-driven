@@ -22,7 +22,7 @@ final class RecordInputDenormalizer
     }
 
     /**
-     * @param bool $complete true on create: fields that were not provided are set to null
+     * @param bool $complete true on create: fields that were not provided take their default value, or null
      *
      * @return array{values: array<string, mixed>, errors: array<string, list<string>>}
      */
@@ -36,18 +36,25 @@ final class RecordInputDenormalizer
         }
 
         foreach ($object->fields as $name => $field) {
+            $type = $this->fieldTypes->get($field->type);
             if (!$input->has($name)) {
                 if ($complete) {
-                    $values[$name] = null;
+                    $values[$name] = $type->defaultValue($field->settings);
                 }
                 continue;
             }
 
             try {
-                $values[$name] = $this->fieldTypes->get($field->type)->denormalize($input->values[$name], $field->settings);
+                $value = $type->denormalize($input->values[$name], $field->settings);
             } catch (InvalidFieldValue $e) {
                 $errors[$name][] = $e->getMessage();
+                continue;
             }
+            // An empty write-only field (a password left blank) keeps the stored value.
+            if (null === $value && !$complete && $type->isWriteOnly()) {
+                continue;
+            }
+            $values[$name] = $value;
         }
 
         return ['values' => $values, 'errors' => $errors];

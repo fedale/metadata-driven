@@ -7,13 +7,13 @@ namespace App\Module\Record\Contract\Dto;
 /**
  * Read-only view of a stored record, with PHP typed values.
  *
- * Value types per field type: text/email/select string, integer number int,
+ * Value types per field type: text/email/url/tel/select string, integer number int,
  * decimal number numeric string, boolean bool, date \DateTimeImmutable.
  */
 final readonly class RecordOutput
 {
     /**
-     * @param array<string, mixed> $values keyed by field name, in field order
+     * @param array<string, mixed> $values keyed by field name, in field order; write-only fields (passwords) are left out
      */
     public function __construct(
         public string $id,

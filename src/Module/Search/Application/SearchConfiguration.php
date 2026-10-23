@@ -15,7 +15,7 @@ final class SearchConfiguration implements SearchConfigurationInterface
     public const string DEFAULT_HANDLER = FreeTextMultiFieldHandler::NAME;
 
     /** Widgets of the fields searched when an object configures none. */
-    private const array TEXT_WIDGETS = [WidgetKind::Text, WidgetKind::Textarea, WidgetKind::Email];
+    private const array TEXT_WIDGETS = [WidgetKind::Text, WidgetKind::Textarea, WidgetKind::Email, WidgetKind::Url, WidgetKind::Tel];
 
     public function __construct(
         private readonly SearchHandlerRegistry $handlers,

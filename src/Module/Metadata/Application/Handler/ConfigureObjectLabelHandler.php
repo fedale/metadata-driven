@@ -7,6 +7,8 @@ namespace App\Module\Metadata\Application\Handler;
 use App\Module\Metadata\Application\Command\ConfigureObjectLabelCommand;
 use App\Module\Metadata\Contract\Event\MetadataChanged;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
+use App\Module\Metadata\Contract\FieldTypeCatalogInterface;
+use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
 use App\Shared\Transaction\TransactionRunner;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -18,6 +20,7 @@ final class ConfigureObjectLabelHandler
 {
     public function __construct(
         private readonly ObjectDefinitionRepository $objects,
+        private readonly FieldTypeCatalogInterface $fieldTypes,
         private readonly EventDispatcherInterface $events,
         private readonly TransactionRunner $transactions,
     ) {
@@ -29,7 +32,11 @@ final class ConfigureObjectLabelHandler
             $object = $this->objects->findByName($command->objectName)
                 ?? throw ObjectDefinitionNotFound::named($command->objectName);
 
-            $object->useAsLabel($command->field);
+            $field = $command->field;
+            if (null !== $field && $object->hasField($field) && $this->fieldTypes->isWriteOnly($object->getField($field)->getType())) {
+                throw InvalidMetadataDefinition::writeOnlyField($field, 'the label of the records');
+            }
+            $object->useAsLabel($field);
             $this->objects->save($object);
         });
         $this->events->dispatch(new MetadataChanged($command->objectName));

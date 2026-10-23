@@ -41,7 +41,10 @@ final class FieldTypeRegistryTest extends TestCase
     {
         $catalog = new MetadataFieldTypeCatalog(new FieldTypeRegistry([new TextFieldType()]));
 
-        self::assertSame(['maxLength' => 80, 'multiline' => false], $catalog->resolveSettings('text', ['maxLength' => 80]));
+        self::assertSame(
+            ['maxLength' => 80, 'multiline' => false, 'pattern' => null, 'patternMessage' => null],
+            $catalog->resolveSettings('text', ['maxLength' => 80]),
+        );
     }
 
     public function testCatalogThrowsWithAllErrors(): void

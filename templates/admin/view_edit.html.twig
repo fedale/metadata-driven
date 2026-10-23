@@ -6,24 +6,24 @@
 
 {% block body %}
     <p><a href="{{ path('admin_object_show', {object: object.name}) }}">&larr; {{ object.labelPlural }}</a></p>
-    <h1>{{ heading }} <span class="muted">· <code>{{ object.name }}</code></span></h1>
+    <h1>{{ heading }} <span class="gv-muted">· <code>{{ object.name }}</code></span></h1>
 
     {% if view %}
-        <dl class="facts">
+        <dl class="md-facts">
             <dt>Used for</dt><dd>{{ view.kind.value }}</dd>
             <dt>Preview</dt><dd><a href="{{ path('record_new', {object: object.name, view: view.name}) }}">New {{ object.labelSingular|lower }} with this view</a></dd>
         </dl>
     {% endif %}
 
-    {{ form_start(form, {attr: {class: 'record-form', novalidate: 'novalidate'}}) }}
+    {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
         {{ form_errors(form) }}
         {{ form_rest(form) }}
-        <button type="submit" class="button">Save</button>
+        <button type="submit" class="gv-btn gv-btn-primary">Save</button>
     {{ form_end(form) }}
 
     {% if delete_form is defined %}
-        {{ form_start(delete_form, {attr: {class: 'delete-form', 'data-turbo-confirm': 'Delete the view ' ~ view.name ~ '?'}}) }}
-            <button type="submit" class="button button-danger">Delete</button>
+        {{ form_start(delete_form, {attr: {class: 'md-delete-form', 'data-turbo-confirm': 'Delete the view ' ~ view.name ~ '?'}}) }}
+            <button type="submit" class="gv-btn gv-btn-danger">Delete</button>
         {{ form_end(delete_form) }}
     {% endif %}
 {% endblock %}

@@ -9,6 +9,7 @@ use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
+use App\Tests\Support\CreatesAccountObject;
 use App\Tests\Support\CreatesContactObject;
 use App\Tests\Support\CreatesPetObject;
 use App\Tests\Support\SignsIn;
@@ -21,6 +22,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 final class RecordControllerTest extends WebTestCase
 {
     use SignsIn;
+    use CreatesAccountObject;
     use CreatesContactObject;
     use CreatesPetObject;
 
@@ -40,7 +42,7 @@ final class RecordControllerTest extends WebTestCase
         $this->client->request('GET', '/');
 
         self::assertResponseIsSuccessful();
-        self::assertSelectorTextContains('.object-list a', 'Pets');
+        self::assertSelectorTextContains('.md-link-list a', 'Pets');
     }
 
     public function testFormIsBuiltFromMetadata(): void
@@ -50,6 +52,10 @@ final class RecordControllerTest extends WebTestCase
         self::assertResponseIsSuccessful();
         self::assertSame('20', $crawler->filter('input[name="record[name]"]')->attr('maxlength'));
         self::assertSame('required', $crawler->filter('input[name="record[name]"]')->attr('required'));
+        // The label of a required field is marked (an asterisk, explained under the form).
+        self::assertStringContainsString('required', (string) $crawler->filter('label[for="record_name"]')->attr('class'));
+        self::assertStringNotContainsString('required', (string) $crawler->filter('label[for="record_weight"]')->attr('class'));
+        self::assertSelectorTextContains('.gv-required-note', 'Required field');
         self::assertCount(3, $crawler->filter('select[name="record[species]"] option'));
         self::assertSame('number', $crawler->filter('input[name="record[weight]"]')->attr('type'));
         self::assertSame('0.01', $crawler->filter('input[name="record[weight]"]')->attr('step'));
@@ -66,22 +72,61 @@ final class RecordControllerTest extends WebTestCase
 
         $crawler = $this->client->request('GET', '/o/pet/new');
         self::assertResponseIsSuccessful();
-        $layout = $crawler->filter('.record-layout section.identity');
+        $layout = $crawler->filter('.md-view-layout section.identity');
         self::assertSame('Identity', $layout->filter('h2')->text());
         // The layout decides the order; the fields it leaves out follow it.
         self::assertSame(['record[species]', 'record[name]'], $layout->filter('select, input')->each(static fn ($input): ?string => $input->attr('name')));
-        self::assertCount(0, $crawler->filter('.record-layout input[name="record[weight]"]'));
-        self::assertCount(1, $crawler->filter('form.record-form input[name="record[weight]"]'));
+        self::assertCount(0, $crawler->filter('.md-view-layout input[name="record[weight]"]'));
+        self::assertCount(1, $crawler->filter('form.md-form input[name="record[weight]"]'));
 
         $this->client->submitForm('Save', ['record[name]' => 'Rex', 'record[species]' => 'dog']);
         self::assertResponseRedirects('/o/pet', 303);
 
         $crawler = $this->client->request('GET', '/o/pet/new?view=health');
-        self::assertCount(1, $crawler->filter('.record-layout section.health input[name="record[vaccinated]"]'));
-        self::assertCount(0, $crawler->filter('.record-layout input[name="record[name]"]'));
+        self::assertCount(1, $crawler->filter('.md-view-layout section.health input[name="record[vaccinated]"]'));
+        self::assertCount(0, $crawler->filter('.md-view-layout input[name="record[name]"]'));
 
         $this->client->request('GET', '/o/pet/new?view=missing');
         self::assertResponseStatusCodeSame(404);
+    }
+
+    public function testRicherFieldTypesInTheForm(): void
+    {
+        self::createAccountObject(self::getContainer());
+
+        $crawler = $this->client->request('GET', '/o/account/new');
+        self::assertResponseIsSuccessful();
+        // A switch checked by default, buttons side by side, the password asked twice, never prefilled.
+        self::assertSame('checked', $crawler->filter('input.gv-switch[role="switch"][name="record[active]"]')->attr('checked'));
+        self::assertCount(3, $crawler->filter('.gv-segmented input[type="radio"][name="record[gender]"]'));
+        self::assertCount(1, $crawler->filter('input[type="password"][name="record[password][first]"]'));
+        self::assertCount(1, $crawler->filter('input[type="password"][name="record[password][second]"]'));
+        // The strength meter watches the password typed first, not its confirmation.
+        // So does the show/hide eye.
+        self::assertSame('gridview-password-strength gridview-password-reveal', $crawler->filter('input[name="record[password][first]"]')->attr('data-controller'));
+        self::assertSame('8', $crawler->filter('input[name="record[password][first]"]')->attr('data-gridview-password-strength-min-length-value'));
+        self::assertNull($crawler->filter('input[name="record[password][second]"]')->attr('data-controller'));
+        self::assertCount(1, $crawler->filter('input[type="url"][name="record[website]"]'));
+        self::assertCount(1, $crawler->filter('input[type="tel"][name="record[phone]"]'));
+
+        $values = ['record[username]' => 'mario', 'record[password][first]' => 'secret123', 'record[password][second]' => 'secret124', 'record[gender]' => 'm'];
+        $this->client->submitForm('Save', $values);
+        self::assertResponseStatusCodeSame(422);
+        self::assertAnySelectorTextContains('.gv-form-error', 'The two passwords do not match.');
+
+        $this->client->submitForm('Save', ['record[password][second]' => 'secret123'] + $values);
+        self::assertResponseRedirects('/o/account', 303);
+
+        // The grid has no password column; the edit form leaves the password empty and optional.
+        $crawler = $this->client->followRedirect();
+        self::assertSelectorTextNotContains('table', 'Password');
+        $id = self::getContainer()->get(RecordFinderInterface::class)->latest('account', 1)[0]->id;
+        $crawler = $this->client->request('GET', '/o/account/'.$id.'/edit');
+        $password = $crawler->filter('input[name="record[password][first]"]');
+        self::assertSame('', (string) $password->attr('value'));
+        self::assertNull($password->attr('required'));
+        self::assertSelectorTextContains('form', 'Leave empty to keep the current password.');
+        self::assertSame('checked', $crawler->filter('input[name="record[gender]"][value="m"]')->attr('checked'));
     }
 
     public function testCreatesARecord(): void
@@ -97,7 +142,7 @@ final class RecordControllerTest extends WebTestCase
 
         self::assertResponseRedirects('/o/pet', 303);
         $this->client->followRedirect();
-        self::assertSelectorTextContains('.flash-success', 'Pet created.');
+        self::assertSelectorTextContains('.md-flash--success', 'Pet created.');
         self::assertSelectorTextSame('#gv-tbody-record_pet td[data-col-key="name"]', 'Rex');
         self::assertSelectorTextSame('#gv-tbody-record_pet td[data-col-key="species"]', 'Dog');
         self::assertSelectorTextSame('#gv-tbody-record_pet td[data-col-key="weight"]', '12.50');
@@ -192,10 +237,10 @@ final class RecordControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(422);
         // Extra decimals are reported, never silently rounded by the form.
-        self::assertAnySelectorTextContains('ul li', 'This value should have at most 2 decimal places.');
-        self::assertSelectorTextContains('#record_name + ul, ul:has(+ #record_name)', 'This value is required.');
-        self::assertAnySelectorTextContains('ul li', 'This value is already used.');
-        self::assertAnySelectorTextContains('ul li', 'This value is not a valid email address.');
+        self::assertAnySelectorTextContains('.gv-form-error', 'This value should have at most 2 decimal places.');
+        self::assertSelectorTextContains('.gv-form-row:has(#record_name) .gv-form-error', 'This value is required.');
+        self::assertAnySelectorTextContains('.gv-form-error', 'This value is already used.');
+        self::assertAnySelectorTextContains('.gv-form-error', 'This value is not a valid email address.');
         self::assertSame('nope', $this->client->getCrawler()->filter('input[name="record[owner_email]"]')->attr('value'));
     }
 

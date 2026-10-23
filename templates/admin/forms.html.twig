@@ -1,0 +1,37 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Forms · Admin{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('admin_index') }}">&larr; Objects</a></p>
+    <div class="md-page__header">
+        <h1>Forms</h1>
+        <a class="gv-btn gv-btn-primary" href="{{ path('admin_form_new') }}">New form</a>
+    </div>
+    <p class="gv-muted">A form writes a record and the records related to it at once: a profile, its phones, the qualifications of an account...</p>
+
+    {% if forms is empty %}
+        <p class="gv-muted">No forms yet.</p>
+    {% else %}
+        <table class="md-table">
+            <thead>
+                <tr>
+                    <th scope="col">Form</th>
+                    <th scope="col">Machine name</th>
+                    <th scope="col">Objects</th>
+                    <th scope="col"><span class="md-visually-hidden">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for form in forms %}
+                    <tr>
+                        <td><a href="{{ path('admin_form_edit', {form: form.name}) }}">{{ form.label }}</a></td>
+                        <td><code>{{ form.name }}</code></td>
+                        <td>{{ form.root.objects|join(', ') }}</td>
+                        <td><a href="{{ path('composite_new', {form: form.name}) }}">Open</a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}
