@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Module\Record;
 
+use App\Module\Metadata\Contract\Dto\ViewKind;
+use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
@@ -54,6 +56,32 @@ final class RecordControllerTest extends WebTestCase
         self::assertSame('checkbox', $crawler->filter('input[name="record[vaccinated]"]')->attr('type'));
         self::assertSame('date', $crawler->filter('input[name="record[born_on]"]')->attr('type'));
         self::assertSame('email', $crawler->filter('input[name="record[owner_email]"]')->attr('type'));
+    }
+
+    public function testFormFollowsTheDefaultViewOrTheNamedOne(): void
+    {
+        $manager = self::getContainer()->get(MetadataManagerInterface::class);
+        $manager->saveView('pet', ViewKind::Form, 'main', '<section class="identity"><h2>Identity</h2>{species}{name}</section>');
+        $manager->saveView('pet', ViewKind::Form, 'health', '<section class="health">{vaccinated}</section>');
+
+        $crawler = $this->client->request('GET', '/o/pet/new');
+        self::assertResponseIsSuccessful();
+        $layout = $crawler->filter('.record-layout section.identity');
+        self::assertSame('Identity', $layout->filter('h2')->text());
+        // The layout decides the order; the fields it leaves out follow it.
+        self::assertSame(['record[species]', 'record[name]'], $layout->filter('select, input')->each(static fn ($input): ?string => $input->attr('name')));
+        self::assertCount(0, $crawler->filter('.record-layout input[name="record[weight]"]'));
+        self::assertCount(1, $crawler->filter('form.record-form input[name="record[weight]"]'));
+
+        $this->client->submitForm('Save', ['record[name]' => 'Rex', 'record[species]' => 'dog']);
+        self::assertResponseRedirects('/o/pet', 303);
+
+        $crawler = $this->client->request('GET', '/o/pet/new?view=health');
+        self::assertCount(1, $crawler->filter('.record-layout section.health input[name="record[vaccinated]"]'));
+        self::assertCount(0, $crawler->filter('.record-layout input[name="record[name]"]'));
+
+        $this->client->request('GET', '/o/pet/new?view=missing');
+        self::assertResponseStatusCodeSame(404);
     }
 
     public function testCreatesARecord(): void

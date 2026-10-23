@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Contract;
 
+use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\Exception\InvalidFieldSettings;
 use App\Module\Metadata\Contract\Exception\MetadataException;
 use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
@@ -44,4 +45,16 @@ interface MetadataManagerInterface
      * @param list<string>|null $fields  null for the default fields
      */
     public function configureSearch(string $objectName, ?string $handler, ?array $fields): void;
+
+    /**
+     * Creates the view, or replaces the template of the existing one with that kind and name.
+     *
+     * @param string $template  HTML with {field} tokens; sanitized before it is stored
+     * @param bool   $isDefault make it the default of its kind (the first view of a kind always is)
+     *
+     * @return string the id of the view
+     */
+    public function saveView(string $objectName, ViewKind $kind, string $name, string $template, bool $isDefault = false): string;
+
+    public function deleteView(string $objectName, ViewKind $kind, string $name): void;
 }

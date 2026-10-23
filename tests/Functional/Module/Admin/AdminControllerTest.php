@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Module\Admin;
 
+use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Tests\Support\SignsIn;
 use Doctrine\DBAL\Connection;
@@ -122,6 +123,37 @@ final class AdminControllerTest extends WebTestCase
         $this->client->request('GET', '/admin/objects/author/fields/city');
         $this->client->submitForm('Save', ['field[label]' => 'Town']);
         self::assertSame('Town', $this->registry()->getObject('author')->field('city')->label);
+    }
+
+    public function testManagesViewsFromTheUi(): void
+    {
+        $this->createObject('author', 'Author', 'Authors');
+        $this->addField('author', 'text', ['name' => 'full_name', 'label' => 'Full name']);
+        $this->addField('author', 'text', ['name' => 'city', 'label' => 'City']);
+
+        $crawler = $this->client->request('GET', '/admin/objects/author');
+        $this->client->click($crawler->selectLink('Add a view')->link());
+        self::assertSelectorTextContains('form', '{full_name} {city}');
+        $this->client->submitForm('Save', ['view[name]' => 'main', 'view[template]' => '<div class="grid">{city}<script>alert(1)</script></div>']);
+        self::assertResponseRedirects('/admin/objects/author', 303);
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.flash-success', 'View "main" created.');
+
+        $view = $this->registry()->getObject('author')->view(ViewKind::Form);
+        self::assertSame('main', $view?->name);
+        self::assertSame('<div class="grid">{city}</div>', $view->template);
+
+        // A layout error shows on the form, nothing is saved.
+        $this->client->click($this->client->getCrawler()->filter('a[href="/admin/objects/author/views/form/main"]')->link());
+        $this->client->submitForm('Save', ['view[template]' => '{nickname}']);
+        self::assertResponseStatusCodeSame(422);
+        self::assertAnySelectorTextContains('ul li', 'object "author" has no field "nickname"');
+        self::assertSame('<div class="grid">{city}</div>', $this->registry()->getObject('author')->view(ViewKind::Form)?->template);
+
+        $this->client->submitForm('Delete');
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.flash-success', 'View "main" deleted.');
+        self::assertSame([], $this->registry()->getObject('author')->views);
     }
 
     public function testShowsAndRepairsTableDrift(): void

@@ -77,4 +77,24 @@ final class InvalidMetadataDefinition extends MetadataException
     {
         return new self(\sprintf('Object "%s" has no field "%s".', $objectName, $fieldName));
     }
+
+    public static function unknownView(string $objectName, string $kind, string $name): self
+    {
+        return new self(\sprintf('Object "%s" has no %s view "%s".', $objectName, $kind, $name));
+    }
+
+    public static function unknownViewField(string $objectName, string $viewName, string $fieldName): self
+    {
+        return new self(\sprintf('View "%s": object "%s" has no field "%s".', $viewName, $objectName, $fieldName));
+    }
+
+    public static function duplicateViewToken(string $viewName, string $fieldName): self
+    {
+        return new self(\sprintf('View "%s": the field "%s" is placed more than once.', $viewName, $fieldName));
+    }
+
+    public static function viewTokenInsideTag(string $viewName): self
+    {
+        return new self(\sprintf('View "%s": {field} tokens go in the text, not inside a tag or an attribute.', $viewName));
+    }
 }

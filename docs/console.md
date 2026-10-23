@@ -14,6 +14,8 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:field:create`](#metadatafieldcreate) | Add a field to an object, and its column |
 | [`metadata:object:label`](#metadataobjectlabel) | Choose the field that names the records of an object |
 | [`metadata:object:search`](#metadataobjectsearch) | Choose how the records of an object are searched |
+| [`metadata:view:save`](#metadataviewsave) | Create or replace a view: an HTML layout of the record form |
+| [`metadata:view:delete`](#metadataviewdelete) | Delete a view |
 | [`metadata:list`](#metadatalist) | List the objects, or the fields of one object |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
 | `user:create` | Create a user who can sign in — see [Users and permissions](access.md#usercreate) |
@@ -175,6 +177,40 @@ column, so that the search uses an index instead of scanning the table. Number a
 be searched but get no index (PostgreSQL refuses their text cast in an index).
 
 Fails when a field does not exist or the handler is unknown.
+
+## `metadata:view:save`
+
+Create a view, or replace the layout of an existing one. A view is HTML with a `{field}` token
+where each field goes (see [Views](views.md) for how to write one and the rules checked).
+
+```
+metadata:view:save [--kind=KIND] [--default] <object> <name> <file>
+```
+
+| Argument / option | Description |
+|---|---|
+| `object` | The object's machine name |
+| `name` | The view's machine name |
+| `file` | The file holding the HTML, `-` for the standard input |
+| `--kind` | Where the view is used: `form` (default), the record form |
+| `--default` | Make it the default view of its kind (the first view of a kind always is) |
+
+```bash
+symfony console metadata:view:save contact main layouts/contact.html
+echo '<div class="row">{city}</div>' | symfony console metadata:view:save contact compact - --default
+```
+
+Fails when a token names no field, a field is placed twice, a token is inside a tag, or the name
+is invalid.
+
+## `metadata:view:delete`
+
+```
+metadata:view:delete [--kind=KIND] <object> <name>
+```
+
+Deleting the default view leaves the object without one: its form goes back to the plain layout
+until another view is marked as default.
 
 ## `metadata:list`
 

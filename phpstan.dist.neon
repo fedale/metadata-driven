@@ -15,3 +15,9 @@ parameters:
         containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
     doctrine:
         objectManagerLoader: tests/object-manager.php
+    ignoreErrors:
+        # ViewKind has a single case for now: comparing two kinds is "always true" until a second one lands.
+        -
+            identifier: identical.alwaysTrue
+            message: '#between App\\Module\\Metadata\\Contract\\Dto\\ViewKind and App\\Module\\Metadata\\Contract\\Dto\\ViewKind#'
+            reportUnmatched: false

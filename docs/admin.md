@@ -15,6 +15,7 @@ records. **New object** asks for the machine name and the two labels.
 | Section | What it does | Console equivalent |
 |---|---|---|
 | Fields | Every field with its column, type, rules and settings; **Add a field**, **Edit** (label) | `metadata:field:create`, `metadata:list <object>` |
+| Views | The layouts of the record form; **Add a view**, **Edit**, **Delete** (see [Views](views.md)) | `metadata:view:save`, `metadata:view:delete` |
 | Pointed at by | The relation fields of other objects pointing at this one, with their delete rule | |
 | Labels | Rename the singular and plural labels | |
 | Record label | The field that names the records in relations and lookups | `metadata:object:label` |
@@ -38,6 +39,14 @@ settings without any change to the admin.
 
 Errors appear next to the input they concern: an invalid or taken name, a missing label, a
 setting the field type refuses (duplicated option, decimals out of range, unknown related object).
+
+## Views
+
+**Add a view** asks for a machine name, what the view is used for (the record form), the HTML
+layout with a `{field}` token per field, and whether it is the default view. The help under the
+layout lists the tokens of the object. **Edit** changes the layout and the default flag, links to
+a preview of the form and has the **Delete** button. See [Views](views.md) for how to write a
+layout and which view a page uses.
 
 ## What cannot be changed
 

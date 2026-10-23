@@ -48,6 +48,37 @@
         {% endif %}
     </section>
 
+    <section class="admin-section">
+        <div class="page-header">
+            <h2>Views</h2>
+            <a class="button" href="{{ path('admin_view_new', {object: object.name}) }}">Add a view</a>
+        </div>
+        {% if object.views is empty %}
+            <p class="muted">No views yet. The record form shows the fields one after another.</p>
+        {% else %}
+            <table class="records">
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Used for</th>
+                        <th scope="col">Default</th>
+                        <th scope="col"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for view in object.views %}
+                        <tr>
+                            <td><code>{{ view.name }}</code></td>
+                            <td>{{ view.kind.value }}</td>
+                            <td>{{ view.isDefault ? 'yes' : '' }}</td>
+                            <td><a href="{{ path('admin_view_edit', {object: object.name, kind: view.kind.value, view: view.name}) }}">Edit</a></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </section>
+
     {% if incoming is not empty %}
         <section class="admin-section">
             <h2>Pointed at by</h2>

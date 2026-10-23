@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Domain\Model;
 
+use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
+use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -29,6 +31,8 @@ class ObjectDefinition
     private ?array $searchFields = null;
     /** @var Collection<int, FieldDefinition> */
     private Collection $fields;
+    /** @var Collection<int, ViewDefinition> */
+    private Collection $views;
     private \DateTimeImmutable $createdAt;
     private \DateTimeImmutable $updatedAt;
 
@@ -44,6 +48,7 @@ class ObjectDefinition
         $this->tableName = self::TABLE_PREFIX.$this->name;
         $this->relabel($labelSingular, $labelPlural);
         $this->fields = new ArrayCollection();
+        $this->views = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = $this->createdAt;
     }
@@ -118,6 +123,49 @@ class ObjectDefinition
         }
 
         $this->labelField = $field;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    /**
+     * Creates the view, or replaces the template of the existing one with that kind and name.
+     *
+     * The first view of a kind becomes its default; making a view the default takes the
+     * flag off the previous one. Every {token} must name a field, once, outside any tag.
+     *
+     * @param string $template sanitized HTML
+     */
+    public function saveView(Uuid $id, ViewKind $kind, string $name, string $template, bool $isDefault): ViewDefinition
+    {
+        MachineName::assert($name);
+        $this->assertLayout($name, $template);
+
+        $view = $this->findView($kind, $name);
+        if (null === $view) {
+            $isDefault = $isDefault || null === $this->defaultView($kind);
+            $view = new ViewDefinition($id, $this, $kind, $name, $template, false);
+            $this->views->add($view);
+        } else {
+            $view->change($template);
+        }
+        if ($isDefault) {
+            foreach ($this->views as $other) {
+                if ($other->getKind() === $kind) {
+                    $other->markDefault($other === $view);
+                }
+            }
+        }
+        $this->updatedAt = new \DateTimeImmutable();
+
+        return $view;
+    }
+
+    /**
+     * Removing the default leaves the kind without one: its pages fall back to the plain layout.
+     */
+    public function removeView(ViewKind $kind, string $name): void
+    {
+        $view = $this->findView($kind, $name) ?? throw InvalidMetadataDefinition::unknownView($this->name, $kind->value, $name);
+        $this->views->removeElement($view);
         $this->updatedAt = new \DateTimeImmutable();
     }
 
@@ -206,6 +254,17 @@ class ObjectDefinition
         return $fields;
     }
 
+    /**
+     * @return list<ViewDefinition> ordered by kind, then name
+     */
+    public function getViews(): array
+    {
+        $views = $this->views->getValues();
+        usort($views, static fn (ViewDefinition $a, ViewDefinition $b): int => [$a->getKind()->value, $a->getName()] <=> [$b->getKind()->value, $b->getName()]);
+
+        return $views;
+    }
+
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
@@ -214,5 +273,46 @@ class ObjectDefinition
     public function getUpdatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    private function findView(ViewKind $kind, string $name): ?ViewDefinition
+    {
+        foreach ($this->views as $view) {
+            if ($view->getKind() === $kind && $view->getName() === $name) {
+                return $view;
+            }
+        }
+
+        return null;
+    }
+
+    private function defaultView(ViewKind $kind): ?ViewDefinition
+    {
+        foreach ($this->views as $view) {
+            if ($view->getKind() === $kind && $view->isDefault()) {
+                return $view;
+            }
+        }
+
+        return null;
+    }
+
+    private function assertLayout(string $viewName, string $template): void
+    {
+        $tokens = ViewDefinitionDto::tokens($template);
+        foreach ($tokens as $field) {
+            if (!$this->hasField($field)) {
+                throw InvalidMetadataDefinition::unknownViewField($this->name, $viewName, $field);
+            }
+        }
+        foreach (array_count_values($tokens) as $field => $count) {
+            if ($count > 1) {
+                throw InvalidMetadataDefinition::duplicateViewToken($viewName, $field);
+            }
+        }
+        // A token inside a tag (an attribute value) would be replaced by markup there.
+        if (\count(ViewDefinitionDto::tokens(strip_tags($template))) !== \count($tokens)) {
+            throw InvalidMetadataDefinition::viewTokenInsideTag($viewName);
+        }
     }
 }
