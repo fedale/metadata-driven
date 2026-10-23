@@ -6,6 +6,8 @@ namespace App\Module\FieldType\Domain\Type;
 
 use App\Module\FieldType\Contract\Dto\ColumnSpec;
 use App\Module\FieldType\Contract\Dto\ColumnType;
+use App\Module\FieldType\Contract\Dto\SettingDefinition;
+use App\Module\FieldType\Contract\Dto\SettingKind;
 use App\Module\FieldType\Contract\Dto\Widget;
 use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\Exception\InvalidFieldValue;
@@ -14,6 +16,7 @@ final class BooleanFieldType extends AbstractFieldType
 {
     private const array TRUE_STRINGS = ['1', 'true', 'on', 'yes'];
     private const array FALSE_STRINGS = ['0', 'false', 'off', 'no'];
+    private const array DISPLAYS = ['checkbox' => 'Checkbox', 'switch' => 'On/off switch'];
 
     public function name(): string
     {
@@ -27,7 +30,41 @@ final class BooleanFieldType extends AbstractFieldType
 
     public function description(): string
     {
-        return 'A checkbox.';
+        return 'A checkbox or an on/off switch.';
+    }
+
+    public function settingDefinitions(): array
+    {
+        return [
+            new SettingDefinition('default', SettingKind::Boolean, 'Checked by default', 'New records start with the box checked.'),
+            new SettingDefinition('display', SettingKind::Choice, 'Display', null, true, ['choices' => self::DISPLAYS]),
+        ];
+    }
+
+    public function defaultSettings(): array
+    {
+        return ['default' => false, 'display' => 'checkbox'];
+    }
+
+    protected function validateKnownSettings(array $settings): array
+    {
+        $errors = [];
+        if (!\is_bool($settings['default'])) {
+            $errors[] = 'Setting "default" must be a boolean.';
+        }
+        if (!\is_string($settings['display']) || !isset(self::DISPLAYS[$settings['display']])) {
+            $errors[] = \sprintf('Setting "display" must be one of: %s.', implode(', ', array_keys(self::DISPLAYS)));
+        }
+
+        return $errors;
+    }
+
+    /**
+     * "Checked by default" starts records at true; otherwise they start empty, as before.
+     */
+    public function defaultValue(array $settings): ?bool
+    {
+        return self::boolSetting($settings, 'default') ?: null;
     }
 
     public function columnSpec(array $settings): ColumnSpec
@@ -61,6 +98,6 @@ final class BooleanFieldType extends AbstractFieldType
 
     public function widget(array $settings): Widget
     {
-        return new Widget(WidgetKind::Checkbox);
+        return new Widget(WidgetKind::Checkbox, ['display' => $settings['display'] ?? 'checkbox']);
     }
 }

@@ -16,7 +16,7 @@ Objects are defined from the admin UI at `/admin` or from the console.
 | [Views](views.md) | Layouts of the record form: HTML with a `{field}` token per field, from the admin UI or the console |
 | [Users and permissions](access.md) | Signing in, users, the permissions of every object, roles |
 | [Console commands](console.md) | Every command, its arguments and options, what it changes in the database |
-| [Field types](field-types.md) | The seven field types, their settings, columns, validation and grid behaviour |
+| [Field types](field-types.md) | The ten field types, their settings, columns, validation and grid behaviour |
 | [Architecture](architecture.md) | Modules and layers, the boundaries Deptrac enforces, how a definition becomes a table |
 
 ## At a glance

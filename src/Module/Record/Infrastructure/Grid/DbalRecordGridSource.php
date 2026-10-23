@@ -133,7 +133,7 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
             ->where($this->table->column('deleted_at', self::ALIAS).' IS NULL');
 
         foreach ($query->criteria as $index => $criterion) {
-            $this->applyCriterion($qb, $object->field($criterion->attribute), $criterion, 'c'.$index);
+            $this->applyCriterion($qb, $this->readableField($object, $criterion->attribute), $criterion, 'c'.$index);
         }
 
         $term = null !== $query->searchTerm ? trim($query->searchTerm) : '';
@@ -156,7 +156,7 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
             $param = 'q'.$index;
             $matches = [];
             foreach ($clause->fields as $attribute) {
-                $matches[] = \sprintf('LOWER(%s) LIKE :%s', $this->table->asText($object->field($attribute), self::ALIAS), $param);
+                $matches[] = \sprintf('LOWER(%s) LIKE :%s', $this->table->asText($this->readableField($object, $attribute), self::ALIAS), $param);
             }
             $pattern = RecordTable::escapeLike($clause->value).'%';
             $qb->andWhere('('.implode(' OR ', $matches).')')
@@ -254,7 +254,21 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
             return $this->table->column($attribute, self::ALIAS);
         }
 
-        return $this->table->column($object->field($attribute)->columnName, self::ALIAS);
+        return $this->table->column($this->readableField($object, $attribute)->columnName, self::ALIAS);
+    }
+
+    /**
+     * A field the grid may filter, search or sort on: a write-only one (a password hash)
+     * would leak through the order or a LIKE, so it is refused like an unknown field.
+     */
+    private function readableField(ObjectDefinitionDto $object, string $attribute): FieldDefinitionDto
+    {
+        $field = $object->field($attribute);
+        if ($this->table->isWriteOnly($field)) {
+            throw new \InvalidArgumentException(\sprintf('Field "%s" of "%s" cannot be read.', $attribute, $object->name));
+        }
+
+        return $field;
     }
 
     private function lower(mixed $value): string

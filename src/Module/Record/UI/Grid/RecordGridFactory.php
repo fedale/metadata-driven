@@ -21,7 +21,9 @@ use Fedale\GridviewBundle\Column\Config\DatetimeColumn;
 use Fedale\GridviewBundle\Column\Config\EmailColumn;
 use Fedale\GridviewBundle\Column\Config\NumberColumn;
 use Fedale\GridviewBundle\Column\Config\SelectColumn;
+use Fedale\GridviewBundle\Column\Config\TelColumn;
 use Fedale\GridviewBundle\Column\Config\TextColumn;
+use Fedale\GridviewBundle\Column\Config\UrlColumn;
 use Fedale\GridviewBundle\Contract\SearchModelInterface;
 use Fedale\GridviewBundle\Export\ExporterInterface;
 use Fedale\GridviewBundle\Export\GridExporterRegistry;
@@ -30,8 +32,9 @@ use Fedale\GridviewBundle\Grid\GridviewBuilderFactory;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
- * Builds the grid of an object at runtime: one column per field, with the filter and
- * the rendering of its field type, fed by the record grid source.
+ * Builds the grid of an object at runtime: one column per field (write-only ones, such as
+ * passwords, left out), with the filter and the rendering of its field type, fed by the
+ * record grid source.
  */
 final class RecordGridFactory
 {
@@ -57,8 +60,11 @@ final class RecordGridFactory
     {
         $columns = [];
         foreach ($object->fields as $field) {
-            $widget = $this->fieldTypes->get($field->type)->widget($field->settings);
-            $columns[] = $this->column($field, $widget)->label($field->label)->sortable();
+            $type = $this->fieldTypes->get($field->type);
+            if ($type->isWriteOnly()) {
+                continue;
+            }
+            $columns[] = $this->column($field, $type->widget($field->settings))->label($field->label)->sortable();
         }
         $columns[] = $this->actions($object);
 
@@ -113,6 +119,9 @@ final class RecordGridFactory
         return match ($widget->kind) {
             WidgetKind::Text, WidgetKind::Textarea => TextColumn::new($name)->filterText(),
             WidgetKind::Email => EmailColumn::new($name)->filterText(),
+            WidgetKind::Url => UrlColumn::new($name)->filterText(),
+            WidgetKind::Tel => TelColumn::new($name)->filterText(),
+            WidgetKind::Password => throw new \LogicException(\sprintf('Field "%s" is write-only: it has no grid column.', $name)),
             WidgetKind::Integer => NumberColumn::new($name)->decimals(0)->filterNumber(),
             WidgetKind::Decimal => NumberColumn::new($name)
                 ->decimals(\is_int($widget->options['scale'] ?? null) ? $widget->options['scale'] : 2)

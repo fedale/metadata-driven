@@ -7,6 +7,7 @@ namespace App\Module\Metadata\Application\Registry;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
+use App\Module\Metadata\Contract\FieldTypeCatalogInterface;
 use App\Module\Metadata\Domain\Model\FieldDefinition;
 use App\Module\Metadata\Domain\Model\ObjectDefinition;
 use App\Module\Metadata\Domain\Model\ViewDefinition;
@@ -19,6 +20,7 @@ final class MetadataSnapshotLoader
 {
     public function __construct(
         private readonly ObjectDefinitionRepository $objects,
+        private readonly FieldTypeCatalogInterface $fieldTypes,
     ) {
     }
 
@@ -69,7 +71,8 @@ final class MetadataSnapshotLoader
             $field->getLabel(),
             $field->isRequired(),
             $field->isUnique(),
-            $field->getSettings(),
+            // A setting added to a type after the field was created takes its default.
+            $field->getSettings() + $this->fieldTypes->defaultSettings($field->getType()),
             $field->getPosition(),
             $field->isSystem(),
         );

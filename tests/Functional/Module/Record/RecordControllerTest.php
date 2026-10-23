@@ -9,6 +9,7 @@ use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
+use App\Tests\Support\CreatesAccountObject;
 use App\Tests\Support\CreatesContactObject;
 use App\Tests\Support\CreatesPetObject;
 use App\Tests\Support\SignsIn;
@@ -21,6 +22,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 final class RecordControllerTest extends WebTestCase
 {
     use SignsIn;
+    use CreatesAccountObject;
     use CreatesContactObject;
     use CreatesPetObject;
 
@@ -82,6 +84,40 @@ final class RecordControllerTest extends WebTestCase
 
         $this->client->request('GET', '/o/pet/new?view=missing');
         self::assertResponseStatusCodeSame(404);
+    }
+
+    public function testRicherFieldTypesInTheForm(): void
+    {
+        self::createAccountObject(self::getContainer());
+
+        $crawler = $this->client->request('GET', '/o/account/new');
+        self::assertResponseIsSuccessful();
+        // A switch checked by default, buttons side by side, the password asked twice, never prefilled.
+        self::assertSame('checked', $crawler->filter('.switch-row input[role="switch"][name="record[active]"]')->attr('checked'));
+        self::assertCount(3, $crawler->filter('.segmented-row input[type="radio"][name="record[gender]"]'));
+        self::assertCount(1, $crawler->filter('input[type="password"][name="record[password][first]"]'));
+        self::assertCount(1, $crawler->filter('input[type="password"][name="record[password][second]"]'));
+        self::assertCount(1, $crawler->filter('input[type="url"][name="record[website]"]'));
+        self::assertCount(1, $crawler->filter('input[type="tel"][name="record[phone]"]'));
+
+        $values = ['record[username]' => 'mario', 'record[password][first]' => 'secret123', 'record[password][second]' => 'secret124', 'record[gender]' => 'm'];
+        $this->client->submitForm('Save', $values);
+        self::assertResponseStatusCodeSame(422);
+        self::assertAnySelectorTextContains('ul li', 'The two passwords do not match.');
+
+        $this->client->submitForm('Save', ['record[password][second]' => 'secret123'] + $values);
+        self::assertResponseRedirects('/o/account', 303);
+
+        // The grid has no password column; the edit form leaves the password empty and optional.
+        $crawler = $this->client->followRedirect();
+        self::assertSelectorTextNotContains('table', 'Password');
+        $id = self::getContainer()->get(RecordFinderInterface::class)->latest('account', 1)[0]->id;
+        $crawler = $this->client->request('GET', '/o/account/'.$id.'/edit');
+        $password = $crawler->filter('input[name="record[password][first]"]');
+        self::assertSame('', (string) $password->attr('value'));
+        self::assertNull($password->attr('required'));
+        self::assertSelectorTextContains('form', 'Leave empty to keep the current password.');
+        self::assertSame('checked', $crawler->filter('input[name="record[gender]"][value="m"]')->attr('checked'));
     }
 
     public function testCreatesARecord(): void

@@ -69,6 +69,7 @@ the uncommitted change; the cache is only refreshed once the change is committed
 RecordInput (raw values: form, API)
   → denormalization by each field type (strings to dates, numbers, ids)
   → MetadataRecordValidator (Symfony constraints from the field types, required, unique, references)
+  → conversion to the stored form by each field type (a password becomes its hash)
   → RecordStore (DBAL, every identifier quoted)
   → RecordOutput (typed values)
 ```

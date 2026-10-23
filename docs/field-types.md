@@ -6,13 +6,19 @@ missing keys take their default, unknown keys are refused.
 
 | Type | Settings (default) | Column | Form control | Grid filter |
 |---|---|---|---|---|
-| `text` | `maxLength` (255), `multiline` (false) | `varchar(maxLength)`, or `text` when multiline or longer than 255 | text input / textarea | text |
-| `number` | `decimals` (0) | `integer`, or `numeric(18, decimals)` | number input | number |
-| `boolean` | none | `boolean` | checkbox | yes / no |
+| `text` | `maxLength` (255), `multiline` (false), `pattern`, `patternMessage` | `varchar(maxLength)`, or `text` when multiline or longer than 255 | text input / textarea | text |
+| `number` | `decimals` (0), `min`, `max` | `integer`, or `numeric(18, decimals)` | number input | number |
+| `boolean` | `default` (false), `display` (`checkbox`) | `boolean` | checkbox or switch | yes / no |
 | `date` | `includeTime` (false) | `date`, or `timestamp(0)` | date / date-time input | date range |
 | `email` | none | `varchar(254)` | email input | text |
-| `select` | `options` (required) | `varchar(100)` | select | choice |
+| `tel` | none | `varchar(30)` | phone input | text |
+| `url` | none | `varchar(2048)` | URL input | text (shown as a link) |
+| `select` | `options` (required), `default`, `display` (`dropdown`) | `varchar(100)` | select or buttons side by side | choice |
+| `password` | `minLength` (8), `requireMixedCase`, `requireDigit`, `requireSymbol`, `confirm` (all false) | `varchar(255)`, a hash | password input, asked twice with `confirm` | none: never shown |
 | `relation` | `target` (required), `onDelete` (`set_null`), `inverseName`, `inverseLabel` | `uuid` + foreign key | autocomplete | choice of records |
+
+Settings added to a type after a field was created take their default on that field: a boolean
+created before `display` existed is a checkbox.
 
 Every field column is nullable: "required" is a validation rule (see below).
 
@@ -26,6 +32,8 @@ Every field column is nullable: "required" is a validation rule (see below).
   reserved (the index still holds them).
 - **Errors are reported all at once**, per field, in the form and in `RecordValidationFailed` for code.
 - **Unknown fields** in the input are refused ("This field does not exist.").
+- **Default values**: on create, a field that is not given takes its default value (`boolean` and
+  `select` have a `default` setting), and the form starts with it. A field given empty stays empty.
 
 ## `text`
 
@@ -36,30 +44,60 @@ Every field column is nullable: "required" is a validation rule (see below).
 
 - Input is trimmed, unless `multiline` (indentation and blank lines are kept).
 - Values longer than `maxLength` are refused.
+| `pattern` | string | a PCRE regular expression, at most 500 characters |
+| `patternMessage` | string | the error shown when the value does not match |
+
 - Searched by default (see `metadata:object:search`).
+- `pattern` must match the **whole** value, as an HTML `pattern` attribute does: `\d{5}` accepts
+  `00184`, not `001845`. Without `patternMessage` the error is "This value is not valid.". An
+  invalid expression is refused when the field is created.
 
 ```json
 {"maxLength": 80}
 {"multiline": true}
+{"maxLength": 5, "pattern": "\\d{5}", "patternMessage": "A postal code has five digits."}
+{"maxLength": 2, "pattern": "[A-Z]{2}", "patternMessage": "Two capital letters, e.g. MI."}
 ```
+
+A postal code is a text with a pattern, not a number: a number would drop the leading zeros.
 
 ## `number`
 
 | Setting | Type | Rule |
 |---|---|---|
 | `decimals` | int | 0 to 10 |
+| `min` | int or null | the smallest value allowed |
+| `max` | int or null | the largest value allowed; not below `min` |
 
 - `decimals: 0` stores an integer (range ±2147483647); more decimals store an exact decimal
   (precision 18), read back as a numeric string (`"12.50"`), never as a float.
 - Input: an int, a float, or a string such as `"12.5"` (dot as separator). Too many decimals are
   refused, never rounded: "This value should have at most 2 decimal places."; `"3.5"` on an integer
   field: "This value should be a whole number.".
+- `min` / `max` are checked on save ("This value should be between 1900 and 2100.") and set the
+  bounds of the form input.
 - Grid filter syntax: `10`, `>10`, `<=7`, `5..20`.
+
+```json
+{"min": 1900, "max": 2100}
+{"decimals": 1, "min": 0}
+```
 
 ## `boolean`
 
+| Setting | Type | Rule |
+|---|---|---|
+| `default` | bool | true: new records start checked |
+| `display` | string | `checkbox` or `switch` (an on/off toggle) |
+
 - Input: `true`/`false`, `1`/`0`, `"on"`/`"off"`, `"yes"`/`"no"`, `"true"`/`"false"`.
 - The form checkbox always sends a value: unchecked is `false`, not null.
+- Without `default`, a record created without the field (from code) stores null, as before the
+  setting existed.
+
+```json
+{"default": true, "display": "switch"}
+```
 
 ## `date`
 
@@ -77,19 +115,69 @@ Every field column is nullable: "required" is a validation rule (see below).
 - Trimmed, at most 254 characters, validated with Symfony's `Email` constraint.
 - Searched by default.
 
+## `tel`
+
+- Trimmed; runs of spaces become one space (`"+39  333\t123"` is stored `"+39 333 123"`).
+- Digits, an optional leading `+`, spaces, dots, dashes, slashes and brackets: `+39 333 123 4567`,
+  `(02) 1234-567`. "This value is not a valid phone number." otherwise.
+- 4 to 15 digits (the E.164 maximum), at most 30 characters.
+- Searched by default.
+
+## `url`
+
+- Trimmed, at most 2048 characters.
+- Only `http` and `https` addresses with a domain are accepted: `www.example.com` (no scheme) and
+  `javascript:...` are refused with "This value is not a valid URL.".
+- The grid shows it as a link. Searched by default.
+
 ## `select`
 
 | Setting | Type | Rule |
 |---|---|---|
 | `options` | list of `{value, label}` | not empty; `value` non-empty, at most 100 characters, unique; `label` non-empty |
+| `default` | string or null | the value of one of the options; new records start with it |
+| `display` | string | `dropdown` (default) or `radio`: the options as buttons side by side, for a few short options |
 
 ```json
 {"options": [{"value": "dog", "label": "Dog"}, {"value": "cat", "label": "Cat"}]}
+{"options": [{"value": "m", "label": "Male"}, {"value": "f", "label": "Female"}], "display": "radio"}
+{"options": [{"value": "mobile", "label": "Mobile"}, {"value": "home", "label": "Home"}], "default": "mobile"}
 ```
 
 - The value is stored; the label is shown in forms, grid cells and exports.
 - A value outside the options is refused: "The value you selected is not a valid choice.".
 - Filters and sort work on the stored value.
+
+## `password`
+
+A secret, checked as typed and stored as a one-way hash (the `record_secret` hasher of
+`security.yaml`: bcrypt or argon2).
+
+| Setting | Type | Rule |
+|---|---|---|
+| `minLength` | int | 1 to 128 (default 8) |
+| `requireMixedCase` | bool | an upper and a lower case letter |
+| `requireDigit` | bool | a digit |
+| `requireSymbol` | bool | a character that is neither a letter nor a digit |
+| `confirm` | bool | the form asks twice and checks both match |
+
+```json
+{"minLength": 8, "requireMixedCase": true, "requireDigit": true, "requireSymbol": true, "confirm": true}
+```
+
+- **Never read back.** The hash stays in the column: records, forms, grids, exports, search and
+  labels never see it. The edit form leaves the input empty ("Leave empty to keep the current
+  password.").
+- **Empty on update keeps it**, even when the field is required; given, it replaces it. On
+  create, a required password must be given.
+- **Spaces count**: a password is not trimmed; only a blank one is empty.
+- **The confirmation is a form-only field.** With `confirm`, the form shows *Password* and
+  *Repeat password* and refuses "The two passwords do not match."; only one value reaches the
+  record, and nothing of the second input is stored. Code writing a record directly gives the
+  password once.
+- A password cannot be **unique**, **searched** (`metadata:object:search`) or the **label** of
+  the records (`metadata:object:label`): the hash is salted, and a search or a sort on it would
+  leak it. These are refused when configured, and the grid refuses to filter or sort on it.
 
 ## `relation`
 

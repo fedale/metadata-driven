@@ -18,6 +18,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 final class SelectFieldType extends AbstractFieldType
 {
     private const int MAX_VALUE_LENGTH = 100;
+    private const array DISPLAYS = ['dropdown' => 'Drop-down list', 'radio' => 'Buttons side by side'];
 
     public function name(): string
     {
@@ -38,12 +39,14 @@ final class SelectFieldType extends AbstractFieldType
     {
         return [
             new SettingDefinition('options', SettingKind::OptionList, 'Options', 'The stored value and the label shown.', true),
+            new SettingDefinition('default', SettingKind::String, 'Default value', 'The value of an option, chosen for new records. Empty: none.'),
+            new SettingDefinition('display', SettingKind::Choice, 'Display', 'Buttons suit a few short options.', true, ['choices' => self::DISPLAYS]),
         ];
     }
 
     public function defaultSettings(): array
     {
-        return ['options' => []];
+        return ['options' => [], 'default' => null, 'display' => 'dropdown'];
     }
 
     protected function validateKnownSettings(array $settings): array
@@ -71,6 +74,14 @@ final class SelectFieldType extends AbstractFieldType
             $seen[$value] = true;
         }
 
+        $default = $settings['default'];
+        if (null !== $default && (!\is_string($default) || !isset($seen[$default]))) {
+            $errors[] = 'Setting "default" must be the value of one of the options.';
+        }
+        if (!\is_string($settings['display']) || !isset(self::DISPLAYS[$settings['display']])) {
+            $errors[] = \sprintf('Setting "display" must be one of: %s.', implode(', ', array_keys(self::DISPLAYS)));
+        }
+
         return $errors;
     }
 
@@ -91,7 +102,12 @@ final class SelectFieldType extends AbstractFieldType
 
     public function widget(array $settings): Widget
     {
-        return new Widget(WidgetKind::Choice, ['choices' => self::choices($settings)]);
+        return new Widget(WidgetKind::Choice, ['choices' => self::choices($settings), 'display' => $settings['display'] ?? 'dropdown']);
+    }
+
+    public function defaultValue(array $settings): ?string
+    {
+        return self::nullableStringSetting($settings, 'default');
     }
 
     /**

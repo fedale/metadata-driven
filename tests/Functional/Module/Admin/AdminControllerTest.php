@@ -125,6 +125,31 @@ final class AdminControllerTest extends WebTestCase
         self::assertSame('Town', $this->registry()->getObject('author')->field('city')->label);
     }
 
+    public function testOffersTheSettingsOfTheRicherTypes(): void
+    {
+        $this->createObject('member', 'Member', 'Members');
+        $crawler = $this->client->request('GET', '/admin/objects/member/fields/new');
+        foreach (['Password', 'Link', 'Phone'] as $type) {
+            self::assertStringContainsString($type, $crawler->filter('.type-list')->text());
+        }
+
+        $this->addField('member', 'password', ['name' => 'secret', 'label' => 'Secret', 'settings' => ['minLength' => '10', 'requireDigit' => '1', 'confirm' => '1']]);
+        $this->addField('member', 'boolean', ['name' => 'active', 'label' => 'Active', 'settings' => ['default' => '1', 'display' => 'switch']]);
+        $this->addField('member', 'text', ['name' => 'zipcode', 'label' => 'Postal code', 'settings' => ['pattern' => '\d{5}']]);
+
+        $member = $this->registry()->getObject('member');
+        self::assertSame(10, $member->field('secret')->settings['minLength']);
+        self::assertTrue($member->field('secret')->settings['confirm']);
+        self::assertSame('switch', $member->field('active')->settings['display']);
+        self::assertTrue($member->field('active')->settings['default']);
+        self::assertSame('\d{5}', $member->field('zipcode')->settings['pattern']);
+
+        // A password can neither be searched nor name the records: the admin does not offer it.
+        $crawler = $this->client->request('GET', '/admin/objects/member');
+        self::assertCount(0, $crawler->filter('input[name="search[fields][]"][value="secret"]'));
+        self::assertCount(0, $crawler->filter('select[name="label_field[field]"] option[value="secret"]'));
+    }
+
     public function testManagesViewsFromTheUi(): void
     {
         $this->createObject('author', 'Author', 'Authors');

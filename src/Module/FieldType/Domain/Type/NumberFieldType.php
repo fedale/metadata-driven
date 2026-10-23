@@ -42,21 +42,32 @@ final class NumberFieldType extends AbstractFieldType
     {
         return [
             new SettingDefinition('decimals', SettingKind::Integer, 'Decimals', '0 for an integer. Extra decimals are refused, never rounded.', true, ['min' => 0, 'max' => self::MAX_DECIMALS]),
+            new SettingDefinition('min', SettingKind::Integer, 'Minimum', 'The smallest value allowed. Empty: no minimum.'),
+            new SettingDefinition('max', SettingKind::Integer, 'Maximum', 'The largest value allowed. Empty: no maximum.'),
         ];
     }
 
     public function defaultSettings(): array
     {
-        return ['decimals' => 0];
+        return ['decimals' => 0, 'min' => null, 'max' => null];
     }
 
     protected function validateKnownSettings(array $settings): array
     {
+        $errors = [];
         if (!self::isIntBetween($settings['decimals'], 0, self::MAX_DECIMALS)) {
-            return [\sprintf('Setting "decimals" must be an integer between 0 and %d.', self::MAX_DECIMALS)];
+            $errors[] = \sprintf('Setting "decimals" must be an integer between 0 and %d.', self::MAX_DECIMALS);
+        }
+        foreach (['min', 'max'] as $bound) {
+            if (null !== $settings[$bound] && !self::isIntBetween($settings[$bound], self::INTEGER_MIN, self::INTEGER_MAX)) {
+                $errors[] = \sprintf('Setting "%s" must be an integer.', $bound);
+            }
+        }
+        if (\is_int($settings['min']) && \is_int($settings['max']) && $settings['min'] > $settings['max']) {
+            $errors[] = 'Setting "min" must not be greater than "max".';
         }
 
-        return [];
+        return $errors;
     }
 
     public function columnSpec(array $settings): ColumnSpec
@@ -103,20 +114,28 @@ final class NumberFieldType extends AbstractFieldType
     {
         $decimals = self::intSetting($settings, 'decimals');
         if (0 === $decimals) {
-            return [new Assert\Range(min: self::INTEGER_MIN, max: self::INTEGER_MAX)];
+            $constraints = [new Assert\Range(min: self::INTEGER_MIN, max: self::INTEGER_MAX)];
+        } else {
+            $limit = 10 ** (self::PRECISION - $decimals);
+            $constraints = [new Assert\GreaterThan(-$limit), new Assert\LessThan($limit)];
         }
 
-        $limit = 10 ** (self::PRECISION - $decimals);
+        $min = self::nullableIntSetting($settings, 'min');
+        $max = self::nullableIntSetting($settings, 'max');
+        if (null !== $min || null !== $max) {
+            $constraints[] = new Assert\Range(min: $min, max: $max);
+        }
 
-        return [new Assert\GreaterThan(-$limit), new Assert\LessThan($limit)];
+        return $constraints;
     }
 
     public function widget(array $settings): Widget
     {
         $decimals = self::intSetting($settings, 'decimals');
+        $bounds = array_filter(['min' => self::nullableIntSetting($settings, 'min'), 'max' => self::nullableIntSetting($settings, 'max')], is_int(...));
 
         return 0 === $decimals
-            ? new Widget(WidgetKind::Integer)
-            : new Widget(WidgetKind::Decimal, ['scale' => $decimals]);
+            ? new Widget(WidgetKind::Integer, $bounds)
+            : new Widget(WidgetKind::Decimal, ['scale' => $decimals] + $bounds);
     }
 }

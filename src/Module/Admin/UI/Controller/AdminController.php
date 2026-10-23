@@ -44,7 +44,7 @@ use Symfony\Component\Routing\Requirement\EnumRequirement;
 #[Route('/admin', name: 'admin_')]
 final class AdminController extends AbstractController
 {
-    private const array TYPE_ORDER = ['text', 'number', 'date', 'boolean', 'email', 'select', 'relation'];
+    private const array TYPE_ORDER = ['text', 'number', 'date', 'boolean', 'select', 'email', 'tel', 'url', 'password', 'relation'];
     private const string NAME_HELP = 'Lowercase letters, digits and single underscores, starting with a letter. It cannot be changed later.';
 
     public function __construct(
@@ -398,7 +398,9 @@ final class AdminController extends AbstractController
     {
         $choices = [];
         foreach ($object->fields as $name => $field) {
-            $choices[$field->label] = $name;
+            if (!$this->fieldTypes->get($field->type)->isWriteOnly()) {
+                $choices[$field->label] = $name;
+            }
         }
 
         return $this->forms->createNamedBuilder('label_field', FormType::class, ['field' => $object->labelField], [
@@ -420,7 +422,7 @@ final class AdminController extends AbstractController
     {
         $fields = [];
         foreach ($object->fields as $name => $field) {
-            if (null === $field->relation()) {
+            if (null === $field->relation() && !$this->fieldTypes->get($field->type)->isWriteOnly()) {
                 $fields[$field->label] = $name;
             }
         }

@@ -76,7 +76,7 @@ metadata:field:create [--required] [--unique] [--settings=JSON] <object> <name> 
 |---|---|
 | `object` | The object's machine name |
 | `name` | The field's machine name; also the column name. `id`, `created_at`, `updated_at`, `created_by`, `deleted_at` are reserved. |
-| `type` | `text`, `number`, `boolean`, `date`, `email`, `select` or `relation`: see [field types](field-types.md) |
+| `type` | `text`, `number`, `boolean`, `date`, `email`, `tel`, `url`, `select`, `password` or `relation`: see [field types](field-types.md) |
 | `label` | Shown in forms, grid headers and errors |
 | `--required` | A value is mandatory. Checked by validation; the column stays nullable, so a required field can be added to a table that already has records. |
 | `--unique` | Values must be unique: a unique index, plus a readable error on save. Values of deleted records stay reserved. |
@@ -98,6 +98,26 @@ symfony console metadata:field:create visit starts_at date "Starts at" --setting
 # Single choice
 symfony console metadata:field:create pet species select Species \
   --settings='{"options":[{"value":"dog","label":"Dog"},{"value":"cat","label":"Cat"}]}'
+
+# Choice shown as buttons side by side
+symfony console metadata:field:create account gender select Gender \
+  --settings='{"options":[{"value":"m","label":"Male"},{"value":"f","label":"Female"}],"display":"radio"}'
+
+# On/off switch, on for new records
+symfony console metadata:field:create account active boolean Active --settings='{"default":true,"display":"switch"}'
+
+# Password: hashed, with strength rules, asked twice in the form
+symfony console metadata:field:create account password password Password --required \
+  --settings='{"minLength":8,"requireMixedCase":true,"requireDigit":true,"requireSymbol":true,"confirm":true}'
+
+# Text with a pattern
+symfony console metadata:field:create account zipcode text "Postal code" \
+  --settings='{"maxLength":5,"pattern":"\\d{5}","patternMessage":"A postal code has five digits."}'
+
+# Year between bounds, link, phone
+symfony console metadata:field:create education year number Year --settings='{"min":1950,"max":2100}'
+symfony console metadata:field:create certification url url "Verification link"
+symfony console metadata:field:create phone number tel Number
 
 # Unique code
 symfony console metadata:field:create pet chip_code text "Microchip" --unique --settings='{"maxLength":15}'

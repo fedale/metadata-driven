@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Record\Application;
 
+use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\OnDelete;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
@@ -24,7 +25,8 @@ use App\Shared\Transaction\TransactionRunner;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Pipeline of every record write: RecordInput → denormalization → validation → storage.
+ * Pipeline of every record write: RecordInput → denormalization → validation → conversion
+ * to the stored form (e.g. password hashes) → storage.
  */
 final class RecordManager implements RecordManagerInterface, RecordFinderInterface
 {
@@ -37,6 +39,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         private readonly RecordStore $store,
         private readonly RecordLookupInterface $lookup,
         private readonly TransactionRunner $transactions,
+        private readonly FieldTypeRegistryInterface $fieldTypes,
     ) {
     }
 
@@ -46,7 +49,8 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         $values = $this->validValues($object, $input, null);
 
         $id = Uuid::v7()->toRfc4122();
-        $this->write($object, $values, null, fn () => $this->store->insert($object, $id, $values, new \DateTimeImmutable()));
+        $stored = $this->stored($object, $values);
+        $this->write($object, $values, null, fn () => $this->store->insert($object, $id, $stored, new \DateTimeImmutable()));
 
         return $this->store->find($object, $id) ?? throw new \LogicException('The record just created cannot be read back.');
     }
@@ -60,7 +64,8 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         $values = $this->validValues($object, $input, $id);
 
         if ([] !== $values) {
-            $updated = $this->write($object, $values, $id, fn (): bool => $this->store->update($object, $id, $values, new \DateTimeImmutable()));
+            $stored = $this->stored($object, $values);
+            $updated = $this->write($object, $values, $id, fn (): bool => $this->store->update($object, $id, $stored, new \DateTimeImmutable()));
             if (!$updated) {
                 throw RecordNotFound::withId($object->name, $id);
             }
@@ -125,12 +130,27 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     }
 
     /**
+     * @param array<string, mixed> $values valid values
+     *
+     * @return array<string, mixed> the values as the columns store them
+     */
+    private function stored(ObjectDefinitionDto $object, array $values): array
+    {
+        foreach ($values as $name => $value) {
+            $field = $object->field($name);
+            $values[$name] = $this->fieldTypes->get($field->type)->toStorage($value, $field->settings);
+        }
+
+        return $values;
+    }
+
+    /**
      * Runs a write; a unique index violation that slipped past validation (concurrent
      * write) is reported on the offending fields, found by validating again.
      *
      * @template T
      *
-     * @param array<string, mixed> $values
+     * @param array<string, mixed> $values the values as validated (not as stored), to validate them again
      * @param callable(): T        $write
      *
      * @return T

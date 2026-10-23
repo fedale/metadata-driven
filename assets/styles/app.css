@@ -88,7 +88,7 @@ a { color: var(--accent); }
 
 .record-form { display: grid; gap: 0.9rem; max-width: 32rem; }
 .record-form > div > label { display: block; font-weight: 500; margin-bottom: 0.25rem; }
-.record-form input:not([type=checkbox]), .record-form select, .record-form textarea {
+.record-form input:not([type=checkbox], [type=radio]), .record-form select, .record-form textarea {
     width: 100%;
     padding: 0.45rem 0.6rem;
     border: 1px solid var(--border);
@@ -97,6 +97,24 @@ a { color: var(--accent); }
     color: var(--text);
     font: inherit;
 }
+/* A boolean field displayed as a switch: the checkbox drawn as a sliding toggle. */
+.record-form .switch-row input[role=switch] {
+    appearance: none; position: relative; width: 2.4rem; height: 1.35rem; margin: 0 0.5rem 0 0;
+    vertical-align: middle; border-radius: 1rem; background: var(--border); cursor: pointer; transition: background 0.15s;
+}
+.record-form .switch-row input[role=switch]::before {
+    content: ''; position: absolute; top: 0.15rem; left: 0.15rem; width: 1.05rem; height: 1.05rem;
+    border-radius: 50%; background: var(--surface); transition: transform 0.15s;
+}
+.record-form .switch-row input[role=switch]:checked { background: var(--accent); }
+.record-form .switch-row input[role=switch]:checked::before { transform: translateX(1.05rem); }
+.record-form .switch-row input[role=switch]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* A choice field displayed as buttons side by side: a radio group drawn as a segmented control. */
+.record-form .segmented-row > div { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; padding: 0.25rem; border: 1px solid var(--border); border-radius: 8px; }
+.record-form .segmented-row input[type=radio] { position: absolute; opacity: 0; pointer-events: none; }
+.record-form .segmented-row input[type=radio] + label { padding: 0.35rem 0.8rem; border-radius: 6px; cursor: pointer; font-weight: normal; }
+.record-form .segmented-row input[type=radio]:checked + label { background: var(--accent); color: #fff; }
+.record-form .segmented-row input[type=radio]:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
 .record-form ul { margin: 0.25rem 0 0; padding: 0; list-style: none; color: var(--error-text); }
 .record-form > .button { justify-self: start; }
 

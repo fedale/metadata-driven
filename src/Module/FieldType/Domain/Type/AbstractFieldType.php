@@ -37,6 +37,21 @@ abstract class AbstractFieldType implements FieldTypeInterface
         return [];
     }
 
+    public function defaultValue(array $settings): mixed
+    {
+        return null;
+    }
+
+    public function isWriteOnly(): bool
+    {
+        return false;
+    }
+
+    public function toStorage(mixed $value, array $settings): mixed
+    {
+        return $value;
+    }
+
     /**
      * @param array<string, mixed> $settings settings merged with defaults
      *
@@ -70,6 +85,26 @@ abstract class AbstractFieldType implements FieldTypeInterface
         $value = $settings[$key] ?? null;
 
         return \is_bool($value) ? $value : throw new \LogicException(\sprintf('Setting "%s" was not validated as a boolean.', $key));
+    }
+
+    /**
+     * @param array<string, mixed> $settings
+     */
+    protected static function nullableStringSetting(array $settings, string $key): ?string
+    {
+        $value = $settings[$key] ?? null;
+
+        return null === $value || \is_string($value) ? $value : throw new \LogicException(\sprintf('Setting "%s" was not validated as a string.', $key));
+    }
+
+    /**
+     * @param array<string, mixed> $settings
+     */
+    protected static function nullableIntSetting(array $settings, string $key): ?int
+    {
+        $value = $settings[$key] ?? null;
+
+        return null === $value || \is_int($value) ? $value : throw new \LogicException(\sprintf('Setting "%s" was not validated as an integer.', $key));
     }
 
     /**

@@ -20,6 +20,19 @@ interface FieldTypeCatalogInterface
     public function names(): array;
 
     /**
+     * The default settings of a type; empty for an unknown type.
+     *
+     * @return array<string, mixed>
+     */
+    public function defaultSettings(string $type): array;
+
+    /**
+     * A write-only type (a password) is never read back: it cannot be unique, searched,
+     * or name the records.
+     */
+    public function isWriteOnly(string $type): bool;
+
+    /**
      * Validates the given settings and merges them with the type defaults.
      *
      * @param array<string, mixed> $settings

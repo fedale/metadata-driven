@@ -8,7 +8,9 @@ namespace App\Module\FieldType\Contract\Dto;
  * Framework-free description of the input control for a field.
  *
  * Known options: "maxLength" (int) for text widgets, "scale" (int) for decimals,
- * "choices" (array<string, string>, value => label) for choices, "target" (string) for relations.
+ * "choices" (array<string, string>, value => label) for choices, "target" (string) for relations,
+ * "min" / "max" (int) for numbers, "display" (string) for a checkbox ("checkbox" or "switch") or a
+ * choice ("dropdown" or "radio"), "confirm" (bool) for a password.
  */
 final readonly class Widget
 {
