@@ -1,0 +1,173 @@
+# Composite forms
+
+A composite form writes a record **and the records related to it** in one page and one
+transaction: an account, its profile, the phones of the profile, the qualifications of the
+account. It is defined in YAML, stored with the metadata, and checked against the objects when it
+is saved: no code, no deploy.
+
+```yaml
+label: User registration
+object: account                        # the root: the record the form is about
+fields: [username, email, firstname, lastname, password, active]
+service_fields:
+  - { name: terms, type: boolean, label: I accept the terms, required: true }
+sections:
+  - name: profile
+    label: Profile
+    object: profile
+    via: account                       # the relation field of profile pointing at account
+    sections:
+      - { name: phones, label: Phones, object: phone, via: profile, mode: many, min: 1, inline: true }
+  - { name: qualifications, label: Qualifications, object: qualification, via: account, mode: many }
+```
+
+The form opens at `/f/<name>/new`; once saved, the same records are edited at
+`/f/<name>/<root id>/edit`.
+
+## The model behind it
+
+A section is a set of records of another object that **point at the record of the section's
+parent** through a relation field, its `via`. The example needs these relations:
+
+| Object | Relation field | Points at | Section |
+|---|---|---|---|
+| `profile` | `account` (unique) | `account` | `profile`: one record (`mode: one`) |
+| `phone` | `profile` | `profile` | `phones`, inside `profile`: rows (`mode: many`) |
+| `qualification` | `account` | `account` | `qualifications`: rows |
+
+Create the objects and their relation fields first ([field types](field-types.md#relation)). A
+`cascade` delete rule on the relation is usually what a form wants: deleting the account
+deletes its profile, phones and qualifications.
+
+## Definition reference
+
+### The root
+
+| Key | Required | Description |
+|---|---|---|
+| `label` | yes | The title of the form, at most 100 characters |
+| `object` | yes | The root object |
+| `fields` | no | The fields shown, in order. Default: every field of the object. It may not leave out a field the object requires |
+| `required` | no | Fields required by this form although the object does not require them (see below) |
+| `service_fields` | no | Fields that belong to no object (see below) |
+| `sections` | no | The sections, in order |
+
+### A section
+
+| Key | Required | Description |
+|---|---|---|
+| `name` | yes | Machine name, unique among its siblings; it names the inputs (`composite[sections][phones]...`) |
+| `label` | yes | The title of the section |
+| `object` | yes | The object of its records |
+| `via` | yes | The relation field of `object` pointing at the parent's object |
+| `mode` | no | `one` (default): one record, shown once. `many`: rows, added with "+" and removed one by one |
+| `min` | no | `many` only: rows required (default 0). A new form starts with this many rows |
+| `max` | no | `many` only: rows allowed (default: no limit) |
+| `inline` | no | `true`: the fields on one line, e.g. `[prefix] [number] [type] ×`. The labels move into the inputs as placeholders ("Number *"). Suits a few short fields |
+| `fields` | no | The fields shown. Default: every field but `via`, which the form sets itself. It may not leave out a field the object requires |
+| `required` | no | As on the root |
+| `service_fields` | no | As on the root |
+| `sections` | no | Nested sections: a section of rows may have sections of its own, up to 4 levels |
+
+### Required fields
+
+Two rules, checked together:
+
+- **What the object requires, the form requires.** A required field of an object is required in
+  every form that writes it, and a definition whose `fields` leaves one out is refused
+  (`(root): "email" is required by object "account": list it in "fields".`).
+- **A form may require more.** `required: [city]` makes the city required in this form, while
+  the profile object, and every other form, keeps it optional. It may only name fields the
+  form shows. A required checkbox must be checked; a password left empty on edit is kept, as
+  always. In a section left entirely empty (skipped), nothing is required.
+
+Required fields are marked with a red asterisk after their label, explained by "* Required
+field" under the form; the same holds in the record forms.
+
+### Service fields
+
+A service field is checked like a field of its type, then **dropped**: no column stores it.
+"I accept the terms", "I have read the privacy notice".
+
+| Key | Required | Description |
+|---|---|---|
+| `name` | yes | Machine name, unique within its node |
+| `type` | yes | Any field type but `relation` |
+| `label` | yes | The label shown |
+| `required` | no | `true`: must be given. A required **boolean must be checked** ("This box must be checked.") |
+| `settings` | no | The settings of the type, e.g. `{pattern: '[A-Z]{2}'}` for a text |
+
+A password confirmation is not a service field: the `confirm` setting of the `password` type
+already asks twice ([field types](field-types.md#password)).
+
+### Errors
+
+Saving a definition checks it against the objects, and reports **every** error at once, each with
+the path of its section:
+
+```
+(root): object "account" has no field "nickname".
+profile.phones: "account" is not a relation field of "phone" pointing at "profile" (candidates: profile).
+qualifications: "object" must name an existing object, "qualificaton" does not exist.
+```
+
+Unknown keys are refused too, so a typo does not go unnoticed.
+
+## Filling in a form
+
+- **All or nothing.** The whole input is checked first: every record with the rules of its
+  object (required, unique, types, patterns), the service fields, the number of rows. Every error
+  is shown on its input at once, and nothing is written until all is valid. Then the records are
+  written top-down in one transaction.
+- **Empty rows are skipped.** A row nobody filled in (every field empty or left at its default
+  value) is not saved and not refused: a qualification row added by mistake does no harm. An
+  empty one-to-one section (a profile left blank on a new form) creates no record.
+- **Editing** updates the records that are there, creates the rows added, and **deletes the rows
+  removed**, with the delete rules of their relations. A deletion refused by a `restrict` rule
+  is reported on the section.
+- **Passwords** left empty on edit are kept, as in the record form.
+- **Rows are identified by their record id**, posted in a hidden input. A row id that does not
+  belong to the record is refused ("This row does not belong to the record.").
+
+## Permissions
+
+| Page | Needs, on every object of the form |
+|---|---|
+| Open a new form, save it | `create` |
+| Open an existing one | `read` |
+| Save an existing one | `create`, `update` and `delete` (rows are added and removed) |
+
+Without the save permissions an existing form opens read-only. The home page lists the forms
+the user may fill in.
+
+## Admin UI and console
+
+From the admin: **Admin → Forms** lists the forms; **New form** offers an example to start from,
+and lists the objects with their fields and relation fields next to the editor. **Edit** shows
+the definition as it was written, comments included; **Delete** removes the form, not its
+records.
+
+```bash
+symfony console metadata:form:save registration forms/registration.yaml
+cat forms/registration.yaml | symfony console metadata:form:save registration -
+symfony console metadata:form:delete registration      # the records stay
+```
+
+## Under the hood
+
+| Piece | Where |
+|---|---|
+| Storage | `core.metadata_form`: the YAML as written (`source`) and its compiled form (`definition`, JSONB) |
+| Checks | `FormDefinitionCompiler` (Metadata): YAML → compiled definition, against the objects |
+| Read side | `MetadataRegistryInterface::getForm()`, `FormDefinitionDto` / `FormNodeDto`, cached with the metadata |
+| Writes | `CompositeRecordManagerInterface` (Record): plans and checks the whole tree with `RecordManagerInterface::check()`, then writes it with the record pipeline |
+| Page | `CompositeFormController` at `/f/{form}`, `CompositeNodeType` (a node: `values`, `service`, `sections`, a row's `id`), `templates/record/_composite.html.twig` |
+| Rows | The `collection` Stimulus controller: adds a row from the section's prototype under a fresh key, removes one, keeps `min`/`max` |
+
+## Not yet
+
+- **Conditional fields**: fields shown and required depending on another field (the kind of a
+  qualification). Next step.
+- **Layouts**: the [views](views.md) lay out the record form only; a composite form shows its
+  sections one after another.
+- **Service fields on edit**: a required one is asked again at every save.

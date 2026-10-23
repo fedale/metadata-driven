@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Contract;
 
+use App\Module\Metadata\Contract\Dto\FormDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\RelationReference;
+use App\Module\Metadata\Contract\Exception\FormDefinitionNotFound;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
 
 /**
@@ -31,4 +33,16 @@ interface MetadataRegistryInterface
      * @return list<RelationReference>
      */
     public function incomingRelations(string $targetName): array;
+
+    /**
+     * @throws FormDefinitionNotFound
+     */
+    public function getForm(string $name): FormDefinitionDto;
+
+    public function hasForm(string $name): bool;
+
+    /**
+     * @return array<string, FormDefinitionDto> keyed by form name
+     */
+    public function allForms(): array;
 }

@@ -24,7 +24,7 @@ trait CreatesAccountObject
         $createObject(new CreateObjectCommand('account', 'Account', 'Accounts'));
         $createField(new CreateFieldCommand('account', 'username', 'text', 'Username', isRequired: true, isUnique: true));
         $createField(new CreateFieldCommand('account', 'password', 'password', 'Password', isRequired: true, settings: [
-            'minLength' => 8, 'requireDigit' => true, 'confirm' => true,
+            'minLength' => 8, 'requireDigit' => true, 'confirm' => true, 'strengthMeter' => true, 'revealToggle' => true,
         ]));
         $createField(new CreateFieldCommand('account', 'active', 'boolean', 'Active', settings: ['default' => true, 'display' => 'switch']));
         $createField(new CreateFieldCommand('account', 'gender', 'select', 'Gender', settings: [

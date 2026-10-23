@@ -9,6 +9,7 @@ use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
+use App\Module\Metadata\Contract\Dto\ServiceFieldDto;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordLookupInterface;
@@ -27,6 +28,7 @@ use Symfony\Component\Form\Extension\Core\Type\TelType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\UrlType;
+use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormEvents;
 use Symfony\Component\Form\FormFactoryInterface;
@@ -57,15 +59,49 @@ final class RecordFormFactory
     public function create(ObjectDefinitionDto $object, ?RecordOutput $record = null, bool $readOnly = false): FormInterface
     {
         $builder = $this->formFactory->createNamedBuilder('record', FormType::class, $record->values ?? $this->defaults($object), ['disabled' => $readOnly]);
+        $this->addControls($builder, $object, array_keys($object->fields), null === $record, $record->values ?? []);
+
+        return $builder->getForm();
+    }
+
+    /**
+     * Adds the controls of some fields of an object to a form, in the given order.
+     *
+     * @template T
+     *
+     * @param FormBuilderInterface<T> $builder
+     * @param list<string>            $fieldNames
+     * @param bool                    $isNew        the record does not exist yet (a password is then required)
+     * @param array<string, mixed>    $current      the current values, to offer the related records chosen
+     * @param list<string>            $required     fields required here although their object does not require them
+     * @param bool                    $placeholders the label as the placeholder of each input, for labels kept off screen
+     */
+    public function addControls(FormBuilderInterface $builder, ObjectDefinitionDto $object, array $fieldNames, bool $isNew, array $current, array $required = [], bool $placeholders = false): void
+    {
         $relations = [];
-        foreach ($object->fields as $name => $field) {
+        foreach ($fieldNames as $name) {
+            $field = $object->field($name);
+            $requiredHere = \in_array($name, $required, true);
+            if ($requiredHere) {
+                $field = new FieldDefinitionDto($field->id, $field->name, $field->columnName, $field->type, $field->label, true, $field->isUnique, $field->settings, $field->position, $field->isSystem);
+            }
             $widget = $this->fieldTypes->get($field->type)->widget($field->settings);
-            [$type, $options] = $this->control($field, $widget, $record?->get($name), null === $record);
+            [$type, $options] = $this->control($field, $widget, $current[$name] ?? null, $isNew);
+            // A checkbox required by the form must be checked (by its object, only set).
+            if ($requiredHere && WidgetKind::Checkbox === $widget->kind) {
+                $options['required'] = true;
+            }
+            if ($placeholders && !\in_array($widget->kind, [WidgetKind::Choice, WidgetKind::Relation, WidgetKind::Checkbox], true)) {
+                $options['attr'] = (\is_array($options['attr'] ?? null) ? $options['attr'] : []) + ['placeholder' => $field->label.($field->isRequired ? ' *' : '')];
+            }
             $options += ['label' => $field->label];
             $builder->add($name, $type, $options);
             if (WidgetKind::Relation === $widget->kind) {
                 $relations[$name] = [$options, $this->target($widget)];
             }
+        }
+        if ([] === $relations) {
+            return;
         }
 
         // A relation offers only the current record until the user searches: the submitted
@@ -78,8 +114,25 @@ final class RecordFormFactory
                 $event->getForm()->add($name, ChoiceType::class, $options);
             }
         });
+    }
 
-        return $builder->getForm();
+    /**
+     * Adds the control of a field that belongs to no record (a service field of a composite
+     * form). A required checkbox must be checked, as "I accept the terms" asks.
+     *
+     * @template T
+     *
+     * @param FormBuilderInterface<T> $builder
+     */
+    public function addServiceControl(FormBuilderInterface $builder, ServiceFieldDto $field): void
+    {
+        $definition = new FieldDefinitionDto('', $field->name, $field->name, $field->type, $field->label, $field->isRequired, false, $field->settings, 0, false);
+        $widget = $this->fieldTypes->get($field->type)->widget($field->settings);
+        [$type, $options] = $this->control($definition, $widget, null, true);
+        if (WidgetKind::Checkbox === $widget->kind) {
+            $options['required'] = $field->isRequired;
+        }
+        $builder->add($field->name, $type, $options + ['label' => $field->label]);
     }
 
     /**
@@ -100,7 +153,7 @@ final class RecordFormFactory
      *
      * @return array<string, mixed>
      */
-    private function defaults(ObjectDefinitionDto $object): array
+    public function defaults(ObjectDefinitionDto $object): array
     {
         $values = [];
         foreach ($object->fields as $name => $field) {
@@ -159,8 +212,23 @@ final class RecordFormFactory
     {
         $required = ['required' => $isNew && $field->isRequired];
         $help = $isNew ? [] : ['help' => 'Leave empty to keep the current password.'];
+        $attr = ['autocomplete' => 'new-password'];
+        // The meter and the eye go on the password typed first, never on its confirmation.
+        $controllers = [];
+        $first = $attr;
+        if (true === ($widget->options['strengthMeter'] ?? false)) {
+            $controllers[] = 'password-strength';
+            $first['data-action'] = 'password-strength#update';
+            $first['data-password-strength-min-length-value'] = \is_int($widget->options['minLength'] ?? null) ? $widget->options['minLength'] : 8;
+        }
+        if (true === ($widget->options['revealToggle'] ?? false)) {
+            $controllers[] = 'password-reveal';
+        }
+        if ([] !== $controllers) {
+            $first['data-controller'] = implode(' ', $controllers);
+        }
         if (true !== ($widget->options['confirm'] ?? false)) {
-            return [PasswordType::class, $required + $help + ['attr' => ['autocomplete' => 'new-password']]];
+            return [PasswordType::class, $required + $help + ['attr' => $first]];
         }
 
         // The two inputs carry the labels and the help; the group has none of its own.
@@ -168,8 +236,8 @@ final class RecordFormFactory
             'label' => false,
             'type' => PasswordType::class,
             'invalid_message' => 'The two passwords do not match.',
-            'options' => ['attr' => ['autocomplete' => 'new-password']],
-            'first_options' => ['label' => $field->label] + $help,
+            'options' => ['attr' => $attr],
+            'first_options' => ['label' => $field->label, 'attr' => $first] + $help,
             'second_options' => ['label' => 'Repeat '.mb_strtolower($field->label)],
         ]];
     }

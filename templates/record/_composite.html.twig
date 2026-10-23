@@ -1,0 +1,65 @@
+{#
+    Renders a node of a composite form: the fields of its record, its service fields, then
+    its sections, a fieldset each. A one-to-many section repeats its rows; the "collection"
+    Stimulus controller adds and removes them from the section's prototype.
+#}
+{% macro node(form, node, editable) %}
+    {% import _self as composite %}
+    {{ form_errors(form) }}
+    {% if form.id is defined %}{{ form_widget(form.id) }}{% endif %}
+    {{ form_widget(form.values) }}
+    {% if form.service is defined %}{{ form_widget(form.service) }}{% endif %}
+    {% for section in node.sections %}
+        {% set child = form.sections[section.name] %}
+        <fieldset class="composite-section" id="section-{{ child.vars.id }}">
+            <legend>{{ section.label }}</legend>
+            {{ form_errors(child) }}
+            {% if section.mode.value == 'many' %}
+                {% set next = 0 %}
+                {% for key, row in child %}{% set next = max(next, key + 1) %}{% endfor %}
+                <div data-controller="collection"
+                     data-collection-prototype-value="{{ composite.row(child.vars.prototype, section, editable)|e('html_attr') }}"
+                     data-collection-prototype-name-value="__{{ section.name }}__"
+                     data-collection-index-value="{{ next }}"
+                     data-collection-min-value="{{ section.min }}"
+                     data-collection-max-value="{{ section.max ?? 0 }}">
+                    <div class="composite-rows" data-collection-target="list">
+                        {% for row in child %}{{ composite.row(row, section, editable) }}{% endfor %}
+                    </div>
+                    {% if editable %}
+                        <button type="button" class="button button-secondary" data-collection-target="add" data-action="collection#add">+ {{ section.label }}</button>
+                    {% endif %}
+                </div>
+                {% do child.setRendered %}
+            {% elseif section.inline %}
+                <div class="composite-inline">{{ composite.node(child, section, editable) }}</div>
+            {% else %}
+                {{ composite.node(child, section, editable) }}
+            {% endif %}
+        </fieldset>
+    {% endfor %}
+    {% if form.sections is defined %}{% do form.sections.setRendered %}{% endif %}
+{% endmacro %}
+
+{% macro row(form, section, editable) %}
+    {% import _self as composite %}
+    {% if section.inline %}
+        {# The fields on one line, their labels kept for screen readers; "×" at the end. #}
+        <fieldset class="composite-row composite-inline" data-collection-target="row">
+            {{ composite.node(form, section, editable) }}
+            {% if editable %}
+                <button type="button" class="button button-secondary composite-remove" data-action="collection#remove" aria-label="Remove">×</button>
+            {% endif %}
+        </fieldset>
+    {% else %}
+        <fieldset class="composite-row" data-collection-target="row">
+            <div class="composite-row-header">
+                <span class="muted">{{ section.label }}</span>
+                {% if editable %}
+                    <button type="button" class="button button-secondary composite-remove" data-action="collection#remove">Remove</button>
+                {% endif %}
+            </div>
+            {{ composite.node(form, section, editable) }}
+        </fieldset>
+    {% endif %}
+{% endmacro %}

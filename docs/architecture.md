@@ -7,7 +7,7 @@ from `fedale/gridview-bundle`, the runtime settings from `fedale/setting-bundle`
 
 | Schema | Holds | Managed by |
 |---|---|---|
-| `core` | Object, field and view definitions, the schema change log, users and profiles | Doctrine ORM and migrations |
+| `core` | Object, field, view and composite form definitions, the schema change log, users and profiles | Doctrine ORM and migrations |
 | `data` | One table per object, `c_<object>`, holding the records | The Schema module, from the metadata |
 | `public` | Settings of `fedale/setting-bundle`, RBAC tables (`auth_*`) of `fedale/rbac-bundle` | Doctrine migrations |
 
@@ -31,12 +31,12 @@ A module only sees the `Contract` of the other modules. Two Deptrac rulesets enf
 
 | Module | Responsibility | Depends on (contracts) |
 |---|---|---|
-| Metadata | Object, field and view definitions, the cached registry, the `metadata:*` commands | — |
+| Metadata | Object, field, view and composite form definitions, the cached registry, the `metadata:*` commands | — |
 | FieldType | The field types: settings, columns, conversion, constraints, widgets | Metadata |
 | Schema | Turns definitions into DDL: tables, indexes, foreign keys, trigram indexes; `schema:sync` | Metadata, FieldType, Search |
 | Validation | One validator for every record write, built from the metadata | Metadata, FieldType |
 | Search | Search handlers and the search configuration of objects | Metadata, FieldType |
-| Record | Record storage, the write pipeline, delete rules, lookups, the grid source, forms (with their view layout) and pages | Metadata, FieldType, Validation, Search |
+| Record | Record storage, the write pipeline, delete rules, lookups, the grid source, forms (with their view layout), composite forms and pages | Metadata, FieldType, Validation, Search |
 | Admin | The no-code builder at `/admin`, on `MetadataManagerInterface` | Metadata, FieldType, Schema |
 | User | Users and their profiles, sign-in (Symfony Security), `user:create` | — |
 | Access | The permissions of objects and admin, checked through `fedale/rbac-bundle`; `access:sync` | Metadata |

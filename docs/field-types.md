@@ -14,7 +14,7 @@ missing keys take their default, unknown keys are refused.
 | `tel` | none | `varchar(30)` | phone input | text |
 | `url` | none | `varchar(2048)` | URL input | text (shown as a link) |
 | `select` | `options` (required), `default`, `display` (`dropdown`) | `varchar(100)` | select or buttons side by side | choice |
-| `password` | `minLength` (8), `requireMixedCase`, `requireDigit`, `requireSymbol`, `confirm` (all false) | `varchar(255)`, a hash | password input, asked twice with `confirm` | none: never shown |
+| `password` | `minLength` (8), `requireMixedCase`, `requireDigit`, `requireSymbol`, `confirm`, `strengthMeter`, `revealToggle` (all false) | `varchar(255)`, a hash | password input, asked twice with `confirm` | none: never shown |
 | `relation` | `target` (required), `onDelete` (`set_null`), `inverseName`, `inverseLabel` | `uuid` + foreign key | autocomplete | choice of records |
 
 Settings added to a type after a field was created take their default on that field: a boolean
@@ -25,7 +25,8 @@ Every field column is nullable: "required" is a validation rule (see below).
 ## Rules common to every type
 
 - **Empty input is null.** An empty or blank string becomes null before validation.
-- **Required** (`--required`): null is refused with "This value is required.". On update, only the
+- **Required** (`--required`): null is refused with "This value is required.". Forms mark the
+  label with a red asterisk. On update, only the
   fields sent are checked: a required field left out keeps its value; set to null, it is refused.
 - **Unique** (`--unique`): a value used by another record is refused with "This value is already
   used.". A unique index backs the rule against concurrent saves. Values of deleted records stay
@@ -160,9 +161,11 @@ A secret, checked as typed and stored as a one-way hash (the `record_secret` has
 | `requireDigit` | bool | a digit |
 | `requireSymbol` | bool | a character that is neither a letter nor a digit |
 | `confirm` | bool | the form asks twice and checks both match |
+| `strengthMeter` | bool | a meter under the input shows how strong the password is while it is typed |
+| `revealToggle` | bool | an eye in the input shows the password in clear, and hides it again |
 
 ```json
-{"minLength": 8, "requireMixedCase": true, "requireDigit": true, "requireSymbol": true, "confirm": true}
+{"minLength": 8, "requireMixedCase": true, "requireDigit": true, "requireSymbol": true, "confirm": true, "strengthMeter": true, "revealToggle": true}
 ```
 
 - **Never read back.** The hash stays in the column: records, forms, grids, exports, search and
@@ -175,6 +178,14 @@ A secret, checked as typed and stored as a one-way hash (the `record_secret` has
   *Repeat password* and refuses "The two passwords do not match."; only one value reaches the
   record, and nothing of the second input is stored. Code writing a record directly gives the
   password once.
+- **The strength meter is a hint.** Four bars and a word (*Too short*, *Weak*, *Fair*, *Good*,
+  *Strong*), computed in the browser: below `minLength` it is *Too short*; then each kind of
+  character beyond the first (lower case, upper case, digit, symbol) and every 4 characters beyond
+  `minLength` add a level. It decides nothing: the rules above are what the server checks. It
+  watches the password typed first, never its confirmation.
+- **The eye** switches the input between hidden and clear text (*Show password* / *Hide
+  password* for screen readers). Like the meter, it is on the password typed first; leaving the
+  page always hides it again.
 - A password cannot be **unique**, **searched** (`metadata:object:search`) or the **label** of
   the records (`metadata:object:label`): the hash is salted, and a search or a sort on it would
   leak it. These are refused when configured, and the grid refuses to filter or sort on it.

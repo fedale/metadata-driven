@@ -74,6 +74,18 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         return $this->store->find($object, $id) ?? throw RecordNotFound::withId($object->name, $id);
     }
 
+    public function check(RecordInput $input, ?string $id = null): array
+    {
+        $object = $this->metadata->getObject($input->objectName);
+        try {
+            $this->validValues($object, $input, $id);
+        } catch (RecordValidationFailed $e) {
+            return $e->errors;
+        }
+
+        return [];
+    }
+
     public function delete(string $objectName, string $id): void
     {
         $object = $this->metadata->getObject($objectName);
@@ -104,6 +116,21 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     public function find(string $objectName, string $id): ?RecordOutput
     {
         return Uuid::isValid($id) ? $this->store->find($this->metadata->getObject($objectName), $id) : null;
+    }
+
+    public function findReferencing(string $objectName, string $fieldName, string $targetId): array
+    {
+        $object = $this->metadata->getObject($objectName);
+        $records = [];
+        // The store lists the newest first.
+        foreach (array_reverse($this->store->referencingIds($object, $object->field($fieldName), $targetId)) as $id) {
+            $record = $this->store->find($object, $id);
+            if (null !== $record) {
+                $records[] = $record;
+            }
+        }
+
+        return $records;
     }
 
     public function latest(string $objectName, int $limit = 50): array

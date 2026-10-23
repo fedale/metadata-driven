@@ -57,4 +57,19 @@ interface MetadataManagerInterface
     public function saveView(string $objectName, ViewKind $kind, string $name, string $template, bool $isDefault = false): string;
 
     public function deleteView(string $objectName, ViewKind $kind, string $name): void;
+
+    /**
+     * Creates a composite form, or replaces the definition of an existing one. Every error of
+     * the definition is reported at once, under the "definition" input.
+     *
+     * @param string $definition YAML: label, object, fields, service_fields, sections
+     *
+     * @return string the id of the form
+     */
+    public function saveForm(string $name, string $definition): string;
+
+    /**
+     * Deletes the form only: the records it wrote stay.
+     */
+    public function deleteForm(string $name): void;
 }

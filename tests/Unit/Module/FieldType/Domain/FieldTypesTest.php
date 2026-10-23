@@ -127,7 +127,10 @@ final class FieldTypesTest extends TestCase
             (new SelectFieldType())->widget(['options' => [['value' => 'dog', 'label' => 'Dog'], ['value' => 'cat', 'label' => 'Cat']], 'display' => 'radio']),
         );
         self::assertEquals(new Widget(WidgetKind::Checkbox, ['display' => 'switch']), (new BooleanFieldType())->widget(['default' => true, 'display' => 'switch']));
-        self::assertEquals(new Widget(WidgetKind::Password, ['confirm' => true]), self::password()->widget(['confirm' => true] + self::password()->defaultSettings()));
+        self::assertEquals(
+            new Widget(WidgetKind::Password, ['confirm' => true, 'strengthMeter' => true, 'revealToggle' => true, 'minLength' => 8]),
+            self::password()->widget(['confirm' => true, 'strengthMeter' => true, 'revealToggle' => true] + self::password()->defaultSettings()),
+        );
         self::assertEquals(new Widget(WidgetKind::Url, ['maxLength' => 2048]), (new UrlFieldType())->widget([]));
         self::assertEquals(new Widget(WidgetKind::Tel, ['maxLength' => 30]), (new TelFieldType())->widget([]));
     }
@@ -274,5 +277,7 @@ final class FieldTypesTest extends TestCase
         yield 'select unknown display' => [new SelectFieldType(), ['options' => [['value' => 'dog', 'label' => 'Dog']], 'display' => 'grid'], 'dropdown, radio'];
         yield 'password minLength zero' => [self::password(), ['minLength' => 0], '"minLength"'];
         yield 'password confirm not bool' => [self::password(), ['confirm' => 'yes'], '"confirm"'];
+        yield 'password strengthMeter not bool' => [self::password(), ['strengthMeter' => 1], '"strengthMeter"'];
+        yield 'password revealToggle not bool' => [self::password(), ['revealToggle' => 'on'], '"revealToggle"'];
     }
 }

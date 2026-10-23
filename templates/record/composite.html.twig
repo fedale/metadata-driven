@@ -1,0 +1,16 @@
+{% extends 'base.html.twig' %}
+{% import 'record/_composite.html.twig' as composite %}
+
+{% block title %}{{ definition.label }}{% endblock %}
+
+{% block body %}
+    <h1>{{ definition.label }}</h1>
+
+    {{ form_start(form, {attr: {class: 'record-form composite-form', novalidate: 'novalidate'}}) }}
+        {{ composite.node(form, definition.root, can_save) }}
+        <p class="muted required-legend"><span class="required-mark">*</span> Required field</p>
+        {% if can_save %}
+            <button type="submit" class="button">Save</button>
+        {% endif %}
+    {{ form_end(form) }}
+{% endblock %}

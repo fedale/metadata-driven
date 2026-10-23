@@ -51,12 +51,14 @@ final class PasswordFieldType extends AbstractFieldType
             new SettingDefinition('requireDigit', SettingKind::Boolean, 'At least one digit'),
             new SettingDefinition('requireSymbol', SettingKind::Boolean, 'At least one symbol', 'Any character that is neither a letter nor a digit.'),
             new SettingDefinition('confirm', SettingKind::Boolean, 'Ask twice', 'The form asks for the password a second time and checks both match; the second one is not stored.'),
+            new SettingDefinition('strengthMeter', SettingKind::Boolean, 'Strength meter', 'Shows how strong the password is while it is typed. A hint only: the rules above decide what is accepted.'),
+            new SettingDefinition('revealToggle', SettingKind::Boolean, 'Show/hide button', 'An eye in the input shows the password in clear, and hides it again.'),
         ];
     }
 
     public function defaultSettings(): array
     {
-        return ['minLength' => 8, 'requireMixedCase' => false, 'requireDigit' => false, 'requireSymbol' => false, 'confirm' => false];
+        return ['minLength' => 8, 'requireMixedCase' => false, 'requireDigit' => false, 'requireSymbol' => false, 'confirm' => false, 'strengthMeter' => false, 'revealToggle' => false];
     }
 
     protected function validateKnownSettings(array $settings): array
@@ -65,7 +67,7 @@ final class PasswordFieldType extends AbstractFieldType
         if (!self::isIntBetween($settings['minLength'], 1, self::MAX_MIN_LENGTH)) {
             $errors[] = \sprintf('Setting "minLength" must be an integer between 1 and %d.', self::MAX_MIN_LENGTH);
         }
-        foreach (['requireMixedCase', 'requireDigit', 'requireSymbol', 'confirm'] as $flag) {
+        foreach (['requireMixedCase', 'requireDigit', 'requireSymbol', 'confirm', 'strengthMeter', 'revealToggle'] as $flag) {
             if (!\is_bool($settings[$flag])) {
                 $errors[] = \sprintf('Setting "%s" must be a boolean.', $flag);
             }
@@ -105,7 +107,12 @@ final class PasswordFieldType extends AbstractFieldType
 
     public function widget(array $settings): Widget
     {
-        return new Widget(WidgetKind::Password, ['confirm' => self::boolSetting($settings, 'confirm')]);
+        return new Widget(WidgetKind::Password, [
+            'confirm' => self::boolSetting($settings, 'confirm'),
+            'strengthMeter' => self::boolSetting($settings, 'strengthMeter'),
+            'revealToggle' => self::boolSetting($settings, 'revealToggle'),
+            'minLength' => self::intSetting($settings, 'minLength'),
+        ]);
     }
 
     public function isWriteOnly(): bool

@@ -52,6 +52,10 @@ final class RecordControllerTest extends WebTestCase
         self::assertResponseIsSuccessful();
         self::assertSame('20', $crawler->filter('input[name="record[name]"]')->attr('maxlength'));
         self::assertSame('required', $crawler->filter('input[name="record[name]"]')->attr('required'));
+        // The label of a required field is marked (an asterisk, explained under the form).
+        self::assertStringContainsString('required', (string) $crawler->filter('label[for="record_name"]')->attr('class'));
+        self::assertStringNotContainsString('required', (string) $crawler->filter('label[for="record_weight"]')->attr('class'));
+        self::assertSelectorTextContains('.required-legend', 'Required field');
         self::assertCount(3, $crawler->filter('select[name="record[species]"] option'));
         self::assertSame('number', $crawler->filter('input[name="record[weight]"]')->attr('type'));
         self::assertSame('0.01', $crawler->filter('input[name="record[weight]"]')->attr('step'));
@@ -97,6 +101,11 @@ final class RecordControllerTest extends WebTestCase
         self::assertCount(3, $crawler->filter('.segmented-row input[type="radio"][name="record[gender]"]'));
         self::assertCount(1, $crawler->filter('input[type="password"][name="record[password][first]"]'));
         self::assertCount(1, $crawler->filter('input[type="password"][name="record[password][second]"]'));
+        // The strength meter watches the password typed first, not its confirmation.
+        // So does the show/hide eye.
+        self::assertSame('password-strength password-reveal', $crawler->filter('input[name="record[password][first]"]')->attr('data-controller'));
+        self::assertSame('8', $crawler->filter('input[name="record[password][first]"]')->attr('data-password-strength-min-length-value'));
+        self::assertNull($crawler->filter('input[name="record[password][second]"]')->attr('data-controller'));
         self::assertCount(1, $crawler->filter('input[type="url"][name="record[website]"]'));
         self::assertCount(1, $crawler->filter('input[type="tel"][name="record[phone]"]'));
 

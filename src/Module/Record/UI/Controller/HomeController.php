@@ -22,6 +22,20 @@ final class HomeController extends AbstractController
             static fn ($object): bool => $access->canRecords($object->name, RecordAction::Read),
         );
 
-        return $this->render('record/home.html.twig', ['objects' => $objects, 'can_administer' => $access->canAdminister()]);
+        // The forms the user may fill in: creating records of every object they touch.
+        $forms = array_filter(
+            $metadata->allForms(),
+            static function ($form) use ($access): bool {
+                foreach ($form->root->objects() as $object) {
+                    if (!$access->canRecords($object, RecordAction::Create)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            },
+        );
+
+        return $this->render('record/home.html.twig', ['objects' => $objects, 'forms' => $forms, 'can_administer' => $access->canAdminister()]);
     }
 }

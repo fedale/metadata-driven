@@ -14,6 +14,7 @@
             <div class="record-layout">{{ record_form_layout(form, layout) }}</div>
         {% endif %}
         {{ form_rest(form) }}
+        <p class="muted required-legend"><span class="required-mark">*</span> Required field</p>
         {% if record is null or can_update|default(false) %}
             <button type="submit" class="button">Save</button>
         {% endif %}

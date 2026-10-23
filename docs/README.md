@@ -13,6 +13,7 @@ Objects are defined from the admin UI at `/admin` or from the console.
 |---|---|
 | [Getting started](getting-started.md) | Run the app, then build a small model from scratch: objects, fields, a relation, search |
 | [Admin UI](admin.md) | The no-code builder at `/admin`: objects, fields, labels, search, views, table status |
+| [Composite forms](forms.md) | One form writing a record and its related records (one-to-one and repeatable sections, nested), defined in YAML |
 | [Views](views.md) | Layouts of the record form: HTML with a `{field}` token per field, from the admin UI or the console |
 | [Users and permissions](access.md) | Signing in, users, the permissions of every object, roles |
 | [Console commands](console.md) | Every command, its arguments and options, what it changes in the database |

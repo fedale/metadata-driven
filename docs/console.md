@@ -16,6 +16,8 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:object:search`](#metadataobjectsearch) | Choose how the records of an object are searched |
 | [`metadata:view:save`](#metadataviewsave) | Create or replace a view: an HTML layout of the record form |
 | [`metadata:view:delete`](#metadataviewdelete) | Delete a view |
+| [`metadata:form:save`](#metadataformsave) | Create or replace a composite form from its YAML definition |
+| [`metadata:form:delete`](#metadataformdelete) | Delete a composite form (its records stay) |
 | [`metadata:list`](#metadatalist) | List the objects, or the fields of one object |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
 | `user:create` | Create a user who can sign in — see [Users and permissions](access.md#usercreate) |
@@ -106,9 +108,9 @@ symfony console metadata:field:create account gender select Gender \
 # On/off switch, on for new records
 symfony console metadata:field:create account active boolean Active --settings='{"default":true,"display":"switch"}'
 
-# Password: hashed, with strength rules, asked twice in the form
+# Password: hashed, with strength rules, asked twice in the form, with a strength meter and a show/hide eye
 symfony console metadata:field:create account password password Password --required \
-  --settings='{"minLength":8,"requireMixedCase":true,"requireDigit":true,"requireSymbol":true,"confirm":true}'
+  --settings='{"minLength":8,"requireMixedCase":true,"requireDigit":true,"requireSymbol":true,"confirm":true,"strengthMeter":true,"revealToggle":true}'
 
 # Text with a pattern
 symfony console metadata:field:create account zipcode text "Postal code" \
@@ -231,6 +233,31 @@ metadata:view:delete [--kind=KIND] <object> <name>
 
 Deleting the default view leaves the object without one: its form goes back to the plain layout
 until another view is marked as default.
+
+## `metadata:form:save`
+
+Create a composite form, or replace the definition of an existing one (see
+[Composite forms](forms.md) for the definition).
+
+```
+metadata:form:save <name> <file>
+```
+
+| Argument | Description |
+|---|---|
+| `name` | The form's machine name; the form opens at `/f/<name>/new` |
+| `file` | The file holding the YAML definition, `-` for the standard input |
+
+Fails with the list of every error of the definition: an unknown object or field, a `via` that is
+not a relation pointing at the parent's object (the candidates are suggested), an unknown key...
+
+## `metadata:form:delete`
+
+```
+metadata:form:delete <name>
+```
+
+Deletes the definition only: the records the form wrote stay.
 
 ## `metadata:list`
 
