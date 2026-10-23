@@ -107,7 +107,8 @@ final class AdminFormController extends AbstractController
     {
         $this->denyUnlessAdministrator();
         $definition = $this->formOr404($form);
-        if ($this->deleteForm($definition)->handleRequest($request)->isSubmitted()) {
+        $form = $this->deleteForm($definition)->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
             try {
                 $this->manager->deleteForm($definition->name);
                 $this->addFlash('success', \sprintf('Form "%s" deleted; its records stay.', $definition->name));

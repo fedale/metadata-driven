@@ -57,6 +57,14 @@ final class AdminFormControllerTest extends WebTestCase
         self::assertFalse($this->registry()->hasForm('phonebook'));
     }
 
+    public function testDeletingAFormNeedsAValidToken(): void
+    {
+        // A cross-site request: no form token, and an origin the stateless CSRF check refuses.
+        $this->client->setServerParameter('HTTP_ORIGIN', 'https://evil.example');
+        $this->client->request('POST', '/admin/forms/registration/delete', ['delete_form' => []]);
+        self::assertTrue($this->registry()->hasForm('registration'));
+    }
+
     public function testTheHomePageOffersTheForms(): void
     {
         $this->client->request('GET', '/');

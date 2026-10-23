@@ -7,8 +7,11 @@ namespace App\Module\Record\UI\Controller;
 use App\Module\Access\Contract\AccessCheckerInterface;
 use App\Module\Access\Contract\RecordAction;
 use App\Module\Metadata\Contract\Dto\FormDefinitionDto;
+use App\Module\Metadata\Contract\Dto\FormNodeDto;
+use App\Module\Metadata\Contract\Dto\FormNodeMode;
 use App\Module\Metadata\Contract\Exception\FormDefinitionNotFound;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Record\Application\CascadeTargets;
 use App\Module\Record\Contract\CompositeRecordManagerInterface;
 use App\Module\Record\Contract\Exception\CompositeValidationFailed;
 use App\Module\Record\UI\Form\CompositeFormFactory;
@@ -24,7 +27,9 @@ use Symfony\Component\Routing\Requirement\Requirement;
  *
  * Opening a form needs the read permission on every object it touches; saving it, the
  * create permission (a new form) or the create, update and delete permissions (an existing
- * one) on every object, since sections add, change and remove records.
+ * one) on every object, since sections add, change and remove records. Removing a row may
+ * cascade to the records of other objects: saving an existing form also needs the delete
+ * permission on each of them.
  */
 #[Route('/f/{form}', name: 'composite_', requirements: ['form' => '[a-z][a-z0-9_]*'])]
 final class CompositeFormController extends AbstractController
@@ -34,6 +39,7 @@ final class CompositeFormController extends AbstractController
         private readonly CompositeRecordManagerInterface $records,
         private readonly CompositeFormFactory $forms,
         private readonly AccessCheckerInterface $access,
+        private readonly CascadeTargets $cascadeTargets,
     ) {
     }
 
@@ -57,8 +63,11 @@ final class CompositeFormController extends AbstractController
     public function edit(string $form, string $id, Request $request): Response
     {
         $definition = $this->formOr404($form);
-        $canSave = $this->can($definition, [RecordAction::Create, RecordAction::Update, RecordAction::Delete]);
+        $canSave = $this->can($definition, [RecordAction::Create, RecordAction::Update, RecordAction::Delete]) && $this->canDeleteCascades($definition);
         $this->denyUnless($definition, $request->isMethod('POST') ? [RecordAction::Create, RecordAction::Update, RecordAction::Delete] : [RecordAction::Read]);
+        if ($request->isMethod('POST') && !$this->canDeleteCascades($definition)) {
+            throw $this->createAccessDeniedException(\sprintf('Saving form "%s" may delete records you may not delete.', $definition->name));
+        }
         $record = $this->records->read($definition->name, $id) ?? throw $this->createNotFoundException(\sprintf('Record "%s" of object "%s" does not exist.', $id, $definition->root->object));
         $composite = $this->forms->create($definition, $record, readOnly: !$canSave)->handleRequest($request);
 
@@ -110,6 +119,42 @@ final class CompositeFormController extends AbstractController
         }
 
         return true;
+    }
+
+    /**
+     * The rows a form removes are deleted with their delete rules: every object a cascade may
+     * reach needs the delete permission too, as on a record's own page.
+     */
+    private function canDeleteCascades(FormDefinitionDto $definition): bool
+    {
+        foreach (self::rowObjects($definition->root) as $object) {
+            foreach ($this->cascadeTargets->of($object) as $target) {
+                if (!$this->access->canRecords($target->name, RecordAction::Delete)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * The objects whose records the form may delete: those of its one-to-many sections, where
+     * a row can be removed. The root and the one-to-one sections are never deleted.
+     *
+     * @return list<string>
+     */
+    private static function rowObjects(FormNodeDto $node): array
+    {
+        $objects = [];
+        foreach ($node->sections as $section) {
+            if (FormNodeMode::Many === $section->mode) {
+                $objects[] = $section->object;
+            }
+            $objects = [...$objects, ...self::rowObjects($section)];
+        }
+
+        return array_values(array_unique($objects));
     }
 
     /**

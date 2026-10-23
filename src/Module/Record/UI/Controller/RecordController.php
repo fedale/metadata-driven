@@ -7,10 +7,10 @@ namespace App\Module\Record\UI\Controller;
 use App\Module\Access\Contract\AccessCheckerInterface;
 use App\Module\Access\Contract\RecordAction;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
-use App\Module\Metadata\Contract\Dto\OnDelete;
 use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Record\Application\CascadeTargets;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordLabel;
 use App\Module\Record\Contract\Dto\RecordOutput;
@@ -46,6 +46,7 @@ final class RecordController extends AbstractController
         private readonly RecordFormFactory $forms,
         private readonly RecordGridFactory $grids,
         private readonly AccessCheckerInterface $access,
+        private readonly CascadeTargets $cascadeTargets,
     ) {
     }
 
@@ -174,7 +175,7 @@ final class RecordController extends AbstractController
     {
         $definition = $this->objectFor($object, RecordAction::Delete);
         // A cascade deletes records of other objects: it needs their delete permission too.
-        foreach ($this->cascadeTargets($definition->name) as $target) {
+        foreach ($this->cascadeTargets->of($definition->name) as $target) {
             if (!$this->access->canRecords($target->name, RecordAction::Delete)) {
                 $this->addFlash('error', \sprintf('Deleting this record also deletes %s, which you may not delete.', $target->labelPlural));
 
@@ -197,30 +198,6 @@ final class RecordController extends AbstractController
         }
 
         return $this->redirectToRoute('record_index', ['object' => $definition->name], Response::HTTP_SEE_OTHER);
-    }
-
-    /**
-     * Every object whose records a deletion may cascade to, through cascade relations,
-     * transitively. Decided on the metadata, whether such records exist or not.
-     *
-     * @return array<string, ObjectDefinitionDto> keyed by object name
-     */
-    private function cascadeTargets(string $objectName): array
-    {
-        $targets = [];
-        $pending = [$objectName];
-        while (null !== $current = array_pop($pending)) {
-            foreach ($this->metadata->incomingRelations($current) as $reference) {
-                $source = $reference->object;
-                if (OnDelete::Cascade === $reference->settings->onDelete && !isset($targets[$source->name])) {
-                    $targets[$source->name] = $source;
-                    $pending[] = $source->name;
-                }
-            }
-        }
-        unset($targets[$objectName]);
-
-        return $targets;
     }
 
     /**

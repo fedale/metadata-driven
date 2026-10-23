@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Module\Record;
 
+use App\Module\Metadata\Application\Command\CreateFieldCommand;
+use App\Module\Metadata\Application\Command\CreateObjectCommand;
+use App\Module\Metadata\Application\Handler\CreateFieldHandler;
+use App\Module\Metadata\Application\Handler\CreateObjectHandler;
+use App\Module\Record\Contract\CompositeRecordManagerInterface;
+use App\Module\Record\Contract\Dto\CompositeNodeInput;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Tests\Support\CreatesRegistrationForm;
 use App\Tests\Support\SignsIn;
@@ -113,6 +119,33 @@ final class CompositeFormControllerTest extends WebTestCase
         self::signIn($this->client, 'clerk@example.com', ['record.account.read', 'record.account.create', 'record.profile.read', 'record.profile.create']);
 
         $this->client->request('GET', '/f/registration/new');
+        self::assertResponseStatusCodeSame(403);
+    }
+
+    public function testRemovingRowsNeedsTheDeletePermissionOfTheirCascades(): void
+    {
+        // Deleting a phone deletes its calls: an object the form does not show.
+        $container = self::getContainer();
+        $container->get(CreateObjectHandler::class)(new CreateObjectCommand('call', 'Call', 'Calls'));
+        $container->get(CreateFieldHandler::class)(new CreateFieldCommand('call', 'phone', 'relation', 'Phone', settings: ['target' => 'phone', 'onDelete' => 'cascade']));
+        $permissions = [];
+        foreach (['account', 'profile', 'phone', 'qualification'] as $object) {
+            foreach (['read', 'create', 'update', 'delete'] as $action) {
+                $permissions[] = \sprintf('record.%s.%s', $object, $action);
+            }
+        }
+        self::signIn($this->client, 'clerk@example.com', [...$permissions, 'record.call.read']);
+        $id = $container->get(CompositeRecordManagerInterface::class)->save('registration', null, new CompositeNodeInput(
+            values: ['username' => 'mario', 'email' => 'mario@example.com', 'firstname' => 'Mario', 'lastname' => 'Rossi', 'password' => 'secret123'],
+            service: ['terms' => true],
+            sections: ['profile' => new CompositeNodeInput(values: ['city' => 'Milano'], sections: ['phones' => [new CompositeNodeInput(values: ['number' => '333 123 4567'])]])],
+        ));
+
+        // The page opens read-only; saving it is refused.
+        $crawler = $this->client->request('GET', '/f/registration/'.$id.'/edit');
+        self::assertResponseIsSuccessful();
+        self::assertCount(0, $crawler->selectButton('Save'));
+        $this->client->request('POST', '/f/registration/'.$id.'/edit', ['composite' => []]);
         self::assertResponseStatusCodeSame(403);
     }
 
