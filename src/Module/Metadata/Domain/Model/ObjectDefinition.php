@@ -169,6 +169,46 @@ class ObjectDefinition
         $this->updatedAt = new \DateTimeImmutable();
     }
 
+    /**
+     * Makes a field apply only while another field holds one of some values; null values: always.
+     *
+     * The deciding field must be another field of this object, without a condition of its own,
+     * and the field must not decide for another one: no chains. Whether the deciding field's
+     * type and the values fit is checked by the caller, who knows the field types.
+     *
+     * @param list<string> $values
+     */
+    public function setFieldCondition(string $fieldName, ?string $decidingField, array $values): void
+    {
+        $field = $this->getField($fieldName);
+        if (null === $decidingField) {
+            $field->applyWhen(null);
+            $this->updatedAt = new \DateTimeImmutable();
+
+            return;
+        }
+
+        $deciding = $this->getField($decidingField);
+        if ($deciding === $field) {
+            throw InvalidMetadataDefinition::invalidCondition($fieldName, 'a field cannot decide for itself');
+        }
+        if (null !== $deciding->getCondition()) {
+            throw InvalidMetadataDefinition::invalidCondition($fieldName, \sprintf('"%s" has a condition of its own: conditions do not chain', $decidingField));
+        }
+        foreach ($this->fields as $other) {
+            if (($other->getCondition()['field'] ?? null) === $fieldName) {
+                throw InvalidMetadataDefinition::invalidCondition($fieldName, \sprintf('it decides for "%s": conditions do not chain', $other->getName()));
+            }
+        }
+        $values = array_values(array_unique(array_filter($values, static fn (string $value): bool => '' !== trim($value))));
+        if ([] === $values) {
+            throw InvalidMetadataDefinition::invalidCondition($fieldName, 'give at least one value');
+        }
+
+        $field->applyWhen(['field' => $decidingField, 'values' => $values]);
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
     public function getField(string $name): FieldDefinition
     {
         foreach ($this->fields as $field) {

@@ -21,6 +21,11 @@
                 <option name="jsonb">true</option>
             </options>
         </field>
+        <field name="condition" type="json" nullable="true">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
         <field name="position" type="integer"/>
         <field name="isSystem" type="boolean"/>
         <field name="createdAt" type="datetime_immutable"/>

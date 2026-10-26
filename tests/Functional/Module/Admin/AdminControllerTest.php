@@ -150,6 +150,37 @@ final class AdminControllerTest extends WebTestCase
         self::assertCount(0, $crawler->filter('select[name="label_field[field]"] option[value="secret"]'));
     }
 
+    public function testSetsAConditionAndTheFormFollowsIt(): void
+    {
+        $this->createObject('course', 'Course', 'Courses');
+        $this->addField('course', 'select', ['name' => 'kind', 'label' => 'Kind', 'settings' => ['options' => "online | Online\nclassroom | Classroom"]]);
+        $this->addField('course', 'text', ['name' => 'room', 'label' => 'Room']);
+
+        $this->client->request('GET', '/admin/objects/course/fields/room');
+        self::assertSelectorTextContains('form[name="condition"]', 'kind: online, classroom');
+        $this->client->submitForm('Save condition', ['condition[when]' => 'kind', 'condition[values]' => 'classroom']);
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.md-flash--success', 'Condition saved.');
+        self::assertSelectorTextContains('.md-facts', 'when kind is classroom');
+        self::assertSame(['classroom'], $this->registry()->getObject('course')->field('room')->condition?->values);
+
+        // The room's row follows the kind; every row names its field.
+        $crawler = $this->client->request('GET', '/o/course/new');
+        $room = $crawler->filter('[data-gv-field="room"]');
+        self::assertSame('gridview-conditional', $room->attr('data-controller'));
+        self::assertSame('kind', $room->attr('data-gridview-conditional-field-value'));
+        self::assertSame('["classroom"]', $room->attr('data-gridview-conditional-values-value'));
+        self::assertNull($crawler->filter('[data-gv-field="kind"]')->attr('data-controller'));
+
+        // A value the choice never holds is refused, and "Always" removes the condition.
+        $this->client->request('GET', '/admin/objects/course/fields/room');
+        $this->client->submitForm('Save condition', ['condition[when]' => 'kind', 'condition[values]' => 'webinar']);
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.md-flash--error', 'never holds webinar');
+        $this->client->submitForm('Save condition', ['condition[when]' => '', 'condition[values]' => '']);
+        self::assertNull($this->registry()->getObject('course')->field('room')->condition);
+    }
+
     public function testManagesViewsFromTheUi(): void
     {
         $this->createObject('author', 'Author', 'Authors');

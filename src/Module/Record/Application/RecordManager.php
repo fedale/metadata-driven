@@ -25,8 +25,9 @@ use App\Shared\Transaction\TransactionRunner;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Pipeline of every record write: RecordInput → denormalization → validation → conversion
- * to the stored form (e.g. password hashes) → storage.
+ * Pipeline of every record write: RecordInput → denormalization → conditions (the fields
+ * that do not apply are emptied) → validation → conversion to the stored form (e.g. password
+ * hashes) → storage.
  */
 final class RecordManager implements RecordManagerInterface, RecordFinderInterface
 {
@@ -146,11 +147,49 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     private function validValues(ObjectDefinitionDto $object, RecordInput $input, ?string $recordId): array
     {
         ['values' => $values, 'errors' => $errors] = $this->denormalizer->denormalize($object, $input, complete: null === $recordId);
+        $values = $this->applyConditions($object, $values, $recordId);
 
         // Fields that could not be converted are already reported: validate the others only.
         $errors += $this->validator->validate($object, array_diff_key($values, $errors), $recordId);
         if ([] !== $errors) {
             throw new RecordValidationFailed($object->name, $errors);
+        }
+
+        return $values;
+    }
+
+    /**
+     * Empties the fields whose condition is not met, so that a hidden field never keeps a value
+     * (a course's hours once the qualification becomes a language). On update the deciding
+     * fields the input leaves out are read from the record, and written back unchanged, so that
+     * the validator sees them too.
+     *
+     * @param array<string, mixed> $values denormalized
+     *
+     * @return array<string, mixed>
+     */
+    private function applyConditions(ObjectDefinitionDto $object, array $values, ?string $recordId): array
+    {
+        $deciding = [];
+        foreach ($object->fields as $field) {
+            if (null !== $field->condition) {
+                $deciding[$field->condition->field] = true;
+            }
+        }
+        if ([] === $deciding) {
+            return $values;
+        }
+
+        if (null !== $recordId && [] !== array_diff_key($deciding, $values)) {
+            $current = $this->store->find($object, $recordId)->values ?? [];
+            foreach (array_keys(array_diff_key($deciding, $values)) as $name) {
+                $values[$name] = $current[$name] ?? null;
+            }
+        }
+        foreach ($object->fields as $name => $field) {
+            if (!$field->appliesTo($values)) {
+                $values[$name] = null;
+            }
         }
 
         return $values;

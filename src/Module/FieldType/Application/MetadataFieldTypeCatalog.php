@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\FieldType\Application;
 
+use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
 use App\Module\Metadata\Contract\Exception\InvalidFieldSettings;
 use App\Module\Metadata\Contract\FieldTypeCatalogInterface;
@@ -31,6 +32,20 @@ final class MetadataFieldTypeCatalog implements FieldTypeCatalogInterface
     public function defaultSettings(string $type): array
     {
         return $this->registry->has($type) ? $this->registry->get($type)->defaultSettings() : [];
+    }
+
+    public function conditionValues(string $type, array $settings): ?array
+    {
+        if (!$this->registry->has($type)) {
+            return null;
+        }
+        $widget = $this->registry->get($type)->widget($settings);
+
+        return match ($widget->kind) {
+            WidgetKind::Choice => array_map(strval(...), array_keys($widget->choices())),
+            WidgetKind::Checkbox => ['true', 'false'],
+            default => null,
+        };
     }
 
     public function isWriteOnly(string $type): bool

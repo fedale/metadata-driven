@@ -106,6 +106,18 @@ final class CompositeRecordManagerTest extends KernelTestCase
         self::assertNull($this->finder->find('profile', $profile->record->id)?->get('city'));
     }
 
+    public function testWhatTheFormRequiresFollowsTheConditions(): void
+    {
+        // The city applies to a profile only when the gender is given as "f" (a test rule).
+        self::getContainer()->get(MetadataManagerInterface::class)->configureFieldCondition('profile', 'city', 'gender', ['f']);
+
+        $id = $this->forms->save('registration', null, $this->registration(profile: ['gender' => 'm', 'city' => '']));
+        self::assertNull(self::one($this->read($id), 'profile')->record->get('city'));
+
+        $this->expectException(CompositeValidationFailed::class);
+        $this->forms->save('registration', null, $this->registration(account: ['username' => 'anna', 'email' => 'anna@example.com'], profile: ['gender' => 'f', 'city' => '']));
+    }
+
     public function testEditingUpdatesAddsAndRemovesRows(): void
     {
         $id = $this->forms->save('registration', null, $this->registration());

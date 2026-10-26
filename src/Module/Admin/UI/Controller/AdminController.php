@@ -6,9 +6,11 @@ namespace App\Module\Admin\UI\Controller;
 
 use App\Module\Access\Contract\AccessCheckerInterface;
 use App\Module\Admin\UI\Form\FieldSettingsForm;
+use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\Exception\UnknownFieldType;
 use App\Module\FieldType\Contract\FieldTypeInterface;
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
+use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewKind;
@@ -261,7 +263,29 @@ final class AdminController extends AbstractController
             'field' => $fieldDefinition,
             'type' => $this->fieldTypes->get($fieldDefinition->type),
             'form' => $form,
+            'condition_form' => $this->conditionForm($definition, $fieldDefinition)->createView(),
         ]);
+    }
+
+    #[Route('/objects/{object}/fields/{field}/condition', name: 'field_condition', methods: ['POST'])]
+    public function configureFieldCondition(string $object, string $field, Request $request): Response
+    {
+        $this->denyUnlessAdministrator();
+        $definition = $this->objectOr404($object);
+        if (!$definition->hasField($field)) {
+            throw $this->createNotFoundException(\sprintf('Object "%s" has no field "%s".', $object, $field));
+        }
+        $form = $this->conditionForm($definition, $definition->field($field))->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
+            $when = $form->get('when')->getData();
+            $values = array_values(array_filter(array_map(trim(...), explode(',', $this->text($form, 'values'))), static fn (string $value): bool => '' !== $value));
+            $this->applyAndFlash(
+                fn () => $this->manager->configureFieldCondition($definition->name, $field, \is_string($when) ? $when : null, $values),
+                \is_string($when) ? 'Condition saved.' : 'The field always applies.',
+            );
+        }
+
+        return $this->redirectToRoute('admin_field_edit', ['object' => $definition->name, 'field' => $field], Response::HTTP_SEE_OTHER);
     }
 
     #[Route('/objects/{object}/views/new', name: 'view_new', methods: ['GET', 'POST'])]
@@ -492,6 +516,50 @@ final class AdminController extends AbstractController
         return $this->forms->createNamedBuilder('delete_view', FormType::class, null, [
             'action' => $this->generateUrl('admin_view_delete', ['object' => $object->name, 'kind' => $view->kind->value, 'view' => $view->name]),
         ])->getForm();
+    }
+
+    /**
+     * The deciding fields offered: the other choice and yes/no fields of the object, each with
+     * the values it can hold in the help.
+     *
+     * @return FormInterface<mixed>
+     */
+    private function conditionForm(ObjectDefinitionDto $object, FieldDefinitionDto $field): FormInterface
+    {
+        $choices = [];
+        $help = [];
+        foreach ($object->fields as $name => $candidate) {
+            if ($name === $field->name || null !== $candidate->condition) {
+                continue;
+            }
+            $widget = $this->fieldTypes->get($candidate->type)->widget($candidate->settings);
+            $values = match ($widget->kind) {
+                WidgetKind::Choice => array_map(strval(...), array_keys($widget->choices())),
+                WidgetKind::Checkbox => ['true', 'false'],
+                default => null,
+            };
+            if (null !== $values) {
+                $choices[$candidate->label] = $name;
+                $help[] = \sprintf('%s: %s', $name, implode(', ', $values));
+            }
+        }
+
+        return $this->forms->createNamedBuilder('condition', FormType::class, [
+            'when' => $field->condition?->field,
+            'values' => null === $field->condition ? '' : implode(', ', $field->condition->values),
+        ], ['action' => $this->generateUrl('admin_field_condition', ['object' => $object->name, 'field' => $field->name])])
+            ->add('when', ChoiceType::class, [
+                'label' => 'Shown when',
+                'choices' => $choices,
+                'required' => false,
+                'placeholder' => 'Always',
+            ])
+            ->add('values', TextType::class, [
+                'label' => 'is one of',
+                'required' => false,
+                'help' => [] === $help ? 'The object has no choice or yes/no field to decide.' : 'Comma separated. '.implode(' · ', $help),
+            ])
+            ->getForm();
     }
 
     /**

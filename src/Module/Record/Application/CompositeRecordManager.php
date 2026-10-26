@@ -116,7 +116,7 @@ final class CompositeRecordManager implements CompositeRecordManagerInterface
             $errors['' === $field ? rtrim($path, '.') : $path.'values.'.$field] = $messages;
         }
         foreach ($node->required as $field) {
-            $message = $this->checkRequiredHere($object, $field, $values[$field] ?? null, null === $id);
+            $message = $this->checkRequiredHere($object, $field, $values[$field] ?? null, null === $id, $values);
             if (null !== $message && !isset($recordErrors[$field])) {
                 $errors[$path.'values.'.$field] = [$message];
             }
@@ -261,12 +261,17 @@ final class CompositeRecordManager implements CompositeRecordManagerInterface
 
     /**
      * A field the form requires although its object does not: given, or a checked box. An
-     * existing password left empty is kept, so it counts as given.
+     * existing password left empty is kept, so it counts as given; a field whose condition is
+     * not met is not required.
      */
-    private function checkRequiredHere(ObjectDefinitionDto $object, string $field, mixed $value, bool $isNew): ?string
+    /**
+     * @param array<string, mixed> $values the node's values, for the field's condition
+     */
+    private function checkRequiredHere(ObjectDefinitionDto $object, string $field, mixed $value, bool $isNew, array $values): ?string
     {
-        $type = $this->fieldTypes->get($object->field($field)->type);
-        if (!$isNew && $type->isWriteOnly()) {
+        $definition = $object->field($field);
+        $type = $this->fieldTypes->get($definition->type);
+        if ((!$isNew && $type->isWriteOnly()) || !$definition->appliesTo($values)) {
             return null;
         }
         if (false === $value) {

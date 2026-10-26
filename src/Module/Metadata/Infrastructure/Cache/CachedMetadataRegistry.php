@@ -35,7 +35,7 @@ final class CachedMetadataRegistry implements MetadataRegistryInterface, ResetIn
     // (cache:clear does not empty it), and an old serialized snapshot would not hydrate.
     // The key also carries a fingerprint of the field types' default settings: the snapshot
     // merges them into the stored settings, so a setting added to a type renews it by itself.
-    private const string CACHE_KEY = 'metadata_snapshot.v5';
+    private const string CACHE_KEY = 'metadata_snapshot.v6';
     private const string FORMS_CACHE_KEY = 'metadata_forms.v3';
     private const string CACHE_TAG = 'metadata';
 

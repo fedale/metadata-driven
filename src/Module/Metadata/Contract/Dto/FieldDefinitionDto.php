@@ -10,7 +10,8 @@ namespace App\Module\Metadata\Contract\Dto;
 final readonly class FieldDefinitionDto
 {
     /**
-     * @param array<string, mixed> $settings type specific settings, already resolved with defaults
+     * @param array<string, mixed>   $settings  type specific settings, already resolved with defaults
+     * @param FieldConditionDto|null $condition when the field applies; null: always
      */
     public function __construct(
         public string $id,
@@ -23,7 +24,19 @@ final readonly class FieldDefinitionDto
         public array $settings,
         public int $position,
         public bool $isSystem,
+        public ?FieldConditionDto $condition = null,
     ) {
+    }
+
+    /**
+     * Whether the field applies to a record with these values (keyed by field name): always,
+     * unless its condition is not met.
+     *
+     * @param array<string, mixed> $values
+     */
+    public function appliesTo(array $values): bool
+    {
+        return null === $this->condition || $this->condition->isMetBy($values[$this->condition->field] ?? null);
     }
 
     /**

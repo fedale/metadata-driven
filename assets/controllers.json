@@ -92,6 +92,10 @@
             "password-reveal": {
                 "enabled": true,
                 "fetch": "lazy"
+            },
+            "conditional": {
+                "enabled": true,
+                "fetch": "lazy"
             }
         },
         "@symfony/ux-autocomplete": {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Application;
 
+use App\Module\Metadata\Application\Command\ConfigureFieldConditionCommand;
 use App\Module\Metadata\Application\Command\ConfigureObjectLabelCommand;
 use App\Module\Metadata\Application\Command\ConfigureObjectSearchCommand;
 use App\Module\Metadata\Application\Command\CreateFieldCommand;
@@ -12,6 +13,7 @@ use App\Module\Metadata\Application\Command\DeleteFormCommand;
 use App\Module\Metadata\Application\Command\DeleteViewCommand;
 use App\Module\Metadata\Application\Command\SaveFormCommand;
 use App\Module\Metadata\Application\Command\SaveViewCommand;
+use App\Module\Metadata\Application\Handler\ConfigureFieldConditionHandler;
 use App\Module\Metadata\Application\Handler\ConfigureObjectLabelHandler;
 use App\Module\Metadata\Application\Handler\ConfigureObjectSearchHandler;
 use App\Module\Metadata\Application\Handler\CreateFieldHandler;
@@ -45,6 +47,7 @@ final class MetadataManager implements MetadataManagerInterface
         private readonly CreateFieldHandler $createField,
         private readonly ConfigureObjectLabelHandler $configureLabel,
         private readonly ConfigureObjectSearchHandler $configureSearch,
+        private readonly ConfigureFieldConditionHandler $configureCondition,
         private readonly SaveViewHandler $saveView,
         private readonly DeleteViewHandler $deleteView,
         private readonly SaveFormHandler $saveForm,
@@ -75,6 +78,11 @@ final class MetadataManager implements MetadataManagerInterface
     {
         $this->assertLabels(['label' => $label]);
         $this->changeObject($objectName, static fn (ObjectDefinition $object) => $object->getField($fieldName)->relabel($label));
+    }
+
+    public function configureFieldCondition(string $objectName, string $fieldName, ?string $when, array $values = []): void
+    {
+        ($this->configureCondition)($this->valid(new ConfigureFieldConditionCommand($objectName, $fieldName, $when, $values)));
     }
 
     public function configureLabel(string $objectName, ?string $field): void
