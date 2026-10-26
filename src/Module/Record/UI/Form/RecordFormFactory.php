@@ -95,6 +95,7 @@ final class RecordFormFactory
                 $options['attr'] = (\is_array($options['attr'] ?? null) ? $options['attr'] : []) + ['placeholder' => $field->label.($field->isRequired ? ' *' : '')];
             }
             $options += ['label' => $field->label];
+            $options['row_attr'] = $this->rowAttr($field, $options['row_attr'] ?? []);
             $builder->add($name, $type, $options);
             if (WidgetKind::Relation === $widget->kind) {
                 $relations[$name] = [$options, $this->target($widget)];
@@ -114,6 +115,28 @@ final class RecordFormFactory
                 $event->getForm()->add($name, ChoiceType::class, $options);
             }
         });
+    }
+
+    /**
+     * Every row names its field; the row of a field with a condition is shown and hidden by
+     * the gridview-conditional controller of fedale/gridview-bundle, as the deciding field
+     * changes. The server empties the field when it does not apply, whatever the browser did.
+     *
+     * @return array<string, mixed>
+     */
+    private function rowAttr(FieldDefinitionDto $field, mixed $rowAttr): array
+    {
+        /** @var array<string, mixed> $rowAttr row_attr is a map of HTML attributes */
+        $rowAttr = (\is_array($rowAttr) ? $rowAttr : []) + ['data-gv-field' => $field->name];
+        if (null === $field->condition) {
+            return $rowAttr;
+        }
+
+        return $rowAttr + [
+            'data-controller' => 'gridview-conditional',
+            'data-gridview-conditional-field-value' => $field->condition->field,
+            'data-gridview-conditional-values-value' => json_encode($field->condition->values, \JSON_THROW_ON_ERROR),
+        ];
     }
 
     /**

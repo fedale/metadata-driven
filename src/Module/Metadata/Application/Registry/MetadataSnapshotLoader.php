@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Application\Registry;
 
+use App\Module\Metadata\Contract\Dto\FieldConditionDto;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
@@ -75,6 +76,7 @@ final class MetadataSnapshotLoader
             $field->getSettings() + $this->fieldTypes->defaultSettings($field->getType()),
             $field->getPosition(),
             $field->isSystem(),
+            null === $field->getCondition() ? null : new FieldConditionDto($field->getCondition()['field'], $field->getCondition()['values']),
         );
     }
 

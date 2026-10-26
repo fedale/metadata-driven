@@ -14,7 +14,7 @@ records. **New object** asks for the machine name and the two labels.
 
 | Section | What it does | Console equivalent |
 |---|---|---|
-| Fields | Every field with its column, type, rules and settings; **Add a field**, **Edit** (label) | `metadata:field:create`, `metadata:list <object>` |
+| Fields | Every field with its column, type, rules and settings; **Add a field**, **Edit** (label and condition) | `metadata:field:create`, `metadata:field:condition`, `metadata:list <object>` |
 | Views | The layouts of the record form; **Add a view**, **Edit**, **Delete** (see [Views](views.md)) | `metadata:view:save`, `metadata:view:delete` |
 | Pointed at by | The relation fields of other objects pointing at this one, with their delete rule | |
 | Labels | Rename the singular and plural labels | |
@@ -55,7 +55,15 @@ from an example definition (YAML) and lists every object with its fields and rel
 next to the editor; saving reports every error of the definition at once. See
 [Composite forms](forms.md).
 
+## A field — `/admin/objects/<object>/fields/<field>`
+
+The field's type, column, rules and settings, and when it applies. **Label** renames it.
+**Condition** makes it apply only while another field holds some values: choose the deciding
+field (the object's choice and yes/no fields are offered, each with its values in the help), type
+the values separated by commas, and save; **Always** removes the condition. See
+[Conditions](field-types.md#conditions).
+
 ## What cannot be changed
 
-Once a field exists its name, type and rules are fixed (the label can change), and objects and
-fields cannot be deleted yet.
+Once a field exists its name, type, rules and settings are fixed (the label and the condition can
+change), and objects and fields cannot be deleted yet.

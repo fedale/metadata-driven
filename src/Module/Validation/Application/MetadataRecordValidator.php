@@ -34,7 +34,7 @@ final class MetadataRecordValidator implements RecordValidatorInterface
     public function validate(ObjectDefinitionDto $object, array $values, ?string $recordId = null): array
     {
         $errors = [];
-        foreach ($this->validator->validate($values, $this->buildConstraint($object)) as $violation) {
+        foreach ($this->validator->validate($values, $this->buildConstraint($object, $values)) as $violation) {
             $errors[trim($violation->getPropertyPath(), '[]')][] = (string) $violation->getMessage();
         }
 
@@ -56,13 +56,17 @@ final class MetadataRecordValidator implements RecordValidatorInterface
         return $errors;
     }
 
-    private function buildConstraint(ObjectDefinitionDto $object): Assert\Collection
+    /**
+     * @param array<string, mixed> $values the deciding fields of the conditions among them
+     */
+    private function buildConstraint(ObjectDefinitionDto $object, array $values): Assert\Collection
     {
         $fields = [];
         foreach ($object->fields as $name => $field) {
             // Type constraints ignore null; "required" is the only rule about missing values.
             $constraints = $this->fieldTypes->get($field->type)->constraints($field->settings);
-            if ($field->isRequired) {
+            // A field whose condition is not met is not required (and has been emptied).
+            if ($field->isRequired && $field->appliesTo($values)) {
                 array_unshift($constraints, new Assert\NotNull(message: self::REQUIRED_MESSAGE));
             }
             // Optional: an update only carries the fields that change.

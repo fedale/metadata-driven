@@ -36,6 +36,14 @@ interface MetadataManagerInterface
     public function relabelField(string $objectName, string $fieldName, string $label): void;
 
     /**
+     * Makes a field apply only while another field of the object (a choice or a yes/no) holds
+     * one of the values; $when null removes the condition.
+     *
+     * @param list<string> $values
+     */
+    public function configureFieldCondition(string $objectName, string $fieldName, ?string $when, array $values = []): void;
+
+    /**
      * @param string|null $field null for the default (the first text-like field)
      */
     public function configureLabel(string $objectName, ?string $field): void;

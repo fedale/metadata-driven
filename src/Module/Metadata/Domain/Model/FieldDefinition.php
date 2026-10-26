@@ -17,6 +17,8 @@ class FieldDefinition
     private string $columnName;
     private string $label;
     private bool $isSystem = false;
+    /** @var array{field: string, values: list<string>}|null */
+    private ?array $condition = null;
     private \DateTimeImmutable $createdAt;
     private \DateTimeImmutable $updatedAt;
 
@@ -49,6 +51,25 @@ class FieldDefinition
 
         $this->label = $label;
         $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    /**
+     * @param array{field: string, values: list<string>}|null $condition checked by ObjectDefinition::setFieldCondition()
+     *
+     * @internal
+     */
+    public function applyWhen(?array $condition): void
+    {
+        $this->condition = $condition;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    /**
+     * @return array{field: string, values: list<string>}|null
+     */
+    public function getCondition(): ?array
+    {
+        return $this->condition;
     }
 
     public function getId(): Uuid

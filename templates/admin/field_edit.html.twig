@@ -11,6 +11,7 @@
         <dt>Column</dt><dd><code>data.{{ object.tableName }}.{{ field.columnName }}</code></dd>
         <dt>Rules</dt><dd>{{ field.isRequired ? 'required' : 'optional' }}{{ field.isUnique ? ', unique' : '' }}</dd>
         <dt>Settings</dt><dd><code class="md-settings">{{ field.settings|json_encode }}</code></dd>
+        <dt>Applies</dt><dd>{{ field.condition ? 'when ' ~ field.condition.field ~ ' is ' ~ field.condition.values|join(' or ') : 'always' }}</dd>
     </dl>
     <p class="gv-muted">The name, the type and the rules are fixed once the column exists; the label can change.</p>
 
@@ -19,4 +20,13 @@
         {{ form_rest(form) }}
         <button type="submit" class="gv-btn gv-btn-primary">Save</button>
     {{ form_end(form) }}
+
+    <section class="md-admin__section">
+        <h2>Condition</h2>
+        <p class="gv-muted">Show the field only while another field holds some values. Hidden, it is not required, and its value is emptied when the record is saved.</p>
+        {{ form_start(condition_form, {attr: {class: 'md-form'}}) }}
+            {{ form_rest(condition_form) }}
+            <button type="submit" class="gv-btn gv-btn-primary">Save condition</button>
+        {{ form_end(condition_form) }}
+    </section>
 {% endblock %}

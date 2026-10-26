@@ -27,6 +27,17 @@ interface FieldTypeCatalogInterface
     public function defaultSettings(string $type): array;
 
     /**
+     * The values a field of this type can hold when it decides whether other fields apply (a
+     * condition): the option values of a choice, "true" and "false" for a yes/no; null when the
+     * type cannot decide.
+     *
+     * @param array<string, mixed> $settings resolved settings of the field
+     *
+     * @return list<string>|null
+     */
+    public function conditionValues(string $type, array $settings): ?array;
+
+    /**
      * A write-only type (a password) is never read back: it cannot be unique, searched,
      * or name the records.
      */

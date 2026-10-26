@@ -26,7 +26,8 @@ Every field column is nullable: "required" is a validation rule (see below).
 
 - **Empty input is null.** An empty or blank string becomes null before validation.
 - **Required** (`--required`): null is refused with "This value is required.". Forms mark the
-  label with a red asterisk. On update, only the
+  label with a red asterisk. A field with a condition is required only while it applies. On
+  update, only the
   fields sent are checked: a required field left out keeps its value; set to null, it is refused.
 - **Unique** (`--unique`): a value used by another record is refused with "This value is already
   used.". A unique index backs the rule against concurrent saves. Values of deleted records stay
@@ -35,6 +36,36 @@ Every field column is nullable: "required" is a validation rule (see below).
 - **Unknown fields** in the input are refused ("This field does not exist.").
 - **Default values**: on create, a field that is not given takes its default value (`boolean` and
   `select` have a `default` setting), and the form starts with it. A field given empty stays empty.
+- **Conditions**: a field may apply only while another field of the object holds some values
+  (see below).
+
+## Conditions
+
+A field can apply only while another field of the same object holds one of some values: the
+hours of a qualification while its kind is "course", the level while it is "language".
+
+```bash
+symfony console metadata:field:condition qualification hours --when=kind --in=course
+symfony console metadata:field:condition qualification level --when=kind --in=language
+symfony console metadata:field:condition qualification hours            # always again
+```
+
+| While the condition is… | The field is… |
+|---|---|
+| met | shown, and required if it is a required field |
+| not met | hidden in every form (it reappears as the deciding field changes, row by row in a composite form), not required, and **emptied** when the record is saved |
+
+- The deciding field is a `select` (its option values) or a `boolean` (`true` or `false`) of the
+  same object. Any other type is refused, and so is a value the field never holds.
+- Conditions do not chain: the deciding field cannot have a condition itself, and a field that
+  decides for others cannot get one.
+- Emptied means emptied: a course that becomes a language loses its hours when it is saved, so
+  hidden values never linger in the table. On an update that leaves the deciding field out, its
+  stored value decides.
+- A form's own `required` list ([composite forms](forms.md#required-fields)) follows the
+  conditions too.
+- The condition can be set and changed at any time, from the admin (the field's page, section
+  **Condition**) or the console. It changes no column.
 
 ## `text`
 

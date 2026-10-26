@@ -81,6 +81,9 @@ Two rules, checked together:
   form shows. A required checkbox must be checked; a password left empty on edit is kept, as
   always. In a section left entirely empty (skipped), nothing is required.
 
+Both rules follow the [conditions](field-types.md#conditions) of the fields: a field that does
+not apply (a course's hours on a language) is never required.
+
 Required fields are marked with a red asterisk after their label, explained by "* Required
 field" under the form; the same holds in the record forms.
 

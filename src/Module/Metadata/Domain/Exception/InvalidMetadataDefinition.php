@@ -83,6 +83,11 @@ final class InvalidMetadataDefinition extends MetadataException
         return new self(\sprintf('Field "%s" is write-only (its value is never read back): it cannot be %s.', $fieldName, $use));
     }
 
+    public static function invalidCondition(string $fieldName, string $reason): self
+    {
+        return new self(\sprintf('Field "%s" cannot get this condition: %s.', $fieldName, $reason));
+    }
+
     public static function unknownView(string $objectName, string $kind, string $name): self
     {
         return new self(\sprintf('Object "%s" has no %s view "%s".', $objectName, $kind, $name));

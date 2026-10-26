@@ -12,6 +12,7 @@ symfony console <command> --help        # the same reference, from the command i
 |---|---|
 | [`metadata:object:create`](#metadataobjectcreate) | Create an object, and its table |
 | [`metadata:field:create`](#metadatafieldcreate) | Add a field to an object, and its column |
+| [`metadata:field:condition`](#metadatafieldcondition) | Make a field apply only while another field holds some values |
 | [`metadata:object:label`](#metadataobjectlabel) | Choose the field that names the records of an object |
 | [`metadata:object:search`](#metadataobjectsearch) | Choose how the records of an object are searched |
 | [`metadata:view:save`](#metadataviewsave) | Create or replace a view: an HTML layout of the record form |
@@ -142,6 +143,30 @@ Fails when the object does not exist, the name is invalid, reserved or already u
 unknown, or the settings are invalid; every settings error is listed. A relation also fails when the
 target object does not exist, or when the inverse name is already a field or an inverse relation of
 the target.
+
+## `metadata:field:condition`
+
+Make a field apply only while another field of the object holds one of some values; without
+`--when`, the field always applies again. See [Conditions](field-types.md#conditions).
+
+```
+metadata:field:condition [--when=FIELD] [--in=VALUES] <object> <field>
+```
+
+| Argument / option | Description |
+|---|---|
+| `object`, `field` | The field that gets the condition |
+| `--when` | The deciding field: a `select` or a `boolean` of the same object |
+| `--in` | Comma separated values of the deciding field: option values, or `true` / `false` |
+
+```bash
+symfony console metadata:field:condition qualification hours --when=kind --in=course
+symfony console metadata:field:condition qualification credential --when=kind --in=certification,course
+symfony console metadata:field:condition account reason --when=active --in=false
+```
+
+Fails when the deciding field cannot decide, holds none of the values, is the field itself, or
+when the condition would chain. No DDL: the column stays.
 
 ## `metadata:object:label`
 
