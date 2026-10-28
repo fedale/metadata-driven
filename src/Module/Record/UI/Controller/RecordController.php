@@ -29,8 +29,10 @@ use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Requirement\Requirement;
+use Symfony\Component\Uid\Uuid;
 
 #[Route('/o/{object}', name: 'record_', requirements: ['object' => '[a-z][a-z0-9_]*'])]
 final class RecordController extends AbstractController
@@ -87,12 +89,26 @@ final class RecordController extends AbstractController
 
     /**
      * Records to pick in a relation field (Symfony UX Autocomplete format).
+     *
+     * "filter[<relation field>]=<id>" keeps the records pointing at that record (the
+     * municipalities of a province); an empty or invalid id keeps none: nothing chosen yet.
      */
     #[Route('/lookup', name: 'lookup', methods: ['GET'])]
     public function lookup(string $object, Request $request, RecordLookupInterface $lookup): JsonResponse
     {
         $definition = $this->objectFor($object, RecordAction::Read);
-        $records = $lookup->search($definition->name, $request->query->getString('query'), self::LOOKUP_LIMIT);
+        $filters = [];
+        foreach ($request->query->all('filter') as $field => $id) {
+            if (!\is_string($id) || !Uuid::isValid($id)) {
+                return $this->json(['results' => []]);
+            }
+            $filters[(string) $field] = $id;
+        }
+        try {
+            $records = $lookup->search($definition->name, $request->query->getString('query'), self::LOOKUP_LIMIT, $filters);
+        } catch (\InvalidArgumentException $e) {
+            throw new BadRequestHttpException($e->getMessage(), $e);
+        }
 
         return $this->json(['results' => array_map(static fn (RecordLabel $record): array => ['value' => $record->id, 'text' => $record->label], $records)]);
     }

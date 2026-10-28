@@ -15,11 +15,15 @@ interface RecordLookupInterface
     /**
      * Live records whose label contains the term (all of them when it is empty), by label.
      *
+     * @param array<string, string> $filters relation field => record id: only the records pointing
+     *                                       at it (the municipalities of a province)
+     *
      * @return list<RecordLabel>
      *
      * @throws ObjectDefinitionNotFound
+     * @throws \InvalidArgumentException a filter names no relation field of the object
      */
-    public function search(string $objectName, string $term, int $limit = 20): array;
+    public function search(string $objectName, string $term, int $limit = 20, array $filters = []): array;
 
     /**
      * @param list<string> $ids

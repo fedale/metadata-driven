@@ -12,6 +12,7 @@ use App\Module\Record\Contract\RecordLookupInterface;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Query\QueryBuilder;
+use Doctrine\DBAL\Types\Types;
 use Symfony\Component\Uid\Uuid;
 
 final class DbalRecordLookup implements RecordLookupInterface
@@ -24,10 +25,21 @@ final class DbalRecordLookup implements RecordLookupInterface
     ) {
     }
 
-    public function search(string $objectName, string $term, int $limit = 20): array
+    public function search(string $objectName, string $term, int $limit = 20, array $filters = []): array
     {
         $object = $this->metadata->getObject($objectName);
         [$qb, $label] = $this->query($object);
+
+        $index = 0;
+        foreach ($filters as $fieldName => $id) {
+            // Whitelisted: only a relation field of the object, compared as a uuid.
+            if (!$object->hasField($fieldName) || null === $object->field($fieldName)->relation()) {
+                throw new \InvalidArgumentException(\sprintf('Object "%s" has no relation field "%s" to filter on.', $object->name, $fieldName));
+            }
+            $param = 'filter'.$index++;
+            $qb->andWhere(\sprintf('%s = :%s', $this->table->column($object->field($fieldName)->columnName), $param))
+                ->setParameter($param, $id, Types::GUID);
+        }
 
         $term = trim($term);
         if ('' !== $term && null !== $label) {

@@ -96,6 +96,10 @@
             "conditional": {
                 "enabled": true,
                 "fetch": "lazy"
+            },
+            "dependent-select": {
+                "enabled": true,
+                "fetch": "lazy"
             }
         },
         "@symfony/ux-autocomplete": {

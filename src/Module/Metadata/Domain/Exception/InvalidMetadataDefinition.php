@@ -83,6 +83,11 @@ final class InvalidMetadataDefinition extends MetadataException
         return new self(\sprintf('Field "%s" is write-only (its value is never read back): it cannot be %s.', $fieldName, $use));
     }
 
+    public static function invalidDependency(string $fieldName, string $reason): self
+    {
+        return new self(\sprintf('Field "%s" cannot depend on that: %s.', $fieldName, $reason));
+    }
+
     public static function invalidCondition(string $fieldName, string $reason): self
     {
         return new self(\sprintf('Field "%s" cannot get this condition: %s.', $fieldName, $reason));

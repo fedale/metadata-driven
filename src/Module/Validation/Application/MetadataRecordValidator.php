@@ -21,6 +21,8 @@ final class MetadataRecordValidator implements RecordValidatorInterface
     public const string REQUIRED_MESSAGE = 'This value is required.';
     public const string UNIQUE_MESSAGE = 'This value is already used.';
     public const string REFERENCE_MESSAGE = 'The selected record does not exist.';
+    public const string PARENT_MISSING_MESSAGE = 'Choose the %s first.';
+    public const string PARENT_MISMATCH_MESSAGE = 'The selected record does not belong to the chosen %s.';
 
     public function __construct(
         private readonly ValidatorInterface $validator,
@@ -50,6 +52,17 @@ final class MetadataRecordValidator implements RecordValidatorInterface
             if (null !== $relation && \is_string($value)
                 && !$this->references->exists($this->metadata->getObject($relation->target), $value)) {
                 $errors[$name][] = self::REFERENCE_MESSAGE;
+                continue;
+            }
+            // A cascade: the municipality must belong to the province chosen in the same record.
+            if (null !== $relation?->dependsOn && null !== $relation->dependsVia && \is_string($value) && $object->hasField($relation->dependsOn)) {
+                $parentLabel = mb_strtolower($object->field($relation->dependsOn)->label);
+                $parent = $values[$relation->dependsOn] ?? null;
+                if (!\is_string($parent)) {
+                    $errors[$name][] = \sprintf(self::PARENT_MISSING_MESSAGE, $parentLabel);
+                } elseif (!$this->references->pointsAt($this->metadata->getObject($relation->target), $value, $relation->dependsVia, $parent)) {
+                    $errors[$name][] = \sprintf(self::PARENT_MISMATCH_MESSAGE, $parentLabel);
+                }
             }
         }
 

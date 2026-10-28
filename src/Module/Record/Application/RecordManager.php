@@ -162,7 +162,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
      * Empties the fields whose condition is not met, so that a hidden field never keeps a value
      * (a course's hours once the qualification becomes a language). On update the deciding
      * fields the input leaves out are read from the record, and written back unchanged, so that
-     * the validator sees them too.
+     * the validator sees them too; so are both sides of a cascade, when one of them is written.
      *
      * @param array<string, mixed> $values denormalized
      *
@@ -170,10 +170,17 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
      */
     private function applyConditions(ObjectDefinitionDto $object, array $values, ?string $recordId): array
     {
+        // The fields the rules read: the deciding fields of the conditions, and both sides of a
+        // cascade (region, province, municipality) as soon as one side is written.
         $deciding = [];
-        foreach ($object->fields as $field) {
+        foreach ($object->fields as $name => $field) {
             if (null !== $field->condition) {
                 $deciding[$field->condition->field] = true;
+            }
+            $dependsOn = $field->relation()?->dependsOn;
+            if (null !== $dependsOn && (\array_key_exists($name, $values) || \array_key_exists($dependsOn, $values))) {
+                $deciding[$name] = true;
+                $deciding[$dependsOn] = true;
             }
         }
         if ([] === $deciding) {
