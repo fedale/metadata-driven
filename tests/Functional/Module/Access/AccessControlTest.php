@@ -145,6 +145,24 @@ final class AccessControlTest extends WebTestCase
         self::assertResponseStatusCodeSame(403);
     }
 
+    public function testARevokedRoleSignsTheSessionOut(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        $this->client->request('GET', '/admin');
+        self::assertResponseIsSuccessful();
+
+        // A permission granted meanwhile applies at once, without signing out.
+        $rbac = self::getContainer()->get(RbacManagerInterface::class);
+        $rbac->assign('admin@example.com', 'record.pet.read');
+        $this->client->request('GET', '/admin');
+        self::assertResponseIsSuccessful();
+
+        // The token still holds ROLE_SUPER_ADMIN: the changed roles drop the session.
+        $rbac->revoke('admin@example.com', Permissions::SUPER_ADMIN_ROLE);
+        $this->client->request('GET', '/admin');
+        self::assertResponseRedirects('/login', 302);
+    }
+
     private function pet(string $name): RecordOutput
     {
         return self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('pet', ['name' => $name]));

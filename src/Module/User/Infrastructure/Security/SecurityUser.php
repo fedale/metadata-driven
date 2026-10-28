@@ -66,11 +66,21 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
     }
 
     /**
-     * A changed password logs the other sessions out; role changes apply at once
-     * (roles are reloaded on every request), without logging anybody out.
+     * Compares the user of the session with the one reloaded on every request. A changed
+     * password or changed roles sign the session out: the roles of a token are fixed at
+     * sign-in, so a revoked role (ROLE_SUPER_ADMIN) would otherwise keep working until logout.
+     * With a remember-me cookie the user is signed back in at once, with the new roles.
      */
     public function isEqualTo(UserInterface $user): bool
     {
-        return $user instanceof self && $user->id === $this->id && $user->passwordHash === $this->passwordHash;
+        if (!$user instanceof self || $user->id !== $this->id || $user->passwordHash !== $this->passwordHash) {
+            return false;
+        }
+        $roles = $this->getRoles();
+        $reloaded = $user->getRoles();
+        sort($roles);
+        sort($reloaded);
+
+        return $roles === $reloaded;
     }
 }

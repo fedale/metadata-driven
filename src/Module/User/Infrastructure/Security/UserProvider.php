@@ -15,7 +15,7 @@ use Symfony\Component\Security\Core\User\UserProviderInterface;
 
 /**
  * Loads active users by email, with the roles assigned to them in the RBAC tables (read on
- * every request, so a new role applies without signing in again).
+ * every request: when they changed, SecurityUser::isEqualTo() signs the session out).
  *
  * @implements UserProviderInterface<SecurityUser>
  */
