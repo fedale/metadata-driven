@@ -86,7 +86,8 @@ final class RecordFormFactory
                 $field = new FieldDefinitionDto($field->id, $field->name, $field->columnName, $field->type, $field->label, true, $field->isUnique, $field->settings, $field->position, $field->isSystem);
             }
             $widget = $this->fieldTypes->get($field->type)->widget($field->settings);
-            [$type, $options] = $this->control($field, $widget, $current[$name] ?? null, $isNew);
+            $dependsOn = $field->relation()?->dependsOn;
+            [$type, $options] = $this->control($field, $widget, $current[$name] ?? null, $isNew, null === $dependsOn ? null : ($current[$dependsOn] ?? null));
             // A checkbox required by the form must be checked (by its object, only set).
             if ($requiredHere && WidgetKind::Checkbox === $widget->kind) {
                 $options['required'] = true;
@@ -128,15 +129,41 @@ final class RecordFormFactory
     {
         /** @var array<string, mixed> $rowAttr row_attr is a map of HTML attributes */
         $rowAttr = (\is_array($rowAttr) ? $rowAttr : []) + ['data-gv-field' => $field->name];
-        if (null === $field->condition) {
-            return $rowAttr;
+        $controllers = [];
+        if (null !== $field->condition) {
+            $controllers[] = 'gridview-conditional';
+            $rowAttr['data-gridview-conditional-field-value'] = $field->condition->field;
+            $rowAttr['data-gridview-conditional-values-value'] = json_encode($field->condition->values, \JSON_THROW_ON_ERROR);
+        }
+        // A cascade: when the field it depends on changes, its choice is emptied and its lookup
+        // URL follows (gridview-dependent-select of fedale/gridview-bundle).
+        $relation = $field->relation();
+        if (null !== $relation?->dependsOn && null !== $relation->dependsVia) {
+            $controllers[] = 'gridview-dependent-select';
+            $rowAttr['data-gridview-dependent-select-field-value'] = $relation->dependsOn;
+            $rowAttr['data-gridview-dependent-select-url-value'] = $this->urls->generate('record_lookup', ['object' => $relation->target]);
+            $rowAttr['data-gridview-dependent-select-param-value'] = \sprintf('filter[%s]', $relation->dependsVia);
+        }
+        if ([] !== $controllers) {
+            $rowAttr['data-controller'] = implode(' ', $controllers);
         }
 
-        return $rowAttr + [
-            'data-controller' => 'gridview-conditional',
-            'data-gridview-conditional-field-value' => $field->condition->field,
-            'data-gridview-conditional-values-value' => json_encode($field->condition->values, \JSON_THROW_ON_ERROR),
-        ];
+        return $rowAttr;
+    }
+
+    /**
+     * The lookup URL of a relation; for a cascade, filtered by the record chosen in the field it
+     * depends on (an empty filter lists nothing until one is chosen).
+     */
+    private function lookupUrl(FieldDefinitionDto $field, Widget $widget, mixed $parentValue): string
+    {
+        $relation = $field->relation();
+        $parameters = ['object' => $this->target($widget)];
+        if (null !== $relation?->dependsVia) {
+            $parameters['filter'] = [$relation->dependsVia => \is_string($parentValue) ? $parentValue : ''];
+        }
+
+        return $this->urls->generate('record_lookup', $parameters);
     }
 
     /**
@@ -189,7 +216,7 @@ final class RecordFormFactory
     /**
      * @return array{class-string<FormType|TextType|TextareaType|IntegerType|NumberType|CheckboxType|DateType|DateTimeType|EmailType|ChoiceType|PasswordType|RepeatedType|UrlType|TelType>, array<string, mixed>}
      */
-    private function control(FieldDefinitionDto $field, Widget $widget, mixed $value, bool $isNew): array
+    private function control(FieldDefinitionDto $field, Widget $widget, mixed $value, bool $isNew, mixed $parentValue = null): array
     {
         $required = ['required' => $field->isRequired];
         $maxLength = \is_int($widget->options['maxLength'] ?? null) ? ['attr' => ['maxlength' => $widget->options['maxLength']]] : [];
@@ -219,8 +246,9 @@ final class RecordFormFactory
                 'choices' => \is_string($value) ? array_flip($this->lookup->labels($this->target($widget), [$value])) : [],
                 'placeholder' => $field->isRequired ? 'Choose a record' : '—',
                 'autocomplete' => true,
-                'autocomplete_url' => $this->urls->generate('record_lookup', ['object' => $this->target($widget)]),
-                'min_characters' => 1,
+                'autocomplete_url' => $this->lookupUrl($field, $widget, $parentValue),
+                // A cascade lists the few records of the chosen parent as soon as it opens.
+                'min_characters' => null === $field->relation()?->dependsOn ? 1 : 0,
             ]],
         };
     }

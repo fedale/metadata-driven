@@ -232,6 +232,8 @@ the other side (one-to-many) read-only: its edit page lists the records pointing
 | `onDelete` | string | `set_null` (default), `restrict` or `cascade` |
 | `inverseName` | string or null | machine name of the inverse side; must not be a field or another inverse name of the target |
 | `inverseLabel` | string or null | its title on the target's page; default "<Plural label> (<Field label>)" |
+| `dependsOn` | string or null | for a cascade: the relation field of this object to choose first (see below) |
+| `dependsVia` | string or null | with `dependsOn`: the relation field of the target pointing at the same object as `dependsOn` |
 
 ```json
 {"target": "contact", "onDelete": "restrict", "inverseName": "pets", "inverseLabel": "Pets"}
@@ -259,3 +261,36 @@ Input and display:
 - The form offers an autocomplete over the target's records; the grid shows the label, sorts on it,
   and filters on one or several related records.
 - Many-to-many relations are not available yet.
+
+### Cascades (region, province, municipality)
+
+A relation can depend on another relation field of the same object: only the records of the
+target that point at the record chosen there can be picked. With `region`, `province` (pointing
+at a region) and `municipality` (pointing at a province) as objects, a profile or a venue gets
+three relation fields:
+
+```bash
+symfony console metadata:field:create venue region relation Region --settings='{"target":"region"}'
+symfony console metadata:field:create venue province relation Province \
+  --settings='{"target":"province","dependsOn":"region","dependsVia":"region"}'
+symfony console metadata:field:create venue municipality relation Municipality \
+  --settings='{"target":"municipality","dependsOn":"province","dependsVia":"province"}'
+```
+
+`dependsOn: region` names the venue's field to choose first; `dependsVia: region` the
+province's field pointing at regions. They are checked when the field is created: `dependsOn`
+must be a relation field of the object, created before, and `dependsVia` a relation field of the
+target pointing at the same object.
+
+- **The form** lists, in each field, the records of the one chosen before: the lookup is
+  filtered (`/o/municipality/lookup?filter[province]=<id>`) and opens with the whole short list,
+  without typing. Changing a field empties the ones depending on it, in turn (a new region empties
+  the province and the municipality). Nothing is offered until the field before is chosen.
+- **The server** refuses a record that does not belong to the one chosen before ("The selected
+  record does not belong to the chosen region.") and a record chosen without it ("Choose the
+  province first."), whatever the browser sent. On an update that writes one side only, the other
+  is read from the record.
+- Any depth and any data: Category → Subcategory → Product, Customer → Site → Contact.
+
+The Italian regions, provinces and municipalities are public data (the ISTAT list of
+municipalities, a CSV): there is no import command yet, so they are loaded with SQL.

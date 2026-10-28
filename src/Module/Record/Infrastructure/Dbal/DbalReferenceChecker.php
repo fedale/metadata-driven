@@ -28,4 +28,17 @@ final class DbalReferenceChecker implements ReferenceCheckerInterface
 
         return false !== $this->connection->fetchOne($sql, [$id], [Types::GUID]);
     }
+
+    public function pointsAt(ObjectDefinitionDto $target, string $id, string $field, string $parentId): bool
+    {
+        $sql = \sprintf(
+            'SELECT 1 FROM %s WHERE %s = ? AND %s = ? AND %s IS NULL',
+            $this->table->table($target),
+            $this->table->column('id'),
+            $this->table->column($target->field($field)->columnName),
+            $this->table->column('deleted_at'),
+        );
+
+        return false !== $this->connection->fetchOne($sql, [$id, $parentId], [Types::GUID, Types::GUID]);
+    }
 }
