@@ -12,6 +12,7 @@ symfony console <command> --help        # the same reference, from the command i
 |---|---|
 | [`metadata:object:create`](#metadataobjectcreate) | Create an object, and its table |
 | [`metadata:field:create`](#metadatafieldcreate) | Add a field to an object, and its column |
+| [`metadata:field:settings`](#metadatafieldsettings) | Change some settings of an existing field |
 | [`metadata:field:condition`](#metadatafieldcondition) | Make a field apply only while another field holds some values |
 | [`metadata:object:label`](#metadataobjectlabel) | Choose the field that names the records of an object |
 | [`metadata:object:search`](#metadataobjectsearch) | Choose how the records of an object are searched |
@@ -143,6 +144,25 @@ Fails when the object does not exist, the name is invalid, reserved or already u
 unknown, or the settings are invalid; every settings error is listed. A relation also fails when the
 target object does not exist, or when the inverse name is already a field or an inverse relation of
 the target.
+
+## `metadata:field:settings`
+
+Change some settings of an existing field; the settings not given keep their value. `null`
+clears a setting (back to its default).
+
+```
+metadata:field:settings <object> <field> <settings>
+```
+
+```bash
+symfony console metadata:field:settings account password '{"strengthMeter":true,"revealToggle":true}'
+symfony console metadata:field:settings phone prefix '{"options":[{"value":"+39","label":"+39 IT"},{"value":"+33","label":"+33 FR"}]}'
+symfony console metadata:field:settings profile zipcode '{"pattern":null}'
+```
+
+Fails when a setting is invalid (every error is listed), when it shapes the column (see
+[Changing settings](field-types.md#changing-settings)), or when an option to remove is still held
+by records or named by a condition. No DDL.
 
 ## `metadata:field:condition`
 

@@ -209,6 +209,18 @@ class ObjectDefinition
         $this->updatedAt = new \DateTimeImmutable();
     }
 
+    /**
+     * Replaces the settings of a field: already validated by its type, and checked by the
+     * caller against what the column, the records and the conditions need.
+     *
+     * @param array<string, mixed> $settings
+     */
+    public function changeFieldSettings(string $fieldName, array $settings): void
+    {
+        $this->getField($fieldName)->changeSettings($settings);
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
     public function getField(string $name): FieldDefinition
     {
         foreach ($this->fields as $field) {

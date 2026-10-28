@@ -245,10 +245,7 @@ final class AdminController extends AbstractController
         }
         $fieldDefinition = $definition->field($field);
 
-        $form = $this->forms->createNamedBuilder('field', FormType::class, ['label' => $fieldDefinition->label])
-            ->add('label', TextType::class, ['label' => 'Label'])
-            ->getForm()
-            ->handleRequest($request);
+        $form = $this->labelForm($fieldDefinition)->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
             if ($this->apply($form, fn () => $this->manager->relabelField($definition->name, $field, $this->text($form, 'label')))) {
@@ -258,13 +255,57 @@ final class AdminController extends AbstractController
             }
         }
 
+        return $this->fieldPage($definition, $fieldDefinition, $form, $this->fieldSettingsForm($definition, $fieldDefinition));
+    }
+
+    #[Route('/objects/{object}/fields/{field}/settings', name: 'field_settings', methods: ['POST'])]
+    public function configureFieldSettings(string $object, string $field, Request $request): Response
+    {
+        $this->denyUnlessAdministrator();
+        $definition = $this->objectOr404($object);
+        if (!$definition->hasField($field)) {
+            throw $this->createNotFoundException(\sprintf('Object "%s" has no field "%s".', $object, $field));
+        }
+        $fieldDefinition = $definition->field($field);
+        $form = $this->fieldSettingsForm($definition, $fieldDefinition)->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()
+            && $this->apply($form, fn () => $this->manager->configureFieldSettings($definition->name, $field, $this->settingsForm->dataForUpdate($form)))) {
+            $this->addFlash('success', 'Settings saved.');
+
+            return $this->redirectToRoute('admin_field_edit', ['object' => $definition->name, 'field' => $field], Response::HTTP_SEE_OTHER);
+        }
+
+        // Refused: the page again, with the errors next to the settings.
+        return $this->fieldPage($definition, $fieldDefinition, $this->labelForm($fieldDefinition), $form);
+    }
+
+    /**
+     * The page of a field: its label, its settings and its condition, each a form of its own.
+     *
+     * @param FormInterface<mixed> $labelForm
+     * @param FormInterface<mixed> $settingsForm
+     */
+    private function fieldPage(ObjectDefinitionDto $object, FieldDefinitionDto $field, FormInterface $labelForm, FormInterface $settingsForm): Response
+    {
         return $this->render('admin/field_edit.html.twig', [
-            'object' => $definition,
-            'field' => $fieldDefinition,
-            'type' => $this->fieldTypes->get($fieldDefinition->type),
-            'form' => $form,
-            'condition_form' => $this->conditionForm($definition, $fieldDefinition)->createView(),
+            'object' => $object,
+            'field' => $field,
+            'type' => $this->fieldTypes->get($field->type),
+            'form' => $labelForm,
+            'condition_form' => $this->conditionForm($object, $field)->createView(),
+            // A FormInterface: render() answers 422 when it was submitted and refused.
+            'settings_form' => $settingsForm,
         ]);
+    }
+
+    /**
+     * @return FormInterface<mixed>
+     */
+    private function labelForm(FieldDefinitionDto $field): FormInterface
+    {
+        return $this->forms->createNamedBuilder('field', FormType::class, ['label' => $field->label])
+            ->add('label', TextType::class, ['label' => 'Label'])
+            ->getForm();
     }
 
     #[Route('/objects/{object}/fields/{field}/condition', name: 'field_condition', methods: ['POST'])]
@@ -516,6 +557,21 @@ final class AdminController extends AbstractController
         return $this->forms->createNamedBuilder('delete_view', FormType::class, null, [
             'action' => $this->generateUrl('admin_view_delete', ['object' => $object->name, 'kind' => $view->kind->value, 'view' => $view->name]),
         ])->getForm();
+    }
+
+    /**
+     * The settings of an existing field, generated from its type like those of a new field.
+     *
+     * @return FormInterface<mixed>
+     */
+    private function fieldSettingsForm(ObjectDefinitionDto $object, FieldDefinitionDto $field): FormInterface
+    {
+        $builder = $this->forms->createNamedBuilder('field_settings', FormType::class, null, [
+            'action' => $this->generateUrl('admin_field_settings', ['object' => $object->name, 'field' => $field->name]),
+        ]);
+        $this->settingsForm->add($builder, $this->fieldTypes->get($field->type), $field->settings);
+
+        return $builder->getForm();
     }
 
     /**

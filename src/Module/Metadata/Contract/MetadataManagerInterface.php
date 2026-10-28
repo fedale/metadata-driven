@@ -36,6 +36,14 @@ interface MetadataManagerInterface
     public function relabelField(string $objectName, string $fieldName, string $label): void;
 
     /**
+     * Changes some settings of a field; the others keep their value. The settings that shape the
+     * column are fixed, and an option still held by records cannot be removed.
+     *
+     * @param array<string, mixed> $settings
+     */
+    public function configureFieldSettings(string $objectName, string $fieldName, array $settings): void;
+
+    /**
      * Makes a field apply only while another field of the object (a choice or a yes/no) holds
      * one of the values; $when null removes the condition.
      *

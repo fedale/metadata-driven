@@ -27,6 +27,14 @@ interface FieldTypeCatalogInterface
     public function defaultSettings(string $type): array;
 
     /**
+     * The settings that shape the column (or the foreign key) of a field of this type: they
+     * cannot change once the field exists.
+     *
+     * @return list<string>
+     */
+    public function fixedSettings(string $type): array;
+
+    /**
      * The values a field of this type can hold when it decides whether other fields apply (a
      * condition): the option values of a choice, "true" and "false" for a yes/no; null when the
      * type cannot decide.

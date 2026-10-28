@@ -37,8 +37,8 @@ final class TextFieldType extends AbstractFieldType
     public function settingDefinitions(): array
     {
         return [
-            new SettingDefinition('maxLength', SettingKind::Integer, 'Maximum length', 'Up to 255 characters is a short text; more, a long one.', true, ['min' => 1, 'max' => self::MAX_LENGTH]),
-            new SettingDefinition('multiline', SettingKind::Boolean, 'Multiline', 'A text area, keeping line breaks and indentation.'),
+            new SettingDefinition('maxLength', SettingKind::Integer, 'Maximum length', 'Up to 255 characters is a short text; more, a long one.', true, ['min' => 1, 'max' => self::MAX_LENGTH], fixed: true),
+            new SettingDefinition('multiline', SettingKind::Boolean, 'Multiline', 'A text area, keeping line breaks and indentation.', fixed: true),
             new SettingDefinition('pattern', SettingKind::String, 'Pattern', 'A regular expression (PCRE) the whole value must match, e.g. \\d{5} for a postal code. Empty: any text.'),
             new SettingDefinition('patternMessage', SettingKind::String, 'Pattern message', 'Shown when the value does not match. Default: "'.self::DEFAULT_PATTERN_MESSAGE.'"'),
         ];

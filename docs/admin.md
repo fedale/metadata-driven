@@ -58,6 +58,8 @@ next to the editor; saving reports every error of the definition at once. See
 ## A field — `/admin/objects/<object>/fields/<field>`
 
 The field's type, column, rules and settings, and when it applies. **Label** renames it.
+**Settings** changes them: the form of the field's type, with the current values; the settings that
+shape the column are shown disabled (see [Changing settings](field-types.md#changing-settings)).
 **Condition** makes it apply only while another field holds some values: choose the deciding
 field (the object's choice and yes/no fields are offered, each with its values in the help), type
 the values separated by commas, and save; **Always** removes the condition. See

@@ -39,6 +39,29 @@ Every field column is nullable: "required" is a validation rule (see below).
 - **Conditions**: a field may apply only while another field of the object holds some values
   (see below).
 
+## Changing settings
+
+The settings of an existing field can change, from its admin page (section **Settings**) or with
+`metadata:field:settings`, except those that shape the column or the foreign key: they are
+**fixed** once the field exists, shown disabled in the admin and refused otherwise.
+
+| Type | Fixed | Free to change |
+|---|---|---|
+| `text` | `maxLength`, `multiline` | `pattern`, `patternMessage` |
+| `number` | `decimals` | `min`, `max` |
+| `date` | `includeTime` | — |
+| `boolean` | — | `default`, `display` |
+| `select` | — | `options`, `default`, `display` |
+| `password` | — | every setting |
+| `relation` | `target`, `onDelete`, `inverseName` | `inverseLabel`, `dependsOn`, `dependsVia` |
+
+- **Options** of a `select` can be added, relabelled and reordered at will. One can be removed
+  only when no record holds its value and no [condition](#conditions) names it; otherwise the
+  change is refused with the reason ("1 record(s) hold it").
+- A new rule (a pattern, a minimum) applies to the values saved from then on: the records
+  already stored are not checked again.
+- A cascade (`dependsOn` / `dependsVia`) is checked as when the field is created.
+
 ## Conditions
 
 A field can apply only while another field of the same object holds one of some values: the

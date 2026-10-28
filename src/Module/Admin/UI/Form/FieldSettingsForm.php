@@ -31,16 +31,20 @@ final class FieldSettingsForm
 
     /**
      * @param FormBuilderInterface<mixed> $builder
+     * @param array<string, mixed>|null   $current the settings of an existing field: shown, and the
+     *                                             fixed ones (they shape the column) disabled
      */
-    public function add(FormBuilderInterface $builder, FieldTypeInterface $type): void
+    public function add(FormBuilderInterface $builder, FieldTypeInterface $type, ?array $current = null): void
     {
-        $settings = $builder->create('settings', FormType::class, ['label' => false, 'data' => $type->defaultSettings()]);
+        $settings = $builder->create('settings', FormType::class, ['label' => false, 'data' => $current ?? $type->defaultSettings()]);
         foreach ($type->settingDefinitions() as $definition) {
             [$formType, $options] = $this->control($definition);
+            $fixed = null !== $current && $definition->fixed;
             $settings->add($definition->key, $formType, $options + [
                 'label' => $definition->label,
-                'help' => $definition->help,
+                'help' => $fixed ? trim(($definition->help ?? '').' Fixed: it shapes the column.') : $definition->help,
                 'required' => $definition->required && SettingKind::Boolean !== $definition->kind,
+                'disabled' => $fixed,
             ]);
             if (SettingKind::OptionList === $definition->kind) {
                 $settings->get($definition->key)->addModelTransformer(new OptionListTransformer());
@@ -64,6 +68,25 @@ final class FieldSettingsForm
             if (null !== $value && '' !== $value) {
                 $settings[(string) $name] = $value;
             }
+        }
+
+        return $settings;
+    }
+
+    /**
+     * The submitted settings of an existing field, every one of them: an emptied string is null
+     * (the setting is cleared), not left out.
+     *
+     * @param FormInterface<mixed> $form
+     *
+     * @return array<string, mixed>
+     */
+    public function dataForUpdate(FormInterface $form): array
+    {
+        $settings = [];
+        foreach ($form->get('settings')->all() as $name => $child) {
+            $value = $child->getData();
+            $settings[(string) $name] = '' === $value ? null : $value;
         }
 
         return $settings;

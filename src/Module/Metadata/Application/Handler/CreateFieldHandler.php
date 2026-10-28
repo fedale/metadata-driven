@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Metadata\Application\Handler;
 
 use App\Module\Metadata\Application\Command\CreateFieldCommand;
+use App\Module\Metadata\Application\Relation\RelationDependencyChecker;
 use App\Module\Metadata\Contract\Dto\RelationSettings;
 use App\Module\Metadata\Contract\Event\FieldDefinitionCreated;
 use App\Module\Metadata\Contract\Event\MetadataChanged;
@@ -13,7 +14,6 @@ use App\Module\Metadata\Contract\FieldTypeCatalogInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
 use App\Module\Metadata\Domain\Model\MachineName;
-use App\Module\Metadata\Domain\Model\ObjectDefinition;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
 use App\Shared\Transaction\TransactionRunner;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -27,6 +27,7 @@ final class CreateFieldHandler
         private readonly EventDispatcherInterface $events,
         private readonly TransactionRunner $transactions,
         private readonly MetadataRegistryInterface $metadata,
+        private readonly RelationDependencyChecker $dependencies,
     ) {
     }
 
@@ -49,7 +50,7 @@ final class CreateFieldHandler
             if (RelationSettings::FIELD_TYPE === $command->type) {
                 $relation = RelationSettings::fromSettings($settings);
                 $this->assertRelationIsValid($relation);
-                $this->assertDependencyIsValid($object, $command->name, $relation);
+                $this->dependencies->assertValid($object, $command->name, $relation);
             }
 
             $field = $object->addField(
@@ -76,33 +77,6 @@ final class CreateFieldHandler
         $this->events->dispatch(new MetadataChanged($command->objectName));
 
         return $fieldId;
-    }
-
-    /**
-     * A cascade: dependsOn is a relation field of this object, created before this one, and
-     * dependsVia a relation field of the target pointing at the same object as dependsOn.
-     */
-    private function assertDependencyIsValid(ObjectDefinition $object, string $fieldName, RelationSettings $relation): void
-    {
-        if (null === $relation->dependsOn || null === $relation->dependsVia) {
-            return;
-        }
-        $parent = $object->hasField($relation->dependsOn) ? $object->getField($relation->dependsOn) : null;
-        $parentTarget = null !== $parent && RelationSettings::FIELD_TYPE === $parent->getType()
-            ? RelationSettings::fromSettings($parent->getSettings())->target
-            : null;
-        if (null === $parentTarget) {
-            throw InvalidMetadataDefinition::invalidDependency($fieldName, \sprintf('"%s" is not a relation field of "%s" (create it first)', $relation->dependsOn, $object->getName()));
-        }
-
-        $target = $this->objects->findByName($relation->target);
-        $via = null !== $target && $target->hasField($relation->dependsVia) ? $target->getField($relation->dependsVia) : null;
-        $viaTarget = null !== $via && RelationSettings::FIELD_TYPE === $via->getType()
-            ? RelationSettings::fromSettings($via->getSettings())->target
-            : null;
-        if ($viaTarget !== $parentTarget) {
-            throw InvalidMetadataDefinition::invalidDependency($fieldName, \sprintf('"%s" is not a relation field of "%s" pointing at "%s"', $relation->dependsVia, $relation->target, $parentTarget));
-        }
     }
 
     /**

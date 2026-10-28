@@ -83,6 +83,16 @@ final class InvalidMetadataDefinition extends MetadataException
         return new self(\sprintf('Field "%s" is write-only (its value is never read back): it cannot be %s.', $fieldName, $use));
     }
 
+    public static function fixedSetting(string $fieldName, string $setting): self
+    {
+        return new self(\sprintf('Setting "%s" of field "%s" cannot change once the field exists: it shapes the column.', $setting, $fieldName));
+    }
+
+    public static function optionStillUsed(string $fieldName, string $value, string $reason): self
+    {
+        return new self(\sprintf('Option "%s" of field "%s" cannot be removed: %s.', $value, $fieldName, $reason));
+    }
+
     public static function invalidDependency(string $fieldName, string $reason): self
     {
         return new self(\sprintf('Field "%s" cannot depend on that: %s.', $fieldName, $reason));
