@@ -107,7 +107,11 @@ a:hover { color: var(--gv-color-link-hover); }
 /* Translations: key and source take what they need, the input the rest. */
 .md-translations td:first-child { width: 1%; white-space: nowrap; }
 .md-translations td:nth-child(2) { width: 40%; }
-.md-translations input { width: 100%; box-sizing: border-box; }
+.md-translations input, .md-texts input { width: 100%; box-sizing: border-box; }
+.md-translations__edit { margin-left: .5rem; font-size: .85rem; }
+.md-texts td:first-child { width: 1%; white-space: nowrap; }
+.md-translations + .gv-btn, .md-texts + .gv-btn, .md-admin__section:last-of-type + .gv-btn { margin-top: 1rem; }
+.md-texts__used { font-size: .8rem; white-space: normal; }
 .md-admin__section h2 { font-size: 1.15rem; }
 .md-admin__columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 0 2rem; }
 

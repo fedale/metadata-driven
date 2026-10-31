@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Contract;
 
+use App\Module\Metadata\Contract\Dto\TextDto;
 use App\Module\Metadata\Contract\Dto\TranslationEntryDto;
 
 /**
@@ -29,4 +30,11 @@ interface MetadataTranslationsInterface
      * @return list<TranslationEntryDto>
      */
     public function entries(string $locale): array;
+
+    /**
+     * The texts placed by {t:name} tokens, by name, each in every language it has.
+     *
+     * @return list<TextDto>
+     */
+    public function texts(): array;
 }

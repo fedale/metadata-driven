@@ -85,7 +85,7 @@ final class UserManagerTest extends KernelTestCase
         $users->changeLocale('grace@example.com', null);
         self::assertNull($provider->loadUserByIdentifier('grace@example.com')->getLocale());
 
-        $this->expectExceptionMessage('"fr" is no language of the application (en, it).');
+        $this->expectExceptionMessage('"fr" is no language of the application (it, en).');
         $users->changeLocale('grace@example.com', 'fr');
     }
 }

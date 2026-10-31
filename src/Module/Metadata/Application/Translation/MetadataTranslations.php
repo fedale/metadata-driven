@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Application\Translation;
 
+use App\Module\Metadata\Contract\Dto\TextDto;
 use App\Module\Metadata\Contract\Dto\TranslationEntryDto;
 use App\Module\Metadata\Contract\Dto\TranslationKey;
 use App\Module\Metadata\Contract\MetadataTranslationsInterface;
@@ -61,5 +62,32 @@ final class MetadataTranslations implements MetadataTranslationsInterface
         }
 
         return $entries;
+    }
+
+    public function texts(): array
+    {
+        $byLocale = [];
+        foreach ($this->locales() as $locale) {
+            $byLocale[$locale] = $this->translations->textsOf($locale);
+        }
+        $usages = $this->keys->textUsages();
+
+        $texts = [];
+        foreach ($byLocale[$this->defaultLocale] as $key => $text) {
+            if (!TranslationKey::isText($key)) {
+                continue;
+            }
+            $name = substr($key, \strlen(TranslationKey::TEXT));
+            $translations = [];
+            foreach ($byLocale as $locale => $all) {
+                if (isset($all[$key])) {
+                    $translations[$locale] = $all[$key];
+                }
+            }
+            $texts[$name] = new TextDto($name, $translations, $usages[$name] ?? []);
+        }
+        ksort($texts);
+
+        return array_values($texts);
     }
 }

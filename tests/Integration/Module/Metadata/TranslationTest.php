@@ -103,7 +103,7 @@ final class TranslationTest extends KernelTestCase
     public function testATokenNeedsItsTextAndKeepsIt(): void
     {
         self::createRegistrationForm(self::getContainer());
-        $missing = '{t:sign_in} is no text: define "text.sign_in" in en first (Admin > Translations).';
+        $missing = '{t:sign_in} is no text: define "text.sign_in" in en first (Admin > Translations > Texts).';
         try {
             $this->manager()->saveView('pet', ViewKind::Form, 'main', '<h2>{t:sign_in}</h2>{name}');
             self::fail('The text is not defined.');

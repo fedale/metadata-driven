@@ -9,7 +9,7 @@ console. It needs the `admin.metadata` permission (or `ROLE_SUPER_ADMIN`), see
 
 The list of objects, with their machine name, table and number of fields, and a link to their
 records. **New object** asks for the machine name and the two labels. The labels are written in
-the default language; **Translations** gives them their text in the other languages.
+the default language (Italian); **Translations** gives them their text in the other languages.
 
 ## An object — `/admin/objects/<object>`
 
@@ -60,16 +60,16 @@ next to the editor; saving reports every error of the definition at once, those 
 
 ## Translations — `/admin/translations`
 
-One language at a time, chosen above the list (it opens on the first language other than the
-default one). Every text of the metadata is listed by object and by form: its key, its text in
-the default language, and an input for this language, empty while untranslated. Saving stores
-the inputs that changed; emptying one removes its translation. See [Languages](i18n.md).
+One tab per language to translate into, plus **Texts** (see [Languages](i18n.md#the-admin-pages)):
 
-In the default language the page lists the **texts** placed by `{t:name}` tokens, with the
-views and forms placing them, and **New text** creates one (a name and its text). Emptying a
-text removes it in every language, unless a token still places it.
+- **A language** (`/admin/translations/<locale>`): every label of the metadata, by object and by
+  form, with its original text, an **Edit** link to where that text is defined, and an input for
+  this language. Saving stores the inputs that changed; emptying one removes its translation.
+- **Texts** (`/admin/texts`): the texts placed by `{t:name}` tokens, an input per language side
+  by side and the views and forms placing them; **New text** creates one. Emptying the
+  default-language text removes the text, unless a token still places it.
 
-The language of the pages themselves is picked by each user in the top bar (**EN / IT**).
+The language of the pages themselves is picked by each user in the top bar (**IT / EN**).
 
 ## A field — `/admin/objects/<object>/fields/<field>`
 

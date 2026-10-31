@@ -93,6 +93,6 @@ final class LocalizedRecordPagesTest extends WebTestCase
         $token = (string) $crawler->filter('.md-locale input[name="_token"]')->attr('value');
         $this->client->request('POST', '/account/locale', ['locale' => 'fr', '_token' => $token]);
         $this->client->followRedirect();
-        self::assertSelectorTextContains('.md-flash--error', '"fr" is no language of the application (en, it).');
+        self::assertSelectorTextContains('.md-flash--error', '"fr" is no language of the application (it, en).');
     }
 }

@@ -44,7 +44,7 @@ final class DefinedTexts
         $undefined = $this->undefinedIn($text);
 
         return [] === $undefined ? null : \sprintf(
-            '%s: %s %s no text: define %s in %s first (Admin > Translations).',
+            '%s: %s %s no text: define %s in %s first (Admin > Translations > Texts).',
             $where,
             implode(', ', array_map(static fn (string $name): string => '{t:'.$name.'}', $undefined)),
             1 === \count($undefined) ? 'is' : 'are',
