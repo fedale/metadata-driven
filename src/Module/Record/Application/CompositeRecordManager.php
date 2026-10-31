@@ -125,6 +125,10 @@ final class CompositeRecordManager implements CompositeRecordManagerInterface
             }
         }
         foreach ($node->serviceFields as $field) {
+            // An existing record is not asked the fields asked at creation only.
+            if (!$field->isAskedFor(null === $id)) {
+                continue;
+            }
             $messages = $this->checkServiceField($field, $input->service[$field->name] ?? null);
             if ([] !== $messages) {
                 $errors[$path.'service.'.$field->name] = $messages;

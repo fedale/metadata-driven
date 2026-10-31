@@ -7,6 +7,7 @@ namespace App\Module\Metadata\Application\Registry;
 use App\Module\Metadata\Contract\Dto\FormDefinitionDto;
 use App\Module\Metadata\Contract\Dto\FormNodeDto;
 use App\Module\Metadata\Contract\Dto\FormNodeMode;
+use App\Module\Metadata\Contract\Dto\ServiceFieldAsk;
 use App\Module\Metadata\Contract\Dto\ServiceFieldDto;
 use App\Module\Metadata\Domain\Model\FormDefinition;
 use App\Module\Metadata\Domain\Repository\FormDefinitionRepository;
@@ -55,7 +56,7 @@ final class FormSnapshotLoader
             if (\is_array($field)) {
                 /** @var array<string, mixed> $settings compiled: a map */
                 $settings = \is_array($field['settings'] ?? null) ? $field['settings'] : [];
-                $service[] = new ServiceFieldDto(self::string($field, 'name'), self::string($field, 'type'), self::string($field, 'label'), true === ($field['required'] ?? false), $settings);
+                $service[] = new ServiceFieldDto(self::string($field, 'name'), self::string($field, 'type'), self::string($field, 'label'), true === ($field['required'] ?? false), $settings, ServiceFieldAsk::tryFrom(self::string($field, 'ask')) ?? ServiceFieldAsk::Always);
             }
         }
         $fields = \is_array($node['fields'] ?? null) ? array_values(array_filter($node['fields'], is_string(...))) : null;

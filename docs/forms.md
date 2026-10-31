@@ -12,7 +12,7 @@ object: account                        # the root: the record the form is about
 fields: [username, email, firstname, lastname, password, active]
 columns: 2                             # the root's fields on two columns
 service_fields:
-  - { name: terms, type: boolean, label: I accept the terms, required: true }
+  - { name: terms, type: boolean, label: I accept the terms, required: true, ask: create }
 sections:
   - name: profile
     label: Profile
@@ -127,7 +127,13 @@ A service field is checked like a field of its type, then **dropped**: no column
 | `type` | yes | Any field type but `relation` |
 | `label` | yes | The label shown |
 | `required` | no | `true`: must be given. A required **boolean must be checked** ("This box must be checked.") |
+| `ask` | no | `always` (default): asked on every save, a new record or an existing one. `create`: asked on a new record only |
 | `settings` | no | The settings of the type, e.g. `{pattern: '[A-Z]{2}'}` for a text |
+
+`ask` follows the record of the node the field belongs to. On the root, `ask: create` asks
+"I accept the terms" at `/f/<name>/new` only: the edit page neither shows nor checks it. In a
+`mode: many` section, a saved row is not asked it again, while a row added with "+" is new and
+is asked it, on the edit page too. A `{name}` token of a field not asked places nothing.
 
 A password confirmation is not a service field: the `confirm` setting of the `password` type
 already asks twice ([field types](field-types.md#password)).
@@ -253,8 +259,8 @@ symfony console metadata:form:delete registration      # the records stay
 | Storage | `core.metadata_form`: the YAML as written (`source`) and its compiled form (`definition`, JSONB) |
 | Checks | `FormDefinitionCompiler` (Metadata): YAML → compiled definition, against the objects |
 | Read side | `MetadataRegistryInterface::getForm()`, `FormDefinitionDto` / `FormNodeDto`, cached with the metadata |
-| Writes | `CompositeRecordManagerInterface` (Record): plans and checks the whole tree with `RecordManagerInterface::check()`, then writes it with the record pipeline |
-| Page | `CompositeFormController` at `/f/{form}`, `CompositeNodeType` (a node: `values`, `service`, `sections`, a row's `id`), `templates/record/composite.html.twig` (the sheet and its cards), `_composite.html.twig` (a node, a section, a row), `_sheet_header` / `_sheet_footer` (shared with the record form) |
+| Writes | `CompositeRecordManagerInterface` (Record): plans and checks the whole tree with `RecordManagerInterface::check()`, then writes it with the record pipeline; a service field is checked when `ServiceFieldDto::isAskedFor()` the record |
+| Page | `CompositeFormController` at `/f/{form}`, `CompositeNodeType` (a node: `values`, `service`, `sections`, a row's `id`; drops the service fields an existing record is not asked), `templates/record/composite.html.twig` (the sheet and its cards), `_composite.html.twig` (a node, a section, a row), `_sheet_header` / `_sheet_footer` (shared with the record form) |
 | Index | The `form-index` Stimulus controller (`assets/controllers/form_index_controller.js`): counts the inputs and rows of each card, marks the one in view |
 | Layouts | Checked and sanitized by `FormDefinitionCompiler` (the `view_layout` sanitizer), `FormNodeDto::$layout`; rendered by the Twig function `composite_form_layout()` (`RecordFormLayout`) |
 | Rows | The `gridview-collection` Stimulus controller and the `gv-collection` classes of fedale/gridview-bundle: adds a row from the section's prototype under a fresh key, removes one, keeps `min`/`max` |

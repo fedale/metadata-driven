@@ -147,6 +147,7 @@ final class MetadataTranslator
                 $lookup->translate(TranslationKey::serviceField($form, $path, $field->name), $field->label),
                 $field->isRequired,
                 $field->settings,
+                $field->ask,
             ), $node->serviceFields),
             $sections,
             $node->inline,

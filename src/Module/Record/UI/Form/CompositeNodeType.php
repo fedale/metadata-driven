@@ -75,16 +75,29 @@ final class CompositeNodeType extends AbstractType
             $builder->add($sections);
         }
 
-        // The fields depend on the data: an existing record keeps its password when it is left empty.
+        // The fields depend on the data: an existing record keeps its password when it is left
+        // empty, and is not asked the service fields asked at creation only.
         $builder->addEventListener(FormEvents::PRE_SET_DATA, static function (PreSetDataEvent $event) use ($node, $object): void {
             $data = $event->getData();
             $id = \is_array($data) ? ($data['id'] ?? null) : null;
+            $isNew = !\is_string($id) || '' === $id;
             $current = \is_array($data) && \is_array($data['values'] ?? null) ? $data['values'] : [];
             /* @var array<string, mixed> $current */
-            $event->getForm()->add('values', RecordFieldsType::class, [
+            $form = $event->getForm();
+            if ($form->has('service')) {
+                foreach ($node->serviceFields as $field) {
+                    if (!$field->isAskedFor($isNew)) {
+                        $form->get('service')->remove($field->name);
+                    }
+                }
+                if (0 === $form->get('service')->count()) {
+                    $form->remove('service');
+                }
+            }
+            $form->add('values', RecordFieldsType::class, [
                 'object' => $object,
                 'fields' => $node->fieldNames($object),
-                'is_new' => !\is_string($id) || '' === $id,
+                'is_new' => $isNew,
                 'current' => $current,
                 'required_fields' => $node->required,
                 // Inline rows keep their labels off screen: the inputs show them instead.

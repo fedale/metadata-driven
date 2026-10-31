@@ -144,6 +144,57 @@ final class CompositeRecordManagerTest extends KernelTestCase
         self::assertNull($this->finder->find('phone', $home->record->id));
     }
 
+    public function testAServiceFieldAskedAtCreationOnlyIsNotAskedAgain(): void
+    {
+        self::getContainer()->get(MetadataManagerInterface::class)->saveForm('registration', str_replace(
+            ['required: true }', '{ name: qualifications, label: Qualifications, object: qualification, via: account, mode: many }'],
+            ['required: true, ask: create }', '{ name: qualifications, label: Qualifications, object: qualification, via: account, mode: many, service_fields: [{ name: earned, type: boolean, label: I earned it, required: true, ask: create }] }'],
+            self::REGISTRATION_FORM,
+        ));
+        $root = self::getContainer()->get(MetadataRegistryInterface::class)->getForm('registration')->root;
+        self::assertTrue($root->serviceFields[0]->isAskedFor(true));
+        self::assertFalse($root->serviceFields[0]->isAskedFor(false));
+
+        // A new account is asked both: the terms, and "earned" on its new qualification.
+        try {
+            $this->forms->save('registration', null, $this->registration(terms: false));
+            self::fail('The form must be refused.');
+        } catch (CompositeValidationFailed $e) {
+            self::assertSame(['This box must be checked.'], $e->errors['service.terms']);
+            self::assertSame(['This value is required.'], $e->errors['sections.qualifications.0.service.earned']);
+        }
+        $input = $this->registration();
+        $qualifications = $input->sections['qualifications'];
+        self::assertIsArray($qualifications);
+        $qualifications[0] = new CompositeNodeInput(values: $qualifications[0]->values, service: ['earned' => true]);
+        $id = $this->forms->save('registration', null, new CompositeNodeInput(values: $input->values, service: $input->service, sections: ['qualifications' => $qualifications] + $input->sections));
+        [$qualification] = self::rows($this->read($id), 'qualifications');
+
+        // Editing it asks neither again, but a row added meanwhile is new: it is asked "earned".
+        $edit = static fn (bool $earned): CompositeNodeInput => new CompositeNodeInput(
+            values: ['password' => ''],
+            sections: ['qualifications' => [0 => new CompositeNodeInput(id: $qualification->record->id, values: ['year' => 2020]), 4 => new CompositeNodeInput(values: ['title' => 'Physics', 'year' => 2021], service: $earned ? ['earned' => true] : [])]],
+        );
+        try {
+            $this->forms->save('registration', $id, $edit(false));
+            self::fail('The new row must be refused.');
+        } catch (CompositeValidationFailed $e) {
+            self::assertSame(['sections.qualifications.4.service.earned'], array_keys($e->errors));
+        }
+        $this->forms->save('registration', $id, $edit(true));
+        self::assertCount(2, self::rows($this->read($id), 'qualifications'));
+    }
+
+    public function testRefusesAnUnknownAsk(): void
+    {
+        try {
+            self::getContainer()->get(MetadataManagerInterface::class)->saveForm('registration', str_replace('required: true }', 'required: true, ask: sometimes }', self::REGISTRATION_FORM));
+            self::fail('The definition must be refused.');
+        } catch (MetadataInputInvalid $e) {
+            self::assertContains('(root) > terms: "ask" must be one of always, create.', $e->errors['definition']);
+        }
+    }
+
     public function testErrorsOfRowsArePathedByTheirKey(): void
     {
         $input = $this->registration(phones: [7 => ['number' => 'call me']]);
