@@ -7,6 +7,7 @@ namespace App\Module\Record\UI\Controller;
 use App\Module\Access\Contract\AccessCheckerInterface;
 use App\Module\Access\Contract\RecordAction;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
+use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
@@ -52,22 +53,35 @@ final class RecordController extends AbstractController
     ) {
     }
 
+    /**
+     * The grid of the object: its default grid view, else one column per field.
+     */
     #[Route('', name: 'index', methods: ['GET'])]
     public function index(string $object): Response
     {
         $definition = $this->objectFor($object, RecordAction::Read);
 
-        return $this->grids->create($definition)->renderGrid('record/index.html.twig', [
-            'object' => $definition,
-            'can_create' => $this->access->canRecords($definition->name, RecordAction::Create),
-        ]);
+        return $this->renderGridOf($definition, $definition->view(ViewKind::Grid));
+    }
+
+    /**
+     * The grid of a grid view named in the path: the gridview bundle keeps the route
+     * parameters in its sort, page and filter links ("?view=" is its own: table or cards).
+     */
+    #[Route('/grid/{grid}', name: 'grid', requirements: ['grid' => '[a-z][a-z0-9_]*'], methods: ['GET'])]
+    public function grid(string $object, string $grid): Response
+    {
+        $definition = $this->objectFor($object, RecordAction::Read);
+
+        return $this->renderGridOf($definition, $this->gridViewOr404($definition, $grid));
     }
 
     /**
      * Downloads the rows of the current filters, search and sort, with the columns on screen.
      */
     #[Route('/export', name: 'export', methods: ['GET'])]
-    public function export(string $object, Request $request, GridExporterRegistry $exporters): Response
+    #[Route('/grid/{grid}/export', name: 'grid_export', requirements: ['grid' => '[a-z][a-z0-9_]*'], methods: ['GET'])]
+    public function export(string $object, Request $request, GridExporterRegistry $exporters, ?string $grid = null): Response
     {
         $definition = $this->objectFor($object, RecordAction::Read);
         $format = $request->query->getString('format', 'csv');
@@ -75,7 +89,7 @@ final class RecordController extends AbstractController
             throw $this->createNotFoundException(\sprintf('Unknown export format "%s".', $format));
         }
 
-        $grid = $this->grids->create($definition);
+        $grid = $this->grids->create($definition, null === $grid ? $definition->view(ViewKind::Grid) : $this->gridViewOr404($definition, $grid));
         // The page reports the visible columns, in their order, as "cols=a,b,c".
         $cols = $request->query->all()['cols'] ?? null;
         $visible = \is_string($cols) && '' !== trim($cols) ? array_values(array_filter(array_map(trim(...), explode(',', $cols)))) : null;
@@ -231,6 +245,21 @@ final class RecordController extends AbstractController
         }
 
         return $object;
+    }
+
+    private function renderGridOf(ObjectDefinitionDto $object, ?ViewDefinitionDto $view): Response
+    {
+        return $this->grids->create($object, $view)->renderGrid('record/index.html.twig', [
+            'object' => $object,
+            'grid_view' => $view,
+            'can_create' => $this->access->canRecords($object->name, RecordAction::Create),
+        ]);
+    }
+
+    private function gridViewOr404(ObjectDefinitionDto $object, string $name): ViewDefinitionDto
+    {
+        return $object->view(ViewKind::Grid, $name)
+            ?? throw $this->createNotFoundException(\sprintf('Object "%s" has no grid view "%s".', $object->name, $name));
     }
 
     /**

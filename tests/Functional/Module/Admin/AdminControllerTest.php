@@ -234,6 +234,30 @@ final class AdminControllerTest extends WebTestCase
         self::assertSame([], $this->registry()->getObject('author')->views);
     }
 
+    public function testManagesGridViewsFromTheUi(): void
+    {
+        $this->createObject('author', 'Author', 'Authors');
+        $this->addField('author', 'text', ['name' => 'full_name', 'label' => 'Full name']);
+        $this->addField('author', 'text', ['name' => 'city', 'label' => 'City']);
+
+        $this->client->request('GET', '/admin/objects/author/views/new');
+        // Every error of the definition at once, on the input.
+        $this->client->submitForm('Save', ['view[name]' => 'list', 'view[kind]' => 'grid', 'view[template]' => "columns: [nickname]\npage_size: 0"]);
+        self::assertResponseStatusCodeSame(422);
+        self::assertAnySelectorTextContains('.gv-form-error', 'Column #1: object "author" has no field "nickname".');
+        self::assertAnySelectorTextContains('.gv-form-error', '"page_size" must be an integer from 1 to 500.');
+
+        $definition = "columns:\n  - { field: city, label: Town }\n  - full_name";
+        $this->client->submitForm('Save', ['view[name]' => 'list', 'view[kind]' => 'grid', 'view[template]' => $definition]);
+        self::assertResponseRedirects('/admin/objects/author', 303);
+        self::assertSame(['city', 'full_name'], array_map(static fn ($column): string => $column->key, $this->registry()->getObject('author')->view(ViewKind::Grid)->grid->columns ?? []));
+
+        $crawler = $this->client->request('GET', '/admin/objects/author/views/grid/list');
+        self::assertSelectorTextContains('label', 'Grid definition (YAML)');
+        self::assertSame($definition, $crawler->filter('textarea[name="view[template]"]')->text(null, false));
+        self::assertSame('/o/author/grid/list', $crawler->filter('.md-facts a')->attr('href'));
+    }
+
     public function testShowsAndRepairsTableDrift(): void
     {
         $this->createObject('author', 'Author', 'Authors');

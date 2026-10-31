@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Module\Metadata\Contract\Dto;
 
 /**
- * Read-only snapshot of a view: an HTML layout where each {field} token stands for
- * the rendering of that field.
+ * Read-only snapshot of a view. A form view is an HTML layout where each {field} token stands
+ * for the rendering of that field; a grid view is a YAML source and its compiled definition.
  */
 final readonly class ViewDefinitionDto
 {
@@ -14,7 +14,8 @@ final readonly class ViewDefinitionDto
     public const string TOKEN_PATTERN = '/\{\s*([a-z][a-z0-9_]*)\s*\}/';
 
     /**
-     * @param string $template sanitized HTML with {field} tokens
+     * @param string           $template sanitized HTML with {field} tokens (form), the YAML source (grid)
+     * @param GridViewDto|null $grid     the compiled definition of a grid view
      */
     public function __construct(
         public string $id,
@@ -22,6 +23,7 @@ final readonly class ViewDefinitionDto
         public string $name,
         public string $template,
         public bool $isDefault,
+        public ?GridViewDto $grid = null,
     ) {
     }
 

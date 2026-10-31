@@ -15,7 +15,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
-#[AsCommand(name: 'metadata:view:save', description: 'Create or replace a view: an HTML layout with a {field} token per field')]
+#[AsCommand(name: 'metadata:view:save', description: 'Create or replace a view: an HTML layout of the record form, or the YAML columns of the grid')]
 final class SaveViewConsoleCommand
 {
     use ReportsViolations;
@@ -30,8 +30,8 @@ final class SaveViewConsoleCommand
         SymfonyStyle $io,
         #[Argument('Object machine name')] string $object,
         #[Argument('View machine name')] string $name,
-        #[Argument('File holding the HTML layout, "-" for the standard input')] string $file,
-        #[Option('Where the view is used: "form"')] string $kind = ViewKind::Form->value,
+        #[Argument('File holding the HTML layout or the YAML grid definition, "-" for the standard input')] string $file,
+        #[Option('Where the view is used: "form" (the record form) or "grid" (the record grid)')] string $kind = ViewKind::Form->value,
         #[Option('Make it the default view of its kind')] bool $default = false,
     ): int {
         $viewKind = ViewKind::tryFrom($kind);

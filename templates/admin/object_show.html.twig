@@ -54,7 +54,7 @@
             <a class="gv-btn gv-btn-primary" href="{{ path('admin_view_new', {object: object.name}) }}">Add a view</a>
         </div>
         {% if object.views is empty %}
-            <p class="gv-muted">No views yet. The record form shows the fields one after another.</p>
+            <p class="gv-muted">No views yet. The record form shows the fields one after another; the grid has a column per field.</p>
         {% else %}
             <table class="md-table">
                 <thead>
