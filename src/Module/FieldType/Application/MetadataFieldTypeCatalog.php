@@ -34,6 +34,21 @@ final class MetadataFieldTypeCatalog implements FieldTypeCatalogInterface
         return $this->registry->has($type) ? $this->registry->get($type)->defaultSettings() : [];
     }
 
+    public function fixedSettings(string $type): array
+    {
+        if (!$this->registry->has($type)) {
+            return [];
+        }
+        $fixed = [];
+        foreach ($this->registry->get($type)->settingDefinitions() as $definition) {
+            if ($definition->fixed) {
+                $fixed[] = $definition->key;
+            }
+        }
+
+        return $fixed;
+    }
+
     public function conditionValues(string $type, array $settings): ?array
     {
         if (!$this->registry->has($type)) {

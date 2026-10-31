@@ -54,6 +54,17 @@ class FieldDefinition
     }
 
     /**
+     * @param array<string, mixed> $settings already validated by the field type
+     *
+     * @internal use ObjectDefinition::changeFieldSettings()
+     */
+    public function changeSettings(array $settings): void
+    {
+        $this->settings = $settings;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    /**
      * @param array{field: string, values: list<string>}|null $condition checked by ObjectDefinition::setFieldCondition()
      *
      * @internal

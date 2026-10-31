@@ -40,13 +40,13 @@ final class RelationFieldType extends AbstractFieldType
     public function settingDefinitions(): array
     {
         return [
-            new SettingDefinition('target', SettingKind::ObjectName, 'Related object', null, true),
+            new SettingDefinition('target', SettingKind::ObjectName, 'Related object', null, true, fixed: true),
             new SettingDefinition('onDelete', SettingKind::Choice, 'When the related record is deleted', null, true, ['choices' => [
                 OnDelete::SetNull->value => 'Clear this field',
                 OnDelete::Restrict->value => 'Refuse the deletion',
                 OnDelete::Cascade->value => 'Delete this record too',
-            ]]),
-            new SettingDefinition('inverseName', SettingKind::String, 'Inverse name', 'Machine name of the list of these records on the related object, e.g. "pets".'),
+            ]], fixed: true),
+            new SettingDefinition('inverseName', SettingKind::String, 'Inverse name', 'Machine name of the list of these records on the related object, e.g. "pets".', fixed: true),
             new SettingDefinition('inverseLabel', SettingKind::String, 'Inverse label', 'Title of that list, e.g. "Pets".'),
             new SettingDefinition('dependsOn', SettingKind::String, 'Depends on', 'For a cascade: the relation field of this object to choose first, e.g. "province". Empty: none.'),
             new SettingDefinition('dependsVia', SettingKind::String, 'Through', 'With "Depends on": the relation field of the related object pointing at the same object, e.g. "province" on a municipality.'),

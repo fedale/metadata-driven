@@ -41,7 +41,7 @@ final class NumberFieldType extends AbstractFieldType
     public function settingDefinitions(): array
     {
         return [
-            new SettingDefinition('decimals', SettingKind::Integer, 'Decimals', '0 for an integer. Extra decimals are refused, never rounded.', true, ['min' => 0, 'max' => self::MAX_DECIMALS]),
+            new SettingDefinition('decimals', SettingKind::Integer, 'Decimals', '0 for an integer. Extra decimals are refused, never rounded.', true, ['min' => 0, 'max' => self::MAX_DECIMALS], fixed: true),
             new SettingDefinition('min', SettingKind::Integer, 'Minimum', 'The smallest value allowed. Empty: no minimum.'),
             new SettingDefinition('max', SettingKind::Integer, 'Maximum', 'The largest value allowed. Empty: no maximum.'),
         ];

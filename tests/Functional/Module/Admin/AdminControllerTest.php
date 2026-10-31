@@ -181,6 +181,28 @@ final class AdminControllerTest extends WebTestCase
         self::assertNull($this->registry()->getObject('course')->field('room')->condition);
     }
 
+    public function testEditsTheSettingsOfAField(): void
+    {
+        $this->createObject('member', 'Member', 'Members');
+        $this->addField('member', 'text', ['name' => 'code', 'label' => 'Code', 'settings' => ['maxLength' => '10', 'pattern' => '[A-Z]+']]);
+
+        $crawler = $this->client->request('GET', '/admin/objects/member/fields/code');
+        // The length shapes the column: shown, not editable.
+        self::assertSame('disabled', $crawler->filter('input[name="field_settings[settings][maxLength]"]')->attr('disabled'));
+        self::assertSame('[A-Z]+', $crawler->filter('input[name="field_settings[settings][pattern]"]')->attr('value'));
+
+        $this->client->submitForm('Save settings', ['field_settings[settings][pattern]' => '[A-Z0-9]+', 'field_settings[settings][patternMessage]' => 'Capitals and digits.']);
+        self::assertResponseRedirects('/admin/objects/member/fields/code', 303);
+        $settings = $this->registry()->getObject('member')->field('code')->settings;
+        self::assertSame('[A-Z0-9]+', $settings['pattern']);
+        self::assertSame(10, $settings['maxLength']);
+
+        $this->client->followRedirect();
+        $this->client->submitForm('Save settings', ['field_settings[settings][pattern]' => '[A-Z']);
+        self::assertResponseStatusCodeSame(422);
+        self::assertAnySelectorTextContains('.gv-form-error', 'not a valid regular expression');
+    }
+
     public function testManagesViewsFromTheUi(): void
     {
         $this->createObject('author', 'Author', 'Authors');

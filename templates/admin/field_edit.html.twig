@@ -13,13 +13,28 @@
         <dt>Settings</dt><dd><code class="md-settings">{{ field.settings|json_encode }}</code></dd>
         <dt>Applies</dt><dd>{{ field.condition ? 'when ' ~ field.condition.field ~ ' is ' ~ field.condition.values|join(' or ') : 'always' }}</dd>
     </dl>
-    <p class="gv-muted">The name, the type and the rules are fixed once the column exists; the label can change.</p>
+    <p class="gv-muted">The name, the type and the rules are fixed once the column exists, and so are the settings that shape it; the label, the other settings and the condition can change.</p>
 
     {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
         {{ form_errors(form) }}
         {{ form_rest(form) }}
         <button type="submit" class="gv-btn gv-btn-primary">Save</button>
     {{ form_end(form) }}
+
+    {% if settings_form.settings|length > 0 %}
+        <section class="md-admin__section">
+            <h2>Settings</h2>
+            {{ form_start(settings_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+                {{ form_errors(settings_form) }}
+                {{ form_errors(settings_form.settings) }}
+                {{ form_widget(settings_form.settings) }}
+                {{ form_rest(settings_form) }}
+                <button type="submit" class="gv-btn gv-btn-primary">Save settings</button>
+            {{ form_end(settings_form) }}
+        </section>
+    {% else %}
+        {% do settings_form.settings.setRendered %}
+    {% endif %}
 
     <section class="md-admin__section">
         <h2>Condition</h2>

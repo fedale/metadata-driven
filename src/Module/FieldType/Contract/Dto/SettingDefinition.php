@@ -13,6 +13,8 @@ final readonly class SettingDefinition
     /**
      * @param array<string, mixed> $options "choices" (array<string, string>, value => label) for SettingKind::Choice;
      *                                      "min" / "max" (int) for SettingKind::Integer
+     * @param bool                 $fixed   the setting shapes the column (or the foreign key): it cannot
+     *                                      change once the field exists
      */
     public function __construct(
         public string $key,
@@ -21,6 +23,7 @@ final readonly class SettingDefinition
         public ?string $help = null,
         public bool $required = false,
         public array $options = [],
+        public bool $fixed = false,
     ) {
     }
 }

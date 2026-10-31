@@ -123,6 +123,11 @@ final class CachedMetadataRegistryTest extends TestCase
                 return 'boolean' === $type ? $this->booleanDefaults : [];
             }
 
+            public function fixedSettings(string $type): array
+            {
+                return [];
+            }
+
             public function conditionValues(string $type, array $settings): ?array
             {
                 return 'boolean' === $type ? ['true', 'false'] : null;

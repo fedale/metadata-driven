@@ -35,7 +35,7 @@ final class DateFieldType extends AbstractFieldType
     public function settingDefinitions(): array
     {
         return [
-            new SettingDefinition('includeTime', SettingKind::Boolean, 'Include the time'),
+            new SettingDefinition('includeTime', SettingKind::Boolean, 'Include the time', fixed: true),
         ];
     }
 
