@@ -73,6 +73,7 @@ final class FormSnapshotLoader
             array_map(fn (mixed $section): FormNodeDto => $this->mapNode(\is_array($section) ? $section : []), \is_array($node['sections'] ?? null) ? array_values($node['sections']) : []),
             true === ($node['inline'] ?? false),
             \is_array($node['required'] ?? null) ? array_values(array_filter($node['required'], is_string(...))) : [],
+            \is_string($node['layout'] ?? null) ? $node['layout'] : null,
         );
     }
 

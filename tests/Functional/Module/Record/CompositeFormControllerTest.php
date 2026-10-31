@@ -8,6 +8,7 @@ use App\Module\Metadata\Application\Command\CreateFieldCommand;
 use App\Module\Metadata\Application\Command\CreateObjectCommand;
 use App\Module\Metadata\Application\Handler\CreateFieldHandler;
 use App\Module\Metadata\Application\Handler\CreateObjectHandler;
+use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Record\Contract\CompositeRecordManagerInterface;
 use App\Module\Record\Contract\Dto\CompositeNodeInput;
 use App\Module\Record\Contract\RecordFinderInterface;
@@ -93,6 +94,62 @@ final class CompositeFormControllerTest extends WebTestCase
         $this->client->submit($form);
         self::assertResponseRedirects();
         self::assertSame(['333 123 4567'], $this->numbers($this->client->followRedirect()));
+    }
+
+    public function testLaysEveryNodeOutWithItsLayout(): void
+    {
+        self::getContainer()->get(MetadataManagerInterface::class)->saveForm('registration', <<<'YAML'
+            label: User registration
+            object: account
+            fields: [username, email, firstname, lastname, password, active]
+            service_fields:
+              - { name: terms, type: boolean, label: I accept the terms, required: true }
+            layout: |
+              <div class="md-columns">
+                <fieldset><legend>Sign-in</legend>{username} {email} {terms}</fieldset>
+                <div>{profile}</div>
+              </div>
+            sections:
+              - name: profile
+                label: Profile
+                object: profile
+                via: account
+                layout: '<p class="md-muted">Where you live</p>{city} {zipcode}'
+                sections:
+                  - { name: phones, label: Phones, object: phone, via: profile, mode: many, min: 1, inline: true }
+              - { name: qualifications, label: Qualifications, object: qualification, via: account, mode: many, layout: '<div class="md-columns">{title} {year}</div>' }
+            YAML);
+        self::signInAsSuperAdmin($this->client);
+
+        $crawler = $this->client->request('GET', '/f/registration/new');
+        self::assertResponseIsSuccessful();
+        $layout = $crawler->filter('form > .md-view-layout');
+        self::assertCount(1, $layout->filter('.md-columns > fieldset [name="composite[values][username]"]'));
+        self::assertCount(1, $layout->filter('.md-columns > fieldset [name="composite[service][terms]"]'));
+        // A section is placed whole, with its own layout inside it.
+        self::assertCount(1, $layout->filter('.md-columns > div > #section-composite_sections_profile .md-view-layout [name="composite[sections][profile][values][city]"]'));
+        self::assertSelectorTextContains('#section-composite_sections_profile .md-muted', 'Where you live');
+        // What a layout leaves out follows it: the account's names, the profile's gender and
+        // phones, the qualifications.
+        self::assertCount(0, $layout->filter('[name="composite[values][firstname]"]'));
+        self::assertCount(1, $crawler->filter('[name="composite[values][firstname]"]'));
+        self::assertCount(1, $crawler->filter('#section-composite_sections_profile #composite_sections_profile_values_gender'));
+        self::assertCount(1, $crawler->filter('#section-composite_sections_profile [name="composite[sections][profile][sections][phones][0][values][number]"]'));
+        self::assertCount(0, $layout->filter('#section-composite_sections_qualifications'));
+        // Each row of a section follows the section's layout, the rows added with "+" too.
+        $prototype = (string) $crawler->filter('[data-gridview-collection-prototype-name-value="__qualifications__"]')->attr('data-gridview-collection-prototype-value');
+        self::assertMatchesRegularExpression('/class="md-columns">.*name="composite\[sections\]\[qualifications\]\[__qualifications__\]\[values\]\[title\]"/s', $prototype);
+
+        // The names of the inputs do not change: the form saves as before.
+        $this->client->request('POST', '/f/registration/new', array_replace_recursive($this->values($crawler), ['composite' => [
+            'values' => ['username' => 'mario', 'email' => 'mario@example.com', 'firstname' => 'Mario', 'lastname' => 'Rossi', 'password' => ['first' => 'secret123', 'second' => 'secret123']],
+            'service' => ['terms' => '1'],
+            'sections' => ['profile' => [
+                'values' => ['city' => 'Milano'],
+                'sections' => ['phones' => [0 => ['id' => '', 'values' => ['prefix' => '+39', 'number' => '333 123 4567', 'type' => 'mobile']]]],
+            ]],
+        ]]));
+        self::assertResponseRedirects();
     }
 
     public function testShowsTheErrorsOnTheNestedInputs(): void

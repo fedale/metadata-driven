@@ -7,11 +7,14 @@ namespace App\Module\Metadata\Application\Form;
 use App\Module\Metadata\Contract\Dto\FormNodeMode;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\RelationSettings;
+use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Metadata\Contract\Exception\InvalidFieldSettings;
 use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
 use App\Module\Metadata\Contract\FieldTypeCatalogInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Domain\Model\MachineName;
+use Symfony\Component\DependencyInjection\Attribute\Target;
+use Symfony\Component\HtmlSanitizer\HtmlSanitizerInterface;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
@@ -39,14 +42,17 @@ use Symfony\Component\Yaml\Yaml;
  * "inline: true" lays the fields of a section out on one line (each row, for "mode: many").
  * "required: [city]" makes fields required in this form only; the fields their object
  * requires are required anyway, so "fields" may not leave them out.
+ * "layout" places the fields, service fields and sections of a node in HTML, with a {name}
+ * token each, as the views of the record form do; it is sanitized here, once.
  */
 final class FormDefinitionCompiler
 {
     public const string INPUT = 'definition';
     private const int MAX_DEPTH = 5;
     private const int MAX_LABEL_LENGTH = 100;
-    private const array ROOT_KEYS = ['label', 'object', 'fields', 'required', 'service_fields', 'sections'];
-    private const array SECTION_KEYS = ['name', 'label', 'object', 'via', 'mode', 'min', 'max', 'inline', 'fields', 'required', 'service_fields', 'sections'];
+    private const int MAX_LAYOUT_LENGTH = 20000;
+    private const array ROOT_KEYS = ['label', 'object', 'fields', 'required', 'service_fields', 'layout', 'sections'];
+    private const array SECTION_KEYS = ['name', 'label', 'object', 'via', 'mode', 'min', 'max', 'inline', 'fields', 'required', 'service_fields', 'layout', 'sections'];
     private const array SERVICE_FIELD_KEYS = ['name', 'type', 'label', 'required', 'settings'];
 
     /** @var list<string> */
@@ -55,6 +61,8 @@ final class FormDefinitionCompiler
     public function __construct(
         private readonly MetadataRegistryInterface $metadata,
         private readonly FieldTypeCatalogInterface $fieldTypes,
+        #[Target('view_layout')]
+        private readonly HtmlSanitizerInterface $sanitizer,
     ) {
     }
 
@@ -115,6 +123,7 @@ final class FormDefinitionCompiler
             'service' => $this->serviceFields($path, $node['service_fields'] ?? []),
             'sections' => [],
             'inline' => false,
+            'layout' => null,
         ];
         if (null !== $parent) {
             $inline = $node['inline'] ?? false;
@@ -127,13 +136,11 @@ final class FormDefinitionCompiler
         $sections = $node['sections'] ?? [];
         if (!\is_array($sections) || !array_is_list($sections)) {
             $this->errors[] = \sprintf('%s: "sections" must be a list.', $path);
-
-            return $compiled;
+            $sections = [];
         }
         if ([] !== $sections && $depth + 1 >= self::MAX_DEPTH) {
             $this->errors[] = \sprintf('%s: sections may be nested %d levels deep at most.', $path, self::MAX_DEPTH - 1);
-
-            return $compiled;
+            $sections = [];
         }
         $names = [];
         foreach ($sections as $index => $section) {
@@ -155,7 +162,69 @@ final class FormDefinitionCompiler
             $compiled['sections'][] = $this->node($sectionPath, $section, $sectionName ?? '', $sectionLabel, $object, $depth + 1);
         }
 
+        if (isset($node['layout'])) {
+            if ($compiled['inline']) {
+                $this->errors[] = \sprintf('%s: "layout" and "inline" exclude each other: an inline row lays its fields out by itself.', $path);
+            } elseif (null !== $object) {
+                $compiled['layout'] = $this->layout($path, $node['layout'], [
+                    'field' => null === $fields ? array_values(array_diff(array_keys($object->fields), [$via])) : $fields,
+                    'service field' => array_column($compiled['service'], 'name'),
+                    'section' => array_keys(array_filter($names, static fn (string $name): bool => '' !== $name, \ARRAY_FILTER_USE_KEY)),
+                ]);
+            }
+        }
+
         return $compiled;
+    }
+
+    /**
+     * Sanitizes the layout of a node and checks its tokens: each names a field, service field or
+     * section of the node, once, in the text (not inside a tag).
+     *
+     * @param array<string, list<string>> $names the names a token may use, by what they name
+     *
+     * @return string|null the sanitized layout; null when invalid
+     */
+    private function layout(string $path, mixed $layout, array $names): ?string
+    {
+        if (!\is_string($layout) || '' === trim($layout) || mb_strlen($layout) > self::MAX_LAYOUT_LENGTH) {
+            $this->errors[] = \sprintf('%s: "layout" must be an HTML text of 1 to %d characters.', $path, self::MAX_LAYOUT_LENGTH);
+
+            return null;
+        }
+        $valid = true;
+        // A token stands for one thing: a section named like a field would make it ambiguous.
+        $kinds = [];
+        foreach ($names as $kind => $list) {
+            foreach ($list as $name) {
+                if (isset($kinds[$name])) {
+                    $this->errors[] = \sprintf('%s: "%s" names both a %s and a %s: rename one, a {%s} token would be ambiguous.', $path, $name, $kinds[$name], $kind, $name);
+                    $valid = false;
+                }
+                $kinds[$name] = $kind;
+            }
+        }
+
+        $layout = $this->sanitizer->sanitize($layout);
+        $tokens = ViewDefinitionDto::tokens($layout);
+        foreach ($tokens as $token) {
+            if (!isset($kinds[$token])) {
+                $this->errors[] = \sprintf('%s: the layout places {%s}, which is no field, service field or section of this node (%s).', $path, $token, implode(', ', array_keys($kinds)));
+                $valid = false;
+            }
+        }
+        foreach (array_count_values($tokens) as $token => $count) {
+            if ($count > 1) {
+                $this->errors[] = \sprintf('%s: the layout places {%s} more than once.', $path, $token);
+                $valid = false;
+            }
+        }
+        if (\count(ViewDefinitionDto::tokens(strip_tags($layout))) !== \count($tokens)) {
+            $this->errors[] = \sprintf('%s: {name} tokens go in the text of the layout, not inside a tag or an attribute.', $path);
+            $valid = false;
+        }
+
+        return $valid ? $layout : null;
     }
 
     /**

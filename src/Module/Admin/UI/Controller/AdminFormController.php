@@ -36,6 +36,9 @@ final class AdminFormController extends AbstractController
         fields: [username, email, password]     # optional: every field when omitted
         service_fields:                         # optional: checked, never stored
           - { name: terms, type: boolean, label: I accept the terms, required: true }
+        layout: |                               # optional: {tokens} place fields and sections
+          <div class="md-columns"><fieldset><legend>Sign-in</legend>{username} {email} {password}</fieldset><div>{profile}</div></div>
+          {terms}
         sections:
           - name: profile
             label: Profile

@@ -50,6 +50,7 @@ deletes its profile, phones and qualifications.
 | `fields` | no | The fields shown, in order. Default: every field of the object. It may not leave out a field the object requires |
 | `required` | no | Fields required by this form although the object does not require them (see below) |
 | `service_fields` | no | Fields that belong to no object (see below) |
+| `layout` | no | HTML placing the fields, service fields and sections of the root (see [Layouts](#layouts)) |
 | `sections` | no | The sections, in order |
 
 ### A section
@@ -67,6 +68,7 @@ deletes its profile, phones and qualifications.
 | `fields` | no | The fields shown. Default: every field but `via`, which the form sets itself. It may not leave out a field the object requires |
 | `required` | no | As on the root |
 | `service_fields` | no | As on the root |
+| `layout` | no | As on the root, for the fields of this section; in a section of rows, every row follows it. Not with `inline` |
 | `sections` | no | Nested sections: a section of rows may have sections of its own, up to 4 levels |
 
 ### Required fields
@@ -102,6 +104,62 @@ A service field is checked like a field of its type, then **dropped**: no column
 
 A password confirmation is not a service field: the `confirm` setting of the `password` type
 already asks twice ([field types](field-types.md#password)).
+
+### Layouts
+
+A `layout` lays out one node of the form, the root or a section, the way a [view](views.md) lays
+out a record form: HTML with a `{name}` token where each piece goes. In the layout of a node a
+token may name:
+
+- one of its **fields**: the row of the field (label, input, help, errors);
+- one of its **service fields**: its row, the same way;
+- one of its **sections**: the whole section, its title, rows and "+" button included, laid out
+  by its own `layout` if it has one.
+
+```yaml
+label: User registration
+object: account
+fields: [username, email, firstname, lastname, password, active]
+service_fields:
+  - { name: terms, type: boolean, label: I accept the terms, required: true }
+layout: |
+  <div class="md-columns">
+    <fieldset><legend>Sign-in</legend>{username} {email} {password}</fieldset>
+    <div>{profile}</div>
+  </div>
+  {terms}
+sections:
+  - name: profile
+    label: Profile
+    object: profile
+    via: account
+    layout: '<div class="md-columns">{city} {zipcode}</div>'
+    sections:
+      - { name: phones, label: Phones, object: phone, via: profile, mode: many, inline: true }
+  - name: qualifications
+    label: Qualifications
+    object: qualification
+    via: account
+    mode: many
+    layout: '<div class="md-columns">{title} {year}</div>'   # every row
+```
+
+The rules are those of the views:
+
+- Each token at most **once**, in the text of the HTML, never inside a tag.
+- What the layout does not place **follows it**, in the usual order: above, the first and last
+  name after the columns, the gender and the phones after the profile's city and postal code,
+  the qualifications at the end.
+- The HTML is **sanitized** when the form is saved, with the same rules as the views (no
+  scripts, styles, event attributes or buttons). The page uses the sanitized layout; **Edit**
+  still shows the definition as written.
+- The classes are those of the views: `<fieldset>`/`<legend>` for a framed group,
+  `md-columns` for columns ([Styling](views.md#styling)).
+- A token names one thing: when a layout is given, a section named like a field or a service
+  field of its node is refused. The `via` field is set by the form, so no token places it.
+- `inline: true` already lays a row's fields out on one line: a section has one or the other.
+
+The inputs keep their names, so a layout changes the look of a form, never what it saves.
 
 ### Errors
 
@@ -165,12 +223,9 @@ symfony console metadata:form:delete registration      # the records stay
 | Read side | `MetadataRegistryInterface::getForm()`, `FormDefinitionDto` / `FormNodeDto`, cached with the metadata |
 | Writes | `CompositeRecordManagerInterface` (Record): plans and checks the whole tree with `RecordManagerInterface::check()`, then writes it with the record pipeline |
 | Page | `CompositeFormController` at `/f/{form}`, `CompositeNodeType` (a node: `values`, `service`, `sections`, a row's `id`), `templates/record/_composite.html.twig` |
+| Layouts | Checked and sanitized by `FormDefinitionCompiler` (the `view_layout` sanitizer), `FormNodeDto::$layout`; rendered by the Twig function `composite_form_layout()` (`RecordFormLayout`) |
 | Rows | The `gridview-collection` Stimulus controller and the `gv-collection` classes of fedale/gridview-bundle: adds a row from the section's prototype under a fresh key, removes one, keeps `min`/`max` |
 
 ## Not yet
 
-- **Conditional fields**: fields shown and required depending on another field (the kind of a
-  qualification). Next step.
-- **Layouts**: the [views](views.md) lay out the record form only; a composite form shows its
-  sections one after another.
 - **Service fields on edit**: a required one is asked again at every save.
