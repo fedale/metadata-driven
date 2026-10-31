@@ -23,6 +23,7 @@ use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
 use App\Shared\Transaction\TransactionRunner;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
@@ -42,6 +43,8 @@ final class CompositeRecordManager implements CompositeRecordManagerInterface
     public const string REQUIRED_MESSAGE = 'This value is required.';
 
     public function __construct(
+        // The labels in the user's language.
+        #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
         private readonly RecordManagerInterface $records,
         private readonly RecordFinderInterface $finder,

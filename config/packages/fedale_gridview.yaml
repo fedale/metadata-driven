@@ -4,6 +4,12 @@ fedale_gridview:
     # Framework-agnostic gv-* look: the app ships no CSS framework.
     theme: default
 
+    # The grid's own texts (pagination, filters, export...) in the app's languages; the
+    # bundle follows the page's <html lang>, set from the request locale.
+    i18n:
+        locales: '%kernel.enabled_locales%'
+        default: '%kernel.default_locale%'
+
     defaults:
         behavior:
             useTurbo: true

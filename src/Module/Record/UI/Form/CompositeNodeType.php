@@ -7,6 +7,7 @@ namespace App\Module\Record\UI\Form;
 use App\Module\Metadata\Contract\Dto\FormNodeDto;
 use App\Module\Metadata\Contract\Dto\FormNodeMode;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Event\PreSetDataEvent;
 use Symfony\Component\Form\Extension\Core\Type\CollectionType;
@@ -28,6 +29,8 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 final class CompositeNodeType extends AbstractType
 {
     public function __construct(
+        // The labels in the user's language.
+        #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
         private readonly RecordFormFactory $forms,
         private readonly CompositeFormFactory $composite,

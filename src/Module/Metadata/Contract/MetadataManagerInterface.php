@@ -88,4 +88,11 @@ interface MetadataManagerInterface
      * Deletes the form only: the records it wrote stay.
      */
     public function deleteForm(string $name): void;
+
+    /**
+     * Sets the text of a key in a language, or removes it when $text is null or blank. A key
+     * of the metadata (TranslationKey) takes a text in the other languages only; a text key
+     * ("text.<name>", placed by {t:name} tokens) is defined by its text in the default language.
+     */
+    public function translate(string $locale, string $key, ?string $text): void;
 }

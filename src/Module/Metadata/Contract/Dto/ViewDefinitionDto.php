@@ -12,6 +12,8 @@ final readonly class ViewDefinitionDto
 {
     /** A {field} token: the machine name of a field between braces. */
     public const string TOKEN_PATTERN = '/\{\s*([a-z][a-z0-9_]*)\s*\}/';
+    /** A {t:name} token: the text "text.<name>" in the user's language (see TranslationKey). */
+    public const string TEXT_TOKEN_PATTERN = '/\{\s*t:([a-z][a-z0-9_]*)\s*\}/';
 
     /**
      * @param string           $template sanitized HTML with {field} tokens (form), the YAML source (grid)
@@ -33,6 +35,16 @@ final readonly class ViewDefinitionDto
     public static function tokens(string $template): array
     {
         preg_match_all(self::TOKEN_PATTERN, $template, $matches);
+
+        return $matches[1];
+    }
+
+    /**
+     * @return list<string> the names of the {t:name} tokens, in order of appearance
+     */
+    public static function textTokens(string $template): array
+    {
+        preg_match_all(self::TEXT_TOKEN_PATTERN, $template, $matches);
 
         return $matches[1];
     }

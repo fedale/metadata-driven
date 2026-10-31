@@ -22,7 +22,7 @@ A user is two records, one-to-one:
 | Table | Holds |
 |---|---|
 | `core.app_user` | The login identity: email (unique, stored lowercase), password hash, active flag, last login |
-| `core.user_profile` | The person: first and last name (the name shown in the top bar) |
+| `core.user_profile` | The person: first and last name (the name shown in the top bar), the language of the application (see [Languages](i18n.md#languages-of-the-users)) |
 
 Passwords are hashed with Symfony's `auto` hasher and rehashed on sign-in when the algorithm or
 its cost changes; at least 12 characters. An unknown and a deactivated user get the same error.
@@ -35,6 +35,9 @@ user:create [--first-name=…] [--last-name=…] [--password=…] <email>
 
 Without `--password` the password is asked, hidden (prefer it: an option ends up in the shell
 history). The user starts with no permission: assign a role or a permission.
+
+Any signed-in user picks their language in the top bar (`POST /account/locale`); no permission
+is needed.
 
 ## Permissions
 

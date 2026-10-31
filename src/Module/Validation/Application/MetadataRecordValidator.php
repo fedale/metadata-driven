@@ -10,6 +10,7 @@ use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Validation\Contract\RecordValidatorInterface;
 use App\Module\Validation\Contract\ReferenceCheckerInterface;
 use App\Module\Validation\Contract\UniqueValueCheckerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -29,6 +30,8 @@ final class MetadataRecordValidator implements RecordValidatorInterface
         private readonly FieldTypeRegistryInterface $fieldTypes,
         private readonly UniqueValueCheckerInterface $uniqueValues,
         private readonly ReferenceCheckerInterface $references,
+        // The labels in the user's language.
+        #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
     ) {
     }

@@ -56,7 +56,7 @@ final class CompositeFormControllerTest extends WebTestCase
         self::assertCount(0, $crawler->filter('[name^="composite[sections][qualifications]"]'));
         // A new account needs its password: required, without the "keep it" help.
         self::assertSame('required', $crawler->filter('input[name="composite[values][password][first]"]')->attr('required'));
-        self::assertSelectorTextNotContains('form', 'Leave empty to keep the current password.');
+        self::assertSelectorTextNotContains('main form', 'Leave empty to keep the current password.');
 
         $this->client->request('POST', '/f/registration/new', array_replace_recursive($this->values($crawler), ['composite' => [
             'values' => ['username' => 'mario', 'email' => 'mario@example.com', 'firstname' => 'Mario', 'lastname' => 'Rossi', 'password' => ['first' => 'secret123', 'second' => 'secret123'], 'active' => '1'],
@@ -164,7 +164,7 @@ final class CompositeFormControllerTest extends WebTestCase
         $crawler = $this->client->submit($form);
         self::assertResponseStatusCodeSame(422);
         self::assertStringContainsString('This value is required.', $this->errorsOf($crawler, 'composite[values][email]'));
-        self::assertStringContainsString('This box must be checked.', $crawler->filter('form')->text());
+        self::assertStringContainsString('This box must be checked.', $crawler->filter('main form')->text());
         self::assertStringContainsString('This value is not valid.', $this->errorsOf($crawler, 'composite[sections][profile][values][zipcode]'));
         self::assertStringContainsString('not a valid phone number', $this->errorsOf($crawler, 'composite[sections][profile][sections][phones][0][values][number]'));
         self::assertSame([], self::getContainer()->get(RecordFinderInterface::class)->latest('account'));

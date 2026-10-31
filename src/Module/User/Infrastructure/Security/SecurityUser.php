@@ -26,6 +26,7 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
         private readonly string $passwordHash,
         private readonly string $displayName,
         private readonly array $assignedRoles = [],
+        private readonly ?string $locale = null,
     ) {
     }
 
@@ -34,7 +35,7 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
      */
     public static function fromUser(User $user, array $assignedRoles): self
     {
-        return new self($user->getId()->toRfc4122(), $user->getEmail(), $user->getPasswordHash(), $user->getDisplayName(), $assignedRoles);
+        return new self($user->getId()->toRfc4122(), $user->getEmail(), $user->getPasswordHash(), $user->getDisplayName(), $assignedRoles, $user->getLocale());
     }
 
     /**
@@ -63,6 +64,15 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
     public function getDisplayName(): string
     {
         return $this->displayName;
+    }
+
+    /**
+     * The language chosen in the profile; null: the browser's. Not compared by isEqualTo():
+     * changing it keeps the session.
+     */
+    public function getLocale(): ?string
+    {
+        return $this->locale;
     }
 
     /**

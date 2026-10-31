@@ -14,6 +14,7 @@ use App\Module\Metadata\Application\Command\DeleteFormCommand;
 use App\Module\Metadata\Application\Command\DeleteViewCommand;
 use App\Module\Metadata\Application\Command\SaveFormCommand;
 use App\Module\Metadata\Application\Command\SaveViewCommand;
+use App\Module\Metadata\Application\Command\TranslateCommand;
 use App\Module\Metadata\Application\Handler\ConfigureFieldConditionHandler;
 use App\Module\Metadata\Application\Handler\ConfigureFieldSettingsHandler;
 use App\Module\Metadata\Application\Handler\ConfigureObjectLabelHandler;
@@ -24,6 +25,7 @@ use App\Module\Metadata\Application\Handler\DeleteFormHandler;
 use App\Module\Metadata\Application\Handler\DeleteViewHandler;
 use App\Module\Metadata\Application\Handler\SaveFormHandler;
 use App\Module\Metadata\Application\Handler\SaveViewHandler;
+use App\Module\Metadata\Application\Handler\TranslateHandler;
 use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\Event\MetadataChanged;
 use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
@@ -55,6 +57,7 @@ final class MetadataManager implements MetadataManagerInterface
         private readonly DeleteViewHandler $deleteView,
         private readonly SaveFormHandler $saveForm,
         private readonly DeleteFormHandler $deleteForm,
+        private readonly TranslateHandler $translate,
         private readonly ObjectDefinitionRepository $objects,
         private readonly TransactionRunner $transactions,
         private readonly EventDispatcherInterface $events,
@@ -121,6 +124,11 @@ final class MetadataManager implements MetadataManagerInterface
     public function deleteForm(string $name): void
     {
         ($this->deleteForm)($this->valid(new DeleteFormCommand($name)));
+    }
+
+    public function translate(string $locale, string $key, ?string $text): void
+    {
+        ($this->translate)($this->valid(new TranslateCommand($locale, $key, $text)));
     }
 
     /**

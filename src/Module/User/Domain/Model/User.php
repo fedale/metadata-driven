@@ -98,6 +98,14 @@ class User
         return '' !== $name ? $name : $this->email;
     }
 
+    /**
+     * The language chosen in the profile; null: the browser's.
+     */
+    public function getLocale(): ?string
+    {
+        return $this->profile?->getLocale();
+    }
+
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;

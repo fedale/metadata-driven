@@ -125,7 +125,7 @@ final class RecordControllerTest extends WebTestCase
         $password = $crawler->filter('input[name="record[password][first]"]');
         self::assertSame('', (string) $password->attr('value'));
         self::assertNull($password->attr('required'));
-        self::assertSelectorTextContains('form', 'Leave empty to keep the current password.');
+        self::assertSelectorTextContains('main form', 'Leave empty to keep the current password.');
         self::assertSame('checked', $crawler->filter('input[name="record[gender]"][value="m"]')->attr('checked'));
     }
 

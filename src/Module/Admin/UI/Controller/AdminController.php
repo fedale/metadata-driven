@@ -48,8 +48,8 @@ final class AdminController extends AbstractController
 {
     private const array TYPE_ORDER = ['text', 'number', 'date', 'boolean', 'select', 'email', 'tel', 'url', 'password', 'relation'];
     private const string NAME_HELP = 'Lowercase letters, digits and single underscores, starting with a letter. It cannot be changed later.';
-    private const string FORM_VIEW_HELP = 'Put a {field} token where each field goes; the fields left out follow the layout. Scripts, styles and event attributes are removed; class attributes are kept.';
-    private const string GRID_VIEW_HELP = 'The columns in order: a field name, or a map with field, label, renderer (truncate, badge, date), options, hidden, sortable, filter; a virtual column takes a name and a template of {field} tokens. Optional: sort and page_size.';
+    private const string FORM_VIEW_HELP = 'Put a {field} token where each field goes; the fields left out follow the layout. A {t:name} token shows a text of Admin > Translations in the user\'s language. Scripts, styles and event attributes are removed; class attributes are kept.';
+    private const string GRID_VIEW_HELP = 'The columns in order: a field name, or a map with field, label, renderer (truncate, badge, date), options, hidden, sortable, filter; a virtual column takes a name and a template of {field} tokens. A label may hold {t:name} tokens (Admin > Translations). Optional: sort and page_size.';
     private const string GRID_VIEW_EXAMPLE = <<<'YAML'
         columns:
           - title

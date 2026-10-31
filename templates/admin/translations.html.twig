@@ -1,0 +1,75 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Translations · Admin{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('admin_index') }}">&larr; Objects</a></p>
+    <div class="md-page__header">
+        <h1>Translations</h1>
+        <nav class="md-switch" aria-label="Language">
+            {% for item in locales %}
+                <a class="md-switch__item{{ item == locale ? ' md-switch__item--current' }}" href="{{ path('admin_translation_edit', {locale: item}) }}"
+                   {% if item == locale %}aria-current="page"{% endif %}>{{ item|locale_name('en')|capitalize }}</a>
+            {% endfor %}
+        </nav>
+    </div>
+
+    {% if locale == default_locale %}
+        <p class="gv-muted">
+            The metadata is written in {{ locale|locale_name('en') }}: its labels are the texts of this language.
+            Here are the <strong>texts</strong> of the layouts: a <code>{t:name}</code> token in a form view, a composite form
+            or a grid heading shows the text of that name, in the language of the user. Empty a text to remove it.
+        </p>
+    {% else %}
+        <p class="gv-muted">
+            The texts shown to the users reading the application in {{ locale|locale_name('en') }}. A key left empty shows the
+            {{ default_locale|locale_name('en') }} text, the one in grey inside the input.
+        </p>
+    {% endif %}
+
+    {% if groups is empty %}
+        <p class="gv-muted">{{ locale == default_locale ? 'No texts yet.' : 'Nothing to translate yet.' }}</p>
+    {% endif %}
+
+    {{ form_start(form, {attr: {class: 'md-form md-form--wide', novalidate: 'novalidate'}}) }}
+        {{ form_errors(form) }}
+        {% for group, entries in groups %}
+            <section class="md-admin__section">
+                <h2>{{ group }}</h2>
+                <table class="md-table md-translations">
+                    <thead>
+                        <tr>
+                            <th scope="col">Key</th>
+                            <th scope="col">{{ locale == default_locale ? 'Used by' : default_locale|locale_name('en')|capitalize }}</th>
+                            <th scope="col">{{ locale|locale_name('en')|capitalize }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for index, entry in entries %}
+                            {% set input = form['t' ~ index] %}
+                            <tr>
+                                <td><label for="{{ input.vars.id }}"><code>{{ entry.key }}</code></label></td>
+                                <td>{{ locale == default_locale ? (entry.usedBy is empty ? '—' : entry.usedBy|join(', ')) : entry.source }}</td>
+                                <td>{{ form_widget(input) }}{{ form_errors(input) }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+        {% endfor %}
+        {% if groups is not empty %}
+            <button type="submit" class="gv-btn gv-btn-primary">Save</button>
+        {% endif %}
+    {{ form_end(form) }}
+
+    {% if new_text %}
+        <section class="md-admin__section">
+            <h2>New text</h2>
+            {{ form_start(new_text, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+                {{ form_errors(new_text) }}
+                {{ form_rest(new_text) }}
+                <button type="submit" class="gv-btn">Create</button>
+            {{ form_end(new_text) }}
+        </section>
+    {% endif %}
+{% endblock %}

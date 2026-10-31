@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Application\View;
 
+use App\Module\Metadata\Application\Translation\DefinedTexts;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
@@ -43,6 +44,7 @@ final class GridViewCompiler
     public function __construct(
         private readonly FieldTypeCatalogInterface $fieldTypes,
         private readonly GridRendererCatalogInterface $renderers,
+        private readonly DefinedTexts $texts,
     ) {
     }
 
@@ -271,6 +273,9 @@ final class GridViewCompiler
             $this->errors[] = \sprintf('%s: "label" must be a text of 1 to %d characters.', $path, self::MAX_LABEL_LENGTH);
 
             return null;
+        }
+        if (null !== $error = $this->texts->errorFor($path, $label)) {
+            $this->errors[] = $error;
         }
 
         return trim($label);

@@ -8,6 +8,7 @@ use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use Fedale\GridviewBundle\Contract\GridDescriptorProviderInterface;
 use Fedale\GridviewBundle\UiSettings\GridDescriptor;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 
 /**
  * Makes every record grid a scope of the UI settings modal, the grids of the views other than
@@ -17,6 +18,8 @@ use Fedale\GridviewBundle\UiSettings\GridDescriptor;
 final class RecordGridDescriptors implements GridDescriptorProviderInterface
 {
     public function __construct(
+        // The labels in the user's language.
+        #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
         private readonly RecordGridFactory $grids,
     ) {

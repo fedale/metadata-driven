@@ -8,13 +8,14 @@ use App\Module\Access\Contract\AccessCheckerInterface;
 use App\Module\Access\Contract\RecordAction;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class HomeController extends AbstractController
 {
     #[Route('/', name: 'app_home', methods: ['GET'])]
-    public function __invoke(MetadataRegistryInterface $metadata, AccessCheckerInterface $access): Response
+    public function __invoke(#[Target('localizedMetadata')] MetadataRegistryInterface $metadata, AccessCheckerInterface $access): Response
     {
         // Only the objects whose records the user may read.
         $objects = array_filter(

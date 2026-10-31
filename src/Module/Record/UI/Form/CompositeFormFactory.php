@@ -11,6 +11,7 @@ use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Contract\Dto\CompositeNodeInput;
 use App\Module\Record\Contract\Dto\CompositeRecord;
 use App\Module\Record\Contract\Exception\CompositeValidationFailed;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
@@ -26,6 +27,8 @@ final class CompositeFormFactory
 {
     public function __construct(
         private readonly FormFactoryInterface $formFactory,
+        // The labels in the user's language.
+        #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
         private readonly RecordFormFactory $forms,
     ) {

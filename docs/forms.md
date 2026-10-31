@@ -158,6 +158,11 @@ The rules are those of the views:
 - A token names one thing: when a layout is given, a section named like a field or a service
   field of its node is refused. The `via` field is set by the form, so no token places it.
 - `inline: true` already lays a row's fields out on one line: a section has one or the other.
+- A `{t:name}` token shows a text in the user's language, e.g. `<legend>{t:sign_in}</legend>`
+  instead of `<legend>Sign-in</legend>`; the text must be defined before the form is saved (see
+  [Languages](i18n.md#texts-in-layouts-tname)). The labels of the form, of its sections and of
+  its service fields are translated by their own keys (`form.<form>`, `section.<form>.<path>`,
+  `service.<form>.<path>.<field>`).
 
 The inputs keep their names, so a layout changes the look of a form, never what it saves.
 

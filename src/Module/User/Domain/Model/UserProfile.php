@@ -13,6 +13,8 @@ class UserProfile
 {
     private ?string $firstName;
     private ?string $lastName;
+    /** The language the user reads the application in; null: the browser's. */
+    private ?string $locale = null;
     private \DateTimeImmutable $updatedAt;
 
     public function __construct(
@@ -30,6 +32,17 @@ class UserProfile
         $this->firstName = self::clean($firstName);
         $this->lastName = self::clean($lastName);
         $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function changeLocale(?string $locale): void
+    {
+        $this->locale = $locale;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function getLocale(): ?string
+    {
+        return $this->locale;
     }
 
     public function getFullName(): string
