@@ -36,7 +36,7 @@ final class CachedMetadataRegistry implements MetadataRegistryInterface, ResetIn
     // The key also carries a fingerprint of the field types' default settings: the snapshot
     // merges them into the stored settings, so a setting added to a type renews it by itself.
     private const string CACHE_KEY = 'metadata_snapshot.v6';
-    private const string FORMS_CACHE_KEY = 'metadata_forms.v3';
+    private const string FORMS_CACHE_KEY = 'metadata_forms.v4';
     private const string CACHE_TAG = 'metadata';
 
     /** @var array<string, ObjectDefinitionDto>|null */

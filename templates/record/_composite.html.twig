@@ -1,6 +1,7 @@
 {#
     Renders a node of a composite form: the fields of its record, its service fields, then
-    its sections, a fieldset each. A one-to-many section repeats its rows with the
+    its sections, a fieldset each; with a layout, these are placed by its {name} tokens and
+    the rest follows. A one-to-many section repeats its rows with the
     gridview-collection controller and the gv-collection classes of fedale/gridview-bundle
     (19_form-components.md); "inline: true" lays a row's fields out on one line.
 #}
@@ -8,40 +9,57 @@
     {% import _self as composite %}
     {{ form_errors(form) }}
     {% if form.id is defined %}{{ form_widget(form.id) }}{% endif %}
-    {{ form_widget(form.values) }}
-    {% if form.service is defined %}{{ form_widget(form.service) }}{% endif %}
-    {% for section in node.sections %}
-        {% set child = form.sections[section.name] %}
-        <fieldset class="md-composite__section" id="section-{{ child.vars.id }}">
-            <legend class="md-composite__title">{{ section.label }}</legend>
-            {{ form_errors(child) }}
-            {% if section.mode.value == 'many' %}
-                {% set next = 0 %}
-                {% for key, row in child %}{% set next = max(next, key + 1) %}{% endfor %}
-                <div class="gv-collection" data-controller="gridview-collection"
-                     data-gridview-collection-prototype-value="{{ composite.row(child.vars.prototype, section, editable)|e('html_attr') }}"
-                     data-gridview-collection-prototype-name-value="__{{ section.name }}__"
-                     data-gridview-collection-index-value="{{ next }}"
-                     data-gridview-collection-min-value="{{ section.min }}"
-                     data-gridview-collection-max-value="{{ section.max ?? 0 }}">
-                    <div class="gv-collection__rows" data-gridview-collection-target="list">
-                        {% for row in child %}{{ composite.row(row, section, editable) }}{% endfor %}
-                    </div>
-                    {% if editable %}
-                        <button type="button" class="gv-btn gv-collection__add" data-gridview-collection-target="add" data-action="gridview-collection#add">+ {{ section.label }}</button>
-                    {% endif %}
-                </div>
-                {% do child.setRendered %}
-            {% elseif section.inline %}
-                <div class="gv-collection__row gv-collection__row--inline">
-                    <div class="gv-collection__fields">{{ composite.node(child, section, editable) }}</div>
-                </div>
-            {% else %}
-                {{ composite.node(child, section, editable) }}
-            {% endif %}
-        </fieldset>
-    {% endfor %}
+    {% if node.layout %}
+        {# The sections are rendered first, so that the layout can place them by name. #}
+        {% set sections = {} %}
+        {% for section in node.sections %}
+            {% set sections = sections|merge({(section.name): composite.section(form.sections[section.name], section, editable)}) %}
+        {% endfor %}
+        <div class="md-view-layout">{{ composite_form_layout(form, node.layout, sections) }}</div>
+        {# What the layout leaves out follows it, in the usual order. #}
+        {% if not form.values.isRendered %}{{ form_widget(form.values) }}{% endif %}
+        {% if form.service is defined and not form.service.isRendered %}{{ form_widget(form.service) }}{% endif %}
+        {% for section in node.sections %}
+            {% if section.name not in node.placed %}{{ sections[section.name] }}{% endif %}
+        {% endfor %}
+    {% else %}
+        {{ form_widget(form.values) }}
+        {% if form.service is defined %}{{ form_widget(form.service) }}{% endif %}
+        {% for section in node.sections %}{{ composite.section(form.sections[section.name], section, editable) }}{% endfor %}
+    {% endif %}
     {% if form.sections is defined %}{% do form.sections.setRendered %}{% endif %}
+{% endmacro %}
+
+{% macro section(child, section, editable) %}
+    {% import _self as composite %}
+    <fieldset class="md-composite__section" id="section-{{ child.vars.id }}">
+        <legend class="md-composite__title">{{ section.label }}</legend>
+        {{ form_errors(child) }}
+        {% if section.mode.value == 'many' %}
+            {% set next = 0 %}
+            {% for key, row in child %}{% set next = max(next, key + 1) %}{% endfor %}
+            <div class="gv-collection" data-controller="gridview-collection"
+                 data-gridview-collection-prototype-value="{{ composite.row(child.vars.prototype, section, editable)|e('html_attr') }}"
+                 data-gridview-collection-prototype-name-value="__{{ section.name }}__"
+                 data-gridview-collection-index-value="{{ next }}"
+                 data-gridview-collection-min-value="{{ section.min }}"
+                 data-gridview-collection-max-value="{{ section.max ?? 0 }}">
+                <div class="gv-collection__rows" data-gridview-collection-target="list">
+                    {% for row in child %}{{ composite.row(row, section, editable) }}{% endfor %}
+                </div>
+                {% if editable %}
+                    <button type="button" class="gv-btn gv-collection__add" data-gridview-collection-target="add" data-action="gridview-collection#add">+ {{ section.label }}</button>
+                {% endif %}
+            </div>
+            {% do child.setRendered %}
+        {% elseif section.inline %}
+            <div class="gv-collection__row gv-collection__row--inline">
+                <div class="gv-collection__fields">{{ composite.node(child, section, editable) }}</div>
+            </div>
+        {% else %}
+            {{ composite.node(child, section, editable) }}
+        {% endif %}
+    </fieldset>
 {% endmacro %}
 
 {% macro row(form, section, editable) %}

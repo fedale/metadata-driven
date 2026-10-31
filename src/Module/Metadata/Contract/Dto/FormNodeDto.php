@@ -19,6 +19,7 @@ final readonly class FormNodeDto
      * @param list<FormNodeDto>     $sections
      * @param bool                  $inline        the fields side by side, on one line (a phone: prefix, number, type)
      * @param list<string>          $required      fields required by the form although their object does not require them
+     * @param string|null           $layout        sanitized HTML placing the fields, service fields and sections with {name} tokens; null: one after another
      */
     public function __construct(
         public string $name,
@@ -33,7 +34,18 @@ final readonly class FormNodeDto
         public array $sections,
         public bool $inline = false,
         public array $required = [],
+        public ?string $layout = null,
     ) {
+    }
+
+    /**
+     * The names the layout places: the rest is shown after it.
+     *
+     * @return list<string>
+     */
+    public function placed(): array
+    {
+        return null === $this->layout ? [] : ViewDefinitionDto::tokens($this->layout);
     }
 
     /**

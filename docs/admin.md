@@ -52,8 +52,8 @@ layout and which view a page uses.
 
 The composite forms: one form writing a record and the records related to it. **New form** starts
 from an example definition (YAML) and lists every object with its fields and relation fields
-next to the editor; saving reports every error of the definition at once. See
-[Composite forms](forms.md).
+next to the editor; saving reports every error of the definition at once, those of the
+`layout`s included. See [Composite forms](forms.md) and its [Layouts](forms.md#layouts).
 
 ## A field — `/admin/objects/<object>/fields/<field>`
 
