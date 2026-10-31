@@ -157,6 +157,38 @@ final class CompositeFormControllerTest extends WebTestCase
         self::assertResponseRedirects();
     }
 
+    public function testAServiceFieldAskedAtCreationOnlyIsLeftOutOfTheEdit(): void
+    {
+        self::getContainer()->get(MetadataManagerInterface::class)->saveForm('registration', str_replace(
+            ['required: true }', '{ name: qualifications, label: Qualifications, object: qualification, via: account, mode: many }'],
+            ['required: true, ask: create }', '{ name: qualifications, label: Qualifications, object: qualification, via: account, mode: many, service_fields: [{ name: earned, type: boolean, label: I earned it, ask: create }] }'],
+            self::REGISTRATION_FORM,
+        ));
+        self::signInAsSuperAdmin($this->client);
+        $crawler = $this->client->request('GET', '/f/registration/new');
+        self::assertCount(1, $crawler->filter('[name="composite[service][terms]"]'));
+
+        $this->client->request('POST', '/f/registration/new', array_replace_recursive($this->values($crawler), ['composite' => [
+            'values' => ['username' => 'mario', 'email' => 'mario@example.com', 'firstname' => 'Mario', 'lastname' => 'Rossi', 'password' => ['first' => 'secret123', 'second' => 'secret123']],
+            'service' => ['terms' => '1'],
+            'sections' => [
+                'profile' => ['values' => ['city' => 'Milano'], 'sections' => ['phones' => [0 => ['id' => '', 'values' => ['prefix' => '+39', 'number' => '333 123 4567', 'type' => 'mobile']]]]],
+                'qualifications' => [0 => ['id' => '', 'values' => ['title' => 'Computer engineering', 'year' => '2019']]],
+            ],
+        ]]));
+        self::assertResponseRedirects();
+        $crawler = $this->client->followRedirect();
+
+        // The terms are not asked again, nor is "earned" on the saved row; a row added with "+"
+        // is new, and asks it.
+        self::assertCount(0, $crawler->filter('[name="composite[service][terms]"]'));
+        self::assertCount(0, $crawler->filter('[name="composite[sections][qualifications][0][service][earned]"]'));
+        self::assertStringContainsString('[__qualifications__][service][earned]', (string) $crawler->filter('[data-gridview-collection-prototype-name-value="__qualifications__"]')->attr('data-gridview-collection-prototype-value'));
+
+        $this->client->submit($crawler->selectButton('Save')->form());
+        self::assertResponseRedirects();
+    }
+
     public function testShowsTheErrorsOnTheNestedInputs(): void
     {
         self::signInAsSuperAdmin($this->client);

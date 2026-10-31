@@ -8,6 +8,7 @@ use App\Module\Metadata\Application\Translation\DefinedTexts;
 use App\Module\Metadata\Contract\Dto\FormNodeMode;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\RelationSettings;
+use App\Module\Metadata\Contract\Dto\ServiceFieldAsk;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Metadata\Contract\Exception\InvalidFieldSettings;
 use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
@@ -30,7 +31,7 @@ use Symfony\Component\Yaml\Yaml;
  *     object: account
  *     fields: [username, email, password, active]      # optional: every field when omitted
  *     service_fields:                                  # optional: validated, never stored
- *       - { name: terms, type: boolean, label: I accept the terms, required: true }
+ *       - { name: terms, type: boolean, label: I accept the terms, required: true, ask: always }
  *     sections:
  *       - name: profile
  *         label: Profile
@@ -56,7 +57,7 @@ final class FormDefinitionCompiler
     private const int MAX_COLUMNS = 4;
     private const array ROOT_KEYS = ['label', 'description', 'object', 'fields', 'required', 'service_fields', 'columns', 'layout', 'sections'];
     private const array SECTION_KEYS = ['name', 'label', 'description', 'object', 'via', 'mode', 'min', 'max', 'inline', 'fields', 'required', 'service_fields', 'columns', 'layout', 'sections'];
-    private const array SERVICE_FIELD_KEYS = ['name', 'type', 'label', 'required', 'settings'];
+    private const array SERVICE_FIELD_KEYS = ['name', 'type', 'label', 'required', 'ask', 'settings'];
 
     /** @var list<string> */
     private array $errors = [];
@@ -384,7 +385,7 @@ final class FormDefinitionCompiler
     }
 
     /**
-     * @return list<array{name: string, type: string, label: string, required: bool, settings: array<string, mixed>}>
+     * @return list<array{name: string, type: string, label: string, required: bool, ask: string, settings: array<string, mixed>}>
      */
     private function serviceFields(string $path, mixed $fields): array
     {
@@ -423,6 +424,11 @@ final class FormDefinitionCompiler
             if (!\is_bool($required)) {
                 $this->errors[] = \sprintf('%s: "required" must be true or false.', $fieldPath);
             }
+            $askValue = $field['ask'] ?? ServiceFieldAsk::Always->value;
+            $ask = \is_string($askValue) ? ServiceFieldAsk::tryFrom($askValue) : null;
+            if (null === $ask) {
+                $this->errors[] = \sprintf('%s: "ask" must be one of %s.', $fieldPath, implode(', ', array_column(ServiceFieldAsk::cases(), 'value')));
+            }
             try {
                 $settings = $this->fieldTypes->resolveSettings($type, $settings);
             } catch (InvalidFieldSettings $e) {
@@ -437,6 +443,7 @@ final class FormDefinitionCompiler
                 'type' => $type,
                 'label' => $this->label($fieldPath, $field['label'] ?? null),
                 'required' => true === $required,
+                'ask' => ($ask ?? ServiceFieldAsk::Always)->value,
                 'settings' => $settings,
             ];
         }
