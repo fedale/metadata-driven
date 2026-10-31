@@ -278,7 +278,7 @@ final class AdminTranslationController extends AbstractController
         return match ($parts[0]) {
             'object' => $this->generateUrl('admin_object_show', ['object' => $parts[1]]),
             'field', 'option', 'inverse', 'message' => isset($parts[2]) ? $this->generateUrl('admin_field_edit', ['object' => $parts[1], 'field' => $parts[2]]) : null,
-            'form', 'section', 'service' => $this->generateUrl('admin_form_edit', ['form' => $parts[1]]),
+            'form', 'section', 'service', 'description' => $this->generateUrl('admin_form_edit', ['form' => $parts[1]]),
             default => null,
         };
     }

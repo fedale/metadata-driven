@@ -77,7 +77,7 @@ final class RecordControllerTest extends WebTestCase
         // The layout decides the order; the fields it leaves out follow it.
         self::assertSame(['record[species]', 'record[name]'], $layout->filter('select, input')->each(static fn ($input): ?string => $input->attr('name')));
         self::assertCount(0, $crawler->filter('.md-view-layout input[name="record[weight]"]'));
-        self::assertCount(1, $crawler->filter('form.md-form input[name="record[weight]"]'));
+        self::assertCount(1, $crawler->filter('form.md-sheet input[name="record[weight]"]'));
 
         $this->client->submitForm('Save', ['record[name]' => 'Rex', 'record[species]' => 'dog']);
         self::assertResponseRedirects('/o/pet', 303);

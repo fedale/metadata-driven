@@ -63,6 +63,16 @@ final class TranslationKey
     }
 
     /**
+     * The description of the root of a form ($path []) or of one of its sections.
+     *
+     * @param list<string> $path the section names from the root down; [] for the root
+     */
+    public static function description(string $form, array $path): string
+    {
+        return 'description.'.implode('.', [$form, ...$path]);
+    }
+
+    /**
      * @param list<string> $path the section of the service field, from the root down; [] for the root
      */
     public static function serviceField(string $form, array $path, string $name): string

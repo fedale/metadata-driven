@@ -1,14 +1,14 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Objects{% endblock %}
+{% block title %}{{ 'home.title'|trans }}{% endblock %}
 
 {% block body %}
-    <h1>Objects</h1>
+    <h1>{{ 'home.title'|trans }}</h1>
     {% if objects is empty %}
         {% if can_administer %}
-            <p class="gv-muted">No objects yet. <a href="{{ path('admin_object_new') }}">Create the first one</a>.</p>
+            <p class="gv-muted">{{ 'home.empty_admin'|trans({'%url%': path('admin_object_new')})|raw }}</p>
         {% else %}
-            <p class="gv-muted">There is nothing you can open yet: ask an administrator for access.</p>
+            <p class="gv-muted">{{ 'home.empty'|trans }}</p>
         {% endif %}
     {% else %}
         <ul class="md-link-list">
@@ -19,7 +19,7 @@
     {% endif %}
 
     {% if forms is not empty %}
-        <h2>Forms</h2>
+        <h2>{{ 'home.forms'|trans }}</h2>
         <ul class="md-link-list">
             {% for form in forms %}
                 <li><a href="{{ path('composite_new', {form: form.name}) }}">{{ form.label }}</a></li>

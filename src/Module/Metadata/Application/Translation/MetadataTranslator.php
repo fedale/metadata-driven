@@ -152,6 +152,8 @@ final class MetadataTranslator
             $node->inline,
             $node->required,
             null === $node->layout ? null : $lookup->layout($node->layout),
+            null === $node->description ? null : $lookup->translate(TranslationKey::description($form, $path), $node->description),
+            $node->columns,
         );
     }
 }

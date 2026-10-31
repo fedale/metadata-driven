@@ -35,6 +35,7 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Requirement\Requirement;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[Route('/o/{object}', name: 'record_', requirements: ['object' => '[a-z][a-z0-9_]*'])]
 final class RecordController extends AbstractController
@@ -53,6 +54,7 @@ final class RecordController extends AbstractController
         private readonly RecordGridFactory $grids,
         private readonly AccessCheckerInterface $access,
         private readonly CascadeTargets $cascadeTargets,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -151,7 +153,7 @@ final class RecordController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             try {
                 $this->records->create(new RecordInput($definition->name, $this->submitted($form)));
-                $this->addFlash('success', \sprintf('%s created.', $definition->labelSingular));
+                $this->addFlash('success', $this->translator->trans('flash.created', ['%object%' => $definition->labelSingular]));
 
                 return $this->redirectToRoute('record_index', ['object' => $definition->name], Response::HTTP_SEE_OTHER);
             } catch (RecordValidationFailed $failure) {
@@ -179,7 +181,7 @@ final class RecordController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             try {
                 $this->records->update($id, new RecordInput($definition->name, $this->submitted($form)));
-                $this->addFlash('success', \sprintf('%s updated.', $definition->labelSingular));
+                $this->addFlash('success', $this->translator->trans('flash.updated', ['%object%' => $definition->labelSingular]));
 
                 return $this->redirectToRoute('record_index', ['object' => $definition->name], Response::HTTP_SEE_OTHER);
             } catch (RecordValidationFailed $failure) {
@@ -210,7 +212,7 @@ final class RecordController extends AbstractController
         // A cascade deletes records of other objects: it needs their delete permission too.
         foreach ($this->cascadeTargets->of($definition->name) as $target) {
             if (!$this->access->canRecords($target->name, RecordAction::Delete)) {
-                $this->addFlash('error', \sprintf('Deleting this record also deletes %s, which you may not delete.', $target->labelPlural));
+                $this->addFlash('error', $this->translator->trans('flash.cascade_denied', ['%objects%' => $target->labelPlural]));
 
                 return $this->redirectToRoute('record_edit', ['object' => $definition->name, 'id' => $id], Response::HTTP_SEE_OTHER);
             }
@@ -227,7 +229,7 @@ final class RecordController extends AbstractController
 
                 return $this->redirectToRoute('record_edit', ['object' => $definition->name, 'id' => $id], Response::HTTP_SEE_OTHER);
             }
-            $this->addFlash('success', \sprintf('%s deleted.', $definition->labelSingular));
+            $this->addFlash('success', $this->translator->trans('flash.deleted', ['%object%' => $definition->labelSingular]));
         }
 
         return $this->redirectToRoute('record_index', ['object' => $definition->name], Response::HTTP_SEE_OTHER);

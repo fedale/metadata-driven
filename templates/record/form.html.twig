@@ -1,42 +1,48 @@
 {% extends 'base.html.twig' %}
 
-{% set heading = record ? 'Edit ' ~ object.labelSingular|lower : 'New ' ~ object.labelSingular|lower %}
+{% set heading = record
+    ? 'record.edit_title'|trans({'%object%': object.labelSingular|lower})
+    : 'record.new_title'|trans({'%object%': object.labelSingular|lower}) %}
+{% set back = path('record_index', {object: object.name}) %}
+{% set can_save = record is null or can_update|default(false) %}
 
 {% block title %}{{ heading }}{% endblock %}
 
 {% block body %}
-    <p><a href="{{ path('record_index', {object: object.name}) }}">&larr; {{ object.labelPlural }}</a></p>
-    <h1>{{ heading }}</h1>
+    {{ form_start(form, {attr: {class: 'md-sheet', novalidate: 'novalidate'}}) }}
+        {{ include('record/_sheet_header.html.twig', {crumb: object.labelPlural, crumb_url: back, title: heading, back: back, can_save: can_save}) }}
 
-    {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
-        {{ form_errors(form) }}
-        {% if layout|default(null) %}
-            <div class="md-view-layout">{{ record_form_layout(form, layout) }}</div>
-        {% endif %}
-        {{ form_rest(form) }}
-        <p class="gv-required-note"><span class="gv-required-note__mark">*</span> Required field</p>
-        {% if record is null or can_update|default(false) %}
-            <button type="submit" class="gv-btn gv-btn-primary">Save</button>
-        {% endif %}
+        <div class="md-sheet__parts md-sheet__parts--single">
+            <section class="md-card">
+                {{ form_errors(form) }}
+                {% if layout|default(null) %}
+                    <div class="md-view-layout">{{ record_form_layout(form, layout) }}</div>
+                {% endif %}
+                {{ form_rest(form) }}
+            </section>
+            {{ include('record/_sheet_footer.html.twig', {back: back, can_save: can_save}) }}
+        </div>
     {{ form_end(form) }}
 
-    {% for group in referencing|default([]) %}
-        <section class="md-related">
-            <h2>{{ group.label }} <span class="gv-muted">({{ group.total }})</span></h2>
-            <ul>
-                {% for related in group.records %}
-                    <li><a href="{{ path('record_edit', {object: group.objectName, id: related.id}) }}">{{ related.label }}</a></li>
-                {% endfor %}
-            </ul>
-            {% if group.total > group.records|length %}
-                <p class="gv-muted">Showing {{ group.records|length }} of {{ group.total }}.</p>
-            {% endif %}
-        </section>
-    {% endfor %}
+    <div class="md-sheet__parts md-sheet__parts--single">
+        {% for group in referencing|default([]) %}
+            <section class="md-card md-related">
+                <h2 class="md-card__title">{{ group.label }} <span class="gv-muted">({{ group.total }})</span></h2>
+                <ul>
+                    {% for related in group.records %}
+                        <li><a href="{{ path('record_edit', {object: group.objectName, id: related.id}) }}">{{ related.label }}</a></li>
+                    {% endfor %}
+                </ul>
+                {% if group.total > group.records|length %}
+                    <p class="gv-muted">{{ 'record.showing'|trans({'%shown%': group.records|length, '%total%': group.total}) }}</p>
+                {% endif %}
+            </section>
+        {% endfor %}
 
-    {% if delete_form is defined and can_delete|default(false) %}
-        {{ form_start(delete_form, {attr: {class: 'md-delete-form', 'data-turbo-confirm': 'Delete this ' ~ object.labelSingular|lower ~ '?'}}) }}
-            <button type="submit" class="gv-btn gv-btn-danger">Delete</button>
-        {{ form_end(delete_form) }}
-    {% endif %}
+        {% if delete_form is defined and can_delete|default(false) %}
+            {{ form_start(delete_form, {attr: {class: 'md-delete-form', 'data-turbo-confirm': 'record.delete_confirm'|trans({'%object%': object.labelSingular|lower})}}) }}
+                <button type="submit" class="gv-btn gv-btn-danger">{{ 'record.delete'|trans }}</button>
+            {{ form_end(delete_form) }}
+        {% endif %}
+    </div>
 {% endblock %}

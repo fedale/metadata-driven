@@ -42,7 +42,11 @@ final class CompositeFormControllerTest extends WebTestCase
         $crawler = $this->client->request('GET', '/f/registration/new');
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('h1', 'User registration');
-        self::assertSelectorTextContains('#section-composite_sections_profile legend', 'Profile');
+        // The root's fields, then each section of the root: numbered cards, listed in the index.
+        self::assertSame(['Account', 'Profile', 'Qualifications'], $crawler->filter('.md-card__title')->each(static fn ($title): string => $title->text()));
+        self::assertSame(['01', '02', '03'], $crawler->filter('.md-index__number')->each(static fn ($number): string => $number->text()));
+        self::assertSame('#part-profile', $crawler->filter('.md-index__item')->eq(1)->attr('href'));
+        self::assertSelectorTextContains('#part-profile #section-composite_sections_profile_sections_phones legend', 'Phones');
         // Phones need one row: it is there, with the defaults of its fields.
         self::assertSame('+39', $crawler->filter('select[name="composite[sections][profile][sections][phones][0][values][prefix]"] option[selected]')->attr('value'));
         self::assertStringContainsString('__phones__', (string) $crawler->filter('[data-gridview-collection-prototype-name-value="__phones__"]')->attr('data-gridview-collection-prototype-value'));
@@ -107,7 +111,7 @@ final class CompositeFormControllerTest extends WebTestCase
             layout: |
               <div class="md-columns">
                 <fieldset><legend>Sign-in</legend>{username} {email} {terms}</fieldset>
-                <div>{profile}</div>
+                <div>{firstname}</div>
               </div>
             sections:
               - name: profile
@@ -123,19 +127,20 @@ final class CompositeFormControllerTest extends WebTestCase
 
         $crawler = $this->client->request('GET', '/f/registration/new');
         self::assertResponseIsSuccessful();
-        $layout = $crawler->filter('form > .md-view-layout');
+        $layout = $crawler->filter('#part-root > .md-view-layout');
         self::assertCount(1, $layout->filter('.md-columns > fieldset [name="composite[values][username]"]'));
         self::assertCount(1, $layout->filter('.md-columns > fieldset [name="composite[service][terms]"]'));
-        // A section is placed whole, with its own layout inside it.
-        self::assertCount(1, $layout->filter('.md-columns > div > #section-composite_sections_profile .md-view-layout [name="composite[sections][profile][values][city]"]'));
-        self::assertSelectorTextContains('#section-composite_sections_profile .md-muted', 'Where you live');
-        // What a layout leaves out follows it: the account's names, the profile's gender and
-        // phones, the qualifications.
-        self::assertCount(0, $layout->filter('[name="composite[values][firstname]"]'));
-        self::assertCount(1, $crawler->filter('[name="composite[values][firstname]"]'));
-        self::assertCount(1, $crawler->filter('#section-composite_sections_profile #composite_sections_profile_values_gender'));
-        self::assertCount(1, $crawler->filter('#section-composite_sections_profile [name="composite[sections][profile][sections][phones][0][values][number]"]'));
-        self::assertCount(0, $layout->filter('#section-composite_sections_qualifications'));
+        self::assertCount(1, $layout->filter('.md-columns > div [name="composite[values][firstname]"]'));
+        // A section of the root is a card of its own, with its own layout inside it.
+        self::assertCount(1, $crawler->filter('#part-profile > .md-view-layout [name="composite[sections][profile][values][city]"]'));
+        self::assertSelectorTextContains('#part-profile .md-muted', 'Where you live');
+        // What a layout leaves out follows it: the account's last name, the profile's gender
+        // and phones.
+        self::assertCount(0, $layout->filter('[name="composite[values][lastname]"]'));
+        self::assertCount(1, $crawler->filter('#part-root [name="composite[values][lastname]"]'));
+        self::assertCount(1, $crawler->filter('#part-profile #composite_sections_profile_values_gender'));
+        self::assertCount(1, $crawler->filter('#part-profile [name="composite[sections][profile][sections][phones][0][values][number]"]'));
+        self::assertCount(1, $crawler->filter('#part-qualifications .gv-collection'));
         // Each row of a section follows the section's layout, the rows added with "+" too.
         $prototype = (string) $crawler->filter('[data-gridview-collection-prototype-name-value="__qualifications__"]')->attr('data-gridview-collection-prototype-value');
         self::assertMatchesRegularExpression('/class="md-columns">.*name="composite\[sections\]\[qualifications\]\[__qualifications__\]\[values\]\[title\]"/s', $prototype);

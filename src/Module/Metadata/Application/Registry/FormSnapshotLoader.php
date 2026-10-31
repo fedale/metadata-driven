@@ -74,6 +74,8 @@ final class FormSnapshotLoader
             true === ($node['inline'] ?? false),
             \is_array($node['required'] ?? null) ? array_values(array_filter($node['required'], is_string(...))) : [],
             \is_string($node['layout'] ?? null) ? $node['layout'] : null,
+            \is_string($node['description'] ?? null) ? $node['description'] : null,
+            \is_int($node['columns'] ?? null) ? $node['columns'] : 1,
         );
     }
 

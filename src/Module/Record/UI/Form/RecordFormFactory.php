@@ -241,10 +241,10 @@ final class RecordFormFactory
             WidgetKind::Choice => [ChoiceType::class, $required + ['choices' => array_flip($widget->choices())] + ('radio' === ($widget->options['display'] ?? null)
                 // No placeholder: an empty radio group already means "no value".
                 ? ['expanded' => true, 'placeholder' => false, 'attr' => ['class' => 'gv-segmented']]
-                : ['placeholder' => $field->isRequired ? 'Choose an option' : '—'])],
+                : ['placeholder' => $field->isRequired ? 'form.choose_option' : '—'])],
             WidgetKind::Relation => [ChoiceType::class, $required + [
                 'choices' => \is_string($value) ? array_flip($this->lookup->labels($this->target($widget), [$value])) : [],
-                'placeholder' => $field->isRequired ? 'Choose a record' : '—',
+                'placeholder' => $field->isRequired ? 'form.choose_record' : '—',
                 'autocomplete' => true,
                 'autocomplete_url' => $this->lookupUrl($field, $widget, $parentValue),
                 // A cascade lists the few records of the chosen parent as soon as it opens.
@@ -262,7 +262,7 @@ final class RecordFormFactory
     private function password(FieldDefinitionDto $field, Widget $widget, bool $isNew): array
     {
         $required = ['required' => $isNew && $field->isRequired];
-        $help = $isNew ? [] : ['help' => 'Leave empty to keep the current password.'];
+        $help = $isNew ? [] : ['help' => 'form.keep_password'];
         $attr = ['autocomplete' => 'new-password'];
         // The meter and the eye go on the password typed first, never on its confirmation.
         $controllers = [];
@@ -290,7 +290,7 @@ final class RecordFormFactory
             'invalid_message' => 'The two passwords do not match.',
             'options' => ['attr' => $attr],
             'first_options' => ['label' => $field->label, 'attr' => $first] + $help,
-            'second_options' => ['label' => 'Repeat '.mb_strtolower($field->label)],
+            'second_options' => ['label' => 'form.repeat', 'label_translation_parameters' => ['%label%' => mb_strtolower($field->label)]],
         ]];
     }
 

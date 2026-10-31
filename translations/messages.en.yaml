@@ -1,0 +1,49 @@
+# The texts of the application itself, in English (the default language). The texts of the
+# metadata are not here: they are translated in the database (see docs/i18n.md).
+nav:
+    records: Records
+    admin: Admin
+    language: Language
+    sign_out: Sign out
+login:
+    title: Sign in
+    email: Email
+    password: Password
+    remember_me: Keep me signed in
+    submit: Sign in
+home:
+    title: Objects
+    forms: Forms
+    empty: 'There is nothing you can open yet: ask an administrator for access.'
+    empty_admin: 'No objects yet. <a href="%url%">Create the first one</a>.'
+record:
+    new: 'New %object%'
+    new_title: 'New %object%'
+    edit_title: 'Edit %object%'
+    grid_views: Grid views
+    showing: 'Showing %shown% of %total%.'
+    delete: Delete
+    delete_confirm: 'Delete this %object%?'
+form:
+    save: Save
+    cancel: Cancel
+    add: '%label%'
+    remove: Remove
+    choose_option: Choose an option
+    choose_record: Choose a record
+    keep_password: Leave empty to keep the current password.
+    repeat: 'Repeat %label%'
+    required_note: Required field
+    index:
+        label: Parts of the form
+        required: '%done%/%total% required'
+        filled: '%done%/%total% filled'
+        no_entries: No entries
+        one_entry: 1 entry
+        entries: '%count% entries'
+flash:
+    created: '%object% created.'
+    updated: '%object% updated.'
+    deleted: '%object% deleted.'
+    saved: '%form% saved.'
+    cascade_denied: 'Deleting this record also deletes %objects%, which you may not delete.'

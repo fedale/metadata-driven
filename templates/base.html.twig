@@ -24,12 +24,12 @@
             <a href="{{ path('app_home') }}" class="md-topbar__brand">Metadata-driven</a>
             {% if app.user %}
                 <nav class="md-topbar__nav">
-                    <a href="{{ path('app_home') }}">Records</a>
-                    {% if can('admin.metadata') %}<a href="{{ path('admin_index') }}">Admin</a>{% endif %}
+                    <a href="{{ path('app_home') }}">{{ 'nav.records'|trans }}</a>
+                    {% if can('admin.metadata') %}<a href="{{ path('admin_index') }}">{{ 'nav.admin'|trans }}</a>{% endif %}
                 </nav>
                 <div class="md-topbar__user">
                     {% if app.enabled_locales|length > 1 %}
-                        <form class="md-locale" method="post" action="{{ path('app_account_locale') }}" aria-label="Language">
+                        <form class="md-locale" method="post" action="{{ path('app_account_locale') }}" aria-label="{{ 'nav.language'|trans }}">
                             {# Stateless CSRF: the csrf-protection controller turns the token into a double-submit cookie. #}
                             <input type="hidden" name="_token" value="{{ csrf_token('submit') }}" data-controller="csrf-protection">
                             {% for locale in app.enabled_locales %}
@@ -41,7 +41,7 @@
                         </form>
                     {% endif %}
                     <span>{{ app.user.displayName }}</span>
-                    <a href="{{ path('app_logout') }}">Sign out</a>
+                    <a href="{{ path('app_logout') }}">{{ 'nav.sign_out'|trans }}</a>
                 </div>
             {% endif %}
         </header>
