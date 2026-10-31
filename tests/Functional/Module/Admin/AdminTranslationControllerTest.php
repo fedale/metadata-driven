@@ -38,8 +38,9 @@ final class AdminTranslationControllerTest extends WebTestCase
         self::assertResponseRedirects('/admin/translations/it');
 
         $crawler = $this->client->followRedirect();
-        self::assertSelectorTextSame('.md-switch__item--current', 'Italian');
-        self::assertSame(['Italian', 'Texts'], $crawler->filter('.md-switch a')->each(static fn (Crawler $link): string => $link->text()));
+        self::assertSelectorTextSame('.md-switch__item--current', 'Metadata');
+        self::assertSelectorTextContains('h1', 'Metadata into Italian');
+        self::assertSame(['Metadata', 'Texts'], $crawler->filter('.md-switch a')->each(static fn (Crawler $link): string => $link->text()));
         self::assertSame('Name Edit', $this->sourceOf($crawler, 'field.pet.name'));
         // The original text is changed where it is defined.
         self::assertSame('/admin/objects/pet/fields/species', $this->rowOf($crawler, 'option.pet.species.dog')->filter('a')->attr('href'));

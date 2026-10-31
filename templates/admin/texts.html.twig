@@ -9,7 +9,7 @@
         {{ include('admin/_languages_nav.html.twig', {current: 'texts'}) }}
     </div>
     <p class="gv-muted">
-        Texts of your own, for the layouts: a <code>{t:name}</code> token in a form view, a composite form or a grid
+        Texts of your own, not tied to the metadata, for the layouts: a <code>{t:name}</code> token in a form view, a composite form or a grid
         heading shows the text of that name in the language of the user. Each text is written here in every language;
         the {{ default_locale|locale_name('en')|capitalize }} one is required and shows wherever another is missing.
         Empty it to remove the text, once no token places it.

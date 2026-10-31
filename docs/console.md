@@ -319,15 +319,15 @@ metadata:translation:set <locale> <key> [<text>]
 
 | Argument | Description |
 |---|---|
-| `locale` | One of the enabled languages (`it`, `en`) |
+| `locale` | One of the enabled languages (`en`, `it`) |
 | `key` | The key: `object.<object>.plural`, `field.<object>.<field>`, `option.<object>.<field>.<value>`, `form.<form>`, `text.<name>`... |
 | `text` | The text; omitted or empty: remove it |
 
 ```bash
-symfony console metadata:translation:set en field.pet.name Name
-symfony console metadata:translation:set it text.sign_in Accesso         # create a text, for {t:sign_in}
-symfony console metadata:translation:set en text.sign_in "Sign in"
-symfony console metadata:translation:set en field.pet.name               # back to the Italian label
+symfony console metadata:translation:set it field.pet.name Nome
+symfony console metadata:translation:set en text.sign_in "Sign in"      # create a text, for {t:sign_in}
+symfony console metadata:translation:set it text.sign_in Accesso
+symfony console metadata:translation:set it field.pet.name              # back to the English label
 ```
 
 Fails for a key the metadata does not have, a key of the metadata in the default language (its

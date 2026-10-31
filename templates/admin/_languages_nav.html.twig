@@ -1,9 +1,7 @@
-{# The two pages of the languages: the translations into each other language, and the texts. #}
-<nav class="md-switch" aria-label="Languages">
-    {% for item in targets %}
-        <a class="md-switch__item{{ current == item ? ' md-switch__item--current' }}" href="{{ path('admin_translation_edit', {locale: item}) }}"
-           {% if current == item %}aria-current="page"{% endif %}>{{ item|locale_name('en')|capitalize }}</a>
-    {% endfor %}
+{# The two pages of the translations: the labels of the metadata, and the texts of the {t:name} tokens. #}
+<nav class="md-switch" aria-label="Translations">
+    <a class="md-switch__item{{ current == 'metadata' ? ' md-switch__item--current' }}" href="{{ path('admin_translation_index') }}"
+       {% if current == 'metadata' %}aria-current="page"{% endif %}>Metadata</a>
     <a class="md-switch__item{{ current == 'texts' ? ' md-switch__item--current' }}" href="{{ path('admin_text_index') }}"
        {% if current == 'texts' %}aria-current="page"{% endif %}>Texts</a>
 </nav>

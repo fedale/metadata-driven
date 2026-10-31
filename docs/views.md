@@ -212,7 +212,7 @@ relation, unknown keys and renderer options, a sort direction other than `asc`/`
 | The name is a machine name: 2 to 50 lowercase letters, digits and single underscores, starting with a letter | `Invalid name "Main view"...` |
 | The layout is not empty, at most 20,000 characters | `This value should not be blank.` |
 | Every token names a field of the object | `View "main": object "book" has no field "nickname".` |
-| Every `{t:name}` token names a defined text | `View "main": {t:sale} is no text: define "text.sale" in it first (Admin > Translations > Texts).` |
+| Every `{t:name}` token names a defined text | `View "main": {t:sale} is no text: define "text.sale" in en first (Admin > Translations > Texts).` |
 | A field is placed once | `View "main": the field "title" is placed more than once.` |
 | Tokens are in the text, not inside a tag | `View "main": {field} tokens go in the text, not inside a tag or an attribute.` |
 

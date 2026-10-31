@@ -108,6 +108,7 @@ a:hover { color: var(--gv-color-link-hover); }
 .md-translations td:first-child { width: 1%; white-space: nowrap; }
 .md-translations td:nth-child(2) { width: 40%; }
 .md-translations input, .md-texts input { width: 100%; box-sizing: border-box; }
+.md-translations__languages { margin-top: 1rem; }
 .md-translations__edit { margin-left: .5rem; font-size: .85rem; }
 .md-texts td:first-child { width: 1%; white-space: nowrap; }
 .md-translations + .gv-btn, .md-texts + .gv-btn, .md-admin__section:last-of-type + .gv-btn { margin-top: 1rem; }
