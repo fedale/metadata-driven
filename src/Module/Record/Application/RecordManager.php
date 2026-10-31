@@ -22,6 +22,7 @@ use App\Module\Record\Domain\Exception\UniqueValueConflict;
 use App\Module\Record\Domain\Repository\RecordStore;
 use App\Module\Validation\Contract\RecordValidatorInterface;
 use App\Shared\Transaction\TransactionRunner;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -34,6 +35,8 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     public const string CONFLICT_MESSAGE = 'This record conflicts with an existing one, please try again.';
 
     public function __construct(
+        // The labels in the user's language.
+        #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
         private readonly RecordInputDenormalizer $denormalizer,
         private readonly RecordValidatorInterface $validator,

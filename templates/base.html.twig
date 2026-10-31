@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ app.request.locale }}">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -28,6 +28,18 @@
                     {% if can('admin.metadata') %}<a href="{{ path('admin_index') }}">Admin</a>{% endif %}
                 </nav>
                 <div class="md-topbar__user">
+                    {% if app.enabled_locales|length > 1 %}
+                        <form class="md-locale" method="post" action="{{ path('app_account_locale') }}" aria-label="Language">
+                            {# Stateless CSRF: the csrf-protection controller turns the token into a double-submit cookie. #}
+                            <input type="hidden" name="_token" value="{{ csrf_token('submit') }}" data-controller="csrf-protection">
+                            {% for locale in app.enabled_locales %}
+                                <button type="submit" name="locale" value="{{ locale }}" lang="{{ locale }}"
+                                        class="md-locale__option{{ locale == app.request.locale ? ' md-locale__option--current' }}"
+                                        title="{{ locale|locale_name(locale)|capitalize }}"
+                                        {% if locale == app.request.locale %}aria-current="true"{% endif %}>{{ locale|upper }}</button>
+                            {% endfor %}
+                        </form>
+                    {% endif %}
                     <span>{{ app.user.displayName }}</span>
                     <a href="{{ path('app_logout') }}">Sign out</a>
                 </div>

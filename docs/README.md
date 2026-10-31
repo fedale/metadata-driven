@@ -12,9 +12,10 @@ Objects are defined from the admin UI at `/admin` or from the console.
 | Guide | What is in it |
 |---|---|
 | [Getting started](getting-started.md) | Run the app, then build a small model from scratch: objects, fields, a relation, search |
-| [Admin UI](admin.md) | The no-code builder at `/admin`: objects, fields, labels, search, views, table status |
+| [Admin UI](admin.md) | The no-code builder at `/admin`: objects, fields, labels, search, views, translations, table status |
 | [Composite forms](forms.md) | One form writing a record and its related records (one-to-one and repeatable sections, nested), defined in YAML, laid out with `{token}` layouts |
 | [Views](views.md) | Layouts of the record form (HTML with a `{field}` token per field; composite forms use the same tokens) and columns of the record grid (YAML: order, labels, renderers, virtual columns, sort), from the admin UI or the console |
+| [Languages](i18n.md) | Translations of the labels, options and titles, `{t:name}` texts in layouts, the language of each user |
 | [Users and permissions](access.md) | Signing in, users, the permissions of every object, roles |
 | [Console commands](console.md) | Every command, its arguments and options, what it changes in the database |
 | [Field types](field-types.md) | The ten field types, their settings, columns, validation and grid behaviour |

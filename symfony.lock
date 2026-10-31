@@ -301,5 +301,8 @@
             "config/packages/symfonycasts_sass.yaml",
             "assets/styles/app.scss"
         ]
+    },
+    "twig/extra-bundle": {
+        "version": "v3.29.0"
     }
 }

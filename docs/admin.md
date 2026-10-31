@@ -8,7 +8,8 @@ console. It needs the `admin.metadata` permission (or `ROLE_SUPER_ADMIN`), see
 ## Objects — `/admin`
 
 The list of objects, with their machine name, table and number of fields, and a link to their
-records. **New object** asks for the machine name and the two labels.
+records. **New object** asks for the machine name and the two labels. The labels are written in
+the default language (English); **Translations** gives them their text in the other languages.
 
 ## An object — `/admin/objects/<object>`
 
@@ -56,6 +57,20 @@ The composite forms: one form writing a record and the records related to it. **
 from an example definition (YAML) and lists every object with its fields and relation fields
 next to the editor; saving reports every error of the definition at once, those of the
 `layout`s included. See [Composite forms](forms.md) and its [Layouts](forms.md#layouts).
+
+## Translations — `/admin/translations`
+
+Two tabs, one per kind of text (see [Languages](i18n.md#the-admin-pages)):
+
+- **Metadata** (`/admin/translations/<locale>`): every label of the metadata, by object and by
+  form, with its original text, an **Edit** link to where that text is defined, and an input for
+  one language (a switch picks it when there are several). Saving stores the inputs that
+  changed; emptying one removes its translation.
+- **Texts** (`/admin/texts`): your own texts, placed by `{t:name}` tokens, an input per language
+  side by side and the views and forms placing them; **New text** creates one. Emptying the
+  default-language text removes the text, unless a token still places it.
+
+The language of the pages themselves is picked by each user in the top bar (**EN / IT**).
 
 ## A field — `/admin/objects/<object>/fields/<field>`
 

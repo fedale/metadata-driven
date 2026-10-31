@@ -31,14 +31,14 @@ A module only sees the `Contract` of the other modules. Two Deptrac rulesets enf
 
 | Module | Responsibility | Depends on (contracts) |
 |---|---|---|
-| Metadata | Object, field, view and composite form definitions, the cached registry, the `metadata:*` commands | — |
+| Metadata | Object, field, view and composite form definitions, their translations, the cached registry and its localized variant, the `metadata:*` commands | — |
 | FieldType | The field types: settings, columns, conversion, constraints, widgets | Metadata |
 | Schema | Turns definitions into DDL: tables, indexes, foreign keys, trigram indexes; `schema:sync` | Metadata, FieldType, Search |
 | Validation | One validator for every record write, built from the metadata | Metadata, FieldType |
 | Search | Search handlers and the search configuration of objects | Metadata, FieldType |
 | Record | Record storage, the write pipeline, delete rules, lookups, the grid source, forms (with their view layout), composite forms and pages | Metadata, FieldType, Validation, Search |
 | Admin | The no-code builder at `/admin`, on `MetadataManagerInterface` | Metadata, FieldType, Schema |
-| User | Users and their profiles, sign-in (Symfony Security), `user:create` | — |
+| User | Users and their profiles (with their language), sign-in (Symfony Security), `user:create` | — |
 | Access | The permissions of objects and admin, checked through `fedale/rbac-bundle`; `access:sync` | Metadata |
 | Settings | Reserved for the next phases | |
 
@@ -46,6 +46,10 @@ Modules that must react to another one without depending on it go through **port
 consumer defines an interface in its own `Contract`, the provider implements it. For example
 Metadata validates field settings through `FieldTypeCatalogInterface`, implemented by FieldType;
 Validation checks unique values through `UniqueValueCheckerInterface`, implemented by Record.
+
+`MetadataRegistryInterface` has two implementations. The default one serves the metadata as
+written; the pages and the validation of the records get the one in the user's language with
+`#[Target('localizedMetadata')]` (see [Languages](i18n.md#under-the-hood)).
 
 ## From a definition to a table
 

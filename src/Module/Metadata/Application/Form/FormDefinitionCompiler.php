@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Application\Form;
 
+use App\Module\Metadata\Application\Translation\DefinedTexts;
 use App\Module\Metadata\Contract\Dto\FormNodeMode;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\RelationSettings;
@@ -63,6 +64,7 @@ final class FormDefinitionCompiler
         private readonly FieldTypeCatalogInterface $fieldTypes,
         #[Target('view_layout')]
         private readonly HtmlSanitizerInterface $sanitizer,
+        private readonly DefinedTexts $texts,
     ) {
     }
 
@@ -221,6 +223,10 @@ final class FormDefinitionCompiler
         }
         if (\count(ViewDefinitionDto::tokens(strip_tags($layout))) !== \count($tokens)) {
             $this->errors[] = \sprintf('%s: {name} tokens go in the text of the layout, not inside a tag or an attribute.', $path);
+            $valid = false;
+        }
+        if (null !== $error = $this->texts->errorFor($path, $layout)) {
+            $this->errors[] = $error;
             $valid = false;
         }
 

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Module\Metadata\Application\Handler;
 
 use App\Module\Metadata\Application\Command\SaveViewCommand;
+use App\Module\Metadata\Application\Translation\DefinedTexts;
 use App\Module\Metadata\Application\View\GridViewCompiler;
 use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\Event\MetadataChanged;
+use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
@@ -29,6 +31,7 @@ final class SaveViewHandler
         #[Target('view_layout')]
         private readonly HtmlSanitizerInterface $sanitizer,
         private readonly GridViewCompiler $grids,
+        private readonly DefinedTexts $texts,
         private readonly MetadataRegistryInterface $metadata,
         private readonly EventDispatcherInterface $events,
         private readonly TransactionRunner $transactions,
@@ -49,6 +52,9 @@ final class SaveViewHandler
             $definition = $this->grids->compile($this->metadata->getObject($command->objectName), $template);
         } else {
             $template = $this->sanitizer->sanitize($template);
+            if (null !== $error = $this->texts->errorFor(\sprintf('View "%s"', $command->name), $template)) {
+                throw new MetadataInputInvalid(['template' => [$error]]);
+            }
         }
 
         $id = $this->transactions->run(function () use ($command, $template, $definition): string {

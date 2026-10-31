@@ -16,4 +16,12 @@ interface UserManagerInterface
      * @throws UserException invalid or taken email, password too short
      */
     public function createUser(string $email, string $plainPassword, ?string $firstName = null, ?string $lastName = null): string;
+
+    /**
+     * Sets the language the user reads the application in, one of the enabled locales; null
+     * goes back to the browser's language.
+     *
+     * @throws UserException unknown user, language not enabled
+     */
+    public function changeLocale(string $email, ?string $locale): void;
 }

@@ -1,5 +1,13 @@
 framework:
+    # The language the metadata is written in: labels, options, form titles. A translation
+    # replaces them in another enabled locale; without one, this text is shown.
     default_locale: en
+    # The languages a user can pick (see docs/i18n.md), in the order of the top bar. A user
+    # without a preference gets the best match of the browser's Accept-Language header.
+    enabled_locales: [en, it]
+    set_locale_from_accept_language: true
+    set_content_language_from_locale: true
     translator:
         default_path: '%kernel.project_dir%/translations'
         providers:
+

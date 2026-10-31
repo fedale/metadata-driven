@@ -16,6 +16,7 @@ use App\Module\Record\Contract\CompositeRecordManagerInterface;
 use App\Module\Record\Contract\Exception\CompositeValidationFailed;
 use App\Module\Record\UI\Form\CompositeFormFactory;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -35,6 +36,8 @@ use Symfony\Component\Routing\Requirement\Requirement;
 final class CompositeFormController extends AbstractController
 {
     public function __construct(
+        // The labels in the user's language.
+        #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
         private readonly CompositeRecordManagerInterface $records,
         private readonly CompositeFormFactory $forms,

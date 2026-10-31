@@ -72,4 +72,20 @@ final class UserManagerTest extends KernelTestCase
         self::assertInstanceOf(SecurityUser::class, $user);
         self::assertSame('Grace Hopper', $user->getDisplayName());
     }
+
+    public function testKeepsTheLanguageOfTheUser(): void
+    {
+        $users = self::getContainer()->get(UserManagerInterface::class);
+        $users->createUser('grace@example.com', self::PASSWORD);
+        $provider = self::getContainer()->get(UserProvider::class);
+        self::assertNull($provider->loadUserByIdentifier('grace@example.com')->getLocale());
+
+        $users->changeLocale('grace@example.com', 'it');
+        self::assertSame('it', $provider->loadUserByIdentifier('grace@example.com')->getLocale());
+        $users->changeLocale('grace@example.com', null);
+        self::assertNull($provider->loadUserByIdentifier('grace@example.com')->getLocale());
+
+        $this->expectExceptionMessage('"fr" is no language of the application (en, it).');
+        $users->changeLocale('grace@example.com', 'fr');
+    }
 }

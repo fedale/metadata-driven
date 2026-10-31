@@ -56,6 +56,9 @@ Open `/o/book/new`: the form follows the layout.
 - The fields the layout does not place are shown **after** it, in their usual order. A layout
   can name only the fields that matter, and the rest still shows up.
 - A token goes in the text of the HTML, never inside a tag: `<div class="{title}">` is refused.
+- A `{t:name}` token is not a field: it shows the text `text.<name>` in the user's language
+  (`<legend>{t:sale}</legend>`). Define the text before saving the view; see
+  [Languages](i18n.md#texts-in-layouts-tname).
 
 ### HTML
 
@@ -138,7 +141,7 @@ A column is a field name, or a map:
 |---|---|
 | `field` | The field shown. Its type gives the column its filter, its sort and its rendering |
 | `name` + `template` | A **virtual column**: a name of its own (not a field's) and a text with a `{field}` token per field, e.g. `'{last_name}, {first_name}'` |
-| `label` | The heading. Default: the label of the field (the name, for a virtual column) |
+| `label` | The heading. Default: the label of the field, in the user's language (the name, for a virtual column). It may hold `{t:name}` tokens: `label: '{t:author}'` |
 | `renderer` + `options` | How the cells are drawn, instead of the field type's rendering (see below) |
 | `hidden` | `true`: the column is in the grid but off; the user turns it on from the **Columns** menu |
 | `sortable` | `false`: the heading does not sort. Default `true` |
@@ -209,6 +212,7 @@ relation, unknown keys and renderer options, a sort direction other than `asc`/`
 | The name is a machine name: 2 to 50 lowercase letters, digits and single underscores, starting with a letter | `Invalid name "Main view"...` |
 | The layout is not empty, at most 20,000 characters | `This value should not be blank.` |
 | Every token names a field of the object | `View "main": object "book" has no field "nickname".` |
+| Every `{t:name}` token names a defined text | `View "main": {t:sale} is no text: define "text.sale" in en first (Admin > Translations > Texts).` |
 | A field is placed once | `View "main": the field "title" is placed more than once.` |
 | Tokens are in the text, not inside a tag | `View "main": {field} tokens go in the text, not inside a tag or an attribute.` |
 
@@ -245,7 +249,10 @@ See [`metadata:view:save`](console.md#metadataviewsave) and
 | Rendering | Form: the Twig function `record_form_layout(form, template)` (`RecordFormLayout` in the Record module), called before `form_rest()` in `templates/record/form.html.twig`. Grid: `RecordGridFactory::create($object, $view)` builds the columns; `DbalRecordGridSource` filters a virtual column on its fields (passed in the grid's model, checked against the object) |
 | API | `MetadataManagerInterface::saveView()` / `deleteView()`, the same calls the admin UI uses |
 
-Layouts are not Twig. Only the `{field}` tokens are replaced: `{{ }}`, `{% %}`, filters and
+The record pages read the views through the localized registry, with the `{t:name}` tokens
+already replaced in the user's language: see [Languages](i18n.md#under-the-hood).
+
+Layouts are not Twig. Only the `{field}` and `{t:name}` tokens are replaced: `{{ }}`, `{% %}`, filters and
 functions are kept as plain text. A layout written in the admin UI therefore cannot run code on
 the server.
 

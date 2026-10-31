@@ -28,6 +28,16 @@
         </section>
 
         <section class="md-admin__section">
+            <h2>Languages</h2>
+            <p class="gv-muted">
+                The labels here are the texts of the default language; translate them under
+                <a href="{{ path('admin_translation_index') }}">Translations</a>. A layout shows a text of its own with a
+                <code>{t:name}</code> token, e.g. <code>&lt;legend&gt;{t:sign_in}&lt;/legend&gt;</code>: create the text first, under
+                <a href="{{ path('admin_text_index') }}">Texts</a>.
+            </p>
+        </section>
+
+        <section class="md-admin__section">
             <h2>Objects and relations</h2>
             <p class="gv-muted">A section names an <code>object</code> and the relation field (<code>via</code>) by which it points at the object of its parent.</p>
             <dl class="md-facts">

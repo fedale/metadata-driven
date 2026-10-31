@@ -211,7 +211,7 @@ final class AdminControllerTest extends WebTestCase
 
         $crawler = $this->client->request('GET', '/admin/objects/author');
         $this->client->click($crawler->selectLink('Add a view')->link());
-        self::assertSelectorTextContains('form', '{full_name} {city}');
+        self::assertSelectorTextContains('main form', '{full_name} {city}');
         $this->client->submitForm('Save', ['view[name]' => 'main', 'view[template]' => '<div class="grid">{city}<script>alert(1)</script></div>']);
         self::assertResponseRedirects('/admin/objects/author', 303);
         $this->client->followRedirect();

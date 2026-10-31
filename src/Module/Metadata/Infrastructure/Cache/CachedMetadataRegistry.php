@@ -15,6 +15,7 @@ use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
 use App\Module\Metadata\Contract\FieldTypeCatalogInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use Doctrine\DBAL\Connection;
+use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
@@ -28,6 +29,7 @@ use Symfony\Contracts\Service\ResetInterface;
  * uncommitted definitions, and a rolled back change must never reach the cache.
  * The cache is dropped once the change is committed (MetadataChanged).
  */
+#[AsAlias(MetadataRegistryInterface::class)]
 #[AsEventListener(event: MetadataChanged::class, method: 'invalidate')]
 final class CachedMetadataRegistry implements MetadataRegistryInterface, ResetInterface
 {

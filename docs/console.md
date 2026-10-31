@@ -20,6 +20,8 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:view:delete`](#metadataviewdelete) | Delete a view |
 | [`metadata:form:save`](#metadataformsave) | Create or replace a composite form from its YAML definition |
 | [`metadata:form:delete`](#metadataformdelete) | Delete a composite form (its records stay) |
+| [`metadata:translation:set`](#metadatatranslationset) | Translate a text of the metadata into a language, or define a text of your own |
+| [`metadata:translation:list`](#metadatatranslationlist) | List the translation keys, with their texts in a language |
 | [`metadata:list`](#metadatalist) | List the objects, or the fields of one object |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
 | `user:create` | Create a user who can sign in — see [Users and permissions](access.md#usercreate) |
@@ -304,7 +306,43 @@ not a relation pointing at the parent's object (the candidates are suggested), a
 metadata:form:delete <name>
 ```
 
-Deletes the definition only: the records the form wrote stay.
+Deletes the definition and the translations of its texts: the records the form wrote stay.
+
+## `metadata:translation:set`
+
+Set the text of a key in a language; without a text, remove it (see [Languages](i18n.md) for
+the keys and the rules).
+
+```
+metadata:translation:set <locale> <key> [<text>]
+```
+
+| Argument | Description |
+|---|---|
+| `locale` | One of the enabled languages (`en`, `it`) |
+| `key` | The key: `object.<object>.plural`, `field.<object>.<field>`, `option.<object>.<field>.<value>`, `form.<form>`, `text.<name>`... |
+| `text` | The text; omitted or empty: remove it |
+
+```bash
+symfony console metadata:translation:set it field.pet.name Nome
+symfony console metadata:translation:set en text.sign_in "Sign in"      # create a text, for {t:sign_in}
+symfony console metadata:translation:set it text.sign_in Accesso
+symfony console metadata:translation:set it field.pet.name              # back to the English label
+```
+
+Fails for a key the metadata does not have, a key of the metadata in the default language (its
+label is the text: rename the label instead), a language not enabled, a text translated before
+it is defined, or a text still placed by a `{t:name}` token when it is removed.
+
+## `metadata:translation:list`
+
+```
+metadata:translation:list [--missing] [<locale>]
+```
+
+Every key of the metadata, then the texts, with the default-language text and, for another
+language, its translation. `--missing` keeps the keys not translated yet. Without a language: the
+default one.
 
 ## `metadata:list`
 

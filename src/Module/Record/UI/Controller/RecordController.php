@@ -26,6 +26,7 @@ use App\Module\Record\UI\Form\RecordFormFactory;
 use App\Module\Record\UI\Grid\RecordGridFactory;
 use Fedale\GridviewBundle\Export\GridExporterRegistry;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -43,6 +44,8 @@ final class RecordController extends AbstractController
     private const int FILTER_OPTIONS_LIMIT = 200;
 
     public function __construct(
+        // The labels in the user's language.
+        #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
         private readonly RecordManagerInterface $records,
         private readonly RecordFinderInterface $finder,
