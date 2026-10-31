@@ -58,6 +58,11 @@ final class AdminTranslationController extends AbstractController
     public function edit(string $locale, Request $request): Response
     {
         $this->denyUnlessAdministrator();
+        // Nothing to translate into the language the metadata is written in (e.g. an old link
+        // from before the default language changed): back to the languages there are.
+        if ($locale === $this->translations->defaultLocale()) {
+            return $this->redirectToRoute('admin_translation_index');
+        }
         if (!\in_array($locale, $this->targetLocales(), true)) {
             throw $this->createNotFoundException(\sprintf('"%s" is no language to translate into.', $locale));
         }

@@ -44,8 +44,11 @@ final class AdminTranslationControllerTest extends WebTestCase
         self::assertSame('Name Edit', $this->sourceOf($crawler, 'field.pet.name'));
         // The original text is changed where it is defined.
         self::assertSame('/admin/objects/pet/fields/species', $this->rowOf($crawler, 'option.pet.species.dog')->filter('a')->attr('href'));
-        // Nothing to translate into the default language.
+        // Nothing to translate into the default language: back to the other ones.
         $this->client->request('GET', '/admin/translations/en');
+        self::assertResponseRedirects('/admin/translations');
+        // A language not enabled.
+        $this->client->request('GET', '/admin/translations/fr');
         self::assertResponseStatusCodeSame(404);
 
         $form = $crawler->selectButton('Save')->form();
