@@ -15,7 +15,7 @@ records. **New object** asks for the machine name and the two labels.
 | Section | What it does | Console equivalent |
 |---|---|---|
 | Fields | Every field with its column, type, rules and settings; **Add a field**, **Edit** (label and condition) | `metadata:field:create`, `metadata:field:condition`, `metadata:list <object>` |
-| Views | The layouts of the record form; **Add a view**, **Edit**, **Delete** (see [Views](views.md)) | `metadata:view:save`, `metadata:view:delete` |
+| Views | The layouts of the record form and the columns of the record grid; **Add a view**, **Edit**, **Delete** (see [Views](views.md)) | `metadata:view:save`, `metadata:view:delete` |
 | Pointed at by | The relation fields of other objects pointing at this one, with their delete rule | |
 | Labels | Rename the singular and plural labels | |
 | Record label | The field that names the records in relations and lookups | `metadata:object:label` |
@@ -42,11 +42,13 @@ setting the field type refuses (duplicated option, decimals out of range, unknow
 
 ## Views
 
-**Add a view** asks for a machine name, what the view is used for (the record form), the HTML
-layout with a `{field}` token per field, and whether it is the default view. The help under the
-layout lists the tokens of the object. **Edit** changes the layout and the default flag, links to
-a preview of the form and has the **Delete** button. See [Views](views.md) for how to write a
-layout and which view a page uses.
+**Add a view** asks for a machine name, what the view is used for (the record form or the record
+grid), the definition, and whether it is the default view. A form view is an HTML layout with a
+`{field}` token per field; a grid view is a YAML list of columns, with an example in the empty
+input. The help lists the fields of the object. **Edit** changes the definition and the default
+flag, links to a preview (a new record with the form view, the grid with the grid view) and has
+the **Delete** button; a grid view's errors are all shown at once under its definition. See
+[Views](views.md) for how to write a view and which view a page uses.
 
 ## Forms — `/admin/forms`
 

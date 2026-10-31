@@ -30,7 +30,7 @@ final class DeleteViewConsoleCommand
         SymfonyStyle $io,
         #[Argument('Object machine name')] string $object,
         #[Argument('View machine name')] string $name,
-        #[Option('Where the view is used: "form"')] string $kind = ViewKind::Form->value,
+        #[Option('Where the view is used: "form" (the record form) or "grid" (the record grid)')] string $kind = ViewKind::Form->value,
     ): int {
         $viewKind = ViewKind::tryFrom($kind);
         if (null === $viewKind) {

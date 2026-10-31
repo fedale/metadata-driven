@@ -16,7 +16,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:field:condition`](#metadatafieldcondition) | Make a field apply only while another field holds some values |
 | [`metadata:object:label`](#metadataobjectlabel) | Choose the field that names the records of an object |
 | [`metadata:object:search`](#metadataobjectsearch) | Choose how the records of an object are searched |
-| [`metadata:view:save`](#metadataviewsave) | Create or replace a view: an HTML layout of the record form |
+| [`metadata:view:save`](#metadataviewsave) | Create or replace a view: an HTML layout of the record form, or the YAML columns of the record grid |
 | [`metadata:view:delete`](#metadataviewdelete) | Delete a view |
 | [`metadata:form:save`](#metadataformsave) | Create or replace a composite form from its YAML definition |
 | [`metadata:form:delete`](#metadataformdelete) | Delete a composite form (its records stay) |
@@ -247,8 +247,9 @@ Fails when a field does not exist or the handler is unknown.
 
 ## `metadata:view:save`
 
-Create a view, or replace the layout of an existing one. A view is HTML with a `{field}` token
-where each field goes (see [Views](views.md) for how to write one and the rules checked).
+Create a view, or replace an existing one. A form view is HTML with a `{field}` token where each
+field goes; a grid view is a YAML list of columns (see [Views](views.md) and
+[Grid views](views.md#grid-views) for how to write them and the rules checked).
 
 ```
 metadata:view:save [--kind=KIND] [--default] <object> <name> <file>
@@ -258,17 +259,18 @@ metadata:view:save [--kind=KIND] [--default] <object> <name> <file>
 |---|---|
 | `object` | The object's machine name |
 | `name` | The view's machine name |
-| `file` | The file holding the HTML, `-` for the standard input |
-| `--kind` | Where the view is used: `form` (default), the record form |
+| `file` | The file holding the HTML (form) or the YAML (grid), `-` for the standard input |
+| `--kind` | Where the view is used: `form` (default), the record form; `grid`, the record grid |
 | `--default` | Make it the default view of its kind (the first view of a kind always is) |
 
 ```bash
 symfony console metadata:view:save contact main layouts/contact.html
 echo '<div class="row">{city}</div>' | symfony console metadata:view:save contact compact - --default
+echo 'columns: [last_name, first_name, city]' | symfony console metadata:view:save contact list - --kind=grid
 ```
 
-Fails when a token names no field, a field is placed twice, a token is inside a tag, or the name
-is invalid.
+A form view fails when a token names no field, a field is placed twice, a token is inside a tag,
+or the name is invalid. A grid view reports every error of its definition at once.
 
 ## `metadata:view:delete`
 
@@ -276,8 +278,8 @@ is invalid.
 metadata:view:delete [--kind=KIND] <object> <name>
 ```
 
-Deleting the default view leaves the object without one: its form goes back to the plain layout
-until another view is marked as default.
+Deleting the default view leaves the object without one: its form goes back to the plain layout,
+its grid to a column per field, until another view is marked as default.
 
 ## `metadata:form:save`
 

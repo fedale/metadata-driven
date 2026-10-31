@@ -11,4 +11,7 @@ enum ViewKind: string
 {
     /** Layout of the record create/edit form. */
     case Form = 'form';
+
+    /** Columns of the record grid: a YAML definition, compiled when the view is saved. */
+    case Grid = 'grid';
 }

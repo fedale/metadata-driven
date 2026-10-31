@@ -1,8 +1,14 @@
 # Views
 
-A view is a layout for an object's page, stored with the metadata. Today a view lays out the
-**record form**: it decides where each field goes, in groups and columns, instead of one field
-after another. A view is HTML with a `{field}` token where each field goes:
+A view is a layout for an object's page, stored with the metadata. There are two kinds:
+
+- a **form view** lays out the record form: HTML with a `{field}` token where each field goes;
+- a **grid view** configures the record grid: which columns, in which order, how they are drawn,
+  virtual columns joining several fields, the initial sort and the page size. See
+  [Grid views](#grid-views).
+
+A form view decides where each field goes, in groups and columns, instead of one field after
+another:
 
 ```html
 <div class="md-columns">
@@ -79,8 +85,8 @@ it: add the rules to `assets/styles/app.css`, under `.md-view-layout`.
 
 ## Which view a page uses
 
-An object can have several views. Each view has a **kind**, which says where it is used (today
-only `form`), and a name that is unique within its kind.
+An object can have several views. Each view has a **kind**, which says where it is used (`form`
+or `grid`), and a name that is unique within its kind.
 
 - `/o/<object>/new` and `/o/<object>/<id>/edit` use the object's **default** form view.
 - `?view=<name>` uses another one, e.g. `/o/book/new?view=quick`. When no view has that name, the
@@ -88,6 +94,8 @@ only `form`), and a name that is unique within its kind.
   same view and shows its errors there.
 - When the object has no default view, the form shows the fields one after another, as before
   views existed.
+- The grid works the same way, with a path instead of `?view=` (see [Grid views](#grid-views)):
+  `/o/<object>` uses the default grid view, `/o/<object>/grid/<name>` another one.
 
 The default is set as follows:
 
@@ -101,7 +109,100 @@ The default is set as follows:
 A user who may read the records but not update them sees the same layout, with every input
 disabled.
 
-## Rules checked on save
+## Grid views
+
+A grid view is written in YAML. It lists the columns of the grid, in order:
+
+```yaml
+columns:
+  - title                                                 # a field: its label, filter and sort
+  - { field: price, label: Price (€) }
+  - { field: summary, renderer: truncate, options: { length: 60 } }
+  - { field: status, renderer: badge, options: { tones: { published: success, draft: warning } } }
+  - { field: published_on, renderer: date, options: { format: d/m/Y } }
+  - { field: isbn, hidden: true }                          # off until the user turns it on
+  - { name: author, label: Author, template: '{first_name} {last_name}' }   # a virtual column
+sort: { published_on: desc }                               # optional: the initial order
+page_size: 50                                              # optional (default 25)
+```
+
+**From the admin UI:** **Views → Add a view**, *Used for: the record grid*, paste the definition.
+**From the console:** `metadata:view:save book main grid.yaml --kind=grid`. The admin shows the
+definition as it was written, comments included.
+
+### Columns
+
+A column is a field name, or a map:
+
+| Key | Description |
+|---|---|
+| `field` | The field shown. Its type gives the column its filter, its sort and its rendering |
+| `name` + `template` | A **virtual column**: a name of its own (not a field's) and a text with a `{field}` token per field, e.g. `'{last_name}, {first_name}'` |
+| `label` | The heading. Default: the label of the field (the name, for a virtual column) |
+| `renderer` + `options` | How the cells are drawn, instead of the field type's rendering (see below) |
+| `hidden` | `true`: the column is in the grid but off; the user turns it on from the **Columns** menu |
+| `sortable` | `false`: the heading does not sort. Default `true` |
+| `filter` | `false`: no filter for the column. Default `true` |
+
+The fields a view leaves out are not in the grid: unlike a form view, a grid view is the whole
+list. A write-only field (a password) cannot be listed.
+
+### Virtual columns
+
+A virtual column shows several fields as one: `'{first_name} {last_name}'` reads "Ada Lovelace".
+
+- It **sorts** on its fields, in the order of the template: last name, then first name for
+  `'{last_name} {first_name}'`.
+- Its **filter** is a text filter on its fields joined by spaces, empty ones skipped: "lovel"
+  and "ada lov" both find Ada Lovelace. A select is matched on its stored value, not its label.
+- Its fields cannot be relations: show a relation in a column of its own, where it filters
+  on the related record.
+
+### Renderers
+
+A renderer is PHP code registered under a name; a view only picks one and passes its options,
+so a view never carries code.
+
+| Renderer | Options | Draws |
+|---|---|---|
+| `truncate` | `length` (1–1000, default 80) | The text cut to `length` characters with "…"; the whole text in the tooltip |
+| `badge` | `tones`: value → `neutral`, `info`, `success`, `warning` or `danger` | A badge (`gv-badge` of fedale/gridview-bundle) with the text shown (a select's label); the tone chosen by the stored value. Dark mode included |
+| `date` | `format` (PHP date format, default `d/m/Y`) | A date, or a date and time, formatted |
+
+A developer adds a renderer with a class implementing
+`App\Module\Record\UI\Grid\Renderer\CellRendererInterface` (`name()`, `optionErrors()`,
+`render()`): it is registered by itself, and accepted by the views from then on. `render()`
+returns HTML, so it escapes what it prints.
+
+### One grid per view
+
+- `/o/<object>` shows the **default** grid view; `/o/<object>/grid/<name>` any one. The grid's
+  sort, page and filter links stay on that page. (`?view=` is not used for grids: the grid
+  itself uses it to switch between table and cards.)
+- When an object has several grid views, the page shows them side by side above the grid, the
+  default one first.
+- Each view other than the default has its own saved searches and column preferences: they
+  name columns the other views may not have.
+- The export follows the view: its columns, its renderers (as text: "owner…" for a truncated
+  e-mail), its virtual columns.
+- Without a grid view, the grid shows a column per field, as before views existed.
+
+### Rules checked on save
+
+Every error is reported at once, under the definition:
+
+```
+Column #1: object "book" has no field "nickname".
+Column "author": "author" is a field of "book": a virtual column needs a name of its own.
+Column #3: "renderer" must be one of badge, date, truncate.
+"sort": "isbn" is no sortable column of the grid (nor created_at, updated_at).
+```
+
+Also refused: a field listed twice, a write-only field, a template without tokens or with a
+relation, unknown keys and renderer options, a sort direction other than `asc`/`desc`, a
+`page_size` outside 1–500.
+
+## Rules checked on save (form views)
 
 | Rule | Error |
 |---|---|
@@ -123,6 +224,10 @@ echo '<fieldset><legend>Quick</legend>{title} {price}</fieldset>' \
     | symfony console metadata:view:save book quick - --default
 
 symfony console metadata:view:delete book quick
+
+# A grid view: --kind=grid, the definition in YAML
+symfony console metadata:view:save book main grids/book.yaml --kind=grid
+symfony console metadata:view:delete book main --kind=grid
 ```
 
 See [`metadata:view:save`](console.md#metadataviewsave) and
@@ -132,11 +237,12 @@ See [`metadata:view:save`](console.md#metadataviewsave) and
 
 | Piece | Where |
 |---|---|
-| Storage | `core.metadata_view`: `object_id` (cascade on delete), `kind`, `name`, `template`, `is_default`; unique on `(object_id, kind, name)` |
+| Storage | `core.metadata_view`: `object_id` (cascade on delete), `kind`, `name`, `template` (form: the sanitized HTML; grid: the YAML as written), `definition` (grid: the compiled definition, JSONB), `is_default`; unique on `(object_id, kind, name)` |
 | Model | `ViewDefinition`, part of the `ObjectDefinition` aggregate like the fields; `ObjectDefinition::saveView()` checks the tokens and keeps one default per kind |
 | Sanitizing | `SaveViewHandler`, with the `view_layout` sanitizer of `config/packages/html_sanitizer.yaml` |
-| Read side | `ObjectDefinitionDto::$views` and `view(ViewKind $kind, ?string $name)`, served from the cached metadata snapshot; a change drops the cache like any metadata change |
-| Rendering | The Twig function `record_form_layout(form, template)` (`RecordFormLayout` in the Record module), called before `form_rest()` in `templates/record/form.html.twig` |
+| Grid definitions | `GridViewCompiler` (Metadata) checks and compiles them; renderer names and options are checked through `GridRendererCatalogInterface`, implemented by `GridRenderers` (Record) |
+| Read side | `ObjectDefinitionDto::$views` and `view(ViewKind $kind, ?string $name)`, served from the cached metadata snapshot; a change drops the cache like any metadata change. A grid view carries `ViewDefinitionDto::$grid` (`GridViewDto`, `GridColumnDto`) |
+| Rendering | Form: the Twig function `record_form_layout(form, template)` (`RecordFormLayout` in the Record module), called before `form_rest()` in `templates/record/form.html.twig`. Grid: `RecordGridFactory::create($object, $view)` builds the columns; `DbalRecordGridSource` filters a virtual column on its fields (passed in the grid's model, checked against the object) |
 | API | `MetadataManagerInterface::saveView()` / `deleteView()`, the same calls the admin UI uses |
 
 Layouts are not Twig. Only the `{field}` tokens are replaced: `{{ }}`, `{% %}`, filters and
@@ -148,7 +254,9 @@ A composite form is laid out the same way, with a `layout` in its definition: se
 
 ## Not yet
 
-- Views of other pages: the record detail, the grid (visible columns, virtual columns), cards.
-  `ViewKind` is the place where such kinds will be added.
+- Views of other pages: the record detail, cards. `ViewKind` is the place where such kinds
+  will be added.
+- Grid views: computed columns (counts, sums of related records) and virtual columns over
+  relations.
 - Renaming or deleting a field: neither exists yet. When it arrives, the views that place the
   field will have to follow.

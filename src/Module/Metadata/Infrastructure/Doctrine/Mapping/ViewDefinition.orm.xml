@@ -13,6 +13,11 @@
         <field name="kind" length="20" enum-type="App\Module\Metadata\Contract\Dto\ViewKind"/>
         <field name="name" length="50"/>
         <field name="template" type="text"/>
+        <field name="definition" type="json" nullable="true">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
         <field name="isDefault" type="boolean"/>
         <field name="createdAt" type="datetime_immutable"/>
         <field name="updatedAt" type="datetime_immutable"/>

@@ -132,7 +132,14 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
             ->from($this->table->table($object), $this->table->quote(self::ALIAS))
             ->where($this->table->column('deleted_at', self::ALIAS).' IS NULL');
 
+        $virtual = $this->virtualColumns($object, $query);
         foreach ($query->criteria as $index => $criterion) {
+            if (isset($virtual[$criterion->attribute])) {
+                // The text of a virtual column: its fields joined by spaces (CONCAT_WS skips the
+                // empty ones), close to how it reads.
+                $this->applyTextCriterion($qb, \sprintf("CONCAT_WS(' ', %s)", implode(', ', $virtual[$criterion->attribute])), $criterion, 'c'.$index);
+                continue;
+            }
             $this->applyCriterion($qb, $this->readableField($object, $criterion->attribute), $criterion, 'c'.$index);
         }
 
@@ -164,32 +171,33 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
         }
     }
 
+    /**
+     * The virtual columns of the grid view (GridQuery::$source["virtual"]): name => the text
+     * expressions of their fields, each resolved against the object like any attribute.
+     *
+     * @return array<string, list<string>>
+     */
+    private function virtualColumns(ObjectDefinitionDto $object, GridQuery $query): array
+    {
+        $virtual = [];
+        $declared = \is_array($query->source) && \is_array($query->source['virtual'] ?? null) ? $query->source['virtual'] : [];
+        foreach ($declared as $name => $fields) {
+            if (\is_string($name) && \is_array($fields) && [] !== $fields) {
+                $virtual[$name] = array_values(array_map(
+                    fn (mixed $field): string => $this->table->asText($this->readableField($object, \is_string($field) ? $field : ''), self::ALIAS),
+                    $fields,
+                ));
+            }
+        }
+
+        return $virtual;
+    }
+
     private function applyCriterion(QueryBuilder $qb, FieldDefinitionDto $field, FilterCriterion $criterion, string $param): void
     {
-        $operator = $criterion->operator;
-        $like = match ($operator) {
-            FilterOperator::Contains, FilterOperator::NotContains => ['%', '%'],
-            FilterOperator::StartsWith => ['', '%'],
-            FilterOperator::EndsWith => ['%', ''],
-            default => null,
-        };
-
-        if (null !== $like || $criterion->caseInsensitive) {
+        if ($this->isText($criterion)) {
             // Text comparison: the column (cast to text when needed) against a string.
-            $column = $this->table->asText($field, self::ALIAS);
-            $value = $criterion->value;
-            if ($criterion->caseInsensitive) {
-                $column = 'LOWER('.$column.')';
-                $value = \is_array($value) ? array_map($this->lower(...), $value) : $this->lower($value);
-            }
-            if (null !== $like) {
-                $not = FilterOperator::NotContains === $operator ? 'NOT ' : '';
-                $qb->andWhere(\sprintf('%s %sLIKE :%s', $column, $not, $param))
-                    ->setParameter($param, $like[0].RecordTable::escapeLike($this->string($value)).$like[1]);
-
-                return;
-            }
-            $this->compare($qb, $column, $operator, $param, $value, ':%s', Types::STRING);
+            $this->applyTextCriterion($qb, $this->table->asText($field, self::ALIAS), $criterion, $param);
 
             return;
         }
@@ -199,12 +207,52 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
         // Numbers come as int or float: compare as NUMERIC, so "age > 3.5" is not truncated to 3.
         if (\in_array($type, [Types::INTEGER, Types::DECIMAL], true)) {
             $value = \is_array($criterion->value) ? array_map($this->string(...), $criterion->value) : $this->string($criterion->value);
-            $this->compare($qb, $column, $operator, $param, $value, 'CAST(:%s AS NUMERIC)', Types::STRING);
+            $this->compare($qb, $column, $criterion->operator, $param, $value, 'CAST(:%s AS NUMERIC)', Types::STRING);
 
             return;
         }
 
-        $this->compare($qb, $column, $operator, $param, $criterion->value, ':%s', $type);
+        $this->compare($qb, $column, $criterion->operator, $param, $criterion->value, ':%s', $type);
+    }
+
+    private function isText(FilterCriterion $criterion): bool
+    {
+        return $criterion->caseInsensitive || null !== $this->likePattern($criterion->operator);
+    }
+
+    /**
+     * @return array{string, string}|null the wildcards before and after the term; null: no LIKE
+     */
+    private function likePattern(FilterOperator $operator): ?array
+    {
+        return match ($operator) {
+            FilterOperator::Contains, FilterOperator::NotContains => ['%', '%'],
+            FilterOperator::StartsWith => ['', '%'],
+            FilterOperator::EndsWith => ['%', ''],
+            default => null,
+        };
+    }
+
+    /**
+     * @param string $column an SQL text expression, built from whitelisted columns only
+     */
+    private function applyTextCriterion(QueryBuilder $qb, string $column, FilterCriterion $criterion, string $param): void
+    {
+        $operator = $criterion->operator;
+        $like = $this->likePattern($operator);
+        $value = $criterion->value;
+        if ($criterion->caseInsensitive) {
+            $column = 'LOWER('.$column.')';
+            $value = \is_array($value) ? array_map($this->lower(...), $value) : $this->lower($value);
+        }
+        if (null !== $like) {
+            $not = FilterOperator::NotContains === $operator ? 'NOT ' : '';
+            $qb->andWhere(\sprintf('%s %sLIKE :%s', $column, $not, $param))
+                ->setParameter($param, $like[0].RecordTable::escapeLike($this->string($value)).$like[1]);
+
+            return;
+        }
+        $this->compare($qb, $column, $operator, $param, $value, ':%s', Types::STRING);
     }
 
     /**

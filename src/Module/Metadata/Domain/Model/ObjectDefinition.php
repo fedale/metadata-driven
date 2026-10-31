@@ -130,22 +130,28 @@ class ObjectDefinition
      * Creates the view, or replaces the template of the existing one with that kind and name.
      *
      * The first view of a kind becomes its default; making a view the default takes the
-     * flag off the previous one. Every {token} must name a field, once, outside any tag.
+     * flag off the previous one. In a form view every {token} must name a field, once, outside
+     * any tag; a grid view comes with its definition, compiled (and checked) by the caller.
      *
-     * @param string $template sanitized HTML
+     * @param string                    $template   sanitized HTML (form), or the YAML source (grid)
+     * @param array<string, mixed>|null $definition the compiled grid definition
      */
-    public function saveView(Uuid $id, ViewKind $kind, string $name, string $template, bool $isDefault): ViewDefinition
+    public function saveView(Uuid $id, ViewKind $kind, string $name, string $template, bool $isDefault, ?array $definition = null): ViewDefinition
     {
         MachineName::assert($name);
-        $this->assertLayout($name, $template);
+        if (ViewKind::Form === $kind) {
+            $this->assertLayout($name, $template);
+        } elseif (null === $definition) {
+            throw new \LogicException(\sprintf('A %s view needs its compiled definition.', $kind->value));
+        }
 
         $view = $this->findView($kind, $name);
         if (null === $view) {
             $isDefault = $isDefault || null === $this->defaultView($kind);
-            $view = new ViewDefinition($id, $this, $kind, $name, $template, false);
+            $view = new ViewDefinition($id, $this, $kind, $name, $template, false, $definition);
             $this->views->add($view);
         } else {
-            $view->change($template);
+            $view->change($template, $definition);
         }
         if ($isDefault) {
             foreach ($this->views as $other) {

@@ -4,6 +4,17 @@
 
 {% block body %}
     <div class="md-page__header">
+        {% set grid_views = object.views|filter(v => v.kind.value == 'grid')|sort((a, b) => b.isDefault <=> a.isDefault) %}
+        {% if grid_views|length > 1 %}
+            {# The grid views of the object, the default one first: it opens at /o/<object>. #}
+            <nav class="md-switch" aria-label="Grid views">
+                {% for view in grid_views %}
+                    <a class="md-switch__item{{ grid_view and grid_view.name == view.name ? ' md-switch__item--current' : '' }}"
+                       href="{{ view.isDefault ? path('record_index', {object: object.name}) : path('record_grid', {object: object.name, grid: view.name}) }}"
+                       {{ grid_view and grid_view.name == view.name ? 'aria-current="page"' : '' }}>{{ view.name|replace({'_': ' '})|capitalize }}</a>
+                {% endfor %}
+            </nav>
+        {% endif %}
         <div class="md-page__actions" data-controller="gridview-ui-settings"
              data-gridview-ui-settings-url-value="{{ path('fedale_gridview_ui_settings') }}"
              data-gridview-ui-settings-grid-value="{{ gridview.id }}">

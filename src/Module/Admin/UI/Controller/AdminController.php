@@ -48,6 +48,17 @@ final class AdminController extends AbstractController
 {
     private const array TYPE_ORDER = ['text', 'number', 'date', 'boolean', 'select', 'email', 'tel', 'url', 'password', 'relation'];
     private const string NAME_HELP = 'Lowercase letters, digits and single underscores, starting with a letter. It cannot be changed later.';
+    private const string FORM_VIEW_HELP = 'Put a {field} token where each field goes; the fields left out follow the layout. Scripts, styles and event attributes are removed; class attributes are kept.';
+    private const string GRID_VIEW_HELP = 'The columns in order: a field name, or a map with field, label, renderer (truncate, badge, date), options, hidden, sortable, filter; a virtual column takes a name and a template of {field} tokens. Optional: sort and page_size.';
+    private const string GRID_VIEW_EXAMPLE = <<<'YAML'
+        columns:
+          - title
+          - { field: summary, renderer: truncate, options: { length: 60 } }
+          - { name: author, label: Author, template: '{firstname} {lastname}' }
+          - { field: created, hidden: true }
+        sort: { title: asc }
+        page_size: 50
+        YAML;
 
     public function __construct(
         private readonly MetadataRegistryInterface $metadata,
@@ -532,14 +543,23 @@ final class AdminController extends AbstractController
                 ->add('name', TextType::class, ['label' => 'Machine name', 'help' => self::NAME_HELP])
                 ->add('kind', EnumType::class, ['label' => 'Used for', 'class' => ViewKind::class, 'choice_label' => static fn (ViewKind $kind): string => match ($kind) {
                     ViewKind::Form => 'The record form',
+                    ViewKind::Grid => 'The record grid',
                 }]);
         }
 
         return $builder
             ->add('template', TextareaType::class, [
-                'label' => 'Layout (HTML)',
-                'help' => 'Put a {field} token where each field goes: '.$tokens.'. The fields left out follow the layout. Scripts, styles and event attributes are removed; class attributes are kept.',
-                'attr' => ['rows' => 16, 'class' => 'md-code-input'],
+                'label' => match ($view?->kind) {
+                    ViewKind::Form => 'Layout (HTML)',
+                    ViewKind::Grid => 'Grid definition (YAML)',
+                    null => 'Layout (HTML) or grid definition (YAML)',
+                },
+                'help' => match ($view?->kind) {
+                    ViewKind::Form => self::FORM_VIEW_HELP,
+                    ViewKind::Grid => self::GRID_VIEW_HELP,
+                    null => 'Form: '.self::FORM_VIEW_HELP.' Grid: '.self::GRID_VIEW_HELP,
+                }.' Fields: '.$tokens.'.',
+                'attr' => ['rows' => 16, 'class' => 'md-code-input', 'placeholder' => ViewKind::Grid === $view?->kind || null === $view ? self::GRID_VIEW_EXAMPLE : null],
             ])
             ->add('isDefault', CheckboxType::class, [
                 'label' => 'Default view',

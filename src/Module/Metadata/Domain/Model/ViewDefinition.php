@@ -10,6 +10,9 @@ use Symfony\Component\Uid\Uuid;
 /**
  * A named layout of an object for one kind of page (e.g. the record form).
  *
+ * A form view is an HTML template; a grid view is a YAML source (the template, as written)
+ * and its compiled definition.
+ *
  * @internal create it through ObjectDefinition::saveView()
  */
 class ViewDefinition
@@ -17,6 +20,9 @@ class ViewDefinition
     private \DateTimeImmutable $createdAt;
     private \DateTimeImmutable $updatedAt;
 
+    /**
+     * @param array<string, mixed>|null $definition the compiled grid definition; null for a form view
+     */
     public function __construct(
         private Uuid $id,
         private ObjectDefinition $object,
@@ -24,14 +30,19 @@ class ViewDefinition
         private string $name,
         private string $template,
         private bool $isDefault,
+        private ?array $definition = null,
     ) {
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = $this->createdAt;
     }
 
-    public function change(string $template): void
+    /**
+     * @param array<string, mixed>|null $definition
+     */
+    public function change(string $template, ?array $definition = null): void
     {
         $this->template = $template;
+        $this->definition = $definition;
         $this->updatedAt = new \DateTimeImmutable();
     }
 
@@ -66,6 +77,14 @@ class ViewDefinition
     public function getTemplate(): string
     {
         return $this->template;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getDefinition(): ?array
+    {
+        return $this->definition;
     }
 
     public function isDefault(): bool

@@ -41,6 +41,12 @@ a:hover { color: var(--gv-color-link-hover); }
 .md-page__header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .md-page__actions { display: flex; gap: .5rem; margin-left: auto; }
 
+/* The grid views of an object, side by side: the current one filled. */
+.md-switch { display: inline-flex; border: 1px solid var(--gv-color-border); border-radius: var(--gv-radius); overflow: hidden; }
+.md-switch__item { padding: .3rem .8rem; color: var(--gv-color-text); text-decoration: none; }
+.md-switch__item + .md-switch__item { border-left: 1px solid var(--gv-color-border); }
+.md-switch__item--current { background: var(--gv-color-primary); color: var(--gv-color-bg); }
+
 .md-flash { padding: .5rem .75rem; border-radius: var(--gv-radius); }
 .md-flash--success { background: var(--gv-success-flash-bg); color: var(--gv-success-color); }
 .md-flash--error { background: var(--gv-error-bg); color: var(--gv-error-color); border: 1px solid var(--gv-error-border); }

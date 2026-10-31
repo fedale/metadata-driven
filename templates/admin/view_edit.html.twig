@@ -11,7 +11,11 @@
     {% if view %}
         <dl class="md-facts">
             <dt>Used for</dt><dd>{{ view.kind.value }}</dd>
-            <dt>Preview</dt><dd><a href="{{ path('record_new', {object: object.name, view: view.name}) }}">New {{ object.labelSingular|lower }} with this view</a></dd>
+            {% if view.kind.value == 'grid' %}
+                <dt>Preview</dt><dd><a href="{{ path('record_grid', {object: object.name, grid: view.name}) }}">{{ object.labelPlural }} with this view</a></dd>
+            {% else %}
+                <dt>Preview</dt><dd><a href="{{ path('record_new', {object: object.name, view: view.name}) }}">New {{ object.labelSingular|lower }} with this view</a></dd>
+            {% endif %}
         </dl>
     {% endif %}
 

@@ -95,7 +95,9 @@ the bundle; one that exists because of the metadata stays here, with the `md-` p
 ## The grid
 
 `RecordGridFactory` builds one grid per object at runtime with `GridviewBuilderFactory`: one
-column per field, with the filter and the rendering of its type. Rows come from
+column per field, with the filter and the rendering of its type, or the columns of a
+[grid view](views.md#grid-views): labels, cell renderers (`CellRendererInterface`, registered by
+name), virtual columns joining several fields. Rows come from
 `DbalRecordGridSource`, a `GridDataSourceInterface`: the bundle parses filters, sort, search and
 page from the request into a normalized `GridQuery`, and the source turns it into SQL, joining the
 related tables to show the labels of relation fields.
