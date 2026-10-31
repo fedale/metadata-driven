@@ -1,10 +1,10 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Sign in{% endblock %}
+{% block title %}{{ 'login.title'|trans }}{% endblock %}
 
 {% block body %}
     <div class="md-login">
-        <h1>Sign in</h1>
+        <h1>{{ 'login.title'|trans }}</h1>
 
         {% if error %}
             <p class="md-flash md-flash--error" role="alert">{{ error.messageKey|trans(error.messageData, 'security') }}</p>
@@ -13,19 +13,19 @@
         <form method="post" action="{{ path('app_login') }}" class="md-form">
             {# Written by hand (the firewall reads the fields), with the classes of the gv form theme. #}
             <div class="gv-form-row">
-                <label for="email" class="gv-form-label required">Email</label>
+                <label for="email" class="gv-form-label required">{{ 'login.email'|trans }}</label>
                 <input type="email" id="email" name="email" value="{{ last_email }}" class="gv-form-control" autocomplete="email" required autofocus>
             </div>
             <div class="gv-form-row">
-                <label for="password" class="gv-form-label required">Password</label>
+                <label for="password" class="gv-form-label required">{{ 'login.password'|trans }}</label>
                 <input type="password" id="password" name="password" class="gv-form-control" autocomplete="current-password" required>
             </div>
             <div class="gv-form-row gv-form-row--switch">
-                <label for="remember_me" class="gv-form-label">Keep me signed in</label>
+                <label for="remember_me" class="gv-form-label">{{ 'login.remember_me'|trans }}</label>
                 <input type="checkbox" id="remember_me" name="_remember_me" class="gv-switch" role="switch">
             </div>
             <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('authenticate') }}">
-            <button type="submit" class="gv-btn gv-btn-primary">Sign in</button>
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'login.submit'|trans }}</button>
         </form>
     </div>
 {% endblock %}

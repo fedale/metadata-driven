@@ -20,6 +20,8 @@ final readonly class FormNodeDto
      * @param bool                  $inline        the fields side by side, on one line (a phone: prefix, number, type)
      * @param list<string>          $required      fields required by the form although their object does not require them
      * @param string|null           $layout        sanitized HTML placing the fields, service fields and sections with {name} tokens; null: one after another
+     * @param string|null           $description   a line under the title, telling what the node is for
+     * @param int                   $columns       without a layout, the fields on this many columns (1 to 4)
      */
     public function __construct(
         public string $name,
@@ -35,6 +37,8 @@ final readonly class FormNodeDto
         public bool $inline = false,
         public array $required = [],
         public ?string $layout = null,
+        public ?string $description = null,
+        public int $columns = 1,
     ) {
     }
 

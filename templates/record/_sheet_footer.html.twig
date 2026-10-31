@@ -1,0 +1,10 @@
+{# The foot of a form page: the meaning of the required mark, and the actions again. #}
+<footer class="md-sheet__footer">
+    <p class="gv-required-note"><span class="gv-required-note__mark">*</span> {{ 'form.required_note'|trans }}</p>
+    <div class="md-sheet__actions">
+        <a class="gv-btn" href="{{ back }}">{{ 'form.cancel'|trans }}</a>
+        {% if can_save %}
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'form.save'|trans }}</button>
+        {% endif %}
+    </div>
+</footer>

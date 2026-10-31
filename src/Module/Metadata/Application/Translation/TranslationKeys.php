@@ -91,6 +91,9 @@ final class TranslationKeys
      */
     private function node(array &$keys, string $group, string $form, FormNodeDto $node, array $path): void
     {
+        if (null !== $node->description) {
+            $keys[TranslationKey::description($form, $path)] = ['group' => $group, 'source' => $node->description];
+        }
         foreach ($node->serviceFields as $field) {
             $keys[TranslationKey::serviceField($form, $path, $field->name)] = ['group' => $group, 'source' => $field->label];
         }

@@ -1,0 +1,48 @@
+# The texts of the application itself, in Italian (see messages.en.yaml).
+nav:
+    records: Dati
+    admin: Amministrazione
+    language: Lingua
+    sign_out: Esci
+login:
+    title: Accedi
+    email: Email
+    password: Password
+    remember_me: Resta connesso
+    submit: Accedi
+home:
+    title: Oggetti
+    forms: Moduli
+    empty: 'Non c''è ancora niente che tu possa aprire: chiedi l''accesso a un amministratore.'
+    empty_admin: 'Ancora nessun oggetto. <a href="%url%">Crea il primo</a>.'
+record:
+    new: 'Nuovo: %object%'
+    new_title: 'Nuovo: %object%'
+    edit_title: 'Modifica: %object%'
+    grid_views: Viste della griglia
+    showing: 'Mostrati %shown% di %total%.'
+    delete: Elimina
+    delete_confirm: 'Eliminare questo elemento (%object%)?'
+form:
+    save: Salva
+    cancel: Annulla
+    add: '%label%'
+    remove: Rimuovi
+    choose_option: Scegli un'opzione
+    choose_record: Scegli un elemento
+    keep_password: Lascia vuoto per mantenere la password attuale.
+    repeat: 'Ripeti %label%'
+    required_note: Campo obbligatorio
+    index:
+        label: Parti del modulo
+        required: '%done%/%total% obbligatori'
+        filled: '%done%/%total% compilati'
+        no_entries: Nessuna voce
+        one_entry: 1 voce
+        entries: '%count% voci'
+flash:
+    created: '%object%: creato.'
+    updated: '%object%: aggiornato.'
+    deleted: '%object%: eliminato.'
+    saved: '%form%: salvato.'
+    cascade_denied: 'Eliminare questo elemento elimina anche %objects%, che non puoi eliminare.'

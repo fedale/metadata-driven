@@ -1,16 +1,72 @@
 {% extends 'base.html.twig' %}
 {% import 'record/_composite.html.twig' as composite %}
 
+{#
+    A composite form as a sheet: a header with the way back and the actions, an index of its
+    parts on the side, then the parts as numbered cards: the fields of the root record first,
+    then each section of the root.
+#}
+{% set root = definition.root %}
+{% set back = can_list ? path('record_index', {object: object.name}) : path('app_home') %}
+{% set parts = [{id: 'part-root', title: object.labelSingular, description: root.description, many: false}] %}
+{% for section in root.sections %}
+    {% set parts = parts|merge([{id: 'part-' ~ section.name, title: section.label, description: section.description, many: section.mode.value == 'many'}]) %}
+{% endfor %}
+
 {% block title %}{{ definition.label }}{% endblock %}
 
 {% block body %}
-    <h1>{{ definition.label }}</h1>
+    {{ form_start(form, {attr: {class: 'md-sheet', novalidate: 'novalidate', id: 'composite-form'}}) }}
+        {{ include('record/_sheet_header.html.twig', {
+            crumb: object.labelPlural, crumb_url: can_list ? back : null, title: definition.label,
+            back: back, can_save: can_save,
+        }) }}
 
-    {{ form_start(form, {attr: {class: 'md-form md-form--composite', novalidate: 'novalidate'}}) }}
-        {{ composite.node(form, definition.root, can_save) }}
-        <p class="gv-required-note"><span class="gv-required-note__mark">*</span> Required field</p>
-        {% if can_save %}
-            <button type="submit" class="gv-btn gv-btn-primary">Save</button>
-        {% endif %}
+        <div class="md-sheet__body" data-controller="form-index"
+             data-form-index-required-value="{{ 'form.index.required'|trans }}"
+             data-form-index-filled-value="{{ 'form.index.filled'|trans }}"
+             data-form-index-none-value="{{ 'form.index.no_entries'|trans }}"
+             data-form-index-one-value="{{ 'form.index.one_entry'|trans }}"
+             data-form-index-many-value="{{ 'form.index.entries'|trans }}">
+            <nav class="md-index" aria-label="{{ 'form.index.label'|trans }}">
+                <ol class="md-index__list">
+                    {% for part in parts %}
+                        <li>
+                            <a class="md-index__item" href="#{{ part.id }}" data-form-index-target="link">
+                                <span class="md-index__number">{{ '%02d'|format(loop.index) }}</span>
+                                <span class="md-index__title">{{ part.title }}</span>
+                                <span class="md-index__progress" data-form-index-target="progress" aria-live="polite"></span>
+                                <span class="md-index__bar"><span class="md-index__fill" data-form-index-target="fill"></span></span>
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ol>
+            </nav>
+
+            <div class="md-sheet__parts">
+                {{ form_errors(form) }}
+                {% for part in parts %}
+                    <section class="md-card" id="{{ part.id }}" data-form-index-target="part" data-many="{{ part.many ? 'true' : 'false' }}"
+                             aria-labelledby="{{ part.id }}-title">
+                        <header class="md-card__header">
+                            <span class="md-card__number">{{ '%02d'|format(loop.index) }}</span>
+                            <div>
+                                <h2 class="md-card__title" id="{{ part.id }}-title">{{ part.title }}</h2>
+                                {% if part.description %}<p class="md-card__description">{{ part.description }}</p>{% endif %}
+                            </div>
+                        </header>
+                        {% if loop.first %}
+                            {{ composite.node(form, root, can_save, true) }}
+                        {% else %}
+                            {% set section = root.sections[loop.index0 - 1] %}
+                            {{ composite.section_body(form.sections[section.name], section, can_save) }}
+                        {% endif %}
+                    </section>
+                {% endfor %}
+                {% if form.sections is defined %}{% do form.sections.setRendered %}{% endif %}
+
+                {{ include('record/_sheet_footer.html.twig', {back: back, can_save: can_save}) }}
+            </div>
+        </div>
     {{ form_end(form) }}
 {% endblock %}

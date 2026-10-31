@@ -9,6 +9,7 @@ use App\Module\Access\Contract\RecordAction;
 use App\Module\Metadata\Contract\Dto\FormDefinitionDto;
 use App\Module\Metadata\Contract\Dto\FormNodeDto;
 use App\Module\Metadata\Contract\Dto\FormNodeMode;
+use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Exception\FormDefinitionNotFound;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Application\CascadeTargets;
@@ -22,6 +23,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Requirement\Requirement;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * The pages of the composite forms: one form writing a record and the records related to it.
@@ -43,6 +45,7 @@ final class CompositeFormController extends AbstractController
         private readonly CompositeFormFactory $forms,
         private readonly AccessCheckerInterface $access,
         private readonly CascadeTargets $cascadeTargets,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -54,12 +57,12 @@ final class CompositeFormController extends AbstractController
         $composite = $this->forms->create($definition, null)->handleRequest($request);
 
         if ($composite->isSubmitted() && $composite->isValid() && null !== $id = $this->save($definition, null, $composite)) {
-            $this->addFlash('success', \sprintf('%s saved.', $definition->label));
+            $this->addFlash('success', $this->translator->trans('flash.saved', ['%form%' => $definition->label]));
 
             return $this->redirectToRoute('composite_edit', ['form' => $definition->name, 'id' => $id], Response::HTTP_SEE_OTHER);
         }
 
-        return $this->render('record/composite.html.twig', ['definition' => $definition, 'form' => $composite, 'id' => null, 'can_save' => true]);
+        return $this->render('record/composite.html.twig', [...$this->page($definition), 'form' => $composite, 'id' => null, 'can_save' => true]);
     }
 
     #[Route('/{id}/edit', name: 'edit', requirements: ['id' => Requirement::UUID], methods: ['GET', 'POST'])]
@@ -75,12 +78,27 @@ final class CompositeFormController extends AbstractController
         $composite = $this->forms->create($definition, $record, readOnly: !$canSave)->handleRequest($request);
 
         if ($composite->isSubmitted() && $composite->isValid() && null !== $this->save($definition, $id, $composite)) {
-            $this->addFlash('success', \sprintf('%s saved.', $definition->label));
+            $this->addFlash('success', $this->translator->trans('flash.saved', ['%form%' => $definition->label]));
 
             return $this->redirectToRoute('composite_edit', ['form' => $definition->name, 'id' => $id], Response::HTTP_SEE_OTHER);
         }
 
-        return $this->render('record/composite.html.twig', ['definition' => $definition, 'form' => $composite, 'id' => $id, 'can_save' => $canSave]);
+        return $this->render('record/composite.html.twig', [...$this->page($definition), 'form' => $composite, 'id' => $id, 'can_save' => $canSave]);
+    }
+
+    /**
+     * What the page shows around the form: the object of its root (the title of its first card,
+     * the way back to its records).
+     *
+     * @return array{definition: FormDefinitionDto, object: ObjectDefinitionDto, can_list: bool}
+     */
+    private function page(FormDefinitionDto $definition): array
+    {
+        return [
+            'definition' => $definition,
+            'object' => $this->metadata->getObject($definition->root->object),
+            'can_list' => $this->access->canRecords($definition->root->object, RecordAction::Read),
+        ];
     }
 
     /**

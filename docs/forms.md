@@ -7,13 +7,16 @@ is saved: no code, no deploy.
 
 ```yaml
 label: User registration
+description: Sign-in and personal data.  # under the title of the first card
 object: account                        # the root: the record the form is about
 fields: [username, email, firstname, lastname, password, active]
+columns: 2                             # the root's fields on two columns
 service_fields:
   - { name: terms, type: boolean, label: I accept the terms, required: true }
 sections:
   - name: profile
     label: Profile
+    description: Where to find you.
     object: profile
     via: account                       # the relation field of profile pointing at account
     sections:
@@ -23,6 +26,26 @@ sections:
 
 The form opens at `/f/<name>/new`; once saved, the same records are edited at
 `/f/<name>/<root id>/edit`.
+
+## The page
+
+The page is a sheet:
+
+- a **header** that stays in view: the plural of the root object (a link to its records), the
+  title of the form, **Cancel** (back to the records) and **Save**, repeated at the foot of the
+  form;
+- numbered **cards**: first the fields of the root, titled with the singular of the root object
+  (e.g. "Account"), then one card per section of the root, each with its `description` under
+  the title if it has one. Deeper sections are framed groups inside their card;
+- an **index** on the side, one link per card, with how far its filling has come: "2/6
+  required" (or "1/7 filled" when the card requires nothing), "3 entries" for a section of rows.
+  It follows the inputs as they change, and marks the card in view. On a narrow screen it is
+  hidden and the cards fill the width;
+- the rows of a section are numbered ("01 Qualifications"), with **Remove** on each and
+  **+ <section>** below.
+
+The texts of the page itself (Save, Cancel, Required field...) are in the user's language too
+(see [Languages](i18n.md#the-texts-of-the-application)).
 
 ## The model behind it
 
@@ -47,10 +70,12 @@ deletes its profile, phones and qualifications.
 |---|---|---|
 | `label` | yes | The title of the form, at most 100 characters |
 | `object` | yes | The root object |
+| `description` | no | A line under the title of the root's card, at most 300 characters |
 | `fields` | no | The fields shown, in order. Default: every field of the object. It may not leave out a field the object requires |
 | `required` | no | Fields required by this form although the object does not require them (see below) |
 | `service_fields` | no | Fields that belong to no object (see below) |
-| `layout` | no | HTML placing the fields, service fields and sections of the root (see [Layouts](#layouts)) |
+| `columns` | no | 1 to 4 (default 1): the fields and service fields on this many columns, one on a narrow screen. Not with `layout` |
+| `layout` | no | HTML placing the fields and service fields of the root (see [Layouts](#layouts)); its sections are cards of their own |
 | `sections` | no | The sections, in order |
 
 ### A section
@@ -59,6 +84,7 @@ deletes its profile, phones and qualifications.
 |---|---|---|
 | `name` | yes | Machine name, unique among its siblings; it names the inputs (`composite[sections][phones]...`) |
 | `label` | yes | The title of the section |
+| `description` | no | A line under the title, at most 300 characters |
 | `object` | yes | The object of its records |
 | `via` | yes | The relation field of `object` pointing at the parent's object |
 | `mode` | no | `one` (default): one record, shown once. `many`: rows, added with "+" and removed one by one |
@@ -68,7 +94,8 @@ deletes its profile, phones and qualifications.
 | `fields` | no | The fields shown. Default: every field but `via`, which the form sets itself. It may not leave out a field the object requires |
 | `required` | no | As on the root |
 | `service_fields` | no | As on the root |
-| `layout` | no | As on the root, for the fields of this section; in a section of rows, every row follows it. Not with `inline` |
+| `columns` | no | As on the root. Not with `layout` or `inline` |
+| `layout` | no | As on the root, for the fields of this section and its sections; in a section of rows, every row follows it. Not with `inline` |
 | `sections` | no | Nested sections: a section of rows may have sections of its own, up to 4 levels |
 
 ### Required fields
@@ -114,7 +141,8 @@ token may name:
 - one of its **fields**: the row of the field (label, input, help, errors);
 - one of its **service fields**: its row, the same way;
 - one of its **sections**: the whole section, its title, rows and "+" button included, laid out
-  by its own `layout` if it has one.
+  by its own `layout` if it has one. Not on the root: its sections are cards of their own, after
+  the root's (see [The page](#the-page)), and a `{section}` token there is refused.
 
 ```yaml
 label: User registration
@@ -125,7 +153,7 @@ service_fields:
 layout: |
   <div class="md-columns">
     <fieldset><legend>Sign-in</legend>{username} {email} {password}</fieldset>
-    <div>{profile}</div>
+    <fieldset><legend>Name</legend>{firstname} {lastname}</fieldset>
   </div>
   {terms}
 sections:
@@ -133,7 +161,7 @@ sections:
     label: Profile
     object: profile
     via: account
-    layout: '<div class="md-columns">{city} {zipcode}</div>'
+    layout: '<div class="md-columns">{city} {zipcode}</div> {phones}'
     sections:
       - { name: phones, label: Phones, object: phone, via: profile, mode: many, inline: true }
   - name: qualifications
@@ -147,9 +175,8 @@ sections:
 The rules are those of the views:
 
 - Each token at most **once**, in the text of the HTML, never inside a tag.
-- What the layout does not place **follows it**, in the usual order: above, the first and last
-  name after the columns, the gender and the phones after the profile's city and postal code,
-  the qualifications at the end.
+- What the layout does not place **follows it**, in the usual order: above, the account's
+  `active` after the columns, the profile's gender after its city and postal code.
 - The HTML is **sanitized** when the form is saved, with the same rules as the views (no
   scripts, styles, event attributes or buttons). The page uses the sanitized layout; **Edit**
   still shows the definition as written.
@@ -161,8 +188,8 @@ The rules are those of the views:
 - A `{t:name}` token shows a text in the user's language, e.g. `<legend>{t:sign_in}</legend>`
   instead of `<legend>Sign-in</legend>`; the text must be defined before the form is saved (see
   [Languages](i18n.md#texts-in-layouts-tname)). The labels of the form, of its sections and of
-  its service fields are translated by their own keys (`form.<form>`, `section.<form>.<path>`,
-  `service.<form>.<path>.<field>`).
+  its service fields, and the descriptions, are translated by their own keys (`form.<form>`,
+  `section.<form>.<path>`, `service.<form>.<path>.<field>`, `description.<form>[.<path>]`).
 
 The inputs keep their names, so a layout changes the look of a form, never what it saves.
 
@@ -227,7 +254,8 @@ symfony console metadata:form:delete registration      # the records stay
 | Checks | `FormDefinitionCompiler` (Metadata): YAML → compiled definition, against the objects |
 | Read side | `MetadataRegistryInterface::getForm()`, `FormDefinitionDto` / `FormNodeDto`, cached with the metadata |
 | Writes | `CompositeRecordManagerInterface` (Record): plans and checks the whole tree with `RecordManagerInterface::check()`, then writes it with the record pipeline |
-| Page | `CompositeFormController` at `/f/{form}`, `CompositeNodeType` (a node: `values`, `service`, `sections`, a row's `id`), `templates/record/_composite.html.twig` |
+| Page | `CompositeFormController` at `/f/{form}`, `CompositeNodeType` (a node: `values`, `service`, `sections`, a row's `id`), `templates/record/composite.html.twig` (the sheet and its cards), `_composite.html.twig` (a node, a section, a row), `_sheet_header` / `_sheet_footer` (shared with the record form) |
+| Index | The `form-index` Stimulus controller (`assets/controllers/form_index_controller.js`): counts the inputs and rows of each card, marks the one in view |
 | Layouts | Checked and sanitized by `FormDefinitionCompiler` (the `view_layout` sanitizer), `FormNodeDto::$layout`; rendered by the Twig function `composite_form_layout()` (`RecordFormLayout`) |
 | Rows | The `gridview-collection` Stimulus controller and the `gv-collection` classes of fedale/gridview-bundle: adds a row from the section's prototype under a fresh key, removes one, keeps `min`/`max` |
 

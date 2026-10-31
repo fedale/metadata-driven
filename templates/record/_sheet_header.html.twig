@@ -1,0 +1,17 @@
+{# The header of a form page: where it belongs, its title, and its actions, kept in view. #}
+<header class="md-sheet__header">
+    <div>
+        {% if crumb is defined and crumb %}
+            <p class="md-sheet__crumb">
+                {% if crumb_url %}<a href="{{ crumb_url }}">{{ crumb }}</a>{% else %}{{ crumb }}{% endif %}
+            </p>
+        {% endif %}
+        <h1 class="md-sheet__title">{{ title }}</h1>
+    </div>
+    <div class="md-sheet__actions">
+        <a class="gv-btn" href="{{ back }}">{{ 'form.cancel'|trans }}</a>
+        {% if can_save %}
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'form.save'|trans }}</button>
+        {% endif %}
+    </div>
+</header>

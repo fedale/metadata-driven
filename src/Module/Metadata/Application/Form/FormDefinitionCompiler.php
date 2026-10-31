@@ -52,8 +52,10 @@ final class FormDefinitionCompiler
     private const int MAX_DEPTH = 5;
     private const int MAX_LABEL_LENGTH = 100;
     private const int MAX_LAYOUT_LENGTH = 20000;
-    private const array ROOT_KEYS = ['label', 'object', 'fields', 'required', 'service_fields', 'layout', 'sections'];
-    private const array SECTION_KEYS = ['name', 'label', 'object', 'via', 'mode', 'min', 'max', 'inline', 'fields', 'required', 'service_fields', 'layout', 'sections'];
+    private const int MAX_DESCRIPTION_LENGTH = 300;
+    private const int MAX_COLUMNS = 4;
+    private const array ROOT_KEYS = ['label', 'description', 'object', 'fields', 'required', 'service_fields', 'columns', 'layout', 'sections'];
+    private const array SECTION_KEYS = ['name', 'label', 'description', 'object', 'via', 'mode', 'min', 'max', 'inline', 'fields', 'required', 'service_fields', 'columns', 'layout', 'sections'];
     private const array SERVICE_FIELD_KEYS = ['name', 'type', 'label', 'required', 'settings'];
 
     /** @var list<string> */
@@ -126,6 +128,8 @@ final class FormDefinitionCompiler
             'sections' => [],
             'inline' => false,
             'layout' => null,
+            'description' => $this->description($path, $node['description'] ?? null),
+            'columns' => $this->columns($path, $node['columns'] ?? 1),
         ];
         if (null !== $parent) {
             $inline = $node['inline'] ?? false;
@@ -164,14 +168,24 @@ final class FormDefinitionCompiler
             $compiled['sections'][] = $this->node($sectionPath, $section, $sectionName ?? '', $sectionLabel, $object, $depth + 1);
         }
 
+        if ($compiled['columns'] > 1 && ($compiled['inline'] || isset($node['layout']))) {
+            $this->errors[] = \sprintf('%s: "columns" lays out the fields when there is no "layout" nor "inline": a layout places them by itself.', $path);
+        }
         if (isset($node['layout'])) {
             if ($compiled['inline']) {
                 $this->errors[] = \sprintf('%s: "layout" and "inline" exclude each other: an inline row lays its fields out by itself.', $path);
             } elseif (null !== $object) {
-                $compiled['layout'] = $this->layout($path, $node['layout'], [
+                $sectionNames = array_keys(array_filter($names, static fn (string $name): bool => '' !== $name, \ARRAY_FILTER_USE_KEY));
+                // The sections of the root are cards of their own, after the root's: its layout
+                // places its fields only.
+                $placedSections = null === $parent && \is_string($node['layout']) ? array_intersect(ViewDefinitionDto::tokens($node['layout']), $sectionNames) : [];
+                foreach ($placedSections as $section) {
+                    $this->errors[] = \sprintf('%s: the layout places {%s}, a section of the root: those are cards of their own, shown after the root\'s fields; remove the token.', $path, $section);
+                }
+                $compiled['layout'] = [] !== $placedSections ? null : $this->layout($path, $node['layout'], [
                     'field' => null === $fields ? array_values(array_diff(array_keys($object->fields), [$via])) : $fields,
                     'service field' => array_column($compiled['service'], 'name'),
-                    'section' => array_keys(array_filter($names, static fn (string $name): bool => '' !== $name, \ARRAY_FILTER_USE_KEY)),
+                    'section' => null === $parent ? [] : $sectionNames,
                 ]);
             }
         }
@@ -442,6 +456,31 @@ final class FormDefinitionCompiler
         }
 
         return $name;
+    }
+
+    private function description(string $path, mixed $description): ?string
+    {
+        if (null === $description) {
+            return null;
+        }
+        if (!\is_string($description) || '' === trim($description) || mb_strlen($description) > self::MAX_DESCRIPTION_LENGTH) {
+            $this->errors[] = \sprintf('%s: "description" must be a text of 1 to %d characters.', $path, self::MAX_DESCRIPTION_LENGTH);
+
+            return null;
+        }
+
+        return trim($description);
+    }
+
+    private function columns(string $path, mixed $columns): int
+    {
+        if (!\is_int($columns) || $columns < 1 || $columns > self::MAX_COLUMNS) {
+            $this->errors[] = \sprintf('%s: "columns" must be a number from 1 to %d.', $path, self::MAX_COLUMNS);
+
+            return 1;
+        }
+
+        return $columns;
     }
 
     private function label(string $path, mixed $label): string

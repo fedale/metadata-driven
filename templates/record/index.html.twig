@@ -7,7 +7,7 @@
         {% set grid_views = object.views|filter(v => v.kind.value == 'grid')|sort((a, b) => b.isDefault <=> a.isDefault) %}
         {% if grid_views|length > 1 %}
             {# The grid views of the object, the default one first: it opens at /o/<object>. #}
-            <nav class="md-switch" aria-label="Grid views">
+            <nav class="md-switch" aria-label="{{ 'record.grid_views'|trans }}">
                 {% for view in grid_views %}
                     <a class="md-switch__item{{ grid_view and grid_view.name == view.name ? ' md-switch__item--current' : '' }}"
                        href="{{ view.isDefault ? path('record_index', {object: object.name}) : path('record_grid', {object: object.name, grid: view.name}) }}"
@@ -19,7 +19,7 @@
              data-gridview-ui-settings-url-value="{{ path('fedale_gridview_ui_settings') }}"
              data-gridview-ui-settings-grid-value="{{ gridview.id }}">
             {% if can_create %}
-                <a class="gv-btn gv-btn-primary" href="{{ path('record_new', {object: object.name}) }}">New {{ object.labelSingular|lower }}</a>
+                <a class="gv-btn gv-btn-primary" href="{{ path('record_new', {object: object.name}) }}">{{ 'record.new'|trans({'%object%': object.labelSingular|lower}) }}</a>
             {% endif %}
             {% if can('admin.metadata') %}
                 <button type="button" class="gv-btn" data-action="gridview-ui-settings#open">

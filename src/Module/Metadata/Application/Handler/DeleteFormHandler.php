@@ -34,6 +34,7 @@ final class DeleteFormHandler
                 TranslationKey::form($command->name),
                 'section.'.$command->name,
                 'service.'.$command->name,
+                'description.'.$command->name,
             ]);
         });
         $this->events->dispatch(new MetadataChanged($command->name));

@@ -31,14 +31,14 @@ final class FormLayoutTest extends KernelTestCase
             fields: [username, email, firstname, lastname, password]
             service_fields:
               - { name: terms, type: boolean, label: I accept the terms }
-            layout: '<div class="md-columns" onclick="steal()">{username} { terms }<script>alert(1)</script></div>{profile}'
+            layout: '<div class="md-columns" onclick="steal()">{username} { terms }<script>alert(1)</script></div>'
             sections:
               - { name: profile, label: Profile, object: profile, via: account, layout: '{city}' }
             YAML);
 
         $root = self::getContainer()->get(MetadataRegistryInterface::class)->getForm('layout')->root;
-        self::assertSame('<div class="md-columns">{username} { terms }</div>{profile}', $root->layout);
-        self::assertSame(['username', 'terms', 'profile'], $root->placed());
+        self::assertSame('<div class="md-columns">{username} { terms }</div>', $root->layout);
+        self::assertSame(['username', 'terms'], $root->placed());
         self::assertSame('{city}', $root->sections[0]->layout);
     }
 
@@ -69,13 +69,58 @@ final class FormLayoutTest extends KernelTestCase
             $errors = $e->errors['definition'];
         }
 
-        self::assertContains('(root): "active" names both a field and a section: rename one, a {active} token would be ambiguous.', $errors);
-        self::assertContains('(root): the layout places {nickname}, which is no field, service field or section of this node (username, email, firstname, lastname, password, active, profile).', $errors);
+        // The root's layout places no section (they are cards): a section named like a field is
+        // no ambiguity there.
+        self::assertNotContains('(root): "active" names both a field and a section: rename one, a {active} token would be ambiguous.', $errors);
+        self::assertContains('(root): the layout places {nickname}, which is no field, service field or section of this node (username, email, firstname, lastname, password, active).', $errors);
         self::assertContains('(root): the layout places {username} more than once.', $errors);
         self::assertContains('(root): {name} tokens go in the text of the layout, not inside a tag or an attribute.', $errors);
         self::assertContains('profile.phones: "layout" and "inline" exclude each other: an inline row lays its fields out by itself.', $errors);
         // The "via" field is set by the form: no token places it.
         self::assertContains('active: the layout places {account}, which is no field, service field or section of this node (title, year).', $errors);
+    }
+
+    public function testDescribesTheNodesAndLaysTheirFieldsOutOnColumns(): void
+    {
+        $this->save(<<<'YAML'
+            label: Registration
+            description: '  Credentials and personal data. '
+            object: account
+            fields: [username, email, firstname, lastname, password]
+            columns: 2
+            sections:
+              - { name: profile, label: Profile, description: Where to find you., object: profile, via: account, columns: 3 }
+            YAML);
+
+        $root = self::getContainer()->get(MetadataRegistryInterface::class)->getForm('layout')->root;
+        self::assertSame('Credentials and personal data.', $root->description);
+        self::assertSame(2, $root->columns);
+        self::assertSame('Where to find you.', $root->sections[0]->description);
+        self::assertSame(3, $root->sections[0]->columns);
+    }
+
+    public function testRefusesColumnsBesideALayout(): void
+    {
+        try {
+            $this->save(<<<'YAML'
+                label: Registration
+                description: ''
+                object: account
+                fields: [username, email, firstname, lastname, password]
+                columns: 5
+                layout: '{username} {profile}'
+                sections:
+                  - { name: profile, label: Profile, object: profile, via: account, columns: 2, layout: '{city}' }
+                YAML);
+            self::fail('The columns are invalid.');
+        } catch (MetadataInputInvalid $e) {
+            $errors = $e->errors['definition'];
+        }
+
+        self::assertContains('(root): "description" must be a text of 1 to 300 characters.', $errors);
+        self::assertContains('(root): "columns" must be a number from 1 to 4.', $errors);
+        self::assertContains('(root): the layout places {profile}, a section of the root: those are cards of their own, shown after the root\'s fields; remove the token.', $errors);
+        self::assertContains('profile: "columns" lays out the fields when there is no "layout" nor "inline": a layout places them by itself.', $errors);
     }
 
     private function save(string $definition): void
