@@ -89,8 +89,11 @@ symfony console rbac:list-assignments anna@example.com
 symfony console rbac:check anna@example.com record.pet.update
 ```
 
-Changes apply on the next request, without signing in again: the roles of the user are reloaded on
-every request. Assignments are keyed by the user's email.
+Changes apply on the next request. A **permission** assigned or revoked works at once, without
+signing in again. A **role** changed (`ROLE_SUPER_ADMIN` above all) signs the user's sessions out:
+Symfony fixes the roles of a session at sign-in, so a revoked role would otherwise keep working
+until logout. A user signed in with "remember me" is signed back in at once, with the new roles;
+the others sign in again. Assignments are keyed by the user's email.
 
 Other commands of the bundle: `rbac:list-items`, `rbac:revoke`, `rbac:item:remove`,
 `rbac:child:remove`, `rbac:cache:clear` (after editing the `auth_*` tables by hand).
