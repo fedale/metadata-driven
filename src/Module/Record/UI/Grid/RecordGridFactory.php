@@ -263,8 +263,7 @@ final class RecordGridFactory
                     'option_label' => 'label',
                     'option_value' => 'id',
                     'searchable' => true,
-                    // Several records at once. Also avoids a bundle bug: a single-select AJAX
-                    // filter moves its <select>, which reconnects its controller in a loop.
+                    // Several records at once.
                     'multiple' => true,
                 ]]),
         };
