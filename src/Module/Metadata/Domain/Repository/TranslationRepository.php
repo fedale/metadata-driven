@@ -31,4 +31,12 @@ interface TranslationRepository
      * @param list<string> $prefixes
      */
     public function removeKeysUnder(array $prefixes): void;
+
+    /**
+     * Moves, in every language, the keys equal to a prefix or under it (prefix + ".") to the
+     * new prefix: "field.pet.name" under "field.pet" becomes "field.animal.name".
+     *
+     * @param array<string, string> $prefixes old prefix => new prefix
+     */
+    public function moveKeysUnder(array $prefixes): void;
 }

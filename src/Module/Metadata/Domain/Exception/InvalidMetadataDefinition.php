@@ -32,6 +32,47 @@ final class InvalidMetadataDefinition extends MetadataException
         return new self(\sprintf('Object "%s" already has a field named "%s".', $objectName, $fieldName));
     }
 
+    public static function archivedFieldNameTaken(string $objectName, string $fieldName): self
+    {
+        return new self(\sprintf('Object "%s" has an archived field named "%s": restore it, or purge it to free the name.', $objectName, $fieldName));
+    }
+
+    public static function unknownArchivedField(string $objectName, string $fieldName): self
+    {
+        return new self(\sprintf('Object "%s" has no archived field "%s".', $objectName, $fieldName));
+    }
+
+    public static function archivedObjectNameTaken(string $name): self
+    {
+        return new self(\sprintf('An archived object is named "%s": restore it, or purge it to free the name.', $name));
+    }
+
+    public static function unknownArchivedObject(string $name): self
+    {
+        return new self(\sprintf('No archived object is named "%s".', $name));
+    }
+
+    public static function systemObject(string $name, string $change): self
+    {
+        return new self(\sprintf('Object "%s" belongs to the system: it cannot be %s.', $name, $change));
+    }
+
+    /**
+     * @param list<string> $usages where the thing is used, one line each
+     */
+    public static function stillUsed(string $what, string $change, array $usages): self
+    {
+        return new self(\sprintf('%s cannot be %s, it is still used: %s. Remove these uses first.', $what, $change, implode('; ', $usages)));
+    }
+
+    /**
+     * @param list<string> $problems
+     */
+    public static function cannotRestore(string $what, array $problems): self
+    {
+        return new self(\sprintf('%s cannot be restored: %s.', $what, implode('; ', $problems)));
+    }
+
     public static function duplicateObject(string $name): self
     {
         return new self(\sprintf('An object named "%s" already exists.', $name));

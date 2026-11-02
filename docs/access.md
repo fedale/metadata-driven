@@ -54,7 +54,8 @@ The application checks these RBAC items:
 
 The four permissions of an object are created with it (by the admin or the console). `access:sync`
 creates whatever is missing, for objects created before access control existed; it never removes
-anything.
+anything. Renaming an object renames its permissions, and the roles and users holding them keep
+them; purging an archived object removes them (see [Renaming and archiving](lifecycle.md)).
 
 A user without `read` does not see the object on the home page; without `create` the grid has no
 "New" button; without `update` a record opens read-only; without `delete` it has no "Delete"

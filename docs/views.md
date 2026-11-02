@@ -237,6 +237,13 @@ symfony console metadata:view:delete book main --kind=grid
 See [`metadata:view:save`](console.md#metadataviewsave) and
 [`metadata:view:delete`](console.md#metadataviewdelete) for every option.
 
+## Renamed fields
+
+Renaming a field rewrites the views of its object: the `{field}` tokens of a form view (the rest of
+the HTML stays as written), the columns, `{field}` tokens and sort of a grid view (its YAML is
+written again: its comments are lost). A field placed by a view cannot be archived until the view
+no longer places it. See [Renaming and archiving](lifecycle.md).
+
 ## Under the hood
 
 | Piece | Where |

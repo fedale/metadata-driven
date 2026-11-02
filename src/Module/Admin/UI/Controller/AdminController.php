@@ -6,6 +6,7 @@ namespace App\Module\Admin\UI\Controller;
 
 use App\Module\Access\Contract\AccessCheckerInterface;
 use App\Module\Admin\UI\Form\FieldSettingsForm;
+use App\Module\Admin\UI\Form\LifecycleForms;
 use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\Exception\UnknownFieldType;
 use App\Module\FieldType\Contract\FieldTypeInterface;
@@ -47,7 +48,9 @@ use Symfony\Component\Routing\Requirement\EnumRequirement;
 final class AdminController extends AbstractController
 {
     private const array TYPE_ORDER = ['text', 'number', 'date', 'boolean', 'select', 'email', 'tel', 'url', 'password', 'relation'];
-    private const string NAME_HELP = 'Lowercase letters, digits and single underscores, starting with a letter. It cannot be changed later.';
+    private const string NAME_HELP = 'Lowercase letters, digits and single underscores, starting with a letter.';
+    private const string RENAME_OBJECT_HELP = 'Lowercase letters, digits and single underscores. The table, the relations pointing here, the composite forms, the translations and the permissions follow; the links to the old pages stop working.';
+    private const string RENAME_FIELD_HELP = 'Lowercase letters, digits and single underscores. The column, the views, the composite forms, the conditions, the cascades and the translations follow.';
     private const string FORM_VIEW_HELP = 'Put a {field} token where each field goes; the fields left out follow the layout. A {t:name} token shows a text of Admin > Translations in the user\'s language. Scripts, styles and event attributes are removed; class attributes are kept.';
     private const string GRID_VIEW_HELP = 'The columns in order: a field name, or a map with field, label, renderer (truncate, badge, date), options, hidden, sortable, filter; a virtual column takes a name and a template of {field} tokens. A label may hold {t:name} tokens (Admin > Translations). Optional: sort and page_size.';
     private const string GRID_VIEW_EXAMPLE = <<<'YAML'
@@ -69,6 +72,7 @@ final class AdminController extends AbstractController
         private readonly FieldSettingsForm $settingsForm,
         private readonly FormFactoryInterface $forms,
         private readonly AccessCheckerInterface $access,
+        private readonly LifecycleForms $lifecycle,
     ) {
     }
 
@@ -77,7 +81,12 @@ final class AdminController extends AbstractController
     {
         $this->denyUnlessAdministrator();
 
-        return $this->render('admin/index.html.twig', ['objects' => $this->metadata->allObjects()]);
+        $archived = [];
+        foreach ($this->metadata->archivedObjects() as $name => $object) {
+            $archived[$name] = ['object' => $object, 'restore_form' => $this->lifecycle->button('restore', $this->generateUrl('admin_object_restore', ['object' => $name]))->createView()];
+        }
+
+        return $this->render('admin/index.html.twig', ['objects' => $this->metadata->allObjects(), 'archived' => $archived]);
     }
 
     #[Route('/objects/new', name: 'object_new', methods: ['GET', 'POST'])]
@@ -119,6 +128,12 @@ final class AdminController extends AbstractController
             'label_field_form' => $this->labelFieldForm($definition)->createView(),
             'search_form' => $this->searchForm($definition)->createView(),
             'sync_form' => $this->actionForm('sync', 'admin_object_sync', $definition)->createView(),
+            'rename_form' => $this->lifecycle->rename($this->generateUrl('admin_object_rename', ['object' => $definition->name]), $definition->name, self::RENAME_OBJECT_HELP)->createView(),
+            'archive_form' => $this->lifecycle->button('archive', $this->generateUrl('admin_object_archive', ['object' => $definition->name]))->createView(),
+            'archived_fields' => array_map(
+                fn (FieldDefinitionDto $field): array => ['field' => $field, 'restore_form' => $this->lifecycle->button('restore', $this->generateUrl('admin_field_restore', ['object' => $definition->name, 'field' => $field->name]))->createView()],
+                $definition->archivedFields,
+            ),
         ]);
     }
 
@@ -306,6 +321,8 @@ final class AdminController extends AbstractController
             'condition_form' => $this->conditionForm($object, $field)->createView(),
             // A FormInterface: render() answers 422 when it was submitted and refused.
             'settings_form' => $settingsForm,
+            'rename_form' => $this->lifecycle->rename($this->generateUrl('admin_field_rename', ['object' => $object->name, 'field' => $field->name]), $field->name, self::RENAME_FIELD_HELP)->createView(),
+            'archive_form' => $this->lifecycle->button('archive', $this->generateUrl('admin_field_archive', ['object' => $object->name, 'field' => $field->name]))->createView(),
         ]);
     }
 

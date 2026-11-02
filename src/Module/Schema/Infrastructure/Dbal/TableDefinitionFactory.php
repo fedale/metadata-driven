@@ -25,6 +25,9 @@ use Doctrine\DBAL\Types\Types;
  *
  * Field columns are always nullable: "required" is enforced by validation, so that a
  * required field can be added to a table that already holds records.
+ *
+ * The archived fields keep their columns (and indexes, and foreign keys): the table holds
+ * their values until the field is purged.
  */
 final class TableDefinitionFactory
 {
@@ -54,7 +57,7 @@ final class TableDefinitionFactory
                     ->create(),
             );
 
-        foreach ($object->fields as $field) {
+        foreach ([...array_values($object->fields), ...array_values($object->archivedFields)] as $field) {
             $table->addColumn($this->fieldColumn($field));
             if ($field->isUnique) {
                 $table->addIndex($this->uniqueIndex($object->tableName, $field->columnName));
@@ -81,7 +84,10 @@ final class TableDefinitionFactory
      */
     private function foreignKey(ObjectDefinitionDto $object, FieldDefinitionDto $field, RelationSettings $relation): ForeignKeyConstraint
     {
-        $target = $this->metadata->getObject($relation->target);
+        // An archived field may point at an archived object: its table is still there.
+        $target = $this->metadata->hasObject($relation->target)
+            ? $this->metadata->getObject($relation->target)
+            : ($this->metadata->archivedObjects()[$relation->target] ?? $this->metadata->getObject($relation->target));
 
         return ForeignKeyConstraint::editor()
             ->setUnquotedName($this->identifier(\sprintf('fk_%s_%s', $object->tableName, $field->columnName)))
@@ -102,6 +108,31 @@ final class TableDefinitionFactory
     public function uniqueIndexName(string $tableName, string $columnName): string
     {
         return $this->identifier(\sprintf('uniq_%s_%s', $tableName, $columnName));
+    }
+
+    /**
+     * The names of the indexes and constraints of a table, keyed by what they stand for:
+     * "pkey", and "<kind>:<field id>" for the index, unique index or foreign key of a field.
+     * Two definitions of one table (before and after a rename) pair up by key.
+     *
+     * @return array{indexes: array<string, non-empty-string>, constraints: array<string, non-empty-string>}
+     */
+    public function objectNames(ObjectDefinitionDto $object): array
+    {
+        $names = ['indexes' => [], 'constraints' => ['pkey' => $this->identifier($object->tableName.'_pkey')]];
+        foreach ([...array_values($object->fields), ...array_values($object->archivedFields)] as $field) {
+            if ($field->isUnique) {
+                $names['indexes']['uniq:'.$field->id] = $this->uniqueIndexName($object->tableName, $field->columnName);
+            }
+            if (null !== $field->relation()) {
+                if (!$field->isUnique) {
+                    $names['indexes']['idx:'.$field->id] = $this->identifier(\sprintf('idx_%s_%s', $object->tableName, $field->columnName));
+                }
+                $names['constraints']['fk:'.$field->id] = $this->identifier(\sprintf('fk_%s_%s', $object->tableName, $field->columnName));
+            }
+        }
+
+        return $names;
     }
 
     private function fieldColumn(FieldDefinitionDto $field): Column

@@ -28,6 +28,11 @@
         </field>
         <field name="position" type="integer"/>
         <field name="isSystem" type="boolean"/>
+        <field name="isArchived" type="boolean">
+            <options>
+                <option name="default">false</option>
+            </options>
+        </field>
         <field name="createdAt" type="datetime_immutable"/>
         <field name="updatedAt" type="datetime_immutable"/>
 

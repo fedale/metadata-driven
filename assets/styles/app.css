@@ -288,6 +288,10 @@ a:hover { color: var(--gv-color-link-hover); }
 .md-translations + .gv-btn, .md-texts + .gv-btn, .md-admin__section:last-of-type + .gv-btn { margin-top: 1rem; }
 .md-texts__used { font-size: .8rem; white-space: normal; }
 .md-admin__section h2 { font-size: 1.15rem; }
+.md-admin__section h3 { font-size: 1rem; margin-top: 1.5rem; }
+.md-admin__section--danger { padding-top: 1.5rem; border-top: 1px solid var(--gv-color-border); }
+.md-archived { list-style: none; margin: 0; padding: 0; }
+.md-archived li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .4rem 0; border-bottom: 1px solid var(--gv-color-border); }
 .md-admin__columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 0 2rem; }
 
 .md-settings { font-size: .85em; color: var(--gv-color-text-muted); word-break: break-all; }

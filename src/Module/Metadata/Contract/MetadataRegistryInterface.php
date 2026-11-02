@@ -28,7 +28,15 @@ interface MetadataRegistryInterface
     public function allObjects(): array;
 
     /**
-     * The relation fields pointing at an object, from every object (itself included).
+     * The archived objects: out of the application, their tables and records kept until they
+     * are purged. Read for the admin and the schema only; never cached.
+     *
+     * @return array<string, ObjectDefinitionDto> keyed by object name
+     */
+    public function archivedObjects(): array;
+
+    /**
+     * The relation fields pointing at an object, from every (active) object, itself included.
      *
      * @return list<RelationReference>
      */

@@ -12,9 +12,12 @@ use App\Module\Metadata\Application\Command\CreateFieldCommand;
 use App\Module\Metadata\Application\Command\CreateObjectCommand;
 use App\Module\Metadata\Application\Command\DeleteFormCommand;
 use App\Module\Metadata\Application\Command\DeleteViewCommand;
+use App\Module\Metadata\Application\Command\RenameFieldCommand;
+use App\Module\Metadata\Application\Command\RenameObjectCommand;
 use App\Module\Metadata\Application\Command\SaveFormCommand;
 use App\Module\Metadata\Application\Command\SaveViewCommand;
 use App\Module\Metadata\Application\Command\TranslateCommand;
+use App\Module\Metadata\Application\Handler\ArchiveHandler;
 use App\Module\Metadata\Application\Handler\ConfigureFieldConditionHandler;
 use App\Module\Metadata\Application\Handler\ConfigureFieldSettingsHandler;
 use App\Module\Metadata\Application\Handler\ConfigureObjectLabelHandler;
@@ -23,6 +26,9 @@ use App\Module\Metadata\Application\Handler\CreateFieldHandler;
 use App\Module\Metadata\Application\Handler\CreateObjectHandler;
 use App\Module\Metadata\Application\Handler\DeleteFormHandler;
 use App\Module\Metadata\Application\Handler\DeleteViewHandler;
+use App\Module\Metadata\Application\Handler\PurgeHandler;
+use App\Module\Metadata\Application\Handler\RenameFieldHandler;
+use App\Module\Metadata\Application\Handler\RenameObjectHandler;
 use App\Module\Metadata\Application\Handler\SaveFormHandler;
 use App\Module\Metadata\Application\Handler\SaveViewHandler;
 use App\Module\Metadata\Application\Handler\TranslateHandler;
@@ -58,6 +64,10 @@ final class MetadataManager implements MetadataManagerInterface
         private readonly SaveFormHandler $saveForm,
         private readonly DeleteFormHandler $deleteForm,
         private readonly TranslateHandler $translate,
+        private readonly RenameObjectHandler $renameObject,
+        private readonly RenameFieldHandler $renameField,
+        private readonly ArchiveHandler $archive,
+        private readonly PurgeHandler $purge,
         private readonly ObjectDefinitionRepository $objects,
         private readonly TransactionRunner $transactions,
         private readonly EventDispatcherInterface $events,
@@ -84,6 +94,46 @@ final class MetadataManager implements MetadataManagerInterface
     {
         $this->assertLabels(['label' => $label]);
         $this->changeObject($objectName, static fn (ObjectDefinition $object) => $object->getField($fieldName)->relabel($label));
+    }
+
+    public function renameObject(string $objectName, string $newName): array
+    {
+        return ($this->renameObject)($this->valid(new RenameObjectCommand($objectName, $newName)));
+    }
+
+    public function renameField(string $objectName, string $fieldName, string $newName): array
+    {
+        return ($this->renameField)($this->valid(new RenameFieldCommand($objectName, $fieldName, $newName)));
+    }
+
+    public function archiveObject(string $objectName): void
+    {
+        $this->archive->archiveObject($objectName);
+    }
+
+    public function restoreObject(string $objectName): void
+    {
+        $this->archive->restoreObject($objectName);
+    }
+
+    public function archiveField(string $objectName, string $fieldName): void
+    {
+        $this->archive->archiveField($objectName, $fieldName);
+    }
+
+    public function restoreField(string $objectName, string $fieldName): void
+    {
+        $this->archive->restoreField($objectName, $fieldName);
+    }
+
+    public function purgeObject(string $objectName): void
+    {
+        $this->purge->purgeObject($objectName);
+    }
+
+    public function purgeField(string $objectName, string $fieldName): void
+    {
+        $this->purge->purgeField($objectName, $fieldName);
     }
 
     public function configureFieldSettings(string $objectName, string $fieldName, array $settings): void

@@ -36,6 +36,51 @@ interface MetadataManagerInterface
     public function relabelField(string $objectName, string $fieldName, string $label): void;
 
     /**
+     * Gives an object a new machine name: its table, the relations pointing at it, the
+     * composite forms naming it, its translations and its permissions follow.
+     *
+     * @return list<string> the definitions written by hand that were rewritten (composite forms)
+     */
+    public function renameObject(string $objectName, string $newName): array;
+
+    /**
+     * Gives a field a new machine name: its column, what names it in the metadata (label and
+     * searched fields, conditions, cascades), the views of its object, the composite forms and
+     * its translations follow.
+     *
+     * @return list<string> the definitions written by hand that were rewritten (views, composite forms)
+     */
+    public function renameField(string $objectName, string $fieldName, string $newName): array;
+
+    /**
+     * Takes an object out of the application; its table and records stay. Refused while the
+     * metadata uses it (a relation, a composite form): the message lists every use.
+     */
+    public function archiveObject(string $objectName): void;
+
+    public function restoreObject(string $objectName): void;
+
+    /**
+     * Takes a field out of the application; its column and values stay. Refused while the
+     * metadata uses it (a view, a composite form, a condition, a cascade).
+     */
+    public function archiveField(string $objectName, string $fieldName): void;
+
+    public function restoreField(string $objectName, string $fieldName): void;
+
+    /**
+     * Forgets an archived object for good: its table and records, its translations, its
+     * permissions. Cannot be undone.
+     */
+    public function purgeObject(string $objectName): void;
+
+    /**
+     * Forgets an archived field for good: its column and values, its translations. Cannot be
+     * undone.
+     */
+    public function purgeField(string $objectName, string $fieldName): void;
+
+    /**
      * Changes some settings of a field; the others keep their value. The settings that shape the
      * column are fixed, and an option still held by records cannot be removed.
      *

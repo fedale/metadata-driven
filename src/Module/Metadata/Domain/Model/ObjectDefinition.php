@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Domain\Model;
 
+use App\Module\Metadata\Contract\Dto\RelationSettings;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
@@ -13,6 +14,10 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * A business object (system or user defined) backed by its own physical table.
+ *
+ * Its name, and the names of its fields, can change: the table and the columns are renamed
+ * with them. An archived object (or field) is out of the application while its table (or
+ * column) and its records stay; its name stays taken until it is purged.
  */
 class ObjectDefinition
 {
@@ -67,6 +72,28 @@ class ObjectDefinition
     }
 
     /**
+     * The table follows the name: the caller renames it in the same transaction.
+     */
+    public function rename(string $name): void
+    {
+        $this->name = MachineName::assert($name);
+        $this->tableName = self::TABLE_PREFIX.$this->name;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function archive(): void
+    {
+        $this->isActive = false;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function restore(): void
+    {
+        $this->isActive = true;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    /**
      * @param array<string, mixed> $settings already validated by the field type
      */
     public function addField(
@@ -78,19 +105,113 @@ class ObjectDefinition
         bool $isUnique,
         array $settings,
     ): FieldDefinition {
-        MachineName::assert($name);
-        if (\in_array($name, self::SYSTEM_COLUMNS, true)) {
-            throw InvalidMetadataDefinition::reservedFieldName($name);
-        }
-        if ($this->hasField($name)) {
-            throw InvalidMetadataDefinition::duplicateField($this->name, $name);
-        }
+        $this->assertFieldNameFree($name);
 
         $field = new FieldDefinition($id, $this, $name, $type, $label, $isRequired, $isUnique, $settings, $this->fields->count());
         $this->fields->add($field);
         $this->updatedAt = new \DateTimeImmutable();
 
         return $field;
+    }
+
+    /**
+     * Renames a field and what the object says about it: its label field, its searched fields,
+     * the conditions it decides and the relations depending on it. The views, and what other
+     * objects say about the field, are the caller's.
+     */
+    public function renameField(string $fieldName, string $newName): FieldDefinition
+    {
+        $field = $this->getField($fieldName);
+        $this->assertFieldNameFree($newName);
+        $field->rename($newName);
+
+        if ($this->labelField === $fieldName) {
+            $this->labelField = $newName;
+        }
+        if (null !== $this->searchFields) {
+            $this->searchFields = array_map(static fn (string $name): string => $name === $fieldName ? $newName : $name, $this->searchFields);
+        }
+        foreach ($this->fields as $other) {
+            $condition = $other->getCondition();
+            if (null !== $condition && $condition['field'] === $fieldName) {
+                $other->applyWhen(['field' => $newName, 'values' => $condition['values']]);
+            }
+            $settings = $other->getSettings();
+            if (($settings['dependsOn'] ?? null) === $fieldName) {
+                $other->changeSettings(['dependsOn' => $newName] + $settings);
+            }
+        }
+        $this->updatedAt = new \DateTimeImmutable();
+
+        return $field;
+    }
+
+    /**
+     * Follows the rename of an object in the relation fields pointing at it, the archived ones
+     * included (their foreign keys point at its table all the same).
+     */
+    public function retargetRelations(string $oldTarget, string $newTarget): void
+    {
+        foreach ($this->fields as $field) {
+            $settings = $field->getSettings();
+            if (RelationSettings::FIELD_TYPE === $field->getType() && ($settings['target'] ?? null) === $oldTarget) {
+                $field->changeSettings(['target' => $newTarget] + $settings);
+                $this->updatedAt = new \DateTimeImmutable();
+            }
+        }
+    }
+
+    /**
+     * Follows the rename of a field of another object in the cascades of the relations
+     * pointing at it ("dependsVia" names a field of the target).
+     */
+    public function followTargetFieldRename(string $target, string $oldField, string $newField): void
+    {
+        foreach ($this->fields as $field) {
+            $settings = $field->getSettings();
+            if (RelationSettings::FIELD_TYPE === $field->getType() && ($settings['target'] ?? null) === $target && ($settings['dependsVia'] ?? null) === $oldField) {
+                $field->changeSettings(['dependsVia' => $newField] + $settings);
+                $this->updatedAt = new \DateTimeImmutable();
+            }
+        }
+    }
+
+    /**
+     * Takes a field out of the application; its column stays. It no longer names the records
+     * nor is searched. Whether something else still uses it is checked by the caller.
+     */
+    public function archiveField(string $fieldName): FieldDefinition
+    {
+        $field = $this->getField($fieldName);
+        $field->markArchived(true);
+        if ($this->labelField === $fieldName) {
+            $this->labelField = null;
+        }
+        if (null !== $this->searchFields) {
+            $fields = array_values(array_diff($this->searchFields, [$fieldName]));
+            $this->searchFields = [] === $fields ? null : $fields;
+        }
+        $this->updatedAt = new \DateTimeImmutable();
+
+        return $field;
+    }
+
+    public function restoreField(string $fieldName): FieldDefinition
+    {
+        $field = $this->getArchivedField($fieldName);
+        $field->markArchived(false);
+        $this->updatedAt = new \DateTimeImmutable();
+
+        return $field;
+    }
+
+    /**
+     * Forgets an archived field; the caller drops its column in the same transaction.
+     */
+    public function removeArchivedField(string $fieldName): void
+    {
+        $this->fields->removeElement($this->getArchivedField($fieldName));
+        $this->updatedAt = new \DateTimeImmutable();
     }
 
     /**
@@ -227,10 +348,13 @@ class ObjectDefinition
         $this->updatedAt = new \DateTimeImmutable();
     }
 
+    /**
+     * An active field: an archived one is out of the object until it is restored.
+     */
     public function getField(string $name): FieldDefinition
     {
         foreach ($this->fields as $field) {
-            if ($field->getName() === $name) {
+            if ($field->getName() === $name && !$field->isArchived()) {
                 return $field;
             }
         }
@@ -238,9 +362,23 @@ class ObjectDefinition
         throw InvalidMetadataDefinition::unknownField($this->name, $name);
     }
 
+    public function getArchivedField(string $name): FieldDefinition
+    {
+        foreach ($this->fields as $field) {
+            if ($field->getName() === $name && $field->isArchived()) {
+                return $field;
+            }
+        }
+
+        throw InvalidMetadataDefinition::unknownArchivedField($this->name, $name);
+    }
+
+    /**
+     * Whether the object has this active field.
+     */
     public function hasField(string $name): bool
     {
-        return $this->fields->exists(static fn (int $key, FieldDefinition $field): bool => $field->getName() === $name);
+        return $this->fields->exists(static fn (int $key, FieldDefinition $field): bool => $field->getName() === $name && !$field->isArchived());
     }
 
     public function getId(): Uuid
@@ -302,14 +440,19 @@ class ObjectDefinition
     }
 
     /**
-     * @return list<FieldDefinition> ordered by position
+     * @return list<FieldDefinition> the active fields, ordered by position
      */
     public function getFields(): array
     {
-        $fields = $this->fields->getValues();
-        usort($fields, static fn (FieldDefinition $a, FieldDefinition $b): int => $a->getPosition() <=> $b->getPosition());
+        return $this->sortedFields(false);
+    }
 
-        return $fields;
+    /**
+     * @return list<FieldDefinition> ordered by position
+     */
+    public function getArchivedFields(): array
+    {
+        return $this->sortedFields(true);
     }
 
     /**
@@ -331,6 +474,34 @@ class ObjectDefinition
     public function getUpdatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    /**
+     * @return list<FieldDefinition>
+     */
+    private function sortedFields(bool $archived): array
+    {
+        $fields = array_values(array_filter($this->fields->getValues(), static fn (FieldDefinition $field): bool => $field->isArchived() === $archived));
+        usort($fields, static fn (FieldDefinition $a, FieldDefinition $b): int => $a->getPosition() <=> $b->getPosition());
+
+        return $fields;
+    }
+
+    /**
+     * A new name must be valid, no system column, and free: an archived field keeps its name
+     * (and its column) until it is purged.
+     */
+    private function assertFieldNameFree(string $name): void
+    {
+        MachineName::assert($name);
+        if (\in_array($name, self::SYSTEM_COLUMNS, true)) {
+            throw InvalidMetadataDefinition::reservedFieldName($name);
+        }
+        foreach ($this->fields as $field) {
+            if ($field->getName() === $name) {
+                throw $field->isArchived() ? InvalidMetadataDefinition::archivedFieldNameTaken($this->name, $name) : InvalidMetadataDefinition::duplicateField($this->name, $name);
+            }
+        }
     }
 
     private function findView(ViewKind $kind, string $name): ?ViewDefinition

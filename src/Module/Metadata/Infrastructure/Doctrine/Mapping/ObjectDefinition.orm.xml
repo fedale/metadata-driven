@@ -31,6 +31,7 @@
         <one-to-many field="fields" target-entity="App\Module\Metadata\Domain\Model\FieldDefinition" mapped-by="object" orphan-removal="true">
             <cascade>
                 <cascade-persist/>
+                <cascade-remove/>
             </cascade>
             <order-by>
                 <order-by-field name="position" direction="ASC"/>
@@ -39,6 +40,7 @@
         <one-to-many field="views" target-entity="App\Module\Metadata\Domain\Model\ViewDefinition" mapped-by="object" orphan-removal="true">
             <cascade>
                 <cascade-persist/>
+                <cascade-remove/>
             </cascade>
         </one-to-many>
     </entity>

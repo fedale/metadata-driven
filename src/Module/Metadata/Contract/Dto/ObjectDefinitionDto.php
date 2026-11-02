@@ -12,11 +12,13 @@ use App\Module\Metadata\Contract\Exception\FieldDefinitionNotFound;
 final readonly class ObjectDefinitionDto
 {
     /**
-     * @param array<string, FieldDefinitionDto> $fields        keyed by field name, ordered by position
-     * @param string|null                       $searchHandler null for the default search handler
-     * @param list<string>|null                 $searchFields  null for the default search fields
-     * @param string|null                       $labelField    field naming a record (relations, lookups); null for the default
-     * @param list<ViewDefinitionDto>           $views         ordered by kind, then name
+     * @param array<string, FieldDefinitionDto> $fields         keyed by field name, ordered by position
+     * @param string|null                       $searchHandler  null for the default search handler
+     * @param list<string>|null                 $searchFields   null for the default search fields
+     * @param string|null                       $labelField     field naming a record (relations, lookups); null for the default
+     * @param list<ViewDefinitionDto>           $views          ordered by kind, then name
+     * @param array<string, FieldDefinitionDto> $archivedFields keyed by field name: out of the application, their columns
+     *                                                          stay (the schema keeps them, the admin lists them)
      */
     public function __construct(
         public string $id,
@@ -32,6 +34,7 @@ final readonly class ObjectDefinitionDto
         public ?array $searchFields = null,
         public ?string $labelField = null,
         public array $views = [],
+        public array $archivedFields = [],
     ) {
     }
 
