@@ -7,6 +7,8 @@ namespace App\Module\Access\Application;
 use App\Module\Access\Contract\Permissions;
 use App\Module\Access\Contract\RecordAction;
 use App\Module\Metadata\Contract\Event\ObjectDefinitionCreated;
+use App\Module\Metadata\Contract\Event\ObjectDefinitionPurged;
+use App\Module\Metadata\Contract\Event\ObjectDefinitionRenamed;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use Fedale\RbacBundle\Contract\ItemStorageInterface;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
@@ -15,7 +17,8 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
  * Keeps the RBAC items the application checks: the four record permissions of every
- * object, the admin permission and the super admin role. Never removes anything.
+ * object, the admin permission and the super admin role. The permissions of an object follow
+ * it: renamed with it (the roles and users holding them keep them), removed when it is purged.
  */
 final class PermissionSynchronizer
 {
@@ -33,6 +36,28 @@ final class PermissionSynchronizer
     public function onObjectCreated(ObjectDefinitionCreated $event): void
     {
         $this->syncObject($event->objectName);
+    }
+
+    #[AsEventListener]
+    public function onObjectRenamed(ObjectDefinitionRenamed $event): void
+    {
+        foreach (RecordAction::cases() as $action) {
+            $old = Permissions::record($event->before->name, $action);
+            if (null !== $this->items->getItem($old)) {
+                $this->rbac->renameItem($old, Permissions::record($event->newName, $action));
+            }
+        }
+        $this->syncObject($event->newName);
+    }
+
+    #[AsEventListener]
+    public function onObjectPurged(ObjectDefinitionPurged $event): void
+    {
+        foreach (RecordAction::cases() as $action) {
+            if (null !== $this->items->getItem(Permissions::record($event->object->name, $action))) {
+                $this->rbac->removeItem(Permissions::record($event->object->name, $action));
+            }
+        }
     }
 
     /**

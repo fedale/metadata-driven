@@ -56,6 +56,7 @@ final class MetadataTranslator
             $object->searchFields,
             $object->labelField,
             $views,
+            $object->archivedFields,
         );
     }
 

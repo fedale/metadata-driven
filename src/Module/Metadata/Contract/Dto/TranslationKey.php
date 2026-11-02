@@ -49,6 +49,28 @@ final class TranslationKey
         return 'message.'.$object.'.'.$field;
     }
 
+    /**
+     * The prefixes of every key named after an object: its labels, and its fields' labels,
+     * options, inverse titles and pattern messages.
+     *
+     * @return list<string>
+     */
+    public static function objectPrefixes(string $object): array
+    {
+        return ['object.'.$object, 'field.'.$object, 'option.'.$object, 'inverse.'.$object, 'message.'.$object];
+    }
+
+    /**
+     * The prefixes of every key named after a field: its label, options, inverse title and
+     * pattern message.
+     *
+     * @return list<string>
+     */
+    public static function fieldPrefixes(string $object, string $field): array
+    {
+        return [self::field($object, $field), 'option.'.$object.'.'.$field, self::inverse($object, $field), self::patternMessage($object, $field)];
+    }
+
     public static function form(string $form): string
     {
         return 'form.'.$form;

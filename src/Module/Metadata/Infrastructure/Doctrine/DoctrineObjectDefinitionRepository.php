@@ -21,6 +21,12 @@ final class DoctrineObjectDefinitionRepository implements ObjectDefinitionReposi
         $this->entityManager->flush();
     }
 
+    public function remove(ObjectDefinition $object): void
+    {
+        $this->entityManager->remove($object);
+        $this->entityManager->flush();
+    }
+
     public function findByName(string $name): ?ObjectDefinition
     {
         return $this->entityManager->getRepository(ObjectDefinition::class)->findOneBy(['name' => $name]);

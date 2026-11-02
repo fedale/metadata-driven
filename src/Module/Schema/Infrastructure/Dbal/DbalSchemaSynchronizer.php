@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Module\Schema\Infrastructure\Dbal;
 
+use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
+use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Schema\Contract\Dto\SchemaPlan;
 use App\Module\Schema\Contract\SchemaSynchronizerInterface;
@@ -108,18 +110,87 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
     public function synchronize(string $objectName, bool $allowDestructive = false): SchemaPlan
     {
         return $this->transactions->run(function () use ($objectName, $allowDestructive): SchemaPlan {
-            $plan = $this->plan($objectName, $allowDestructive);
-            if ($plan->isEmpty()) {
-                return $plan;
-            }
+            return $this->execute($this->plan($objectName, $allowDestructive));
+        });
+    }
 
-            foreach ($plan->statements as $statement) {
-                $this->connection->executeStatement($statement);
+    public function rename(ObjectDefinitionDto $before, ObjectDefinitionDto $after): SchemaPlan
+    {
+        $q = $this->connection->quoteSingleIdentifier(...);
+        $statements = [];
+        if ($before->tableName !== $after->tableName) {
+            $statements[] = \sprintf('ALTER TABLE %s.%s RENAME TO %s', DataSchema::NAME, $q($before->tableName), $q($after->tableName));
+        }
+        $table = DataSchema::NAME.'.'.$q($after->tableName);
+        $columns = [];
+        foreach ([...array_values($before->fields), ...array_values($before->archivedFields)] as $field) {
+            $columns[$field->id] = $field->columnName;
+        }
+        foreach ([...array_values($after->fields), ...array_values($after->archivedFields)] as $field) {
+            $old = $columns[$field->id] ?? null;
+            if (null !== $old && $old !== $field->columnName) {
+                $statements[] = \sprintf('ALTER TABLE %s RENAME COLUMN %s TO %s', $table, $q($old), $q($field->columnName));
             }
-            $this->logs->add(new SchemaChangeLog(Uuid::v7(), $plan->objectName, $plan->tableName, $plan->statements, $plan->skipped));
+        }
+        $old = $this->tables->objectNames($before);
+        $new = $this->tables->objectNames($after);
+        foreach ($new['indexes'] as $key => $name) {
+            if (isset($old['indexes'][$key]) && $old['indexes'][$key] !== $name) {
+                $statements[] = \sprintf('ALTER INDEX %s.%s RENAME TO %s', DataSchema::NAME, $q($old['indexes'][$key]), $q($name));
+            }
+        }
+        foreach ($new['constraints'] as $key => $name) {
+            if (isset($old['constraints'][$key]) && $old['constraints'][$key] !== $name) {
+                $statements[] = \sprintf('ALTER TABLE %s RENAME CONSTRAINT %s TO %s', $table, $q($old['constraints'][$key]), $q($name));
+            }
+        }
+
+        return $this->transactions->run(function () use ($after, $statements): SchemaPlan {
+            $plan = new SchemaPlan($after->name, DataSchema::NAME.'.'.$after->tableName, false, $statements, []);
+            $this->execute($plan);
+            // The trigram indexes hold no data and are named after the table and the columns:
+            // the synchronization drops the old ones and builds them again under the new names.
+            $this->synchronize($after->name);
 
             return $plan;
         });
+    }
+
+    public function dropTable(ObjectDefinitionDto $object): SchemaPlan
+    {
+        $qualified = DataSchema::NAME.'.'.$object->tableName;
+        $plan = new SchemaPlan($object->name, $qualified, false, [\sprintf('DROP TABLE %s.%s', DataSchema::NAME, $this->connection->quoteSingleIdentifier($object->tableName))], []);
+
+        return $this->transactions->run(fn (): SchemaPlan => $this->execute($plan));
+    }
+
+    public function dropColumn(ObjectDefinitionDto $object, FieldDefinitionDto $field): SchemaPlan
+    {
+        // Its indexes and foreign key go with it.
+        $plan = new SchemaPlan($object->name, DataSchema::NAME.'.'.$object->tableName, false, [\sprintf(
+            'ALTER TABLE %s.%s DROP COLUMN %s',
+            DataSchema::NAME,
+            $this->connection->quoteSingleIdentifier($object->tableName),
+            $this->connection->quoteSingleIdentifier($field->columnName),
+        )], []);
+
+        return $this->transactions->run(fn (): SchemaPlan => $this->execute($plan));
+    }
+
+    /**
+     * Runs the statements of a plan and logs them; an empty plan is not logged.
+     */
+    private function execute(SchemaPlan $plan): SchemaPlan
+    {
+        if ($plan->isEmpty()) {
+            return $plan;
+        }
+        foreach ($plan->statements as $statement) {
+            $this->connection->executeStatement($statement);
+        }
+        $this->logs->add(new SchemaChangeLog(Uuid::v7(), $plan->objectName, $plan->tableName, $plan->statements, $plan->skipped));
+
+        return $plan;
     }
 
     /**

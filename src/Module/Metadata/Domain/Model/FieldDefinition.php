@@ -10,6 +10,9 @@ use Symfony\Component\Uid\Uuid;
 /**
  * A field of an object definition, mapped to one column of the object table.
  *
+ * An archived field is out of the application (forms, grids, validation) while its column and
+ * its values stay: it can be restored, or purged for good.
+ *
  * @internal create it through ObjectDefinition::addField()
  */
 class FieldDefinition
@@ -17,6 +20,7 @@ class FieldDefinition
     private string $columnName;
     private string $label;
     private bool $isSystem = false;
+    private bool $isArchived = false;
     /** @var array{field: string, values: list<string>}|null */
     private ?array $condition = null;
     private \DateTimeImmutable $createdAt;
@@ -54,9 +58,30 @@ class FieldDefinition
     }
 
     /**
+     * The column follows the name: the caller renames it in the same transaction.
+     *
+     * @internal use ObjectDefinition::renameField()
+     */
+    public function rename(string $name): void
+    {
+        $this->name = $name;
+        $this->columnName = $name;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    /**
+     * @internal use ObjectDefinition::archiveField() and restoreField()
+     */
+    public function markArchived(bool $isArchived): void
+    {
+        $this->isArchived = $isArchived;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    /**
      * @param array<string, mixed> $settings already validated by the field type
      *
-     * @internal use ObjectDefinition::changeFieldSettings()
+     * @internal use ObjectDefinition::changeFieldSettings() and renameField()
      */
     public function changeSettings(array $settings): void
     {
@@ -139,6 +164,11 @@ class FieldDefinition
     public function isSystem(): bool
     {
         return $this->isSystem;
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->isArchived;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

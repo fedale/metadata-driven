@@ -28,13 +28,31 @@ final class MetadataSnapshotLoader
     }
 
     /**
-     * @return array<string, ObjectDefinitionDto> keyed by object name
+     * @return array<string, ObjectDefinitionDto> the active objects, keyed by name
      */
     public function load(): array
     {
+        return $this->loadWhere(true);
+    }
+
+    /**
+     * @return array<string, ObjectDefinitionDto> the archived objects, keyed by name
+     */
+    public function loadArchived(): array
+    {
+        return $this->loadWhere(false);
+    }
+
+    /**
+     * @return array<string, ObjectDefinitionDto>
+     */
+    private function loadWhere(bool $active): array
+    {
         $snapshot = [];
         foreach ($this->objects->findAll() as $object) {
-            $snapshot[$object->getName()] = $this->mapObject($object);
+            if ($object->isActive() === $active) {
+                $snapshot[$object->getName()] = $this->mapObject($object);
+            }
         }
 
         return $snapshot;
@@ -45,6 +63,10 @@ final class MetadataSnapshotLoader
         $fields = [];
         foreach ($object->getFields() as $field) {
             $fields[$field->getName()] = $this->mapField($field);
+        }
+        $archived = [];
+        foreach ($object->getArchivedFields() as $field) {
+            $archived[$field->getName()] = $this->mapField($field);
         }
 
         return new ObjectDefinitionDto(
@@ -61,6 +83,7 @@ final class MetadataSnapshotLoader
             $object->getSearchFields(),
             $object->getLabelField(),
             array_map($this->mapView(...), $object->getViews()),
+            $archived,
         );
     }
 

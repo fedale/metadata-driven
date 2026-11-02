@@ -70,4 +70,19 @@ final class DoctrineTranslationRepository implements TranslationRepository
                 ->execute();
         }
     }
+
+    public function moveKeysUnder(array $prefixes): void
+    {
+        $connection = $this->entityManager->getConnection();
+        $metadata = $this->entityManager->getClassMetadata(Translation::class);
+        $table = (null === $metadata->getSchemaName() ? '' : $metadata->getSchemaName().'.').$metadata->getTableName();
+        $column = $metadata->getColumnName('key');
+        foreach ($prefixes as $from => $to) {
+            // substr() counts from 1: what follows the prefix, its dot included.
+            $connection->executeStatement(
+                \sprintf('UPDATE %1$s SET %2$s = ? || substr(%2$s, ?) WHERE %2$s = ? OR %2$s LIKE ?', $table, $column),
+                [$to, \strlen($from) + 1, $from, addcslashes($from, '%_\\').'.%'],
+            );
+        }
+    }
 }

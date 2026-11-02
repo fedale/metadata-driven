@@ -64,6 +64,14 @@ final class LocalizedMetadataRegistry implements MetadataRegistryInterface, Loca
         return $this->objects();
     }
 
+    /**
+     * As defined: the archived objects are an admin matter, never shown to the users.
+     */
+    public function archivedObjects(): array
+    {
+        return $this->metadata->archivedObjects();
+    }
+
     public function incomingRelations(string $targetName): array
     {
         $references = [];

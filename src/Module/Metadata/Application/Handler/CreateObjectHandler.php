@@ -29,8 +29,9 @@ final class CreateObjectHandler
     public function __invoke(CreateObjectCommand $command): string
     {
         $id = $this->transactions->run(function () use ($command): string {
-            if (null !== $this->objects->findByName($command->name)) {
-                throw InvalidMetadataDefinition::duplicateObject($command->name);
+            $existing = $this->objects->findByName($command->name);
+            if (null !== $existing) {
+                throw $existing->isActive() ? InvalidMetadataDefinition::duplicateObject($command->name) : InvalidMetadataDefinition::archivedObjectNameTaken($command->name);
             }
 
             $object = new ObjectDefinition(Uuid::v7(), $command->name, $command->labelSingular, $command->labelPlural, $command->icon);
