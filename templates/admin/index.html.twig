@@ -38,4 +38,35 @@
             </tbody>
         </table>
     {% endif %}
+
+    {% if archived is not empty %}
+        <section class="md-admin__section">
+            <h2>Archived</h2>
+            <p class="gv-muted">Out of the application; their tables and records are kept, and their names stay taken. Restore one here; <code>metadata:purge</code> deletes one for good.</p>
+            <table class="md-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Object</th>
+                        <th scope="col">Machine name</th>
+                        <th scope="col">Table</th>
+                        <th scope="col"><span class="md-visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for name, entry in archived %}
+                        <tr>
+                            <td>{{ entry.object.labelPlural }}</td>
+                            <td><code>{{ name }}</code></td>
+                            <td><code>data.{{ entry.object.tableName }}</code></td>
+                            <td>
+                                {{ form_start(entry.restore_form) }}
+                                    <button type="submit" class="gv-btn">Restore</button>
+                                {{ form_end(entry.restore_form) }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% endif %}
 {% endblock %}

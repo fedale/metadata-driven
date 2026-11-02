@@ -22,7 +22,10 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:form:delete`](#metadataformdelete) | Delete a composite form (its records stay) |
 | [`metadata:translation:set`](#metadatatranslationset) | Translate a text of the metadata into a language, or define a text of your own |
 | [`metadata:translation:list`](#metadatatranslationlist) | List the translation keys, with their texts in a language |
-| [`metadata:list`](#metadatalist) | List the objects, or the fields of one object |
+| [`metadata:rename`](#metadatarename) | Give an object, or one of its fields, a new machine name |
+| [`metadata:archive`](#metadataarchive) | Take an object or a field out of the application, its data kept; `--restore` brings it back |
+| [`metadata:purge`](#metadatapurge) | Delete an archived object or field for good, its data with it |
+| [`metadata:list`](#metadatalist) | List the objects, or the fields of one object, and what is archived |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
 | `user:create` | Create a user who can sign in — see [Users and permissions](access.md#usercreate) |
 | `access:sync` | Create the permissions of every object, the admin permission and the super admin role — see [Users and permissions](access.md#permissions) |
@@ -39,7 +42,8 @@ transactional), so metadata and tables never disagree. Every DDL statement appli
 Names (objects, fields, inverse relations) become SQL identifiers, so they follow one rule:
 2 to 50 characters, lowercase letters, digits and single underscores, starting with a letter
 (`first_name`, `address2`; not `FirstName`, `_tmp`, `a__b`). They are quoted in SQL as well, so
-reserved words such as `order` or `select` are fine. Names cannot be changed once created.
+reserved words such as `order` or `select` are fine. Names can be changed with
+[`metadata:rename`](#metadatarename).
 
 Errors are printed in red and the command exits with a non-zero code; nothing is saved.
 
@@ -344,10 +348,54 @@ Every key of the metadata, then the texts, with the default-language text and, f
 language, its translation. `--missing` keeps the keys not translated yet. Without a language: the
 default one.
 
+## `metadata:rename`
+
+Give an object, or one of its fields, a new machine name. Its table or column is renamed (the
+records stay), and so is everything named after it: relations, conditions, cascades, views,
+composite forms, translations, permissions. See [Renaming](lifecycle.md#renaming).
+
+```
+metadata:rename [--field=FIELD] <object> <new-name>
+```
+
+```bash
+symfony console metadata:rename profile person
+symfony console metadata:rename person town --field=city
+```
+
+The definitions written by hand that were rewritten are listed after the success message: a YAML
+one (grid view, composite form) loses its comments.
+
+## `metadata:archive`
+
+Take an object, or a field with `--field`, out of the application; its table or column and its
+data stay. Refused, with every use listed, while the metadata still uses it. `--restore` brings it
+back. See [Archiving](lifecycle.md#archiving).
+
+```
+metadata:archive [--field=FIELD] [--restore] <object>
+```
+
+```bash
+symfony console metadata:archive pet --field=chip_code
+symfony console metadata:archive pet --field=chip_code --restore
+```
+
+## `metadata:purge`
+
+Delete an archived object, or an archived field with `--field`, for good: its table or column and
+every record or value, its translations (and, for an object, its permissions). It cannot be undone,
+so the command asks to type the name back (`pet`, or `pet.chip_code`); without a terminal it needs
+`--force`. See [Purging](lifecycle.md#purging).
+
+```
+metadata:purge [--field=FIELD] [--force] <object>
+```
+
 ## `metadata:list`
 
 List the objects, or the fields of one object, as the application sees them (from the metadata
-cache).
+cache), followed by what is archived.
 
 ```
 metadata:list [<object>]

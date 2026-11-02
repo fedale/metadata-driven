@@ -16,7 +16,9 @@ use App\Tests\Support\CreatesPetObject;
 use App\Tests\Support\CreatesRegistrationForm;
 use Doctrine\DBAL\Connection;
 use Fedale\RbacBundle\Contract\ItemStorageInterface;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\Console\Tester\CommandTester;
 
 /**
  * Archiving takes an object or a field out of the application and keeps its data; restoring
@@ -124,6 +126,31 @@ final class ArchiveTest extends KernelTestCase
         self::assertArrayNotHasKey('object.pet.plural', self::getContainer()->get(TranslationRepository::class)->textsOf('it'));
         $this->manager->createObject('pet', 'Pet', 'Pets');
         self::assertTrue($this->metadata->hasObject('pet'));
+    }
+
+    public function testTheCommandsArchiveAndPurgeAskingForTheNameBack(): void
+    {
+        self::createPetObject(self::getContainer());
+        $application = new Application(self::bootKernel());
+        // The commands run in the new kernel: read its registry.
+        $this->metadata = self::getContainer()->get(MetadataRegistryInterface::class);
+        $archive = new CommandTester($application->find('metadata:archive'));
+        self::assertSame(0, $archive->execute(['object' => 'pet', '--field' => 'age']));
+        self::assertStringContainsString('Field "pet.age" is archived', $archive->getDisplay());
+
+        $purge = new CommandTester($application->find('metadata:purge'));
+        self::assertSame(2, $purge->execute(['object' => 'pet', '--field' => 'age'], ['interactive' => false]));
+        self::assertStringContainsString('pass --force', $purge->getDisplay());
+        $purge->setInputs(['pet.agee']);
+        self::assertSame(1, $purge->execute(['object' => 'pet', '--field' => 'age']));
+        self::assertArrayHasKey('age', $this->metadata->getObject('pet')->archivedFields);
+        $purge->setInputs(['pet.age']);
+        self::assertSame(0, $purge->execute(['object' => 'pet', '--field' => 'age']));
+        self::assertArrayNotHasKey('age', $this->metadata->getObject('pet')->archivedFields);
+
+        $rename = new CommandTester($application->find('metadata:rename'));
+        self::assertSame(0, $rename->execute(['object' => 'pet', 'new-name' => 'animal']));
+        self::assertTrue($this->metadata->hasObject('animal'));
     }
 
     private function assertRefused(callable $change, string $message): void

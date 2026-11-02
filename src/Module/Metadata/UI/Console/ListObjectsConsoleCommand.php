@@ -29,6 +29,11 @@ final class ListObjectsConsoleCommand
                 $rows[] = [$definition->name, $definition->labelPlural, $definition->tableName, \count($definition->fields)];
             }
             $io->table(['Name', 'Label', 'Table', 'Fields'], $rows);
+            $archived = $this->registry->archivedObjects();
+            if ([] !== $archived) {
+                $io->section('Archived (metadata:archive --restore, or metadata:purge)');
+                $io->table(['Name', 'Label', 'Table'], array_map(static fn ($definition): array => [$definition->name, $definition->labelPlural, $definition->tableName], array_values($archived)));
+            }
 
             return Command::SUCCESS;
         }
@@ -54,6 +59,10 @@ final class ListObjectsConsoleCommand
         }
         $io->title(\sprintf('%s (%s)', $definition->labelPlural, $definition->tableName));
         $io->table(['Name', 'Type', 'Label', 'Required', 'Unique', 'Settings'], $rows);
+        if ([] !== $definition->archivedFields) {
+            $io->section('Archived fields (metadata:archive --restore, or metadata:purge)');
+            $io->listing(array_keys($definition->archivedFields));
+        }
 
         return Command::SUCCESS;
     }

@@ -67,6 +67,12 @@ metadata:field:create pet owner relation …
 Inside a transaction the registry reads the definitions from the database, so the schema sync sees
 the uncommitted change; the cache is only refreshed once the change is committed.
 
+A rename goes the same way: `RenameObjectHandler` / `RenameFieldHandler` save the definitions,
+rewrite the views and composite forms naming the old name (compiled again against the renamed
+definitions, which the registry reads from the database), then dispatch `ObjectDefinitionRenamed`
+/ `FieldDefinitionRenamed`; the Schema module renames the table, columns, indexes and constraints,
+the Access module the permissions. See [Renaming and archiving](lifecycle.md).
+
 ## A record write
 
 ```

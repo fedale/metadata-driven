@@ -46,6 +46,20 @@
                 </tbody>
             </table>
         {% endif %}
+        {% if archived_fields is not empty %}
+            <h3>Archived fields</h3>
+            <p class="gv-muted">Out of the forms and grids; their columns and values are kept. <code>metadata:purge {{ object.name }} --field=&lt;name&gt;</code> deletes one for good.</p>
+            <ul class="md-archived">
+                {% for name, entry in archived_fields %}
+                    <li>
+                        <span>{{ entry.field.label }} <code>{{ name }}</code></span>
+                        {{ form_start(entry.restore_form) }}
+                            <button type="submit" class="gv-btn">Restore</button>
+                        {{ form_end(entry.restore_form) }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
     </section>
 
     <section class="md-admin__section">
@@ -140,5 +154,21 @@
                 <ul>{% for skipped in plan.skipped %}<li>{{ skipped }}</li>{% endfor %}</ul>
             {% endif %}
         {% endif %}
+    </section>
+
+    <section class="md-admin__section">
+        <h2>Machine name</h2>
+        {{ form_start(rename_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+            {{ form_rest(rename_form) }}
+            <button type="submit" class="gv-btn gv-btn-primary">Rename</button>
+        {{ form_end(rename_form) }}
+    </section>
+
+    <section class="md-admin__section md-admin__section--danger">
+        <h2>Archive</h2>
+        <p class="gv-muted">Takes the object out of the application: its pages, grids and forms. The table and the records are kept, and it can be restored from the list of objects. Refused while a relation or a composite form uses it.</p>
+        {{ form_start(archive_form, {attr: {class: 'md-delete-form', 'data-turbo-confirm': 'Archive ' ~ object.labelPlural ~ '? Their records are kept.'}}) }}
+            <button type="submit" class="gv-btn gv-btn-danger">Archive {{ object.labelPlural|lower }}</button>
+        {{ form_end(archive_form) }}
     </section>
 {% endblock %}

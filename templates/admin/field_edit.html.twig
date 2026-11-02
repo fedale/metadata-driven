@@ -13,7 +13,7 @@
         <dt>Settings</dt><dd><code class="md-settings">{{ field.settings|json_encode }}</code></dd>
         <dt>Applies</dt><dd>{{ field.condition ? 'when ' ~ field.condition.field ~ ' is ' ~ field.condition.values|join(' or ') : 'always' }}</dd>
     </dl>
-    <p class="gv-muted">The name, the type and the rules are fixed once the column exists, and so are the settings that shape it; the label, the other settings and the condition can change.</p>
+    <p class="gv-muted">The type and the rules are fixed once the column exists, and so are the settings that shape it; the label, the other settings, the condition and the machine name can change.</p>
 
     {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
         {{ form_errors(form) }}
@@ -43,5 +43,21 @@
             {{ form_rest(condition_form) }}
             <button type="submit" class="gv-btn gv-btn-primary">Save condition</button>
         {{ form_end(condition_form) }}
+    </section>
+
+    <section class="md-admin__section">
+        <h2>Machine name</h2>
+        {{ form_start(rename_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+            {{ form_rest(rename_form) }}
+            <button type="submit" class="gv-btn gv-btn-primary">Rename</button>
+        {{ form_end(rename_form) }}
+    </section>
+
+    <section class="md-admin__section md-admin__section--danger">
+        <h2>Archive</h2>
+        <p class="gv-muted">Takes the field out of the forms, the grids and the validation. The column and its values are kept, and it can be restored from the page of the object. Refused while a view, a composite form, a condition or a cascade uses it.</p>
+        {{ form_start(archive_form, {attr: {class: 'md-delete-form', 'data-turbo-confirm': 'Archive the field ' ~ field.label ~ '? Its values are kept.'}}) }}
+            <button type="submit" class="gv-btn gv-btn-danger">Archive {{ field.label|lower }}</button>
+        {{ form_end(archive_form) }}
     </section>
 {% endblock %}

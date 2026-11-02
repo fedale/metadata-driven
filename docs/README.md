@@ -17,6 +17,7 @@ Objects are defined from the admin UI at `/admin` or from the console.
 | [Views](views.md) | Layouts of the record form (HTML with a `{field}` token per field; composite forms use the same tokens) and columns of the record grid (YAML: order, labels, renderers, virtual columns, sort), from the admin UI or the console |
 | [Languages](i18n.md) | Translations of the labels, options and titles, `{t:name}` texts in layouts, the language of each user |
 | [Users and permissions](access.md) | Signing in, users, the permissions of every object, roles |
+| [Renaming and archiving](lifecycle.md) | New machine names for objects and fields (table, columns and every reference follow), archiving with the data kept, restoring, purging for good |
 | [Console commands](console.md) | Every command, its arguments and options, what it changes in the database |
 | [Field types](field-types.md) | The ten field types, their settings, columns, validation and grid behaviour |
 | [Architecture](architecture.md) | Modules and layers, the boundaries Deptrac enforces, how a definition becomes a table |

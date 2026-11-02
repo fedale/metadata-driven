@@ -10,18 +10,21 @@ console. It needs the `admin.metadata` permission (or `ROLE_SUPER_ADMIN`), see
 The list of objects, with their machine name, table and number of fields, and a link to their
 records. **New object** asks for the machine name and the two labels. The labels are written in
 the default language (English); **Translations** gives them their text in the other languages.
+Under them, the **Archived** objects, each with **Restore** (see [Renaming and archiving](lifecycle.md)).
 
 ## An object — `/admin/objects/<object>`
 
 | Section | What it does | Console equivalent |
 |---|---|---|
-| Fields | Every field with its column, type, rules and settings; **Add a field**, **Edit** (label and condition) | `metadata:field:create`, `metadata:field:condition`, `metadata:list <object>` |
+| Fields | Every field with its column, type, rules and settings; **Add a field**, **Edit** (label, settings, condition, machine name, archive); the archived fields, with **Restore** | `metadata:field:create`, `metadata:field:condition`, `metadata:list <object>` |
 | Views | The layouts of the record form and the columns of the record grid; **Add a view**, **Edit**, **Delete** (see [Views](views.md)) | `metadata:view:save`, `metadata:view:delete` |
 | Pointed at by | The relation fields of other objects pointing at this one, with their delete rule | |
 | Labels | Rename the singular and plural labels | |
 | Record label | The field that names the records in relations and lookups | `metadata:object:label` |
 | Search | The search handler and the searched fields; the search indexes follow | `metadata:object:search` |
 | Table | Whether the table matches the metadata; **Apply** adds what is missing | `schema:sync <object>` |
+| Machine name | Renames the object, its table and everything named after it | `metadata:rename <object> <new-name>` |
+| Archive | Takes the object out of the application, its records kept; refused while a relation or a composite form uses it | `metadata:archive <object>` |
 
 The **Table** section never drops anything: differences that would lose data (a column the metadata
 does not define, a column defined differently) are listed, and only
@@ -80,9 +83,13 @@ shape the column are shown disabled (see [Changing settings](field-types.md#chan
 **Condition** makes it apply only while another field holds some values: choose the deciding
 field (the object's choice and yes/no fields are offered, each with its values in the help), type
 the values separated by commas, and save; **Always** removes the condition. See
-[Conditions](field-types.md#conditions).
+[Conditions](field-types.md#conditions). **Machine name** renames the field, its column and what
+names it (views and composite forms included); **Archive** takes it out of the forms and grids,
+its values kept. See [Renaming and archiving](lifecycle.md).
 
 ## What cannot be changed
 
-Once a field exists its name, type, rules and settings are fixed (the label and the condition can
-change), and objects and fields cannot be deleted yet.
+Once a field exists its type and rules are fixed, and so are the settings that shape its column;
+its label, its other settings, its condition and its machine name can change. Objects and fields
+are archived from the admin, and only deleted for good from the console (`metadata:purge`), see
+[Renaming and archiving](lifecycle.md).

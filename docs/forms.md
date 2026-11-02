@@ -252,6 +252,14 @@ cat forms/registration.yaml | symfony console metadata:form:save registration -
 symfony console metadata:form:delete registration      # the records stay
 ```
 
+## Renamed and archived objects and fields
+
+Renaming an object or a field rewrites the composite forms naming it (`object`, `fields`,
+`required`, the `{field}` tokens of a `layout`, `via`) and compiles them again: the YAML is written
+again, so its comments are lost; a form not naming it is left as written. An object with a node in
+a form, or a field the form names, cannot be archived until the form no longer uses it. See
+[Renaming and archiving](lifecycle.md).
+
 ## Under the hood
 
 | Piece | Where |
