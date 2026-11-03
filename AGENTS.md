@@ -4,6 +4,12 @@ This is a Symfony project. Check `composer.json` for the exact Symfony/PHP versi
 in use, and read `symfony.lock` to see which recipes ran. Don't assume Doctrine,
 Twig, API Platform, Messenger, or Lock are installed unless one of those says so.
 
+## Project status
+
+Read `docs/internal/status.md` before starting any task: setup on a new machine,
+the working rules agreed with the user, the architecture decisions, what is done
+and the open work queue. Keep it up to date in the same branch as each change.
+
 ## Ask before generating
 
 If the task doesn't specify, ask rather than guess:
