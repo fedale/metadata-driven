@@ -1,7 +1,7 @@
 # Plan: the `file` field type
 
-Status: **phases 1 and 2 done** (branch `feature/file-field-type`), awaiting review before
-phase 3.
+Status: **phases 1 to 3 done** (branch `feature/file-field-type`), awaiting review before
+phase 4.
 Discussed with the user on 2026-11-03.
 
 A field type that stores a file (an image, a PDF, any document) on a record: a product's photo,
@@ -135,7 +135,25 @@ the first version, if the child object proves heavy in practice.
      image as an attachment, with `nosniff`, so an SVG never runs in the app's origin.
    - Open for later: a `file` field can still be chosen as the label of the records
      (`metadata:object:label`), which would show an id.
-3. **Serving**: `FileController`, permissions, headers, thumbnails.
+3. **Serving** — done. As built:
+   - `FileController` (Record UI) at `/files/{id}` and `/files/{id}/thumbnail/{small|medium}`.
+     Readable when `FileReferences::objectsHolding()` (Record Domain, DBAL implementation: one
+     indexed query per object with file fields, live records only) names an object the user may
+     read; otherwise a 404, the same as an unknown file.
+   - Inline for JPEG, PNG, GIF, WebP; attachment for anything else (SVG included). Always
+     `nosniff` and `Content-Security-Policy: default-src 'none'; ...; sandbox`. ETag = SHA-256,
+     `private, max-age=3600` (short, so a revoked permission takes effect within the hour).
+     The UTF-8 name goes in `filename*`, an ASCII fallback in `filename`.
+   - Thumbnails: `imagine/imagine` (GD) directly, not `liip/imagine-bundle`: the project has
+     `allow-contrib: false`, and liip's public cache routes would have had to be turned off.
+     `ImagineThumbnailer` (File Infrastructure) keeps them under
+     `thumbnails/<size>/<sha256>.<format>` in the same storage; 64 and 240 px, never enlarged;
+     none over 40 megapixels or for an image GD cannot decode. **The GC of phase 5 must skip,
+     or clean, the `thumbnails/` prefix.**
+   - The record form links the current file and previews an image (medium thumbnail).
+   - Tests: `FileControllerTest` (functional; `disableReboot()`, since the memory storage lives
+     in the container), `ThumbnailerTest` (integration).
+   - Not done: EXIF orientation of photos (a phone picture may show rotated).
 4. **Grid and export**: `FileRenderer`, export as file name.
 5. **GC**: `metadata:files:gc`, with tests on orphans and on archived fields.
 6. **Composite forms**: a file field in a section and in a `mode: many` row (the upload inputs

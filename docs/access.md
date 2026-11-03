@@ -45,7 +45,7 @@ The application checks these RBAC items:
 
 | Item | Type | Grants |
 |---|---|---|
-| `record.<object>.read` | permission | The object's grid, search, export, record pages (read-only), and picking its records in a relation |
+| `record.<object>.read` | permission | The object's grid, search, export, record pages (read-only), picking its records in a relation, and downloading the files its records hold ([file fields](field-types.md#file)) |
 | `record.<object>.create` | permission | Creating records |
 | `record.<object>.update` | permission | Saving changes to records |
 | `record.<object>.delete` | permission | Deleting records |

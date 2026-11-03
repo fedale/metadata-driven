@@ -267,7 +267,8 @@ contract.
   files first; that is a hint, the server checks every file.
 - **The server's limits apply first.** PHP refuses an upload over `upload_max_filesize` or
   `post_max_size` before the field sees it; keep those above the largest `maxSize`.
-- **The form** shows the current file (its name and size), an input to upload another one
+- **The form** shows the current file (its name, a link to it, and its size; a preview for an
+  image), an input to upload another one
   ("Choose a file to replace the current one."), and, when the field is not required, *Remove
   the file*. Saved without a new file, the record keeps the one it has. A required file can be
   replaced, never removed.
@@ -277,10 +278,20 @@ contract.
 - **From code**, a new file is a `FileUpload` (the path of a readable local file and the name to
   show); the id of a stored file is accepted as the value the record already holds, and an id
   of no stored file is refused ("This file does not exist.").
+- **Downloading** goes through `/files/<id>`, and only for a user who may read a record holding
+  the file (`record.<object>.read`); anybody else, and a file held only by records in the bin,
+  gets a 404, as for a file that does not exist. JPEG, PNG, GIF and WebP images open in the
+  browser; every other file, an SVG included, is downloaded under its original name. The
+  responses forbid scripts (`Content-Security-Policy: sandbox`, `X-Content-Type-Options:
+  nosniff`), and browsers keep them for an hour at most, in their private cache.
+- **Thumbnails** of an image, at `/files/<id>/thumbnail/small` (64 px) and `medium` (240 px), fit
+  the image in a square of that side without enlarging it. They are made on the first request
+  and kept with the file. An image over 40 megapixels, or one that cannot be decoded, has none
+  (404); the file itself is still served.
 - A file field cannot be **unique**: every upload is a new file. It is not searched, and the grid
   shows ✓ when the record has a file, with no filter or sort.
-- **Not yet**: downloading the file from the record or the grid, its name and a thumbnail in the
-  grid, a file field in a composite form section, and removing the files no record uses any more.
+- **Not yet**: the name, a link and a thumbnail in the grid, a file field in a composite form
+  section, and removing the files no record uses any more.
 
 ## `relation`
 

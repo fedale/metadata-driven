@@ -113,8 +113,9 @@ rename/archive/restore/purge of objects and fields.
 ## Open
 
 - **Work queue: the `file` field type**, plan in [file-type-plan.md](file-type-plan.md). Phases 1
-  (storage and `core.file`) and 2 (the type in the record form) are done on
-  `feature/file-field-type`, awaiting the user's review before phase 3 (serving the files). Open decisions in the plan: production storage,
+  (storage and `core.file`), 2 (the type in the record form) and 3 (download and thumbnails at
+  `/files/{id}`) are done on `feature/file-field-type`, awaiting the user's review before phase 4
+  (the file renderer in the grid and the export). Open decisions in the plan: production storage,
   several files per record.
 - **CSV import — on standby by the user's choice.** Plan: (A) a service plus `record:import` CLI
   with `--dry-run` and `--key`, all-or-nothing with a two-pass check; (B) a web wizard; (C) async

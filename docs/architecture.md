@@ -46,11 +46,11 @@ A module only sees the `Contract` of the other modules. Two Deptrac rulesets enf
 | Schema | Turns definitions into DDL: tables, indexes, foreign keys, trigram indexes; `schema:sync` | Metadata, FieldType, Search |
 | Validation | One validator for every record write, built from the metadata | Metadata, FieldType |
 | Search | Search handlers and the search configuration of objects | Metadata, FieldType |
-| Record | Record storage, the write pipeline, delete rules, lookups, the grid source, forms (with their view layout), composite forms and pages | Metadata, FieldType, Validation, Search |
+| Record | Record storage, the write pipeline, delete rules, lookups, the grid source, forms (with their view layout), composite forms and pages, the download of the files of the records (`/files/{id}`) | Metadata, FieldType, Validation, Search, Access, File |
 | Admin | The no-code builder at `/admin`, on `MetadataManagerInterface` | Metadata, FieldType, Schema |
 | User | Users and their profiles (with their language), sign-in (Symfony Security), `user:create` | — |
 | Access | The permissions of objects and admin, checked through `fedale/rbac-bundle`; `access:sync` | Metadata |
-| File | Stored files: their bytes in the `record_files` Flysystem storage, keyed by their SHA-256 (the same bytes are stored once), their metadata in `core.file`, the type detected from the content; `FileStorageInterface` | — |
+| File | Stored files: their bytes in the `record_files` Flysystem storage, keyed by their SHA-256 (the same bytes are stored once), their metadata in `core.file`, the type detected from the content; their thumbnails (`imagine/imagine`, GD); `FileStorageInterface`, `ThumbnailerInterface` | — |
 | Settings | Reserved for the next phases | |
 
 Modules that must react to another one without depending on it go through **ports**: the

@@ -3,13 +3,17 @@
   (config/packages/twig.yaml).
 #}
 
-{#- A file field (RecordFileType): the current file, "Remove" when the field may be empty, and
-    the input to upload another one. -#}
+{#- A file field (RecordFileType): the current file (a link to it, and a preview of an image),
+    "Remove" when the field may be empty, and the input to upload another one. -#}
 {%- block record_file_widget -%}
     <div {{ block('widget_container_attributes') }}>
         {%- if current_file -%}
+            {%- if current_file.isImage -%}
+                {#- Decorative: the name next to it says what the file is. -#}
+                <img class="md-file__preview" src="{{ path('file_thumbnail', {id: current_file.id, size: 'medium'}) }}" alt="" loading="lazy">
+            {%- endif -%}
             <p class="md-file__current">
-                <span class="md-file__name">{{ current_file.originalName }}</span>
+                <a class="md-file__name" href="{{ path('file_download', {id: current_file.id}) }}">{{ current_file.originalName }}</a>
                 <span class="md-file__size">{{ current_size }}</span>
             </p>
             {%- if form.remove is defined -%}{{ form_row(form.remove) }}{%- endif -%}
