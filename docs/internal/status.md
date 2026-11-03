@@ -53,6 +53,46 @@ Last updated: 2026-11-03.
 - Lifecycle: archive keeps data and can be restored; purge only from the CLI
   (`metadata:purge`); rename rewrites hand-written views and forms (YAML comments are lost).
 
+## Implementation notes
+
+Things that are not obvious from a single file, and that are easy to break.
+
+- **Metadata cache** (`Metadata/Infrastructure/Cache/CachedMetadataRegistry.php`): the snapshot
+  key (`metadata_snapshot.vN`) and the forms key (`metadata_forms.vN`) are versioned. Bump the
+  version whenever the shape of a cached DTO changes. The snapshot key also carries a fingerprint
+  of every field type's default settings, so adding a setting renews the snapshot by itself.
+- **Localized metadata**: `LocalizedMetadataRegistry` (`#[Target('localizedMetadata')]`) returns
+  metadata with labels in the user's locale; only the Record and Validation modules use it. Metadata
+  text is the default-locale fallback; translations live in `core.metadata_translation`.
+- **Transactions**: `Shared/Transaction/TransactionRunner` uses DBAL `transactional()`, not the
+  EntityManager's `wrapInTransaction()`, which closes the EntityManager on domain exceptions.
+- **Metadata writes** go through `MetadataManagerInterface` (Metadata Contract): it validates the
+  commands and throws `MetadataInputInvalid` with errors keyed by field. The admin forms for field
+  settings are generated from `FieldTypeInterface::settingDefinitions()`.
+- **Field types** (`FieldTypeInterface`): `defaultValue()`, `isWriteOnly()`, `toStorage()`; the
+  snapshot loader merges each type's default settings. Passwords are hashed through
+  `SecretHasherInterface` ("record_secret" hasher), write-only, blank on update keeps the value.
+- **Relations**: their config lives in field settings (`RelationSettings`), there is no relation
+  table. Cascading selects use `dependsOn`/`dependsVia`; the lookup takes
+  `filter[<field>]=<id>` (empty means no results) and the validator checks parent membership.
+- **Search**: trigram GIN indexes on `LOWER(col)` are managed by `TrigramIndexPlanner` and kept out
+  of the DBAL schema comparison.
+- **Grid**: `DbalRecordGridSource` + `RecordGridFactory` (Record module). Grid views are at
+  `/o/<object>/grid/<name>` because the bundle owns `?view=`; YAML compiled by `GridViewCompiler`,
+  cells rendered by `CellRendererInterface` implementations.
+- **Composite forms**: YAML compiled by `FormDefinitionCompiler` into JSONB
+  (`core.metadata_form`); `CompositeRecordManager` checks the whole tree first, then writes it in
+  one transaction. The compiler refuses a `fields` list that omits a field the object requires.
+- **Lifecycle**: archive is refused while the item is used anywhere; `MetadataUsages` lists the
+  uses.
+- **Access**: permissions are `record.<object>.<read|create|update|delete>` and `admin.metadata`;
+  controllers check them through `AccessCheckerInterface`. The user provider reloads RBAC roles on
+  every request, and a role change signs the user out (`isEqualTo` compares sorted roles). The RBAC
+  cache is disabled in the test env (`config/packages/fedale_rbac.yaml`) because tests roll back
+  transactions.
+- **Security forms**: the stateless CSRF token input needs `data-controller="csrf-protection"` to
+  work in a real browser.
+
 ## Done (all merged into main)
 
 Phases 0–8 of the original roadmap: skeleton and QA, metadata and field types, schema sync, record
