@@ -106,13 +106,20 @@ rename/archive/restore/purge of objects and fields.
 ## Open
 
 - **Work queue: empty.** Ask the user what comes next.
+- **Blueprints — plan under review, not started**: [blueprints-plan.md](blueprints-plan.md)
+  (packaged, versioned models: a canonical format for every item, install, three-way upgrade,
+  seeds, online indexes, export). Its open decisions are listed at the top: the name, local
+  changes to installed items, hosting. Seeds with files need the `file` field type
+  (`file-type-plan.md`, on `feature/file-field-type`); text seeds build on the CSV import service
+  below.
 - **CSV import — on standby by the user's choice.** Plan: (A) a service plus `record:import` CLI
   with `--dry-run` and `--key`, all-or-nothing with a two-pass check; (B) a web wizard; (C) async
   with Messenger. gridview-bundle has no import feature to reuse.
 - From the form mock, not done: per-kind add buttons ("+ Titolo di studio" …), field machine names
   next to labels.
 - Admin UI strings are still English only (user pages are translated).
-- Remaining roadmap ideas (phase 9+): audit/timeline, REST API, YAML export/import of metadata,
+- Remaining roadmap ideas (phase 9+): audit/timeline, REST API, YAML export/import of metadata
+  (now part of the blueprints plan),
   multi-tenancy, roles/users admin UI, field-level permissions, many-to-many relations.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle has pre-existing failures (`DoctrineChildRowResolverTest` x4,
