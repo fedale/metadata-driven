@@ -16,7 +16,7 @@ missing keys take their default, unknown keys are refused.
 | `select` | `options` (required), `default`, `display` (`dropdown`) | `varchar(100)` | select or buttons side by side | choice |
 | `password` | `minLength` (8), `requireMixedCase`, `requireDigit`, `requireSymbol`, `confirm`, `strengthMeter`, `revealToggle` (all false) | `varchar(255)`, a hash | password input, asked twice with `confirm` | none: never shown |
 | `relation` | `target` (required), `onDelete` (`set_null`), `inverseName`, `inverseLabel` | `uuid` + foreign key | autocomplete | choice of records |
-| `many_to_many` | `target` (required), `onDelete` (`unlink`), `inverseName`, `inverseLabel`, `max` | none: a link table of its own | not yet | not yet |
+| `many_to_many` | `target` (required), `onDelete` (`unlink`), `inverseName`, `inverseLabel`, `max` | none: a link table of its own | autocomplete, several records | not yet |
 
 Settings added to a type after a field was created take their default on that field: a boolean
 created before `display` existed is a checkbox.
@@ -365,7 +365,22 @@ What a `many_to_many` field cannot be: unique, the label of the records, searche
 deciding a [condition](#conditions), part of a cascade (`dependsOn`, `dependsVia`), the `via` of a
 composite form section, a service field. It can have a condition of its own.
 
-**Not yet.** The field can be defined and its link table exists, but the record pages, the
-composite forms and the grids leave it out: its links can't be edited, shown or filtered yet, and a
-grid view refuses it as a column. When the link carries data of its own (a role, a description),
-use a junction object with two `relation` fields instead.
+Input and display:
+
+- The value is the list of the linked record ids (UUIDs, any case); a single id counts as a list
+  of one, duplicates count once. The order isn't kept: the links come back oldest first.
+- Writing the field replaces its links: the ones missing are added, the others removed; a link
+  kept keeps its date. An empty list (or null) removes them all; a write that leaves the field
+  out keeps them. Changing the links alone marks the record as updated.
+- Every id must name a live record of the target: "This value is not a valid record reference."
+  for an id that isn't a UUID, "One of the selected records does not exist." for a missing or
+  deleted one. **Required** means at least one record; `max` refuses more ("Choose at most 3
+  records.").
+- The form offers an autocomplete over the target's records, picking any number of them; it
+  works in [composite forms](forms.md) too. The record page shows the linked records by their
+  label, and the target's page lists the records linking to it, as for a `relation`.
+- A record whose condition stops applying loses its links, as any field loses its value.
+
+**Not yet.** The grids leave the field out: no column, no filter, and a grid view refuses it as a
+column. When the link carries data of its own (a role, a description), use a junction object with
+two `relation` fields instead.

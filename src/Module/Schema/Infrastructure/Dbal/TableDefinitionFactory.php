@@ -33,12 +33,6 @@ use Doctrine\DBAL\Types\Types;
  */
 final class TableDefinitionFactory
 {
-    // PostgreSQL silently truncates longer identifiers.
-    private const int MAX_IDENTIFIER_LENGTH = 63;
-    // "l_<object>__<field>": machine names never hold "__", so no two fields share a name.
-    private const string LINK_TABLE_PREFIX = 'l_';
-    private const string LINK_TABLE_SEPARATOR = '__';
-
     public function __construct(
         private readonly FieldTypeRegistryInterface $fieldTypes,
         private readonly MetadataRegistryInterface $metadata,
@@ -154,7 +148,7 @@ final class TableDefinitionFactory
      */
     public function linkNames(ObjectDefinitionDto $object, FieldDefinitionDto $field): array
     {
-        $table = $this->identifier(self::LINK_TABLE_PREFIX.$object->name.self::LINK_TABLE_SEPARATOR.$field->columnName);
+        $table = DataSchema::linkTable($object->name, $field->columnName);
 
         return [
             'table' => $table,
@@ -300,17 +294,11 @@ final class TableDefinitionFactory
     }
 
     /**
-     * Keeps readable names when they fit, otherwise shortens them with a stable hash.
-     *
      * @return non-empty-string
      */
     public function identifier(string $name): string
     {
-        if (\strlen($name) <= self::MAX_IDENTIFIER_LENGTH) {
-            return $this->nonEmpty($name);
-        }
-
-        return substr($name, 0, self::MAX_IDENTIFIER_LENGTH - 9).'_'.substr(hash('sha256', $name), 0, 8);
+        return DataSchema::identifier($name);
     }
 
     /**

@@ -17,6 +17,15 @@ interface ReferenceCheckerInterface
     public function exists(ObjectDefinitionDto $target, string $id): bool;
 
     /**
+     * The ids among $ids that name no live record of $target (one query for a many-to-many).
+     *
+     * @param list<string> $ids
+     *
+     * @return list<string>
+     */
+    public function missing(ObjectDefinitionDto $target, array $ids): array;
+
+    /**
      * Whether the record of $target points at $parentId through its relation field $field: the
      * municipality belongs to the province.
      */

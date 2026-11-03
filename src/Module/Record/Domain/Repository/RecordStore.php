@@ -10,7 +10,11 @@ use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Domain\Exception\UniqueValueConflict;
 
 /**
- * Storage of records in the physical object tables.
+ * Storage of records in the physical object tables, and of the links of their many-to-many
+ * fields in the link tables.
+ *
+ * insert() and update() write the columns only; the links are written by replaceLinks(). A
+ * record read back carries its links (the live linked records only).
  */
 interface RecordStore
 {
@@ -48,7 +52,16 @@ interface RecordStore
     public function latest(ObjectDefinitionDto $object, int $limit): array;
 
     /**
-     * Ids of the live records of $object whose relation $field points at $targetId, newest first.
+     * Makes the many-to-many $field of a record link exactly to $targetIds: the links missing are
+     * added, the others removed; the links kept keep their date.
+     *
+     * @param list<string> $targetIds
+     */
+    public function replaceLinks(ObjectDefinitionDto $object, FieldDefinitionDto $field, string $recordId, array $targetIds, \DateTimeImmutable $now): void;
+
+    /**
+     * Ids of the live records of $object whose relation $field points at $targetId (or whose
+     * many-to-many $field links to it), newest first.
      *
      * @return list<string>
      *
@@ -62,7 +75,8 @@ interface RecordStore
     public function countReferencing(ObjectDefinitionDto $object, FieldDefinitionDto $field, string $targetId): int;
 
     /**
-     * Clears $field on the live records of $object pointing at $targetId.
+     * Clears $field on the live records of $object pointing at $targetId; for a many-to-many
+     * $field, removes their links to it. Either way the records count as updated.
      */
     public function clearReferences(ObjectDefinitionDto $object, FieldDefinitionDto $field, string $targetId, \DateTimeImmutable $now): void;
 }

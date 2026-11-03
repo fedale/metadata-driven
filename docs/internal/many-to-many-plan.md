@@ -1,8 +1,9 @@
 # Plan: many-to-many relations
 
-Status: reviewed by the user (type name, read-only inverse, delete rules decided). Phase 1 done
-on branch `feature/many_to_many_storage`, awaiting review; phases 2–4 not started. Last updated:
-2026-11-03.
+Status: reviewed by the user (type name, read-only inverse, delete rules decided). Phase 1
+committed on `feature/many_to_many_storage` (not merged); phase 2 committed on
+`feature/many_to_many_records`, branched from it (not merged); phases 3–4 not started. Last
+updated: 2026-11-03.
 
 ## Where we are
 
@@ -178,6 +179,23 @@ two code paths in the store, the grid source and the validator.
 Without phase 4, the same model works today with a junction object and a `mode: many` composite
 form section; what phase 4 adds is the field on `user` (grid column, filter, compact editing) and
 the composite unique.
+
+**Phase 2, as delivered.** The skips of phase 1 are gone from the Record and Validation
+modules, except in the grid (phase 3). Differences from the design above:
+
+- Read order: oldest link first, then by target id, not by label. `created_at` has a precision
+  of one second, so links made together come back by id: the order carries no meaning, and the
+  tests compare sets.
+- The store has one new method, `replaceLinks()`; `referencingIds()`, `countReferencing()` and
+  `clearReferences()` accept a many-to-many field too (for the last one, it removes the links),
+  so the inverse lists and the delete rules read both kinds the same way. Links are read through
+  `LinkSource` (`RecordTable::links()`), the shape phase 4 will implement a second time.
+- `ReferenceCheckerInterface::missing()` checks every linked id in one query.
+- The form uses the ids as choices, with a `choice_label`: two linked records sharing a label must
+  both stay chosen, which a label-keyed choice list would lose.
+- `created_by` of a link stays null, as it does on records: nothing sets it yet.
+- The link table naming moved to `App\Shared\Database\DataSchema::linkTable()`, shared by the
+  Schema and Record modules.
 
 ## Out of scope
 

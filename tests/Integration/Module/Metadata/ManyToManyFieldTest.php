@@ -8,8 +8,6 @@ use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\Exception\MetadataException;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
-use App\Module\Record\Contract\Dto\RecordInput;
-use App\Module\Record\Contract\RecordManagerInterface;
 use App\Module\Schema\Contract\SchemaSynchronizerInterface;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -179,22 +177,12 @@ final class ManyToManyFieldTest extends KernelTestCase
         self::assertFalse($this->tableExists('c_contact'));
     }
 
-    public function testRecordsLeaveTheLinksAloneForNow(): void
-    {
-        $this->createTags(['target' => 'tag'], required: true);
-        $records = self::getContainer()->get(RecordManagerInterface::class);
-
-        $anna = $records->create(new RecordInput('contact', ['full_name' => 'Anna Rossi']));
-
-        self::assertSame(['full_name' => 'Anna Rossi'], $anna->values);
-    }
-
     /**
      * @param array<string, mixed> $settings
      */
-    private function createTags(array $settings, bool $required = false): void
+    private function createTags(array $settings): void
     {
-        $this->manager->createField('contact', 'tags', 'many_to_many', 'Tags', required: $required, settings: $settings);
+        $this->manager->createField('contact', 'tags', 'many_to_many', 'Tags', settings: $settings);
     }
 
     private function assertRefused(callable $change, string $message): void

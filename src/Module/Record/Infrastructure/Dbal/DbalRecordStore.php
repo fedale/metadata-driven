@@ -9,6 +9,7 @@ use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Domain\Exception\UniqueValueConflict;
 use App\Module\Record\Domain\Repository\RecordStore;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\ParameterType;
@@ -90,7 +91,7 @@ final class DbalRecordStore implements RecordStore
         );
         $row = $this->connection->fetchAssociative($sql, [$id], [Types::GUID]);
 
-        return false === $row ? null : $this->table->hydrate($object, $row);
+        return false === $row ? null : $this->table->hydrate($object, $row, $this->linksOf($object, [$id])[$id] ?? []);
     }
 
     public function latest(ObjectDefinitionDto $object, int $limit): array
@@ -104,17 +105,60 @@ final class DbalRecordStore implements RecordStore
             $this->table->quote('id'),
         );
         $rows = $this->connection->fetchAllAssociative($sql, [$limit], [ParameterType::INTEGER]);
+        $links = $this->linksOf($object, array_values(array_filter(array_column($rows, 'id'), is_string(...))));
 
-        return array_map(fn (array $row): RecordOutput => $this->table->hydrate($object, $row), $rows);
+        return array_map(
+            fn (array $row): RecordOutput => $this->table->hydrate($object, $row, \is_string($row['id'] ?? null) ? ($links[$row['id']] ?? []) : []),
+            $rows,
+        );
+    }
+
+    public function replaceLinks(ObjectDefinitionDto $object, FieldDefinitionDto $field, string $recordId, array $targetIds, \DateTimeImmutable $now): void
+    {
+        $links = $this->table->links($object, $field);
+        if ([] === $targetIds) {
+            $this->connection->executeStatement(
+                \sprintf('DELETE FROM %s WHERE %s = ?', $links->table, $links->recordColumn),
+                [$recordId],
+                [Types::GUID],
+            );
+
+            return;
+        }
+
+        $this->connection->executeStatement(
+            \sprintf('DELETE FROM %s WHERE %s = ? AND %s NOT IN (?)', $links->table, $links->recordColumn, $links->targetColumn),
+            [$recordId, $targetIds],
+            [Types::GUID, ArrayParameterType::STRING],
+        );
+        // The links already there keep their date.
+        $params = [];
+        $types = [];
+        foreach ($targetIds as $targetId) {
+            array_push($params, $recordId, $targetId, $now);
+            array_push($types, Types::GUID, Types::GUID, Types::DATETIME_IMMUTABLE);
+        }
+        $this->connection->executeStatement(
+            \sprintf(
+                'INSERT INTO %s (%s, %s, %s) VALUES %s ON CONFLICT DO NOTHING',
+                $links->table,
+                $links->recordColumn,
+                $links->targetColumn,
+                $this->table->quote('created_at'),
+                implode(', ', array_fill(0, \count($targetIds), '(?, ?, ?)')),
+            ),
+            $params,
+            $types,
+        );
     }
 
     public function referencingIds(ObjectDefinitionDto $object, FieldDefinitionDto $field, string $targetId, ?int $limit = null): array
     {
         $sql = \sprintf(
-            'SELECT %s FROM %s WHERE %s = ? AND %s IS NULL ORDER BY %s DESC, %s DESC',
+            'SELECT %s FROM %s WHERE %s AND %s IS NULL ORDER BY %s DESC, %s DESC',
             $this->table->column('id'),
             $this->table->table($object),
-            $this->table->column($field->columnName),
+            $this->pointsAt($object, $field),
             $this->table->column('deleted_at'),
             $this->table->column('created_at'),
             $this->table->column('id'),
@@ -132,9 +176,9 @@ final class DbalRecordStore implements RecordStore
     public function countReferencing(ObjectDefinitionDto $object, FieldDefinitionDto $field, string $targetId): int
     {
         $sql = \sprintf(
-            'SELECT COUNT(*) FROM %s WHERE %s = ? AND %s IS NULL',
+            'SELECT COUNT(*) FROM %s WHERE %s AND %s IS NULL',
             $this->table->table($object),
-            $this->table->column($field->columnName),
+            $this->pointsAt($object, $field),
             $this->table->column('deleted_at'),
         );
         $count = $this->connection->fetchOne($sql, [$targetId], [Types::GUID]);
@@ -144,6 +188,32 @@ final class DbalRecordStore implements RecordStore
 
     public function clearReferences(ObjectDefinitionDto $object, FieldDefinitionDto $field, string $targetId, \DateTimeImmutable $now): void
     {
+        if (!$field->storesColumn()) {
+            $live = \sprintf('SELECT %s FROM %s WHERE %s IS NULL', $this->table->column('id'), $this->table->table($object), $this->table->column('deleted_at'));
+            $links = $this->table->links($object, $field);
+            $this->connection->executeStatement(
+                \sprintf(
+                    'UPDATE %s SET %s = ? WHERE %s IS NULL AND %s IN (SELECT %s FROM %s WHERE %s = ?)',
+                    $this->table->table($object),
+                    $this->table->column('updated_at'),
+                    $this->table->column('deleted_at'),
+                    $this->table->column('id'),
+                    $links->recordColumn,
+                    $links->table,
+                    $links->targetColumn,
+                ),
+                [$now, $targetId],
+                [Types::DATETIME_IMMUTABLE, Types::GUID],
+            );
+            $this->connection->executeStatement(
+                \sprintf('DELETE FROM %s WHERE %s = ? AND %s IN (%s)', $links->table, $links->targetColumn, $links->recordColumn, $live),
+                [$targetId],
+                [Types::GUID],
+            );
+
+            return;
+        }
+
         $sql = \sprintf(
             'UPDATE %1$s SET %2$s = NULL, %3$s = ? WHERE %2$s = ? AND %4$s IS NULL',
             $this->table->table($object),
@@ -152,6 +222,70 @@ final class DbalRecordStore implements RecordStore
             $this->table->column('deleted_at'),
         );
         $this->connection->executeStatement($sql, [$now, $targetId], [Types::DATETIME_IMMUTABLE, Types::GUID]);
+    }
+
+    /**
+     * The condition "the record points at the bound target id": its relation column, or one of
+     * its links.
+     */
+    private function pointsAt(ObjectDefinitionDto $object, FieldDefinitionDto $field): string
+    {
+        if ($field->storesColumn()) {
+            return $this->table->column($field->columnName).' = ?';
+        }
+        $links = $this->table->links($object, $field);
+
+        return \sprintf(
+            '%s IN (SELECT %s FROM %s WHERE %s = ?)',
+            $this->table->column('id'),
+            $links->recordColumn,
+            $links->table,
+            $links->targetColumn,
+        );
+    }
+
+    /**
+     * The live linked ids of every many-to-many field of some records, oldest link first. The
+     * delete rules remove the links to a deleted record (or refuse the deletion); one left over
+     * all the same is not shown.
+     *
+     * @param list<string> $recordIds
+     *
+     * @return array<string, array<string, list<string>>> record id => field name => linked ids
+     */
+    private function linksOf(ObjectDefinitionDto $object, array $recordIds): array
+    {
+        $result = [];
+        if ([] === $recordIds) {
+            return $result;
+        }
+        foreach ($object->fields as $name => $field) {
+            if ($field->storesColumn()) {
+                continue;
+            }
+            $links = $this->table->links($object, $field);
+            $rows = $this->connection->fetchAllNumeric(
+                \sprintf(
+                    'SELECT l.%1$s, l.%2$s FROM %3$s l JOIN %4$s t ON t.%5$s = l.%2$s AND t.%6$s IS NULL WHERE l.%1$s IN (?) ORDER BY l.%7$s, l.%2$s',
+                    $links->recordColumn,
+                    $links->targetColumn,
+                    $links->table,
+                    $links->targetTable,
+                    $this->table->quote('id'),
+                    $this->table->quote('deleted_at'),
+                    $this->table->quote('created_at'),
+                ),
+                [$recordIds],
+                [ArrayParameterType::STRING],
+            );
+            foreach ($rows as [$recordId, $targetId]) {
+                if (\is_string($recordId) && \is_string($targetId)) {
+                    $result[$recordId][$name][] = $targetId;
+                }
+            }
+        }
+
+        return $result;
     }
 
     /**

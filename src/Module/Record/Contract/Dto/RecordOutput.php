@@ -8,7 +8,9 @@ namespace App\Module\Record\Contract\Dto;
  * Read-only view of a stored record, with PHP typed values.
  *
  * Value types per field type: text/email/url/tel/select string, integer number int,
- * decimal number numeric string, boolean bool, date \DateTimeImmutable.
+ * decimal number numeric string, boolean bool, date \DateTimeImmutable, relation the id
+ * (string), many-to-many the linked ids (list<string>, empty for none; oldest link first, then
+ * by id: the order carries no meaning).
  */
 final readonly class RecordOutput
 {

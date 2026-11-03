@@ -91,8 +91,9 @@ RecordInput (raw values: form, API)
   → denormalization by each field type (strings to dates, numbers, ids)
   → MetadataRecordValidator (Symfony constraints from the field types, required, unique, references)
   → conversion to the stored form by each field type (a password becomes its hash)
-  → RecordStore (DBAL, every identifier quoted)
-  → RecordOutput (typed values)
+  → RecordStore (DBAL, every identifier quoted): the columns, then the links of the
+    many-to-many fields, in one transaction
+  → RecordOutput (typed values; a many-to-many field holds the linked ids)
 ```
 
 Forms carry no validation of their own: they only convert input, so every rule lives once, in the
