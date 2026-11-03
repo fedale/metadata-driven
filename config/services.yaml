@@ -36,3 +36,14 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+when@test:
+    services:
+        # Nothing uses the file storage yet, so the container removes it and its Flysystem
+        # storage. Drop these once the "file" field type depends on them.
+        test.file_storage:
+            alias: App\Module\File\Contract\FileStorageInterface
+            public: true
+        test.record_files.storage:
+            alias: record_files.storage
+            public: true

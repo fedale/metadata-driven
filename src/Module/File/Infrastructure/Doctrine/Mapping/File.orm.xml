@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <entity name="App\Module\File\Domain\Model\File" table="file" schema="core">
+        <indexes>
+            <index name="idx_file_storage_key" columns="storage_key"/>
+            <index name="idx_file_sha256" columns="sha256"/>
+        </indexes>
+
+        <id name="id" type="uuid"/>
+
+        <field name="storageKey" length="100"/>
+        <field name="originalName" length="255"/>
+        <field name="mimeType" length="127"/>
+        <field name="size" type="bigint"/>
+        <field name="sha256" length="64">
+            <options>
+                <option name="fixed">true</option>
+            </options>
+        </field>
+        <field name="width" type="integer" nullable="true"/>
+        <field name="height" type="integer" nullable="true"/>
+        <field name="createdAt" type="datetime_immutable"/>
+    </entity>
+</doctrine-mapping>

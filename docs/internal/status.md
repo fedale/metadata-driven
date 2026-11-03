@@ -90,6 +90,10 @@ Things that are not obvious from a single file, and that are easy to break.
   every request, and a role change signs the user out (`isEqualTo` compares sorted roles). The RBAC
   cache is disabled in the test env (`config/packages/fedale_rbac.yaml`) because tests roll back
   transactions.
+- **Files** (`File` module): bytes in the `record_files` Flysystem storage under
+  `<sha256[0:2]>/<sha256>`, one `core.file` row per stored file. Several rows may share the bytes,
+  so whatever deletes bytes must first check that no row uses the key. The tests use the memory
+  adapter (`when@test` in `config/packages/flysystem.yaml`).
 - **Security forms**: the stateless CSRF token input needs `data-controller="csrf-protection"` to
   work in a real browser.
 
@@ -105,7 +109,10 @@ rename/archive/restore/purge of objects and fields.
 
 ## Open
 
-- **Work queue: empty.** Ask the user what comes next.
+- **Work queue: the `file` field type**, plan in [file-type-plan.md](file-type-plan.md). Phase 1
+  (storage and `core.file`) is done on `feature/file-field-type`, awaiting the user's review
+  before phase 2 (the type in the record form). Open decisions in the plan: production storage,
+  several files per record.
 - **CSV import — on standby by the user's choice.** Plan: (A) a service plus `record:import` CLI
   with `--dry-run` and `--key`, all-or-nothing with a two-pass check; (B) a web wizard; (C) async
   with Messenger. gridview-bundle has no import feature to reuse.

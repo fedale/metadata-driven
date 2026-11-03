@@ -7,7 +7,7 @@ from `fedale/gridview-bundle`, the runtime settings from `fedale/setting-bundle`
 
 | Schema | Holds | Managed by |
 |---|---|---|
-| `core` | Object, field, view and composite form definitions, the schema change log, users and profiles, the settings of `fedale/setting-bundle`, the RBAC tables (`auth_*`) of `fedale/rbac-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
+| `core` | Object, field, view and composite form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the settings of `fedale/setting-bundle`, the RBAC tables (`auth_*`) of `fedale/rbac-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
 | `data` | One table per object, `c_<object>`, holding the records | The Schema module, from the metadata |
 
 Every connection sets `search_path` to `core, public` (`CoreSearchPathMiddleware`), so the tables
@@ -18,6 +18,11 @@ CLI replaces the URL with the one from the Docker container.
 
 Records are read and written with DBAL, never as ORM entities: their tables do not exist when the
 code is written.
+
+The bytes of stored files are in neither schema: they are in the `record_files` storage of
+`league/flysystem-bundle` (`config/packages/flysystem.yaml`), on the local disk under
+`var/storage/files` by default and in memory in the tests. Production may point it at S3 or any
+Flysystem adapter by configuration only.
 
 ## Modules
 
@@ -45,6 +50,7 @@ A module only sees the `Contract` of the other modules. Two Deptrac rulesets enf
 | Admin | The no-code builder at `/admin`, on `MetadataManagerInterface` | Metadata, FieldType, Schema |
 | User | Users and their profiles (with their language), sign-in (Symfony Security), `user:create` | — |
 | Access | The permissions of objects and admin, checked through `fedale/rbac-bundle`; `access:sync` | Metadata |
+| File | Stored files: their bytes in the `record_files` Flysystem storage, keyed by their SHA-256 (the same bytes are stored once), their metadata in `core.file`, the type detected from the content; `FileStorageInterface` | — |
 | Settings | Reserved for the next phases | |
 
 Modules that must react to another one without depending on it go through **ports**: the
