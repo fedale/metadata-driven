@@ -4,3 +4,6 @@ doctrine_migrations:
         # as migrations classes should NOT be autoloaded
         'DoctrineMigrations': '%kernel.project_dir%/migrations'
     enable_profiler: false
+    # doctrine_migration_versions lands in core through the search_path (CoreSearchPathMiddleware).
+    # Do not qualify it as core.doctrine_migration_versions: DBAL lists the tables of the current
+    # schema unqualified, so the storage would never find it and would try to create it again.

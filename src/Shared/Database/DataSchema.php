@@ -6,7 +6,7 @@ namespace App\Shared\Database;
 
 /**
  * PostgreSQL schema holding the record tables generated from metadata.
- * Static core tables live in the "core" schema and are managed by Doctrine migrations.
+ * Static tables live in the "core" schema ({@see CoreSchema}) and are managed by Doctrine migrations.
  */
 final class DataSchema
 {
