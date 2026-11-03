@@ -15,12 +15,15 @@ up: ## Start the database container
 down: ## Stop the containers
 	docker compose down
 
+# The core schema must exist before the first migration: it holds core.doctrine_migration_versions.
 db: ## Create the dev database and run migrations
 	$(CONSOLE) doctrine:database:create --if-not-exists
+	$(CONSOLE) dbal:run-sql --quiet 'CREATE SCHEMA IF NOT EXISTS core'
 	$(CONSOLE) doctrine:migrations:migrate --no-interaction --allow-no-migration
 
 db-test: ## Create the test database and run migrations
 	$(CONSOLE) --env=test doctrine:database:create --if-not-exists
+	$(CONSOLE) --env=test dbal:run-sql --quiet 'CREATE SCHEMA IF NOT EXISTS core'
 	$(CONSOLE) --env=test doctrine:migrations:migrate --no-interaction --allow-no-migration
 
 cs: ## Check coding standard

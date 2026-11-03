@@ -470,7 +470,7 @@ changes, date).
 | Target | What it does |
 |---|---|
 | `make up` / `make down` | Start / stop the PostgreSQL container |
-| `make db` | Create the dev database and run the migrations of the `core` schema |
+| `make db` | Create the dev database and the `core` schema, then run the migrations |
 | `make db-test` | The same for the test database |
 | `make assets` | Compile the Sass stylesheets |
 | `make cs` / `make cs-fix` | Check / fix the coding standard |

@@ -7,9 +7,14 @@ from `fedale/gridview-bundle`, the runtime settings from `fedale/setting-bundle`
 
 | Schema | Holds | Managed by |
 |---|---|---|
-| `core` | Object, field, view and composite form definitions, the schema change log, users and profiles | Doctrine ORM and migrations |
+| `core` | Object, field, view and composite form definitions, the schema change log, users and profiles, the settings of `fedale/setting-bundle`, the RBAC tables (`auth_*`) of `fedale/rbac-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
 | `data` | One table per object, `c_<object>`, holding the records | The Schema module, from the metadata |
-| `public` | Settings of `fedale/setting-bundle`, RBAC tables (`auth_*`) of `fedale/rbac-bundle` | Doctrine migrations |
+
+Every connection sets `search_path` to `core, public` (`CoreSearchPathMiddleware`), so the tables
+whose mapping names no schema (the bundles', Doctrine's migration table) land in `core` too.
+`public` holds no table, only the `pg_trgm` extension. The middleware sets the path itself
+because `DATABASE_URL` can't: `pdo_pgsql` ignores the libpq `options` parameter, and the Symfony
+CLI replaces the URL with the one from the Docker container.
 
 Records are read and written with DBAL, never as ORM entities: their tables do not exist when the
 code is written.
