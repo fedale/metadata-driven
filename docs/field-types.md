@@ -15,6 +15,7 @@ missing keys take their default, unknown keys are refused.
 | `url` | none | `varchar(2048)` | URL input | text (shown as a link) |
 | `select` | `options` (required), `default`, `display` (`dropdown`) | `varchar(100)` | select or buttons side by side | choice |
 | `password` | `minLength` (8), `requireMixedCase`, `requireDigit`, `requireSymbol`, `confirm`, `strengthMeter`, `revealToggle` (all false) | `varchar(255)`, a hash | password input, asked twice with `confirm` | none: never shown |
+| `file` | `accept` (any type), `maxSize` (10 MB), `image` (false) | `uuid` + foreign key to `core.file` | the current file, an upload input, "Remove the file" | none (✓ when there is a file) |
 | `relation` | `target` (required), `onDelete` (`set_null`), `inverseName`, `inverseLabel` | `uuid` + foreign key | autocomplete | choice of records |
 
 Settings added to a type after a field was created take their default on that field: a boolean
@@ -53,6 +54,7 @@ The settings of an existing field can change, from its admin page (section **Set
 | `boolean` | — | `default`, `display` |
 | `select` | — | `options`, `default`, `display` |
 | `password` | — | every setting |
+| `file` | — | every setting (they check the files uploaded from then on) |
 | `relation` | `target`, `onDelete`, `inverseName` | `inverseLabel`, `dependsOn`, `dependsVia` |
 
 - **Options** of a `select` can be added, relabelled and reordered at will. One can be removed
@@ -243,6 +245,42 @@ A secret, checked as typed and stored as a one-way hash (the `record_secret` has
 - A password cannot be **unique**, **searched** (`metadata:object:search`) or the **label** of
   the records (`metadata:object:label`): the hash is salted, and a search or a sort on it would
   leak it. These are refused when configured, and the grid refuses to filter or sort on it.
+
+## `file`
+
+A document or an image uploaded with the record: a product's photo, its manual, a signed
+contract.
+
+| Setting | Type | Rule |
+|---|---|---|
+| `accept` | string | MIME types separated by commas, wildcards allowed: `application/pdf, image/*`. Empty (the default): any type |
+| `maxSize` | int | the largest file, in MB, from 1 to 100 (default 10). 1 MB is 1,000,000 bytes |
+| `image` | bool | images only, checked to be real images (JPEG, PNG, GIF, WebP...); `accept` may then name image types only |
+
+```json
+{"accept": "application/pdf", "maxSize": 5}
+```
+
+- **The content decides the type**, not the name: a text file renamed `manual.pdf` is refused
+  with "The mime type of the file is invalid ("text/plain"). Allowed mime types are
+  "application/pdf".". `accept` also goes to the browser, so its file picker offers the right
+  files first; that is a hint, the server checks every file.
+- **The server's limits apply first.** PHP refuses an upload over `upload_max_filesize` or
+  `post_max_size` before the field sees it; keep those above the largest `maxSize`.
+- **The form** shows the current file (its name and size), an input to upload another one
+  ("Choose a file to replace the current one."), and, when the field is not required, *Remove
+  the file*. Saved without a new file, the record keeps the one it has. A required file can be
+  replaced, never removed.
+- **Stored files never change.** A new upload is a new file; the one it replaces stays in the
+  storage (see [Architecture](architecture.md#two-schemas)). The column holds the id of a row of
+  `core.file`, with a foreign key that refuses to delete a file a record still points at.
+- **From code**, a new file is a `FileUpload` (the path of a readable local file and the name to
+  show); the id of a stored file is accepted as the value the record already holds, and an id
+  of no stored file is refused ("This file does not exist.").
+- A file field cannot be **unique**: every upload is a new file. It is not searched, and the grid
+  shows ✓ when the record has a file, with no filter or sort.
+- **Not yet**: downloading the file from the record or the grid, its name and a thumbnail in the
+  grid, a file field in a composite form section, and removing the files no record uses any more.
 
 ## `relation`
 

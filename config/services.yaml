@@ -39,11 +39,8 @@ services:
 
 when@test:
     services:
-        # Nothing uses the file storage yet, so the container removes it and its Flysystem
-        # storage. Drop these once the "file" field type depends on them.
-        test.file_storage:
-            alias: App\Module\File\Contract\FileStorageInterface
-            public: true
+        # The Flysystem storage is injected in one service only, so the container inlines and
+        # removes it; the file tests read the stored bytes from it.
         test.record_files.storage:
             alias: record_files.storage
             public: true

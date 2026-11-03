@@ -95,6 +95,12 @@ interface FieldTypeInterface
     public function isWriteOnly(): bool;
 
     /**
+     * Whether a field of this type may be unique. Not a write-only one (its value cannot be
+     * compared), nor a file (every upload is a new file).
+     */
+    public function supportsUnique(): bool;
+
+    /**
      * Converts a valid, denormalized value to what the column stores (e.g. a password hash).
      * Called after validation, so the constraints see the value as typed.
      *

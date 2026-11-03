@@ -171,6 +171,12 @@ a:hover { color: var(--gv-color-link-hover); }
 .md-form legend, .md-sheet legend { padding: 0 .35rem; font-weight: 600; }
 .md-delete-form { margin-top: 2rem; }
 
+/* A file field: the current file above the input that replaces it. */
+.md-file { display: grid; gap: .4rem; }
+.md-file__current { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; margin: 0; }
+.md-file__name { font-weight: 600; overflow-wrap: anywhere; }
+.md-file__size { color: var(--gv-color-text-muted); font-size: .875em; }
+
 /* ── Form sheets: a header with the actions, an index on the side, numbered cards ── */
 
 .md-sheet__header {

@@ -126,7 +126,7 @@ deptrac:
     Metadata: [MetadataContract, Shared]
     MetadataContract: [Shared]
 
-    FieldType: [FieldTypeContract, MetadataContract, Shared]
+    FieldType: [FieldTypeContract, MetadataContract, FileContract, Shared]
     FieldTypeContract: [MetadataContract, Shared]
 
     Schema: [SchemaContract, MetadataContract, FieldTypeContract, SearchContract, Shared]
@@ -138,7 +138,7 @@ deptrac:
     Search: [SearchContract, MetadataContract, FieldTypeContract, Shared]
     SearchContract: [MetadataContract, Shared]
 
-    Record: [RecordContract, MetadataContract, FieldTypeContract, ValidationContract, SearchContract, AccessContract, Shared]
+    Record: [RecordContract, MetadataContract, FieldTypeContract, ValidationContract, SearchContract, AccessContract, FileContract, Shared]
     RecordContract: [MetadataContract, Shared]
 
     View: [ViewContract, MetadataContract, FieldTypeContract, RecordContract, SearchContract, AccessContract, Shared]

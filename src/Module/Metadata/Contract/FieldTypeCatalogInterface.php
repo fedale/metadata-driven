@@ -52,6 +52,12 @@ interface FieldTypeCatalogInterface
     public function isWriteOnly(string $type): bool;
 
     /**
+     * Whether a field of this type may be unique: not a write-only one, nor one whose value
+     * is a reference that is new on every write (a file).
+     */
+    public function supportsUnique(string $type): bool;
+
+    /**
      * Validates the given settings and merges them with the type defaults.
      *
      * @param array<string, mixed> $settings

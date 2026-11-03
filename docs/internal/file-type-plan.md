@@ -1,6 +1,7 @@
 # Plan: the `file` field type
 
-Status: **phase 1 done** (branch `feature/file-field-type`), awaiting review before phase 2.
+Status: **phases 1 and 2 done** (branch `feature/file-field-type`), awaiting review before
+phase 3.
 Discussed with the user on 2026-11-03.
 
 A field type that stores a file (an image, a PDF, any document) on a record: a product's photo,
@@ -112,11 +113,28 @@ the first version, if the child object proves heavy in practice.
    by `Infrastructure/Flysystem/FlysystemFileStorage`), the `record_files` storage (local disk,
    memory in the tests), the migration, `store()` / `find()` / `readStream()`, deduplication by
    hash, names reduced to their base name. Integration tests in
-   `tests/Integration/Module/File/FileStorageTest.php`. Until phase 2 uses the storage, a
-   `when@test` alias in `config/services.yaml` keeps the container from removing it: drop it
-   then.
-2. **The type**: settings, validation, upload in the record form, keep on empty, remove.
-   Functional tests: upload, refuse a wrong MIME type, refuse an oversized file, keep on update.
+   `tests/Integration/Module/File/FileStorageTest.php`. A `when@test` alias in
+   `config/services.yaml` keeps the Flysystem storage reachable from the tests.
+2. **The type** — done. As built:
+   - `FileFieldType` (`accept` is a comma-separated string, as the HTML attribute; `maxSize` is
+     an integer in MB, 1 to 100; `image`). Values: a `FileUpload` DTO (FieldType Contract: path
+     and original name, so the Domain never sees `UploadedFile`), the id of a stored file (must
+     exist in `core.file`), or null.
+   - The File/Image constraints are wrapped in `NewFile` (Domain) / `NewFileValidator`
+     (Infrastructure): they apply to a `FileUpload` only, never to a stored id.
+   - `ColumnSpec::$referencesCoreTable`: the Schema module adds an index and a RESTRICT foreign
+     key to `core.file`, named like the relation ones.
+   - `FieldTypeInterface::supportsUnique()` (and the catalog's): a file field cannot be unique.
+   - `RecordFileType` (Record UI): the current file, the upload input, "Remove the file" when not
+     required. The current id comes from the form options, never from the request. Theme block
+     in `templates/form/record_fields.html.twig`, styles `md-file` in `app.css`.
+   - Grid: ✓ when there is a file, no sort or filter, until phase 4.
+   - Tests: `FileFieldTypeTest` (unit), `FileFieldsInRecordsTest` (integration),
+     `FileFieldControllerTest` (functional).
+   - SVG: not refused at upload, after all. Phase 3 must serve anything that is not a raster
+     image as an attachment, with `nosniff`, so an SVG never runs in the app's origin.
+   - Open for later: a `file` field can still be chosen as the label of the records
+     (`metadata:object:label`), which would show an id.
 3. **Serving**: `FileController`, permissions, headers, thumbnails.
 4. **Grid and export**: `FileRenderer`, export as file name.
 5. **GC**: `metadata:files:gc`, with tests on orphans and on archived fields.

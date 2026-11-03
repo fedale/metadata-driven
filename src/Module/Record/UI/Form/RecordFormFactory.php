@@ -7,6 +7,7 @@ namespace App\Module\Record\UI\Form;
 use App\Module\FieldType\Contract\Dto\Widget;
 use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
+use App\Module\File\Contract\FileStorageInterface;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ServiceFieldDto;
@@ -48,6 +49,7 @@ final class RecordFormFactory
         private readonly FieldTypeRegistryInterface $fieldTypes,
         private readonly RecordLookupInterface $lookup,
         private readonly UrlGeneratorInterface $urls,
+        private readonly FileStorageInterface $files,
     ) {
     }
 
@@ -92,7 +94,7 @@ final class RecordFormFactory
             if ($requiredHere && WidgetKind::Checkbox === $widget->kind) {
                 $options['required'] = true;
             }
-            if ($placeholders && !\in_array($widget->kind, [WidgetKind::Choice, WidgetKind::Relation, WidgetKind::Checkbox], true)) {
+            if ($placeholders && !\in_array($widget->kind, [WidgetKind::Choice, WidgetKind::Relation, WidgetKind::Checkbox, WidgetKind::File], true)) {
                 $options['attr'] = (\is_array($options['attr'] ?? null) ? $options['attr'] : []) + ['placeholder' => $field->label.($field->isRequired ? ' *' : '')];
             }
             $options += ['label' => $field->label];
@@ -214,7 +216,7 @@ final class RecordFormFactory
     }
 
     /**
-     * @return array{class-string<FormType|TextType|TextareaType|IntegerType|NumberType|CheckboxType|DateType|DateTimeType|EmailType|ChoiceType|PasswordType|RepeatedType|UrlType|TelType>, array<string, mixed>}
+     * @return array{class-string<FormType|TextType|TextareaType|IntegerType|NumberType|CheckboxType|DateType|DateTimeType|EmailType|ChoiceType|PasswordType|RepeatedType|UrlType|TelType|RecordFileType>, array<string, mixed>}
      */
     private function control(FieldDefinitionDto $field, Widget $widget, mixed $value, bool $isNew, mixed $parentValue = null): array
     {
@@ -250,7 +252,27 @@ final class RecordFormFactory
                 // A cascade lists the few records of the chosen parent as soon as it opens.
                 'min_characters' => null === $field->relation()?->dependsOn ? 1 : 0,
             ]],
+            WidgetKind::File => $this->file($field, $widget, $value),
         };
+    }
+
+    /**
+     * The current file is looked up here, from the stored value: the form never takes a file id
+     * from the request.
+     *
+     * @return array{class-string<RecordFileType>, array<string, mixed>}
+     */
+    private function file(FieldDefinitionDto $field, Widget $widget, mixed $value): array
+    {
+        $current = \is_string($value) ? $this->files->find($value) : null;
+
+        return [RecordFileType::class, [
+            'required' => $field->isRequired,
+            'current' => $current,
+            'accept' => \is_string($widget->options['accept'] ?? null) ? $widget->options['accept'] : '',
+            'help' => null !== $current ? 'form.file_replace' : 'form.file_max_size',
+            'help_translation_parameters' => ['%size%' => \is_int($widget->options['maxSize'] ?? null) ? $widget->options['maxSize'] : 0],
+        ]];
     }
 
     /**

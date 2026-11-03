@@ -1,0 +1,20 @@
+{#
+  Controls of the record forms that Symfony has no block for, on top of the bundle's gv theme
+  (config/packages/twig.yaml).
+#}
+
+{#- A file field (RecordFileType): the current file, "Remove" when the field may be empty, and
+    the input to upload another one. -#}
+{%- block record_file_widget -%}
+    <div {{ block('widget_container_attributes') }}>
+        {%- if current_file -%}
+            <p class="md-file__current">
+                <span class="md-file__name">{{ current_file.originalName }}</span>
+                <span class="md-file__size">{{ current_size }}</span>
+            </p>
+            {%- if form.remove is defined -%}{{ form_row(form.remove) }}{%- endif -%}
+        {%- endif -%}
+        {{- form_widget(form.upload) -}}
+        {{- form_errors(form.upload) -}}
+    </div>
+{%- endblock record_file_widget %}

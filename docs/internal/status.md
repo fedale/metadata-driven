@@ -93,7 +93,10 @@ Things that are not obvious from a single file, and that are easy to break.
 - **Files** (`File` module): bytes in the `record_files` Flysystem storage under
   `<sha256[0:2]>/<sha256>`, one `core.file` row per stored file. Several rows may share the bytes,
   so whatever deletes bytes must first check that no row uses the key. The tests use the memory
-  adapter (`when@test` in `config/packages/flysystem.yaml`).
+  adapter (`when@test` in `config/packages/flysystem.yaml`). A file field's value is a
+  `FileUpload` (new), the id of a stored file (kept) or null; `toStorage()` stores the upload,
+  so a write that fails after it leaves an orphaned file (a `core.file` row, or only its bytes when
+  a transaction rolls back) for the future GC, never a record pointing at nothing.
 - **Security forms**: the stateless CSRF token input needs `data-controller="csrf-protection"` to
   work in a real browser.
 
@@ -109,9 +112,9 @@ rename/archive/restore/purge of objects and fields.
 
 ## Open
 
-- **Work queue: the `file` field type**, plan in [file-type-plan.md](file-type-plan.md). Phase 1
-  (storage and `core.file`) is done on `feature/file-field-type`, awaiting the user's review
-  before phase 2 (the type in the record form). Open decisions in the plan: production storage,
+- **Work queue: the `file` field type**, plan in [file-type-plan.md](file-type-plan.md). Phases 1
+  (storage and `core.file`) and 2 (the type in the record form) are done on
+  `feature/file-field-type`, awaiting the user's review before phase 3 (serving the files). Open decisions in the plan: production storage,
   several files per record.
 - **CSV import — on standby by the user's choice.** Plan: (A) a service plus `record:import` CLI
   with `--dry-run` and `--key`, all-or-nothing with a two-pass check; (B) a web wizard; (C) async

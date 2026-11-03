@@ -85,7 +85,10 @@ final class RecordGridFactory
                 if ($type->isWriteOnly()) {
                     continue;
                 }
-                $columns[] = $this->column($field, $type->widget($field->settings))->label($field->label)->sortable();
+                $widget = $type->widget($field->settings);
+                $column = $this->column($field, $widget)->label($field->label);
+                // A file column holds an id: there is no order to sort it by.
+                $columns[] = WidgetKind::File === $widget->kind ? $column : $column->sortable();
             }
         } else {
             $columns = array_map(fn (GridColumnDto $column): AbstractColumnConfig => $this->viewColumn($object, $column), $grid->columns);
@@ -224,6 +227,7 @@ final class RecordGridFactory
             null === $value => '',
             WidgetKind::Relation === $widget->kind => \is_string($label = $row[$field->name.RecordGridSourceInterface::LABEL_SUFFIX] ?? null) ? $label : (\is_string($value) ? RecordLabels::fallback($value) : ''),
             WidgetKind::Choice === $widget->kind && \is_scalar($value) => $widget->choices()[(string) $value] ?? (string) $value,
+            WidgetKind::File === $widget->kind => '✓',
             \is_bool($value) => $value ? '✓' : '✗',
             $value instanceof \DateTimeInterface => $value->format(WidgetKind::DateTime === $widget->kind ? 'Y-m-d H:i' : 'Y-m-d'),
             \is_scalar($value) => (string) $value,
@@ -266,6 +270,9 @@ final class RecordGridFactory
                     optionLabel: 'label',
                     optionValue: 'id',
                 ),
+            // Whether the record has a file; its name and a link come with the file renderer.
+            WidgetKind::File => TextColumn::new($name)
+                ->value(static fn (array $row): string => \is_string($row[$name] ?? null) ? '✓' : ''),
         };
     }
 

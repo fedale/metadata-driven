@@ -31,6 +31,9 @@ form:
     choose_option: Scegli un'opzione
     choose_record: Scegli un elemento
     keep_password: Lascia vuoto per mantenere la password attuale.
+    file_max_size: 'Fino a %size% MB.'
+    file_replace: Scegli un file per sostituire quello attuale.
+    file_remove: Rimuovi il file
     repeat: 'Ripeti %label%'
     required_note: Campo obbligatorio
     index:

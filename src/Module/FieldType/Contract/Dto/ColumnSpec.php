@@ -14,6 +14,11 @@ final readonly class ColumnSpec
         public ?int $length = null,
         public ?int $precision = null,
         public ?int $scale = null,
+        /**
+         * A static table of the core schema whose "id" the column holds (e.g. "file"): the
+         * column gets an index and a foreign key that refuses to delete a row still in use.
+         */
+        public ?string $referencesCoreTable = null,
     ) {
     }
 }

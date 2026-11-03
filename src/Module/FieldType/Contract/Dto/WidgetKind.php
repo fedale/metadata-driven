@@ -24,4 +24,6 @@ enum WidgetKind: string
     case Choice = 'choice';
     /** A record of another object; option "target" is its object name. */
     case Relation = 'relation';
+    /** An uploaded file; options "accept" (MIME types), "maxSize" (in MB) and "image". */
+    case File = 'file';
 }

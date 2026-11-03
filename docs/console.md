@@ -86,7 +86,7 @@ metadata:field:create [--required] [--unique] [--settings=JSON] <object> <name> 
 |---|---|
 | `object` | The object's machine name |
 | `name` | The field's machine name; also the column name. `id`, `created_at`, `updated_at`, `created_by`, `deleted_at` are reserved. |
-| `type` | `text`, `number`, `boolean`, `date`, `email`, `tel`, `url`, `select`, `password` or `relation`: see [field types](field-types.md) |
+| `type` | `text`, `number`, `boolean`, `date`, `email`, `tel`, `url`, `select`, `password`, `file` or `relation`: see [field types](field-types.md) |
 | `label` | Shown in forms, grid headers and errors |
 | `--required` | A value is mandatory. Checked by validation; the column stays nullable, so a required field can be added to a table that already has records. |
 | `--unique` | Values must be unique: a unique index, plus a readable error on save. Values of deleted records stay reserved. |

@@ -76,6 +76,26 @@ final class AdminControllerTest extends WebTestCase
         self::assertFalse($this->registry()->getObject('book')->hasField('genre'));
     }
 
+    public function testAddsAFileFieldFromTheUi(): void
+    {
+        $this->createObject('product', 'Product', 'Products');
+        $this->addField('product', 'file', ['name' => 'manual', 'label' => 'Manual', 'settings' => ['accept' => 'application/pdf', 'maxSize' => '5']]);
+        self::assertResponseRedirects();
+
+        $manual = $this->registry()->getObject('product')->field('manual');
+        self::assertSame('file', $manual->type);
+        // assertEquals: JSONB does not keep the key order.
+        self::assertEquals(['accept' => 'application/pdf', 'maxSize' => 5, 'image' => false], $manual->settings);
+        $type = self::getContainer()->get(Connection::class)->fetchOne(
+            "SELECT data_type FROM information_schema.columns WHERE table_schema = 'data' AND table_name = 'c_product' AND column_name = 'manual'",
+        );
+        self::assertSame('uuid', $type);
+
+        $this->addField('product', 'file', ['name' => 'leaflet', 'label' => 'Leaflet', 'unique' => true]);
+        self::assertResponseStatusCodeSame(422);
+        self::assertAnySelectorTextContains('.gv-form-error', 'which cannot be unique');
+    }
+
     public function testRelationFieldsOfferTheObjectsAsTargets(): void
     {
         $this->createObject('author', 'Author', 'Authors');
