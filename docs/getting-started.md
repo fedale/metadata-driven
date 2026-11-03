@@ -5,7 +5,7 @@
 - PHP 8.4+, with `pdo_pgsql` and `intl`
 - Composer, the [Symfony CLI](https://symfony.com/download), Docker with Compose
 - The sibling bundles in the parent directory, installed as Composer path repositories (symlinks):
-  `../gridview-bundle` and `../setting-bundle`
+  `../gridview-bundle`, `../setting-bundle` and `../rbac-bundle`
 
 ## Run the app
 
