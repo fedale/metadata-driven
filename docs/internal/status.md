@@ -111,20 +111,24 @@ rename/archive/restore/purge of objects and fields.
 ## Open
 
 - **Work queue: many-to-many relations**, plan in [many-to-many-plan.md](many-to-many-plan.md),
-  reviewed by the user (field type `many_to_many`, read-only inverse). Phase 1 (storage: the
-  type, metadata rules, link tables `data.l_<object>__<field>`) committed on
-  `feature/many_to_many_storage`, not merged yet; phase 2 (records: write and read the links,
-  validation, delete rules, inverse lists, form, composite forms) committed on
-  `feature/many_to_many_records`, branched from it, not merged yet. Next is phase 3 (grid: cell,
-  filter, export, grid views), on a branch from `feature/many_to_many_records`.
+  reviewed by the user (field type `many_to_many`, read-only inverse). Phases 1 (storage: the
+  type, metadata rules, link tables `data.l_<object>__<field>`) and 2 (records: write and read the
+  links, validation, delete rules, inverse lists, form, composite forms) are merged into main.
+  Next is phase 3 (grid: cell, filter, export, grid views), on a branch from main.
+- **Blueprints — plan under review, not started**: [blueprints-plan.md](blueprints-plan.md)
+  (packaged, versioned models: a canonical format for every item, install, three-way upgrade,
+  seeds, online indexes, export). Its open decisions are listed at the top: the name, local
+  changes to installed items, hosting. Seeds with files need the `file` field type
+  (`file-type-plan.md`, on `feature/file-field-type`); text seeds build on the CSV import service
+  below.
 - **CSV import — on standby by the user's choice.** Plan: (A) a service plus `record:import` CLI
   with `--dry-run` and `--key`, all-or-nothing with a two-pass check; (B) a web wizard; (C) async
   with Messenger. gridview-bundle has no import feature to reuse.
 - From the form mock, not done: per-kind add buttons ("+ Titolo di studio" …), field machine names
   next to labels.
 - Admin UI strings are still English only (user pages are translated).
-- Remaining roadmap ideas (phase 9+): audit/timeline, REST API, YAML export/import of metadata,
-  multi-tenancy, roles/users admin UI, field-level permissions.
+- Remaining roadmap ideas (phase 9+): audit/timeline, REST API, YAML export/import of metadata
+  (now part of the blueprints plan), multi-tenancy, roles/users admin UI, field-level permissions.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle has pre-existing failures (`DoctrineChildRowResolverTest` x4,
   `ThemeRegistryTest`) and coding-standard issues that are not ours.
