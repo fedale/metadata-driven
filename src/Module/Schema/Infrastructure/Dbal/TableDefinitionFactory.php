@@ -6,6 +6,7 @@ namespace App\Module\Schema\Infrastructure\Dbal;
 
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
+use App\Module\Metadata\Contract\Dto\ManyToManyOnDelete;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\OnDelete;
 use App\Module\Metadata\Contract\Dto\RelationSettings;
@@ -21,18 +22,22 @@ use Doctrine\DBAL\Schema\Table;
 use Doctrine\DBAL\Types\Types;
 
 /**
- * Builds the desired DBAL table for an object definition.
+ * Builds the desired DBAL tables for an object definition: its own table, and one link table
+ * per many-to-many field.
  *
  * Field columns are always nullable: "required" is enforced by validation, so that a
  * required field can be added to a table that already holds records.
  *
- * The archived fields keep their columns (and indexes, and foreign keys): the table holds
- * their values until the field is purged.
+ * The archived fields keep their columns (and indexes, and foreign keys), and their link
+ * tables: the database holds their values until the field is purged.
  */
 final class TableDefinitionFactory
 {
     // PostgreSQL silently truncates longer identifiers.
     private const int MAX_IDENTIFIER_LENGTH = 63;
+    // "l_<object>__<field>": machine names never hold "__", so no two fields share a name.
+    private const string LINK_TABLE_PREFIX = 'l_';
+    private const string LINK_TABLE_SEPARATOR = '__';
 
     public function __construct(
         private readonly FieldTypeRegistryInterface $fieldTypes,
@@ -57,7 +62,10 @@ final class TableDefinitionFactory
                     ->create(),
             );
 
-        foreach ([...array_values($object->fields), ...array_values($object->archivedFields)] as $field) {
+        foreach ($this->allFields($object) as $field) {
+            if (!$field->storesColumn()) {
+                continue;
+            }
             $table->addColumn($this->fieldColumn($field));
             if ($field->isUnique) {
                 $table->addIndex($this->uniqueIndex($object->tableName, $field->columnName));
@@ -79,27 +87,139 @@ final class TableDefinitionFactory
     }
 
     /**
+     * The link tables of the many-to-many fields of an object, archived ones included, keyed
+     * by field id.
+     *
+     * A link is a row (record_id, target_id), the pair being the primary key; created_at and
+     * created_by say when and by whom it was made. The index on target_id serves the inverse
+     * lists, the delete rules and the filters, which all start from the target.
+     *
+     * @return array<string, Table>
+     */
+    public function buildLinkTables(ObjectDefinitionDto $object): array
+    {
+        $tables = [];
+        foreach ($this->allFields($object) as $field) {
+            $settings = $field->manyToMany();
+            if (null === $settings) {
+                continue;
+            }
+            $names = $this->linkNames($object, $field);
+            $tables[$field->id] = Table::editor()
+                ->setUnquotedName($names['table'], DataSchema::NAME)
+                ->addColumn($this->column('record_id', Types::GUID, notNull: true))
+                ->addColumn($this->column('target_id', Types::GUID, notNull: true))
+                ->addColumn($this->column('created_at', Types::DATETIME_IMMUTABLE, notNull: true))
+                ->addColumn($this->column('created_by', Types::GUID))
+                ->addPrimaryKeyConstraint(
+                    PrimaryKeyConstraint::editor()
+                        ->setUnquotedName($names['constraints']['pkey'])
+                        ->setUnquotedColumnNames('record_id', 'target_id')
+                        ->create(),
+                )
+                ->addIndex(Index::editor()
+                    ->setUnquotedName($names['indexes']['target'])
+                    ->setUnquotedColumnNames('target_id')
+                    ->create())
+                // Redundant with the primary key, but DBAL wants an index on the columns of
+                // each foreign key alone, and would otherwise add one named after a hash of the
+                // table name: a rename of the table would then drop and rebuild it.
+                ->addIndex(Index::editor()
+                    ->setUnquotedName($names['indexes']['record'])
+                    ->setUnquotedColumnNames('record_id')
+                    ->create())
+                // The records are soft deleted: these rules only act when rows are purged. A
+                // record purged takes its links with it; a linked record purged is refused
+                // while a restrict link holds it.
+                ->addForeignKeyConstraint($this->foreignKeyTo($names['constraints']['fk_record'], 'record_id', $object->tableName, ReferentialAction::CASCADE))
+                ->addForeignKeyConstraint($this->foreignKeyTo(
+                    $names['constraints']['fk_target'],
+                    'target_id',
+                    $this->targetTableName($settings->target),
+                    match ($settings->onDelete) {
+                        ManyToManyOnDelete::Unlink => ReferentialAction::CASCADE,
+                        ManyToManyOnDelete::Restrict => ReferentialAction::RESTRICT,
+                    },
+                ))
+                ->create();
+        }
+
+        return $tables;
+    }
+
+    /**
+     * The name of the link table of a many-to-many field, and of its indexes and constraints.
+     *
+     * @return array{table: non-empty-string, indexes: array{target: non-empty-string, record: non-empty-string}, constraints: array{pkey: non-empty-string, fk_record: non-empty-string, fk_target: non-empty-string}}
+     */
+    public function linkNames(ObjectDefinitionDto $object, FieldDefinitionDto $field): array
+    {
+        $table = $this->identifier(self::LINK_TABLE_PREFIX.$object->name.self::LINK_TABLE_SEPARATOR.$field->columnName);
+
+        return [
+            'table' => $table,
+            'indexes' => [
+                'target' => $this->identifier(\sprintf('idx_%s_target_id', $table)),
+                'record' => $this->identifier(\sprintf('idx_%s_record_id', $table)),
+            ],
+            'constraints' => [
+                'pkey' => $this->identifier($table.'_pkey'),
+                'fk_record' => $this->identifier(\sprintf('fk_%s_record_id', $table)),
+                'fk_target' => $this->identifier(\sprintf('fk_%s_target_id', $table)),
+            ],
+        ];
+    }
+
+    /**
      * Records are soft deleted, so the delete rules are applied by the application; the
      * physical action mirrors them for the day rows are purged.
      */
     private function foreignKey(ObjectDefinitionDto $object, FieldDefinitionDto $field, RelationSettings $relation): ForeignKeyConstraint
     {
-        // An archived field may point at an archived object: its table is still there.
-        $target = $this->metadata->hasObject($relation->target)
-            ? $this->metadata->getObject($relation->target)
-            : ($this->metadata->archivedObjects()[$relation->target] ?? $this->metadata->getObject($relation->target));
-
-        return ForeignKeyConstraint::editor()
-            ->setUnquotedName($this->identifier(\sprintf('fk_%s_%s', $object->tableName, $field->columnName)))
-            ->setUnquotedReferencingColumnNames($this->nonEmpty($field->columnName))
-            ->setUnquotedReferencedTableName($this->nonEmpty($target->tableName), DataSchema::NAME)
-            ->setUnquotedReferencedColumnNames('id')
-            ->setOnDeleteAction(match ($relation->onDelete) {
+        return $this->foreignKeyTo(
+            $this->identifier(\sprintf('fk_%s_%s', $object->tableName, $field->columnName)),
+            $field->columnName,
+            $this->targetTableName($relation->target),
+            match ($relation->onDelete) {
                 OnDelete::SetNull => ReferentialAction::SET_NULL,
                 OnDelete::Restrict => ReferentialAction::RESTRICT,
                 OnDelete::Cascade => ReferentialAction::CASCADE,
-            })
+            },
+        );
+    }
+
+    /**
+     * @param non-empty-string $name
+     */
+    private function foreignKeyTo(string $name, string $column, string $targetTable, ReferentialAction $onDelete): ForeignKeyConstraint
+    {
+        return ForeignKeyConstraint::editor()
+            ->setUnquotedName($name)
+            ->setUnquotedReferencingColumnNames($this->nonEmpty($column))
+            ->setUnquotedReferencedTableName($this->nonEmpty($targetTable), DataSchema::NAME)
+            ->setUnquotedReferencedColumnNames('id')
+            ->setOnDeleteAction($onDelete)
             ->create();
+    }
+
+    /**
+     * An archived field may point at an archived object: its table is still there.
+     */
+    private function targetTableName(string $target): string
+    {
+        $definition = $this->metadata->hasObject($target)
+            ? $this->metadata->getObject($target)
+            : ($this->metadata->archivedObjects()[$target] ?? $this->metadata->getObject($target));
+
+        return $definition->tableName;
+    }
+
+    /**
+     * @return list<FieldDefinitionDto> the active fields, then the archived ones
+     */
+    private function allFields(ObjectDefinitionDto $object): array
+    {
+        return [...array_values($object->fields), ...array_values($object->archivedFields)];
     }
 
     /**
@@ -112,15 +232,20 @@ final class TableDefinitionFactory
 
     /**
      * The names of the indexes and constraints of a table, keyed by what they stand for:
-     * "pkey", and "<kind>:<field id>" for the index, unique index or foreign key of a field.
-     * Two definitions of one table (before and after a rename) pair up by key.
+     * "pkey", and "<kind>:<field id>" for the index, unique index or foreign key of a field;
+     * under "links", the names of the link table of each many-to-many field, by field id.
+     * Two definitions of one object (before and after a rename) pair up by key.
      *
-     * @return array{indexes: array<string, non-empty-string>, constraints: array<string, non-empty-string>}
+     * @return array{indexes: array<string, non-empty-string>, constraints: array<string, non-empty-string>, links: array<string, array{table: non-empty-string, indexes: array<string, non-empty-string>, constraints: array<string, non-empty-string>}>}
      */
     public function objectNames(ObjectDefinitionDto $object): array
     {
-        $names = ['indexes' => [], 'constraints' => ['pkey' => $this->identifier($object->tableName.'_pkey')]];
-        foreach ([...array_values($object->fields), ...array_values($object->archivedFields)] as $field) {
+        $names = ['indexes' => [], 'constraints' => ['pkey' => $this->identifier($object->tableName.'_pkey')], 'links' => []];
+        foreach ($this->allFields($object) as $field) {
+            if (!$field->storesColumn()) {
+                $names['links'][$field->id] = $this->linkNames($object, $field);
+                continue;
+            }
             if ($field->isUnique) {
                 $names['indexes']['uniq:'.$field->id] = $this->uniqueIndexName($object->tableName, $field->columnName);
             }

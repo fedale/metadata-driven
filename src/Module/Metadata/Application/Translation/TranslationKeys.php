@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Module\Metadata\Application\Translation;
 
 use App\Module\Metadata\Contract\Dto\FormNodeDto;
-use App\Module\Metadata\Contract\Dto\RelationSettings;
 use App\Module\Metadata\Contract\Dto\TranslationKey;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewKind;
@@ -39,7 +38,7 @@ final class TranslationKeys
                         $keys[TranslationKey::option($object->name, $field->name, $option['value'])] = ['group' => $group, 'source' => $option['label']];
                     }
                 }
-                if (RelationSettings::FIELD_TYPE === $field->type && \is_string($field->settings['inverseLabel'] ?? null)) {
+                if (null !== $field->target() && \is_string($field->settings['inverseLabel'] ?? null)) {
                     $keys[TranslationKey::inverse($object->name, $field->name)] = ['group' => $group, 'source' => $field->settings['inverseLabel']];
                 }
                 if (\is_string($field->settings['patternMessage'] ?? null) && '' !== $field->settings['patternMessage']) {

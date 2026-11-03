@@ -99,6 +99,28 @@ final class AdminControllerTest extends WebTestCase
         self::assertSelectorTextContains('main', 'book.author');
     }
 
+    public function testCreatesAManyToManyField(): void
+    {
+        $this->createObject('contact', 'Contact', 'Contacts');
+        $this->createObject('tag', 'Tag', 'Tags');
+
+        $crawler = $this->client->request('GET', '/admin/objects/contact/fields/new/many_to_many');
+        self::assertSame(['unlink', 'restrict'], $crawler->filter('select[name="field[settings][onDelete]"] option')->extract(['value']));
+
+        $this->addField('contact', 'many_to_many', ['name' => 'tags', 'label' => 'Tags', 'settings' => [
+            'target' => 'tag', 'onDelete' => 'restrict', 'inverseName' => 'contacts', 'max' => '5',
+        ]]);
+
+        $settings = $this->registry()->getObject('contact')->field('tags')->manyToMany();
+        self::assertNotNull($settings);
+        self::assertSame('tag', $settings->target);
+        self::assertSame(5, $settings->max);
+
+        $this->client->request('GET', '/admin/objects/tag');
+        self::assertSelectorTextContains('main', 'contact.tags, many-to-many');
+        self::assertSelectorTextContains('main', 'on delete: restrict');
+    }
+
     public function testConfiguresLabelsSearchAndRecordLabel(): void
     {
         $this->createObject('author', 'Author', 'Authors');

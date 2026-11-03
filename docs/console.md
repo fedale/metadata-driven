@@ -86,7 +86,7 @@ metadata:field:create [--required] [--unique] [--settings=JSON] <object> <name> 
 |---|---|
 | `object` | The object's machine name |
 | `name` | The field's machine name; also the column name. `id`, `created_at`, `updated_at`, `created_by`, `deleted_at` are reserved. |
-| `type` | `text`, `number`, `boolean`, `date`, `email`, `tel`, `url`, `select`, `password` or `relation`: see [field types](field-types.md) |
+| `type` | `text`, `number`, `boolean`, `date`, `email`, `tel`, `url`, `select`, `password`, `relation` or `many_to_many`: see [field types](field-types.md) |
 | `label` | Shown in forms, grid headers and errors |
 | `--required` | A value is mandatory. Checked by validation; the column stays nullable, so a required field can be added to a table that already has records. |
 | `--unique` | Values must be unique: a unique index, plus a readable error on save. Values of deleted records stay reserved. |
@@ -135,6 +135,10 @@ symfony console metadata:field:create pet chip_code text "Microchip" --unique --
 # Relation (many-to-one) to another object
 symfony console metadata:field:create pet owner relation Owner \
   --settings='{"target":"contact","onDelete":"set_null","inverseName":"pets","inverseLabel":"Pets"}'
+
+# Many-to-many link to another object
+symfony console metadata:field:create contact tags many_to_many Tags \
+  --settings='{"target":"tag","inverseName":"contacts"}'
 ```
 
 What it changes in the table:
@@ -143,13 +147,15 @@ What it changes in the table:
   `date`, `timestamp`, `uuid`);
 - `--unique`: a unique index `uniq_<table>_<column>`;
 - `relation`: an index `idx_<table>_<column>` and a foreign key `fk_<table>_<column>` to the target table;
+- `many_to_many`: no column, but a link table `data.l_<object>__<field>` (`record_id`, `target_id`,
+  `created_at`, `created_by`), with foreign keys to both tables;
 - a text field searched by the object (see `metadata:object:search`): a trigram index
   `trgm_<table>_<column>`.
 
 Fails when the object does not exist, the name is invalid, reserved or already used, the type is
-unknown, or the settings are invalid; every settings error is listed. A relation also fails when the
-target object does not exist, or when the inverse name is already a field or an inverse relation of
-the target.
+unknown, or the settings are invalid; every settings error is listed. A relation or a `many_to_many`
+field also fails when the target object does not exist, or when the inverse name is already a field
+or an inverse relation of the target; a `many_to_many` field also fails with `--unique`.
 
 ## `metadata:field:settings`
 
@@ -214,7 +220,7 @@ symfony console metadata:object:label contact            # back to the default
 ```
 
 A record whose label field is empty, or an object with no text field, is shown as `#` plus the
-first 8 characters of its id.
+first 8 characters of its id. A password or a `many_to_many` field is refused.
 
 ## `metadata:object:search`
 
@@ -228,7 +234,7 @@ metadata:object:search [--handler=HANDLER] [--fields=FIELDS] <object>
 |---|---|
 | `object` | The object's machine name |
 | `--handler` | `free_text_multi_field` (default) or `phrase` |
-| `--fields` | Comma separated fields to search. Default: every text-like field (text, multiline text, email). |
+| `--fields` | Comma separated fields to search. Default: every text-like field (text, multiline text, email). A password or a `many_to_many` field is refused. |
 
 The handlers:
 

@@ -6,6 +6,7 @@ namespace App\Module\Metadata\Application\Handler;
 
 use App\Module\Metadata\Application\Command\CreateFieldCommand;
 use App\Module\Metadata\Application\Relation\RelationDependencyChecker;
+use App\Module\Metadata\Contract\Dto\ManyToManySettings;
 use App\Module\Metadata\Contract\Dto\RelationSettings;
 use App\Module\Metadata\Contract\Event\FieldDefinitionCreated;
 use App\Module\Metadata\Contract\Event\MetadataChanged;
@@ -43,14 +44,21 @@ final class CreateFieldHandler
         if ($command->isUnique && $this->fieldTypes->isWriteOnly($command->type)) {
             throw InvalidMetadataDefinition::writeOnlyField($command->name, 'unique');
         }
+        if ($command->isUnique && ManyToManySettings::FIELD_TYPE === $command->type) {
+            throw InvalidMetadataDefinition::manyToManyField($command->name, 'unique');
+        }
 
         $fieldId = $this->transactions->run(function () use ($command, $settings): string {
             $object = $this->objects->findByName($command->objectName)
                 ?? throw ObjectDefinitionNotFound::named($command->objectName);
             if (RelationSettings::FIELD_TYPE === $command->type) {
                 $relation = RelationSettings::fromSettings($settings);
-                $this->assertRelationIsValid($relation);
+                $this->assertTargetIsValid($relation->target, $relation->inverseName);
                 $this->dependencies->assertValid($object, $command->name, $relation);
+            }
+            if (ManyToManySettings::FIELD_TYPE === $command->type) {
+                $manyToMany = ManyToManySettings::fromSettings($settings);
+                $this->assertTargetIsValid($manyToMany->target, $manyToMany->inverseName);
             }
 
             $field = $object->addField(
@@ -81,23 +89,23 @@ final class CreateFieldHandler
 
     /**
      * The target must exist, and the inverse name must be free on it: neither one of its
-     * fields nor the inverse side of another relation pointing at it.
+     * fields nor the inverse side of another relation or many-to-many field pointing at it.
      */
-    private function assertRelationIsValid(RelationSettings $relation): void
+    private function assertTargetIsValid(string $targetName, ?string $inverseName): void
     {
-        $target = $this->objects->findByName($relation->target)
-            ?? throw InvalidMetadataDefinition::unknownRelationTarget($relation->target);
+        $target = $this->objects->findByName($targetName)
+            ?? throw InvalidMetadataDefinition::unknownRelationTarget($targetName);
 
-        if (null === $relation->inverseName) {
+        if (null === $inverseName) {
             return;
         }
-        MachineName::assert($relation->inverseName);
-        $taken = $target->hasField($relation->inverseName);
-        foreach ($this->metadata->incomingRelations($target->getName()) as $reference) {
-            $taken = $taken || $reference->settings->inverseName === $relation->inverseName;
+        MachineName::assert($inverseName);
+        $taken = $target->hasField($inverseName);
+        foreach ([...$this->metadata->incomingRelations($target->getName()), ...$this->metadata->incomingManyToMany($target->getName())] as $reference) {
+            $taken = $taken || $reference->settings->inverseName === $inverseName;
         }
         if ($taken) {
-            throw InvalidMetadataDefinition::inverseNameTaken($target->getName(), $relation->inverseName);
+            throw InvalidMetadataDefinition::inverseNameTaken($target->getName(), $inverseName);
         }
     }
 }

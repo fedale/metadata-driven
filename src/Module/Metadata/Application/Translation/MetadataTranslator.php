@@ -10,7 +10,6 @@ use App\Module\Metadata\Contract\Dto\FormNodeDto;
 use App\Module\Metadata\Contract\Dto\GridColumnDto;
 use App\Module\Metadata\Contract\Dto\GridViewDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
-use App\Module\Metadata\Contract\Dto\RelationSettings;
 use App\Module\Metadata\Contract\Dto\ServiceFieldDto;
 use App\Module\Metadata\Contract\Dto\TranslationKey;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
@@ -80,7 +79,7 @@ final class MetadataTranslator
             }
             $settings['options'] = $options;
         }
-        if (RelationSettings::FIELD_TYPE === $field->type && \is_string($settings['inverseLabel'] ?? null)) {
+        if (null !== $field->target() && \is_string($settings['inverseLabel'] ?? null)) {
             $settings['inverseLabel'] = $lookup->translate(TranslationKey::inverse($object, $field->name), $settings['inverseLabel']);
         }
         if (\is_string($settings['patternMessage'] ?? null) && '' !== $settings['patternMessage']) {

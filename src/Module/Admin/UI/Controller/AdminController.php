@@ -122,7 +122,7 @@ final class AdminController extends AbstractController
         return $this->render('admin/object_show.html.twig', [
             'object' => $definition,
             'types' => $this->fieldTypes->all(),
-            'incoming' => $this->metadata->incomingRelations($definition->name),
+            'incoming' => [...$this->metadata->incomingRelations($definition->name), ...$this->metadata->incomingManyToMany($definition->name)],
             'plan' => $this->schema->plan($definition->name),
             'labels_form' => $this->labelsForm($definition)->createView(),
             'label_field_form' => $this->labelFieldForm($definition)->createView(),
@@ -491,7 +491,7 @@ final class AdminController extends AbstractController
     {
         $choices = [];
         foreach ($object->fields as $name => $field) {
-            if (!$this->fieldTypes->get($field->type)->isWriteOnly()) {
+            if ($field->storesColumn() && !$this->fieldTypes->get($field->type)->isWriteOnly()) {
                 $choices[$field->label] = $name;
             }
         }
@@ -515,7 +515,7 @@ final class AdminController extends AbstractController
     {
         $fields = [];
         foreach ($object->fields as $name => $field) {
-            if (null === $field->relation() && !$this->fieldTypes->get($field->type)->isWriteOnly()) {
+            if (null === $field->relation() && $field->storesColumn() && !$this->fieldTypes->get($field->type)->isWriteOnly()) {
                 $fields[$field->label] = $name;
             }
         }

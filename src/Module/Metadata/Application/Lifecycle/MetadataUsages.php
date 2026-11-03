@@ -34,6 +34,11 @@ final class MetadataUsages
                 $usages[] = \sprintf('relation field "%s.%s" points at it', $reference->object->name, $reference->field->name);
             }
         }
+        foreach ($this->metadata->incomingManyToMany($objectName) as $reference) {
+            if ($reference->object->name !== $objectName) {
+                $usages[] = \sprintf('many-to-many field "%s.%s" points at it', $reference->object->name, $reference->field->name);
+            }
+        }
         foreach ($this->metadata->allForms() as $form) {
             $paths = [];
             foreach (self::nodes($form->root) as $path => $node) {

@@ -79,6 +79,10 @@ final class MetadataRecordValidator implements RecordValidatorInterface
     {
         $fields = [];
         foreach ($object->fields as $name => $field) {
+            // A many-to-many field has no column: records do not write its links yet.
+            if (!$field->storesColumn()) {
+                continue;
+            }
             // Type constraints ignore null; "required" is the only rule about missing values.
             $constraints = $this->fieldTypes->get($field->type)->constraints($field->settings);
             // A field whose condition is not met is not required (and has been emptied).

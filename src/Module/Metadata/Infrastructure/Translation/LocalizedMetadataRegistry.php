@@ -7,6 +7,7 @@ namespace App\Module\Metadata\Infrastructure\Translation;
 use App\Module\Metadata\Application\Translation\MetadataTranslator;
 use App\Module\Metadata\Application\Translation\TranslationLookup;
 use App\Module\Metadata\Contract\Dto\FormDefinitionDto;
+use App\Module\Metadata\Contract\Dto\ManyToManyReference;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\RelationReference;
 use App\Module\Metadata\Contract\Event\MetadataChanged;
@@ -79,6 +80,18 @@ final class LocalizedMetadataRegistry implements MetadataRegistryInterface, Loca
             $object = $this->getObject($reference->object->name);
             $field = $object->field($reference->field->name);
             $references[] = new RelationReference($object, $field, $field->relation() ?? $reference->settings);
+        }
+
+        return $references;
+    }
+
+    public function incomingManyToMany(string $targetName): array
+    {
+        $references = [];
+        foreach ($this->metadata->incomingManyToMany($targetName) as $reference) {
+            $object = $this->getObject($reference->object->name);
+            $field = $object->field($reference->field->name);
+            $references[] = new ManyToManyReference($object, $field, $field->manyToMany() ?? $reference->settings);
         }
 
         return $references;

@@ -67,7 +67,7 @@ final class RecordTable
     {
         $columns = ['id', 'created_at', 'updated_at'];
         foreach ($object->fields as $field) {
-            if (!$this->isWriteOnly($field)) {
+            if ($field->storesColumn() && !$this->isWriteOnly($field)) {
                 $columns[] = $field->columnName;
             }
         }
@@ -101,7 +101,8 @@ final class RecordTable
     {
         $values = [];
         foreach ($object->fields as $name => $field) {
-            if ($this->isWriteOnly($field)) {
+            // A many-to-many field has no column: its links are not part of the row.
+            if (!$field->storesColumn() || $this->isWriteOnly($field)) {
                 continue;
             }
             $values[$name] = $this->toPhp($row[$field->columnName] ?? null, $this->typeOf($field));

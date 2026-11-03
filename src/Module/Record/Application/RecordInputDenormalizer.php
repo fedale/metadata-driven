@@ -36,6 +36,10 @@ final class RecordInputDenormalizer
         }
 
         foreach ($object->fields as $name => $field) {
+            // A many-to-many field has no column: records do not write its links yet.
+            if (!$field->storesColumn()) {
+                continue;
+            }
             $type = $this->fieldTypes->get($field->type);
             if (!$input->has($name)) {
                 if ($complete) {

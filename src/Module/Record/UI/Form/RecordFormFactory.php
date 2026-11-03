@@ -81,6 +81,10 @@ final class RecordFormFactory
         $relations = [];
         foreach ($fieldNames as $name) {
             $field = $object->field($name);
+            // A many-to-many field has no column: records do not write its links yet.
+            if (!$field->storesColumn()) {
+                continue;
+            }
             $requiredHere = \in_array($name, $required, true);
             if ($requiredHere) {
                 $field = new FieldDefinitionDto($field->id, $field->name, $field->columnName, $field->type, $field->label, true, $field->isUnique, $field->settings, $field->position, $field->isSystem);
@@ -250,6 +254,7 @@ final class RecordFormFactory
                 // A cascade lists the few records of the chosen parent as soon as it opens.
                 'min_characters' => null === $field->relation()?->dependsOn ? 1 : 0,
             ]],
+            WidgetKind::ManyToMany => throw new \LogicException(\sprintf('Field "%s" is many-to-many: records do not edit its links yet.', $field->name)),
         };
     }
 

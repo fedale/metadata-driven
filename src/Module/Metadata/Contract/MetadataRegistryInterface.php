@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Metadata\Contract;
 
 use App\Module\Metadata\Contract\Dto\FormDefinitionDto;
+use App\Module\Metadata\Contract\Dto\ManyToManyReference;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\RelationReference;
 use App\Module\Metadata\Contract\Exception\FormDefinitionNotFound;
@@ -41,6 +42,14 @@ interface MetadataRegistryInterface
      * @return list<RelationReference>
      */
     public function incomingRelations(string $targetName): array;
+
+    /**
+     * The many-to-many fields linking to an object, from every (active) object, itself
+     * included.
+     *
+     * @return list<ManyToManyReference>
+     */
+    public function incomingManyToMany(string $targetName): array;
 
     /**
      * @throws FormDefinitionNotFound

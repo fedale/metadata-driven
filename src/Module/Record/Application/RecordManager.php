@@ -197,7 +197,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
             }
         }
         foreach ($object->fields as $name => $field) {
-            if (!$field->appliesTo($values)) {
+            if ($field->storesColumn() && !$field->appliesTo($values)) {
                 $values[$name] = null;
             }
         }

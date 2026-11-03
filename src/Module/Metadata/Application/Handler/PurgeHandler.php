@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Application\Handler;
 
-use App\Module\Metadata\Contract\Dto\RelationSettings;
 use App\Module\Metadata\Contract\Dto\TranslationKey;
 use App\Module\Metadata\Contract\Event\FieldDefinitionPurged;
 use App\Module\Metadata\Contract\Event\MetadataChanged;
@@ -34,8 +33,8 @@ final class PurgeHandler
     }
 
     /**
-     * Refused while a relation field of another object points at it, an archived one included:
-     * its foreign key needs the table.
+     * Refused while a relation or many-to-many field of another object points at it, an
+     * archived one included: its foreign key needs the table.
      */
     public function purgeObject(string $objectName): void
     {
@@ -51,8 +50,8 @@ final class PurgeHandler
                     continue;
                 }
                 foreach ([...$other->getFields(), ...$other->getArchivedFields()] as $field) {
-                    if (RelationSettings::FIELD_TYPE === $field->getType() && ($field->getSettings()['target'] ?? null) === $objectName) {
-                        $usages[] = \sprintf('relation field "%s.%s"%s points at it', $other->getName(), $field->getName(), $field->isArchived() || !$other->isActive() ? ' (archived)' : '');
+                    if ($field->getTarget() === $objectName) {
+                        $usages[] = \sprintf('%s field "%s.%s"%s points at it', $field->isManyToMany() ? 'many-to-many' : 'relation', $other->getName(), $field->getName(), $field->isArchived() || !$other->isActive() ? ' (archived)' : '');
                     }
                 }
             }

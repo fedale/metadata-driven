@@ -100,7 +100,7 @@
                 {% for reference in incoming %}
                     <li>
                         <a href="{{ path('admin_object_show', {object: reference.object.name}) }}">{{ reference.object.labelPlural }}</a>
-                        · {{ reference.field.label }} (<code>{{ reference.object.name }}.{{ reference.field.name }}</code>)
+                        · {{ reference.field.label }} (<code>{{ reference.object.name }}.{{ reference.field.name }}</code>{% if not reference.field.storesColumn %}, many-to-many{% endif %})
                         · on delete: {{ reference.settings.onDelete.value|replace({'_': ' '}) }}
                     </li>
                 {% endfor %}

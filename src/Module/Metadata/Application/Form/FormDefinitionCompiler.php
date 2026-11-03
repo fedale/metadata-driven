@@ -6,6 +6,7 @@ namespace App\Module\Metadata\Application\Form;
 
 use App\Module\Metadata\Application\Translation\DefinedTexts;
 use App\Module\Metadata\Contract\Dto\FormNodeMode;
+use App\Module\Metadata\Contract\Dto\ManyToManySettings;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\RelationSettings;
 use App\Module\Metadata\Contract\Dto\ServiceFieldAsk;
@@ -411,8 +412,10 @@ final class FormDefinitionCompiler
 
             $type = $field['type'] ?? null;
             $settings = $field['settings'] ?? [];
-            if (!\is_string($type) || !$this->fieldTypes->supports($type) || RelationSettings::FIELD_TYPE === $type) {
-                $this->errors[] = \sprintf('%s: "type" must be a field type other than relation (%s).', $fieldPath, implode(', ', array_diff($this->fieldTypes->names(), [RelationSettings::FIELD_TYPE])));
+            // A service field belongs to no record: it cannot point at other records.
+            $linking = [RelationSettings::FIELD_TYPE, ManyToManySettings::FIELD_TYPE];
+            if (!\is_string($type) || !$this->fieldTypes->supports($type) || \in_array($type, $linking, true)) {
+                $this->errors[] = \sprintf('%s: "type" must be a field type other than %s (%s).', $fieldPath, implode(' and ', $linking), implode(', ', array_diff($this->fieldTypes->names(), $linking)));
                 continue;
             }
             if (!\is_array($settings) || ([] !== $settings && array_is_list($settings))) {

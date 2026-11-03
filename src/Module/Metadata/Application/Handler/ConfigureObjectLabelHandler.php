@@ -36,6 +36,9 @@ final class ConfigureObjectLabelHandler
             if (null !== $field && $object->hasField($field) && $this->fieldTypes->isWriteOnly($object->getField($field)->getType())) {
                 throw InvalidMetadataDefinition::writeOnlyField($field, 'the label of the records');
             }
+            if (null !== $field && $object->hasField($field) && $object->getField($field)->isManyToMany()) {
+                throw InvalidMetadataDefinition::manyToManyField($field, 'the label of the records');
+            }
             $object->useAsLabel($field);
             $this->objects->save($object);
         });

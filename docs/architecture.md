@@ -8,7 +8,7 @@ from `fedale/gridview-bundle`, the runtime settings from `fedale/setting-bundle`
 | Schema | Holds | Managed by |
 |---|---|---|
 | `core` | Object, field, view and composite form definitions, the schema change log, users and profiles, the settings of `fedale/setting-bundle`, the RBAC tables (`auth_*`) of `fedale/rbac-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
-| `data` | One table per object, `c_<object>`, holding the records | The Schema module, from the metadata |
+| `data` | One table per object, `c_<object>`, holding the records, and one link table per many-to-many field, `l_<object>__<field>` | The Schema module, from the metadata |
 
 Every connection sets `search_path` to `core, public` (`CoreSearchPathMiddleware`), so the tables
 whose mapping names no schema (the bundles', Doctrine's migration table) land in `core` too.
@@ -71,6 +71,12 @@ metadata:field:create pet owner relation …
 
 Inside a transaction the registry reads the definitions from the database, so the schema sync sees
 the uncommitted change; the cache is only refreshed once the change is committed.
+
+A field is one column of its object's table, with one exception: a `many_to_many` field has no
+column, its links live in a link table of its own. `FieldDefinitionDto::storesColumn()` tells them
+apart, and every module reading or writing columns (the table factory, the record store, the
+grid, the validation) skips the fields that answer false. The Schema module builds the link
+tables with their object's table, and renames and drops them with the field or the object.
 
 A rename goes the same way: `RenameObjectHandler` / `RenameFieldHandler` save the definitions,
 rewrite the views and composite forms naming the old name (compiled again against the renamed

@@ -18,7 +18,7 @@ Under them, the **Archived** objects, each with **Restore** (see [Renaming and a
 |---|---|---|
 | Fields | Every field with its column, type, rules and settings; **Add a field**, **Edit** (label, settings, condition, machine name, archive); the archived fields, with **Restore** | `metadata:field:create`, `metadata:field:condition`, `metadata:list <object>` |
 | Views | The layouts of the record form and the columns of the record grid; **Add a view**, **Edit**, **Delete** (see [Views](views.md)) | `metadata:view:save`, `metadata:view:delete` |
-| Pointed at by | The relation fields of other objects pointing at this one, with their delete rule | |
+| Pointed at by | The relation and `many_to_many` fields of other objects pointing at this one, with their delete rule | |
 | Labels | Rename the singular and plural labels | |
 | Record label | The field that names the records in relations and lookups | `metadata:object:label` |
 | Search | The search handler and the searched fields; the search indexes follow | `metadata:object:search` |

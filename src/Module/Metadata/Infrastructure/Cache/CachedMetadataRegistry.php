@@ -7,6 +7,7 @@ namespace App\Module\Metadata\Infrastructure\Cache;
 use App\Module\Metadata\Application\Registry\FormSnapshotLoader;
 use App\Module\Metadata\Application\Registry\MetadataSnapshotLoader;
 use App\Module\Metadata\Contract\Dto\FormDefinitionDto;
+use App\Module\Metadata\Contract\Dto\ManyToManyReference;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\RelationReference;
 use App\Module\Metadata\Contract\Event\MetadataChanged;
@@ -84,6 +85,21 @@ final class CachedMetadataRegistry implements MetadataRegistryInterface, ResetIn
                 $relation = $field->relation();
                 if (null !== $relation && $relation->target === $targetName) {
                     $references[] = new RelationReference($object, $field, $relation);
+                }
+            }
+        }
+
+        return $references;
+    }
+
+    public function incomingManyToMany(string $targetName): array
+    {
+        $references = [];
+        foreach ($this->snapshot() as $object) {
+            foreach ($object->fields as $field) {
+                $settings = $field->manyToMany();
+                if (null !== $settings && $settings->target === $targetName) {
+                    $references[] = new ManyToManyReference($object, $field, $settings);
                 }
             }
         }

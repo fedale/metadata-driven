@@ -16,11 +16,13 @@ missing keys take their default, unknown keys are refused.
 | `select` | `options` (required), `default`, `display` (`dropdown`) | `varchar(100)` | select or buttons side by side | choice |
 | `password` | `minLength` (8), `requireMixedCase`, `requireDigit`, `requireSymbol`, `confirm`, `strengthMeter`, `revealToggle` (all false) | `varchar(255)`, a hash | password input, asked twice with `confirm` | none: never shown |
 | `relation` | `target` (required), `onDelete` (`set_null`), `inverseName`, `inverseLabel` | `uuid` + foreign key | autocomplete | choice of records |
+| `many_to_many` | `target` (required), `onDelete` (`unlink`), `inverseName`, `inverseLabel`, `max` | none: a link table of its own | not yet | not yet |
 
 Settings added to a type after a field was created take their default on that field: a boolean
 created before `display` existed is a checkbox.
 
-Every field column is nullable: "required" is a validation rule (see below).
+Every field column is nullable: "required" is a validation rule (see below). A `many_to_many`
+field has no column: its links live in a table of their own (see [`many_to_many`](#many_to_many)).
 
 ## Rules common to every type
 
@@ -283,7 +285,7 @@ Input and display:
   or its first text field.
 - The form offers an autocomplete over the target's records; the grid shows the label, sorts on it,
   and filters on one or several related records.
-- Many-to-many relations are not available yet.
+- For a link to any number of records (a contact's tags), see [`many_to_many`](#many_to_many).
 
 ### Cascades (region, province, municipality)
 
@@ -317,3 +319,53 @@ target pointing at the same object.
 
 The Italian regions, provinces and municipalities are public data (the ISTAT list of
 municipalities, a CSV): there is no import command yet, so they are loaded with SQL.
+
+## `many_to_many`
+
+A link to any number of records of the target object: a contact has many tags, a tag has many
+contacts. The target sees the other side read-only, as for a [`relation`](#relation).
+
+| Setting | Type | Rule |
+|---|---|---|
+| `target` | string | an existing object (the same object too: "related tags"); fixed once the field exists |
+| `onDelete` | string | `unlink` (default) or `restrict`; fixed once the field exists |
+| `inverseName` | string or null | machine name of the inverse side; must not be a field of the target, nor the inverse name of another relation or many-to-many field pointing at it |
+| `inverseLabel` | string or null | its title on the target's page; default "<Plural label> (<Field label>)" |
+| `max` | integer or null | how many records may be linked, at least 1; null (default) for no limit |
+
+```bash
+symfony console metadata:field:create contact tags many_to_many Tags \
+  --settings='{"target":"tag","inverseName":"contacts","inverseLabel":"Contacts"}'
+```
+
+What happens when a **linked record is deleted**, per `onDelete`:
+
+| Rule | Effect |
+|---|---|
+| `unlink` | The links to it are removed; the records holding them stay. |
+| `restrict` | The deletion is refused while live records are linked to it. |
+
+There is no `cascade`: deleting a tag never deletes the contacts it was linked to.
+
+**Storage.** The field has no column in its object's table. Its links live in a table of their
+own, `data.l_<object>__<field>` (`data.l_contact__tags`), one row per link:
+
+| Column | Holds |
+|---|---|
+| `record_id` | the record holding the link (`contact`), foreign key, deleted with it |
+| `target_id` | the linked record (`tag`), foreign key, `RESTRICT` with `onDelete: restrict` |
+| `created_at`, `created_by` | when, and by whom, the link was made |
+
+The pair `(record_id, target_id)` is the primary key: a record is linked to another one at most
+once. The table follows the field: it's renamed with the field or its object, kept while the field
+is archived, dropped when the field or its object is purged (see [Renaming and
+archiving](lifecycle.md)).
+
+What a `many_to_many` field cannot be: unique, the label of the records, searched, the field
+deciding a [condition](#conditions), part of a cascade (`dependsOn`, `dependsVia`), the `via` of a
+composite form section, a service field. It can have a condition of its own.
+
+**Not yet.** The field can be defined and its link table exists, but the record pages, the
+composite forms and the grids leave it out: its links can't be edited, shown or filtered yet, and a
+grid view refuses it as a column. When the link carries data of its own (a role, a description),
+use a junction object with two `relation` fields instead.

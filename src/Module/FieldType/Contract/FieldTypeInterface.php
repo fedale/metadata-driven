@@ -50,6 +50,10 @@ interface FieldTypeInterface
     public function validateSettings(array $settings): array;
 
     /**
+     * The column backing the field. A field stored outside its object's table (a many-to-many,
+     * see FieldDefinitionDto::storesColumn()) has no column there: this is then the type of one
+     * of its values, as its own table stores them.
+     *
      * @param array<string, mixed> $settings valid settings, merged with defaults
      */
     public function columnSpec(array $settings): ColumnSpec;

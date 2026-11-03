@@ -188,6 +188,11 @@ final class GridViewCompiler
 
             return false;
         }
+        if (!$object->field($field)->storesColumn()) {
+            $this->errors[] = \sprintf('%s: "%s" is a many-to-many field: grid views cannot show it yet.', $path, $field);
+
+            return false;
+        }
 
         return true;
     }

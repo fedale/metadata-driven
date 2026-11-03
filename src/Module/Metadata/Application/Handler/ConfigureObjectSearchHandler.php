@@ -40,6 +40,9 @@ final class ConfigureObjectSearchHandler
                 if ($object->hasField($field) && $this->fieldTypes->isWriteOnly($object->getField($field)->getType())) {
                     throw InvalidMetadataDefinition::writeOnlyField($field, 'searched');
                 }
+                if ($object->hasField($field) && $object->getField($field)->isManyToMany()) {
+                    throw InvalidMetadataDefinition::manyToManyField($field, 'searched');
+                }
             }
             $object->configureSearch($command->handler, $command->fields);
             $this->objects->save($object);
