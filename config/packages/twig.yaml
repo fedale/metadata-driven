@@ -2,7 +2,8 @@ twig:
     file_name_pattern: '*.twig'
     # Every form gets the gv-* hooks of fedale/gridview-bundle (rows, labels, controls,
     # errors, switch, segmented choice), the same as the grid's own CRUD forms.
-    form_themes: ['@FedaleGridview/form/gv_form_theme.html.twig']
+    # The app's own controls (a file field) come after it.
+    form_themes: ['@FedaleGridview/form/gv_form_theme.html.twig', 'form/record_fields.html.twig']
 
 when@test:
     twig:

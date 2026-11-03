@@ -11,6 +11,7 @@ use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\OnDelete;
 use App\Module\Metadata\Contract\Dto\RelationSettings;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Shared\Database\CoreSchema;
 use App\Shared\Database\DataSchema;
 use Doctrine\DBAL\Schema\Column;
 use Doctrine\DBAL\Schema\ForeignKeyConstraint;
@@ -65,7 +66,8 @@ final class TableDefinitionFactory
                 $table->addIndex($this->uniqueIndex($object->tableName, $field->columnName));
             }
             $relation = $field->relation();
-            if (null !== $relation) {
+            $coreTable = $this->referencedCoreTable($field);
+            if (null !== $relation || null !== $coreTable) {
                 // PostgreSQL does not index referencing columns: joins and the delete rules need it.
                 if (!$field->isUnique) {
                     $table->addIndex(Index::editor()
@@ -73,7 +75,9 @@ final class TableDefinitionFactory
                         ->setUnquotedColumnNames($this->nonEmpty($field->columnName))
                         ->create());
                 }
-                $table->addForeignKeyConstraint($this->foreignKey($object, $field, $relation));
+                $table->addForeignKeyConstraint(null !== $relation
+                    ? $this->foreignKey($object, $field, $relation)
+                    : $this->coreForeignKey($object, $field, $this->nonEmpty($coreTable)));
             }
         }
 
@@ -165,6 +169,31 @@ final class TableDefinitionFactory
     }
 
     /**
+     * The core table a field's column points at (a file field: core.file), if any.
+     */
+    private function referencedCoreTable(FieldDefinitionDto $field): ?string
+    {
+        return $this->fieldTypes->get($field->type)->columnSpec($field->settings)->referencesCoreTable;
+    }
+
+    /**
+     * RESTRICT: a row of the core table (a stored file) is only removed once no record points
+     * at it any more, records in the bin and archived fields included.
+     *
+     * @param non-empty-string $coreTable
+     */
+    private function coreForeignKey(ObjectDefinitionDto $object, FieldDefinitionDto $field, string $coreTable): ForeignKeyConstraint
+    {
+        return ForeignKeyConstraint::editor()
+            ->setUnquotedName($this->identifier(\sprintf('fk_%s_%s', $object->tableName, $field->columnName)))
+            ->setUnquotedReferencingColumnNames($this->nonEmpty($field->columnName))
+            ->setUnquotedReferencedTableName($coreTable, CoreSchema::NAME)
+            ->setUnquotedReferencedColumnNames('id')
+            ->setOnDeleteAction(ReferentialAction::RESTRICT)
+            ->create();
+    }
+
+    /**
      * Records are soft deleted, so the delete rules are applied by the application; the
      * physical action mirrors them for the day rows are purged.
      */
@@ -243,7 +272,7 @@ final class TableDefinitionFactory
             if ($field->isUnique) {
                 $names['indexes']['uniq:'.$field->id] = $this->uniqueIndexName($object->tableName, $field->columnName);
             }
-            if (null !== $field->relation()) {
+            if (null !== $field->relation() || null !== $this->referencedCoreTable($field)) {
                 if (!$field->isUnique) {
                     $names['indexes']['idx:'.$field->id] = $this->identifier(\sprintf('idx_%s_%s', $object->tableName, $field->columnName));
                 }

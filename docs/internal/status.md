@@ -95,6 +95,13 @@ Things that are not obvious from a single file, and that are easy to break.
   every request, and a role change signs the user out (`isEqualTo` compares sorted roles). The RBAC
   cache is disabled in the test env (`config/packages/fedale_rbac.yaml`) because tests roll back
   transactions.
+- **Files** (`File` module): bytes in the `record_files` Flysystem storage under
+  `<sha256[0:2]>/<sha256>`, one `core.file` row per stored file. Several rows may share the bytes,
+  so whatever deletes bytes must first check that no row uses the key. The tests use the memory
+  adapter (`when@test` in `config/packages/flysystem.yaml`). A file field's value is a
+  `FileUpload` (new), the id of a stored file (kept) or null; `toStorage()` stores the upload,
+  so a write that fails after it leaves an orphaned file (a `core.file` row, or only its bytes when
+  a transaction rolls back) for the future GC, never a record pointing at nothing.
 - **Security forms**: the stateless CSRF token input needs `data-controller="csrf-protection"` to
   work in a real browser.
 
@@ -110,17 +117,22 @@ rename/archive/restore/purge of objects and fields.
 
 ## Open
 
-- **Work queue: many-to-many relations**, plan in [many-to-many-plan.md](many-to-many-plan.md),
-  reviewed by the user (field type `many_to_many`, read-only inverse). Phases 1 (storage: the
-  type, metadata rules, link tables `data.l_<object>__<field>`) and 2 (records: write and read the
-  links, validation, delete rules, inverse lists, form, composite forms) are merged into main.
-  Next is phase 3 (grid: cell, filter, export, grid views), on a branch from main.
+- **Work queue**, two items, each with its next phase awaiting the user's go-ahead:
+  - **Many-to-many relations**, plan in [many-to-many-plan.md](many-to-many-plan.md), reviewed by
+    the user (field type `many_to_many`, read-only inverse). Phases 1 (storage: the type, metadata
+    rules, link tables `data.l_<object>__<field>`) and 2 (records: write and read the links,
+    validation, delete rules, inverse lists, form, composite forms) are merged into main. Next is
+    phase 3 (grid: cell, filter, export, grid views), on a branch from main.
+  - **The `file` field type**, plan in [file-type-plan.md](file-type-plan.md). Phases 1 (storage
+    and `core.file`), 2 (the type in the record form) and 3 (download and thumbnails at
+    `/files/{id}`) are merged into main. Next is phase 4 (the file renderer in the grid and the
+    export), on a branch from main. Open decisions in the plan: production storage, several files
+    per record.
 - **Blueprints — plan under review, not started**: [blueprints-plan.md](blueprints-plan.md)
   (packaged, versioned models: a canonical format for every item, install, three-way upgrade,
   seeds, online indexes, export). Its open decisions are listed at the top: the name, local
-  changes to installed items, hosting. Seeds with files need the `file` field type
-  (`file-type-plan.md`, on `feature/file-field-type`); text seeds build on the CSV import service
-  below.
+  changes to installed items, hosting. Seeds with files build on the `file` field type; text seeds
+  build on the CSV import service below.
 - **CSV import — on standby by the user's choice.** Plan: (A) a service plus `record:import` CLI
   with `--dry-run` and `--key`, all-or-nothing with a two-pass check; (B) a web wizard; (C) async
   with Messenger. gridview-bundle has no import feature to reuse.

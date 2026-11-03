@@ -47,6 +47,9 @@ final class CreateFieldHandler
         if ($command->isUnique && ManyToManySettings::FIELD_TYPE === $command->type) {
             throw InvalidMetadataDefinition::manyToManyField($command->name, 'unique');
         }
+        if ($command->isUnique && !$this->fieldTypes->supportsUnique($command->type)) {
+            throw InvalidMetadataDefinition::notUniqueType($command->name, $command->type);
+        }
 
         $fieldId = $this->transactions->run(function () use ($command, $settings): string {
             $object = $this->objects->findByName($command->objectName)

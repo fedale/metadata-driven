@@ -47,7 +47,7 @@ use Symfony\Component\Routing\Requirement\EnumRequirement;
 #[Route('/admin', name: 'admin_')]
 final class AdminController extends AbstractController
 {
-    private const array TYPE_ORDER = ['text', 'number', 'date', 'boolean', 'select', 'email', 'tel', 'url', 'password', 'relation'];
+    private const array TYPE_ORDER = ['text', 'number', 'date', 'boolean', 'select', 'email', 'tel', 'url', 'password', 'file', 'relation'];
     private const string NAME_HELP = 'Lowercase letters, digits and single underscores, starting with a letter.';
     private const string RENAME_OBJECT_HELP = 'Lowercase letters, digits and single underscores. The table, the relations pointing here, the composite forms, the translations and the permissions follow; the links to the old pages stop working.';
     private const string RENAME_FIELD_HELP = 'Lowercase letters, digits and single underscores. The column, the views, the composite forms, the conditions, the cascades and the translations follow.';

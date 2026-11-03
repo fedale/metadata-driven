@@ -31,6 +31,12 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Module/Schema/Infrastructure/Doctrine/Mapping'
                 prefix: 'App\Module\Schema\Domain\Model'
                 alias: Schema
+            File:
+                type: xml
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Module/File/Infrastructure/Doctrine/Mapping'
+                prefix: 'App\Module\File\Domain\Model'
+                alias: File
             User:
                 type: xml
                 is_bundle: false

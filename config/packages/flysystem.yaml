@@ -1,0 +1,15 @@
+# Read the documentation at https://github.com/thephpleague/flysystem-bundle/blob/master/docs/1-getting-started.md
+flysystem:
+    storages:
+        # The bytes of the files of the records (the "file" field type), keyed by their hash;
+        # their metadata is in core.file. Outside public/: files are served by the app,
+        # after a permission check. Production may point it at S3 by configuration only.
+        record_files.storage:
+            local:
+                directory: '%kernel.project_dir%/var/storage/files'
+
+when@test:
+    flysystem:
+        storages:
+            record_files.storage:
+                memory: []

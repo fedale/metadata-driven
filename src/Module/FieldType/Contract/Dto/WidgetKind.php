@@ -26,4 +26,6 @@ enum WidgetKind: string
     case Relation = 'relation';
     /** Any number of records of another object; option "target" is its object name. */
     case ManyToMany = 'many_to_many';
+    /** An uploaded file; options "accept" (MIME types), "maxSize" (in MB) and "image". */
+    case File = 'file';
 }

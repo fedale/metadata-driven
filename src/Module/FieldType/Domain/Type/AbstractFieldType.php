@@ -47,6 +47,11 @@ abstract class AbstractFieldType implements FieldTypeInterface
         return false;
     }
 
+    public function supportsUnique(): bool
+    {
+        return !$this->isWriteOnly();
+    }
+
     public function toStorage(mixed $value, array $settings): mixed
     {
         return $value;

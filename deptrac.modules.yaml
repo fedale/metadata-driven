@@ -102,6 +102,15 @@ deptrac:
       collectors:
         - { type: directory, value: src/Module/User/Contract/.* }
 
+    - name: File
+      collectors:
+        - type: bool
+          must: [{ type: directory, value: src/Module/File/.* }]
+          must_not: [{ type: directory, value: src/Module/File/Contract/.* }]
+    - name: FileContract
+      collectors:
+        - { type: directory, value: src/Module/File/Contract/.* }
+
     - name: Admin
       collectors:
         - type: bool
@@ -117,7 +126,7 @@ deptrac:
     Metadata: [MetadataContract, Shared]
     MetadataContract: [Shared]
 
-    FieldType: [FieldTypeContract, MetadataContract, Shared]
+    FieldType: [FieldTypeContract, MetadataContract, FileContract, Shared]
     FieldTypeContract: [MetadataContract, Shared]
 
     Schema: [SchemaContract, MetadataContract, FieldTypeContract, SearchContract, Shared]
@@ -129,7 +138,7 @@ deptrac:
     Search: [SearchContract, MetadataContract, FieldTypeContract, Shared]
     SearchContract: [MetadataContract, Shared]
 
-    Record: [RecordContract, MetadataContract, FieldTypeContract, ValidationContract, SearchContract, AccessContract, Shared]
+    Record: [RecordContract, MetadataContract, FieldTypeContract, ValidationContract, SearchContract, AccessContract, FileContract, Shared]
     RecordContract: [MetadataContract, Shared]
 
     View: [ViewContract, MetadataContract, FieldTypeContract, RecordContract, SearchContract, AccessContract, Shared]
@@ -143,6 +152,9 @@ deptrac:
 
     User: [UserContract, Shared]
     UserContract: [Shared]
+
+    File: [FileContract, Shared]
+    FileContract: [Shared]
 
     Admin: [AdminContract, MetadataContract, FieldTypeContract, SchemaContract, ViewContract, SettingsContract, AccessContract, Shared]
     AdminContract: [Shared]
