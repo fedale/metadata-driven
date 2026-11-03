@@ -982,6 +982,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  * @psalm-type FedaleGridviewConfig = array{
  *     template?: scalar|Param|null, // Default: "fedale"
  *     theme?: scalar|Param|null, // Default: "default"
+ *     strict_options?: bool|Param|null, // Default: null
  *     themes?: array<string, array{ // Default: []
  *         extends?: scalar|Param|null, // Default: null
  *         classes?: list<scalar|Param|null>,

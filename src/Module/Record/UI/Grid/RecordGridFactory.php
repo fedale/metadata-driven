@@ -258,14 +258,14 @@ final class RecordGridFactory
 
                     return \is_string($label) ? $label : (\is_string($id) ? RecordLabels::fallback($id) : '');
                 })
-                ->filter(['type' => 'relation', 'options' => [
-                    'ajax_url' => $this->urls->generate('record_options', ['object' => $widget->options['target'] ?? '']),
-                    'option_label' => 'label',
-                    'option_value' => 'id',
-                    'searchable' => true,
+                ->filterRelation(
+                    ajaxUrl: $this->urls->generate('record_options', ['object' => $widget->options['target'] ?? '']),
                     // Several records at once.
-                    'multiple' => true,
-                ]]),
+                    multiple: true,
+                    searchable: true,
+                    optionLabel: 'label',
+                    optionValue: 'id',
+                ),
         };
     }
 
