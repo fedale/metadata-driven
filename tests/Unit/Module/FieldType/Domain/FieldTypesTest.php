@@ -14,6 +14,7 @@ use App\Module\FieldType\Contract\SecretHasherInterface;
 use App\Module\FieldType\Domain\Type\BooleanFieldType;
 use App\Module\FieldType\Domain\Type\DateFieldType;
 use App\Module\FieldType\Domain\Type\EmailFieldType;
+use App\Module\FieldType\Domain\Type\ManyToManyFieldType;
 use App\Module\FieldType\Domain\Type\NumberFieldType;
 use App\Module\FieldType\Domain\Type\PasswordFieldType;
 use App\Module\FieldType\Domain\Type\SelectFieldType;
@@ -96,6 +97,11 @@ final class FieldTypesTest extends TestCase
         yield 'blank password is null' => [self::password(), [], '   ', null];
         yield 'url trims' => [new UrlFieldType(), [], ' https://example.com ', 'https://example.com'];
         yield 'phone collapses spaces' => [new TelFieldType(), [], " +39  333\t123 4567 ", '+39 333 123 4567'];
+        $tags = ['target' => 'tag'];
+        yield 'many-to-many ids, lower case, once each' => [new ManyToManyFieldType(), $tags, ['0190A5E2-4C8B-7D3E-9F10-2B3C4D5E6F70', ' 0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f71 ', '0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f70', ''], ['0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f70', '0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f71']];
+        yield 'many-to-many single id' => [new ManyToManyFieldType(), $tags, '0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f70', ['0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f70']];
+        yield 'many-to-many empty list is null' => [new ManyToManyFieldType(), $tags, [], null];
+        yield 'many-to-many blanks only is null' => [new ManyToManyFieldType(), $tags, ['', ' '], null];
     }
 
     /**
@@ -114,6 +120,8 @@ final class FieldTypesTest extends TestCase
         yield 'overflowing date' => [new DateFieldType(), [], '2026-02-31', 'not a valid date'];
         yield 'date with time' => [new DateFieldType(), [], '2026-02-01 10:00', 'not a valid date'];
         yield 'datetime garbage' => [new DateFieldType(), ['includeTime' => true], 'tomorrow', 'not a valid date and time'];
+        yield 'many-to-many not an id' => [new ManyToManyFieldType(), ['target' => 'tag'], ['42'], 'not a valid record reference'];
+        yield 'many-to-many nested list' => [new ManyToManyFieldType(), ['target' => 'tag'], [['a']], 'should be a string'];
     }
 
     public function testWidgetsDescribeTheControl(): void
@@ -133,6 +141,7 @@ final class FieldTypesTest extends TestCase
         );
         self::assertEquals(new Widget(WidgetKind::Url, ['maxLength' => 2048]), (new UrlFieldType())->widget([]));
         self::assertEquals(new Widget(WidgetKind::Tel, ['maxLength' => 30]), (new TelFieldType())->widget([]));
+        self::assertEquals(new Widget(WidgetKind::ManyToMany, ['target' => 'tag']), (new ManyToManyFieldType())->widget(['target' => 'tag']));
     }
 
     public function testDefaultValues(): void
@@ -200,6 +209,9 @@ final class FieldTypesTest extends TestCase
         yield 'phone with brackets' => [new TelFieldType(), [], '(02) 1234-567', null];
         yield 'phone with letters' => [new TelFieldType(), [], '333 CALL ME', 'not a valid phone number'];
         yield 'phone too short' => [new TelFieldType(), [], '123', '4 to 15 digits'];
+        yield 'many-to-many within max' => [new ManyToManyFieldType(), ['target' => 'tag', 'max' => 2], ['0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f70', '0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f71'], null];
+        yield 'many-to-many above max' => [new ManyToManyFieldType(), ['target' => 'tag', 'max' => 2], ['0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f70', '0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f71', '0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f72'], 'at most 2 records'];
+        yield 'many-to-many without max' => [new ManyToManyFieldType(), ['target' => 'tag'], ['0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f70', '0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f71', '0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f72'], null];
     }
 
     private static function password(): PasswordFieldType
@@ -238,6 +250,9 @@ final class FieldTypesTest extends TestCase
         yield 'password' => [self::password(), ['minLength' => 12, 'requireDigit' => true, 'confirm' => true], new ColumnSpec(ColumnType::String, length: 255)];
         yield 'url' => [new UrlFieldType(), [], new ColumnSpec(ColumnType::String, length: 2048)];
         yield 'tel' => [new TelFieldType(), [], new ColumnSpec(ColumnType::String, length: 30)];
+        // No column of its own: the type of a linked id, as its link table stores it.
+        yield 'many-to-many' => [new ManyToManyFieldType(), ['target' => 'tag'], new ColumnSpec(ColumnType::Guid)];
+        yield 'many-to-many restricted, at most 3' => [new ManyToManyFieldType(), ['target' => 'tag', 'onDelete' => 'restrict', 'max' => 3, 'inverseName' => 'contacts'], new ColumnSpec(ColumnType::Guid)];
         yield 'select' => [
             new SelectFieldType(),
             ['options' => [['value' => 'dog', 'label' => 'Dog'], ['value' => 'cat', 'label' => 'Cat']]],
@@ -279,5 +294,9 @@ final class FieldTypesTest extends TestCase
         yield 'password confirm not bool' => [self::password(), ['confirm' => 'yes'], '"confirm"'];
         yield 'password strengthMeter not bool' => [self::password(), ['strengthMeter' => 1], '"strengthMeter"'];
         yield 'password revealToggle not bool' => [self::password(), ['revealToggle' => 'on'], '"revealToggle"'];
+        yield 'many-to-many without target' => [new ManyToManyFieldType(), [], '"target"'];
+        yield 'many-to-many cascade' => [new ManyToManyFieldType(), ['target' => 'tag', 'onDelete' => 'cascade'], 'unlink, restrict'];
+        yield 'many-to-many max zero' => [new ManyToManyFieldType(), ['target' => 'tag', 'max' => 0], '"max"'];
+        yield 'many-to-many dependsOn' => [new ManyToManyFieldType(), ['target' => 'tag', 'dependsOn' => 'region'], 'Unknown setting "dependsOn"'];
     }
 }

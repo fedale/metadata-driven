@@ -45,9 +45,10 @@ Last updated: 2026-11-03.
   app-specific components use `md-` BEM in `assets/styles/app.css`, colours only from `--gv-*`
   tokens.
 - Default locale `en`, enabled `[en, it]` (the user rejected Italian as default).
-- Relations: many-to-one plus read-only inverse one-to-many; many-to-many deferred. `onDelete`
-  per field (`set_null` default, `restrict`, `cascade`) applied by the app because of soft
-  delete.
+- Relations: many-to-one plus read-only inverse one-to-many. `onDelete` per field (`set_null`
+  default, `restrict`, `cascade`) applied by the app because of soft delete. Many-to-many is a
+  field type of its own, `many_to_many`, stored in a link table, `onDelete` `unlink` or
+  `restrict` (no cascade), inverse read-only; see [many-to-many-plan.md](many-to-many-plan.md).
 - Saved grid views are the bundle's client-side saved searches; server-side saved views are a
   possible later step.
 - Lifecycle: archive keeps data and can be restored; purge only from the CLI
@@ -73,7 +74,11 @@ Things that are not obvious from a single file, and that are easy to break.
   snapshot loader merges each type's default settings. Passwords are hashed through
   `SecretHasherInterface` ("record_secret" hasher), write-only, blank on update keeps the value.
 - **Relations**: their config lives in field settings (`RelationSettings`), there is no relation
-  table. Cascading selects use `dependsOn`/`dependsVia`; the lookup takes
+  table. A `many_to_many` field (`ManyToManySettings`) has no column: `FieldDefinitionDto::
+  storesColumn()` is false and every module touching columns must skip it; its link table
+  (`DataSchema::linkTable()`) is built, renamed and dropped by the Schema module with the object,
+  and read and written by the Record store (`replaceLinks()`, links loaded with the record).
+  Cascading selects use `dependsOn`/`dependsVia`; the lookup takes
   `filter[<field>]=<id>` (empty means no results) and the validator checks parent membership.
 - **Search**: trigram GIN indexes on `LOWER(col)` are managed by `TrigramIndexPlanner` and kept out
   of the DBAL schema comparison.
@@ -105,7 +110,13 @@ rename/archive/restore/purge of objects and fields.
 
 ## Open
 
-- **Work queue: empty.** Ask the user what comes next.
+- **Work queue: many-to-many relations**, plan in [many-to-many-plan.md](many-to-many-plan.md),
+  reviewed by the user (field type `many_to_many`, read-only inverse). Phase 1 (storage: the
+  type, metadata rules, link tables `data.l_<object>__<field>`) committed on
+  `feature/many_to_many_storage`, not merged yet; phase 2 (records: write and read the links,
+  validation, delete rules, inverse lists, form, composite forms) committed on
+  `feature/many_to_many_records`, branched from it, not merged yet. Next is phase 3 (grid: cell,
+  filter, export, grid views), on a branch from `feature/many_to_many_records`.
 - **CSV import — on standby by the user's choice.** Plan: (A) a service plus `record:import` CLI
   with `--dry-run` and `--key`, all-or-nothing with a two-pass check; (B) a web wizard; (C) async
   with Messenger. gridview-bundle has no import feature to reuse.
@@ -113,7 +124,7 @@ rename/archive/restore/purge of objects and fields.
   next to labels.
 - Admin UI strings are still English only (user pages are translated).
 - Remaining roadmap ideas (phase 9+): audit/timeline, REST API, YAML export/import of metadata,
-  multi-tenancy, roles/users admin UI, field-level permissions, many-to-many relations.
+  multi-tenancy, roles/users admin UI, field-level permissions.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle has pre-existing failures (`DoctrineChildRowResolverTest` x4,
   `ThemeRegistryTest`) and coding-standard issues that are not ours.

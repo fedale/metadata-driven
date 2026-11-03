@@ -7,6 +7,7 @@ namespace App\Module\Record\Infrastructure\Dbal;
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
+use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Shared\Database\DataSchema;
 use Doctrine\DBAL\Connection;
@@ -23,7 +24,23 @@ final class RecordTable
     public function __construct(
         private readonly Connection $connection,
         private readonly FieldTypeRegistryInterface $fieldTypes,
+        private readonly MetadataRegistryInterface $metadata,
     ) {
+    }
+
+    /**
+     * Where the links of a many-to-many field of $object live.
+     */
+    public function links(ObjectDefinitionDto $object, FieldDefinitionDto $field): LinkSource
+    {
+        $settings = $field->manyToMany() ?? throw new \LogicException(\sprintf('Field "%s.%s" is not many-to-many: it has no links.', $object->name, $field->name));
+
+        return new LinkSource(
+            $this->quote(DataSchema::NAME).'.'.$this->quote(DataSchema::linkTable($object->name, $field->columnName)),
+            $this->quote('record_id'),
+            $this->quote('target_id'),
+            $this->table($this->metadata->getObject($settings->target)),
+        );
     }
 
     public function table(ObjectDefinitionDto $object): string
@@ -67,7 +84,7 @@ final class RecordTable
     {
         $columns = ['id', 'created_at', 'updated_at'];
         foreach ($object->fields as $field) {
-            if (!$this->isWriteOnly($field)) {
+            if ($field->storesColumn() && !$this->isWriteOnly($field)) {
                 $columns[] = $field->columnName;
             }
         }
@@ -95,12 +112,19 @@ final class RecordTable
     }
 
     /**
-     * @param array<string, mixed> $row as returned by a query on selectList()
+     * @param array<string, mixed>        $row   as returned by a query on selectList()
+     * @param array<string, list<string>> $links the linked ids of the many-to-many fields, by field
+     *                                           name: they are not part of the row; a field left
+     *                                           out links to nothing
      */
-    public function hydrate(ObjectDefinitionDto $object, array $row): RecordOutput
+    public function hydrate(ObjectDefinitionDto $object, array $row, array $links = []): RecordOutput
     {
         $values = [];
         foreach ($object->fields as $name => $field) {
+            if (!$field->storesColumn()) {
+                $values[$name] = $links[$name] ?? [];
+                continue;
+            }
             if ($this->isWriteOnly($field)) {
                 continue;
             }

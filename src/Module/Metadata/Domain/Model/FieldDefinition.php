@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Domain\Model;
 
+use App\Module\Metadata\Contract\Dto\ManyToManySettings;
+use App\Module\Metadata\Contract\Dto\RelationSettings;
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * A field of an object definition, mapped to one column of the object table.
+ * A field of an object definition, mapped to one column of the object table; a many-to-many
+ * field to a link table of its own instead.
  *
  * An archived field is out of the application (forms, grids, validation) while its column and
  * its values stay: it can be restored, or purged for good.
@@ -154,6 +157,27 @@ class FieldDefinition
     public function getSettings(): array
     {
         return $this->settings;
+    }
+
+    /**
+     * A many-to-many field has no column: its links live in a table of their own.
+     */
+    public function isManyToMany(): bool
+    {
+        return ManyToManySettings::FIELD_TYPE === $this->type;
+    }
+
+    /**
+     * The object a relation or a many-to-many field points at; null for any other type.
+     */
+    public function getTarget(): ?string
+    {
+        if (RelationSettings::FIELD_TYPE !== $this->type && !$this->isManyToMany()) {
+            return null;
+        }
+        $target = $this->settings['target'] ?? null;
+
+        return \is_string($target) ? $target : null;
     }
 
     public function getPosition(): int

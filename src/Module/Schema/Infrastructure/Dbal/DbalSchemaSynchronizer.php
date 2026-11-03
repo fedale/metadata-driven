@@ -14,6 +14,7 @@ use App\Module\Schema\Domain\Repository\SchemaChangeLogRepository;
 use App\Shared\Database\DataSchema;
 use App\Shared\Transaction\TransactionRunner;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Schema\Comparator;
 use Doctrine\DBAL\Schema\ComparatorConfig;
 use Doctrine\DBAL\Schema\Exception\TableDoesNotExist;
 use Doctrine\DBAL\Schema\Name\UnqualifiedName;
@@ -43,6 +44,20 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
 
         $desiredTrigramIndexes = $this->trigramIndexes->desired($object);
 
+        // Renames are never guessed: a dropped plus an added column stay two separate changes.
+        $comparator = $schemaManager->createComparator(new ComparatorConfig(
+            detectRenamedColumns: false,
+            detectRenamedIndexes: false,
+            reportModifiedIndexes: false,
+        ));
+
+        $skipped = [];
+        // After the object's table: a link table's foreign keys point at it.
+        $linkStatements = [];
+        foreach ($this->tables->buildLinkTables($object) as $link) {
+            $linkStatements = [...$linkStatements, ...$this->tableStatements($link, $comparator, $allowDestructive, $skipped)];
+        }
+
         try {
             $actual = $this->withoutTrigramIndexes(
                 $schemaManager->introspectTableByUnquotedName($this->nonEmpty($object->tableName), DataSchema::NAME),
@@ -52,20 +67,12 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
                 $objectName,
                 $qualifiedName,
                 true,
-                [...$platform->getCreateTableSQL($desired), ...array_values($desiredTrigramIndexes)],
-                [],
+                [...$platform->getCreateTableSQL($desired), ...array_values($desiredTrigramIndexes), ...$linkStatements],
+                $skipped,
             );
         }
 
-        // Renames are never guessed: a dropped plus an added column stay two separate changes.
-        $comparator = $schemaManager->createComparator(new ComparatorConfig(
-            detectRenamedColumns: false,
-            detectRenamedIndexes: false,
-            reportModifiedIndexes: false,
-        ));
         $diff = $comparator->compareTables($actual, $desired);
-
-        $skipped = [];
         if (!$allowDestructive) {
             $diff = $comparator->compareTables($actual, $this->withoutDestructiveChanges($actual, $desired, $diff, $skipped));
         }
@@ -86,9 +93,37 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
             $objectName,
             $qualifiedName,
             false,
-            [...($diff->isEmpty() ? [] : $platform->getAlterTableSQL($diff)), ...$indexStatements],
+            [...($diff->isEmpty() ? [] : $platform->getAlterTableSQL($diff)), ...$indexStatements, ...$linkStatements],
             $skipped,
         );
+    }
+
+    /**
+     * The DDL bringing one table (a link table) in line with its definition: created when
+     * missing, otherwise altered under the same rules as an object's table.
+     *
+     * @param list<string> $skipped
+     *
+     * @return list<string>
+     */
+    private function tableStatements(Table $desired, Comparator $comparator, bool $allowDestructive, array &$skipped): array
+    {
+        $platform = $this->connection->getDatabasePlatform();
+        try {
+            $actual = $this->connection->createSchemaManager()->introspectTableByUnquotedName(
+                $this->nonEmpty($desired->getObjectName()->getUnqualifiedName()->getValue()),
+                DataSchema::NAME,
+            );
+        } catch (TableDoesNotExist) {
+            return $platform->getCreateTableSQL($desired);
+        }
+
+        $diff = $comparator->compareTables($actual, $desired);
+        if (!$allowDestructive) {
+            $diff = $comparator->compareTables($actual, $this->withoutDestructiveChanges($actual, $desired, $diff, $skipped));
+        }
+
+        return $diff->isEmpty() ? [] : $platform->getAlterTableSQL($diff);
     }
 
     /**
@@ -127,6 +162,10 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
             $columns[$field->id] = $field->columnName;
         }
         foreach ([...array_values($after->fields), ...array_values($after->archivedFields)] as $field) {
+            // A many-to-many field has no column: its link table is renamed below.
+            if (!$field->storesColumn()) {
+                continue;
+            }
             $old = $columns[$field->id] ?? null;
             if (null !== $old && $old !== $field->columnName) {
                 $statements[] = \sprintf('ALTER TABLE %s RENAME COLUMN %s TO %s', $table, $q($old), $q($field->columnName));
@@ -134,15 +173,17 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
         }
         $old = $this->tables->objectNames($before);
         $new = $this->tables->objectNames($after);
-        foreach ($new['indexes'] as $key => $name) {
-            if (isset($old['indexes'][$key]) && $old['indexes'][$key] !== $name) {
-                $statements[] = \sprintf('ALTER INDEX %s.%s RENAME TO %s', DataSchema::NAME, $q($old['indexes'][$key]), $q($name));
+        $statements = [...$statements, ...$this->renameNames($table, $old, $new)];
+        // A link table is named after its object and its field: it follows both.
+        foreach ($new['links'] as $fieldId => $link) {
+            $previous = $old['links'][$fieldId] ?? null;
+            if (null === $previous) {
+                continue;
             }
-        }
-        foreach ($new['constraints'] as $key => $name) {
-            if (isset($old['constraints'][$key]) && $old['constraints'][$key] !== $name) {
-                $statements[] = \sprintf('ALTER TABLE %s RENAME CONSTRAINT %s TO %s', $table, $q($old['constraints'][$key]), $q($name));
+            if ($previous['table'] !== $link['table']) {
+                $statements[] = \sprintf('ALTER TABLE %s.%s RENAME TO %s', DataSchema::NAME, $q($previous['table']), $q($link['table']));
             }
+            $statements = [...$statements, ...$this->renameNames(DataSchema::NAME.'.'.$q($link['table']), $previous, $link)];
         }
 
         return $this->transactions->run(function () use ($after, $statements): SchemaPlan {
@@ -159,13 +200,27 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
     public function dropTable(ObjectDefinitionDto $object): SchemaPlan
     {
         $qualified = DataSchema::NAME.'.'.$object->tableName;
-        $plan = new SchemaPlan($object->name, $qualified, false, [\sprintf('DROP TABLE %s.%s', DataSchema::NAME, $this->connection->quoteSingleIdentifier($object->tableName))], []);
+        // Its link tables first: their foreign keys point at it.
+        $statements = [];
+        foreach ($this->tables->objectNames($object)['links'] as $link) {
+            $statements[] = $this->dropTableStatement($link['table']);
+        }
+        $statements[] = $this->dropTableStatement($object->tableName);
+        $plan = new SchemaPlan($object->name, $qualified, false, $statements, []);
 
         return $this->transactions->run(fn (): SchemaPlan => $this->execute($plan));
     }
 
     public function dropColumn(ObjectDefinitionDto $object, FieldDefinitionDto $field): SchemaPlan
     {
+        if (!$field->storesColumn()) {
+            $plan = new SchemaPlan($object->name, DataSchema::NAME.'.'.$object->tableName, false, [
+                $this->dropTableStatement($this->tables->linkNames($object, $field)['table']),
+            ], []);
+
+            return $this->transactions->run(fn (): SchemaPlan => $this->execute($plan));
+        }
+
         // Its indexes and foreign key go with it.
         $plan = new SchemaPlan($object->name, DataSchema::NAME.'.'.$object->tableName, false, [\sprintf(
             'ALTER TABLE %s.%s DROP COLUMN %s',
@@ -175,6 +230,38 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
         )], []);
 
         return $this->transactions->run(fn (): SchemaPlan => $this->execute($plan));
+    }
+
+    private function dropTableStatement(string $tableName): string
+    {
+        return \sprintf('DROP TABLE %s.%s', DataSchema::NAME, $this->connection->quoteSingleIdentifier($tableName));
+    }
+
+    /**
+     * Renames the indexes and constraints of one table whose names changed, paired by key.
+     *
+     * @param string                                                                                        $table quoted, qualified
+     * @param array{indexes: array<string, non-empty-string>, constraints: array<string, non-empty-string>} $old
+     * @param array{indexes: array<string, non-empty-string>, constraints: array<string, non-empty-string>} $new
+     *
+     * @return list<string>
+     */
+    private function renameNames(string $table, array $old, array $new): array
+    {
+        $q = $this->connection->quoteSingleIdentifier(...);
+        $statements = [];
+        foreach ($new['indexes'] as $key => $name) {
+            if (isset($old['indexes'][$key]) && $old['indexes'][$key] !== $name) {
+                $statements[] = \sprintf('ALTER INDEX %s.%s RENAME TO %s', DataSchema::NAME, $q($old['indexes'][$key]), $q($name));
+            }
+        }
+        foreach ($new['constraints'] as $key => $name) {
+            if (isset($old['constraints'][$key]) && $old['constraints'][$key] !== $name) {
+                $statements[] = \sprintf('ALTER TABLE %s RENAME CONSTRAINT %s TO %s', $table, $q($old['constraints'][$key]), $q($name));
+            }
+        }
+
+        return $statements;
     }
 
     /**

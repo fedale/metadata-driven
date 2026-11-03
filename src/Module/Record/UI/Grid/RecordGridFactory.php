@@ -82,7 +82,8 @@ final class RecordGridFactory
             $columns = [];
             foreach ($object->fields as $field) {
                 $type = $this->fieldTypes->get($field->type);
-                if ($type->isWriteOnly()) {
+                // A many-to-many field has no column for the grid to read.
+                if (!$field->storesColumn() || $type->isWriteOnly()) {
                     continue;
                 }
                 $columns[] = $this->column($field, $type->widget($field->settings))->label($field->label)->sortable();
@@ -241,6 +242,7 @@ final class RecordGridFactory
             WidgetKind::Url => UrlColumn::new($name)->filterText(),
             WidgetKind::Tel => TelColumn::new($name)->filterText(),
             WidgetKind::Password => throw new \LogicException(\sprintf('Field "%s" is write-only: it has no grid column.', $name)),
+            WidgetKind::ManyToMany => throw new \LogicException(\sprintf('Field "%s" is many-to-many: it has no grid column yet.', $name)),
             WidgetKind::Integer => NumberColumn::new($name)->decimals(0)->filterNumber(),
             WidgetKind::Decimal => NumberColumn::new($name)
                 ->decimals(\is_int($widget->options['scale'] ?? null) ? $widget->options['scale'] : 2)

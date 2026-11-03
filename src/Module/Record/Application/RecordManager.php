@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Record\Application;
 
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
+use App\Module\Metadata\Contract\Dto\ManyToManyOnDelete;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\OnDelete;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
@@ -28,7 +29,8 @@ use Symfony\Component\Uid\Uuid;
 /**
  * Pipeline of every record write: RecordInput → denormalization → conditions (the fields
  * that do not apply are emptied) → validation → conversion to the stored form (e.g. password
- * hashes) → storage.
+ * hashes) → storage: the columns, then the links of the many-to-many fields, in one
+ * transaction.
  */
 final class RecordManager implements RecordManagerInterface, RecordFinderInterface
 {
@@ -54,7 +56,11 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
 
         $id = Uuid::v7()->toRfc4122();
         $stored = $this->stored($object, $values);
-        $this->write($object, $values, null, fn () => $this->store->insert($object, $id, $stored, new \DateTimeImmutable()));
+        $now = new \DateTimeImmutable();
+        $this->write($object, $values, null, fn () => $this->transactions->run(function () use ($object, $id, $stored, $now): void {
+            $this->store->insert($object, $id, self::columns($object, $stored), $now);
+            $this->writeLinks($object, $id, $stored, $now);
+        }));
 
         return $this->store->find($object, $id) ?? throw new \LogicException('The record just created cannot be read back.');
     }
@@ -69,7 +75,16 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
 
         if ([] !== $values) {
             $stored = $this->stored($object, $values);
-            $updated = $this->write($object, $values, $id, fn (): bool => $this->store->update($object, $id, $stored, new \DateTimeImmutable()));
+            $now = new \DateTimeImmutable();
+            // Columns or links alone: the update marks the record as changed either way.
+            $updated = $this->write($object, $values, $id, fn (): bool => $this->transactions->run(function () use ($object, $id, $stored, $now): bool {
+                if (!$this->store->update($object, $id, self::columns($object, $stored), $now)) {
+                    return false;
+                }
+                $this->writeLinks($object, $id, $stored, $now);
+
+                return true;
+            }));
             if (!$updated) {
                 throw RecordNotFound::withId($object->name, $id);
             }
@@ -101,7 +116,9 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     {
         $this->metadata->getObject($objectName);
         $groups = [];
-        foreach ($this->metadata->incomingRelations($objectName) as $reference) {
+        // The relations pointing at it, then the many-to-many fields linking to it: both read
+        // the same way, through the store.
+        foreach ([...$this->metadata->incomingRelations($objectName), ...$this->metadata->incomingManyToMany($objectName)] as $reference) {
             $total = $this->store->countReferencing($reference->object, $reference->field, $id);
             if (0 === $total) {
                 continue;
@@ -221,6 +238,35 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     }
 
     /**
+     * The values stored in columns: a many-to-many field has none.
+     *
+     * @param array<string, mixed> $values
+     *
+     * @return array<string, mixed>
+     */
+    private static function columns(ObjectDefinitionDto $object, array $values): array
+    {
+        return array_filter($values, static fn (string $name): bool => $object->field($name)->storesColumn(), \ARRAY_FILTER_USE_KEY);
+    }
+
+    /**
+     * Writes the links of the many-to-many fields among $values; a field left out keeps its
+     * links, a null one loses them all.
+     *
+     * @param array<string, mixed> $values valid values
+     */
+    private function writeLinks(ObjectDefinitionDto $object, string $id, array $values, \DateTimeImmutable $now): void
+    {
+        foreach ($values as $name => $value) {
+            $field = $object->field($name);
+            if (!$field->storesColumn()) {
+                $ids = \is_array($value) ? array_values(array_filter($value, \is_string(...))) : [];
+                $this->store->replaceLinks($object, $field, $id, $ids, $now);
+            }
+        }
+    }
+
+    /**
      * Runs a write; a unique index violation that slipped past validation (concurrent
      * write) is reported on the offending fields, found by validating again.
      *
@@ -257,10 +303,17 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         $visited[$key] = true;
 
         $references = $this->metadata->incomingRelations($object->name);
+        $links = $this->metadata->incomingManyToMany($object->name);
         foreach ($references as $reference) {
             if (OnDelete::Restrict === $reference->settings->onDelete
                 && 0 < $count = $this->store->countReferencing($reference->object, $reference->field, $id)) {
                 throw RecordDeleteRestricted::referencedBy($count, $reference->inverseLabel());
+            }
+        }
+        foreach ($links as $link) {
+            if (ManyToManyOnDelete::Restrict === $link->settings->onDelete
+                && 0 < $count = $this->store->countReferencing($link->object, $link->field, $id)) {
+                throw RecordDeleteRestricted::referencedBy($count, $link->inverseLabel());
             }
         }
 
@@ -277,6 +330,12 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
                 ),
                 OnDelete::Restrict => null,
             };
+        }
+        // No cascade here: deleting a tag never deletes the contacts it was linked to.
+        foreach ($links as $link) {
+            if (ManyToManyOnDelete::Unlink === $link->settings->onDelete) {
+                $this->store->clearReferences($link->object, $link->field, $id, $now);
+            }
         }
     }
 }

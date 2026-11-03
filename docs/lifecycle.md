@@ -21,14 +21,17 @@ must be free: an archived object or field keeps its name until it is purged.
 Renaming an **object** renames everything named after it:
 
 - its table `data.c_<name>`, and the indexes and constraints named after the table;
-- the relation fields pointing at it, in every object (`target`);
+- the link tables of its `many_to_many` fields, `data.l_<name>__<field>`, with their indexes and
+  constraints;
+- the relation and `many_to_many` fields pointing at it, in every object (`target`);
 - the composite forms naming it (`object:`);
 - its translations (`object.<name>.*`, `field.<name>.*`, `option.<name>.*`, ...);
 - its permissions `record.<name>.*`: the roles and users holding them keep them.
 
 Renaming a **field** renames everything naming it:
 
-- its column, and its unique index, relation index and foreign key;
+- its column, and its unique index, relation index and foreign key; for a `many_to_many` field,
+  its link table `data.l_<object>__<name>`, with its indexes and constraints;
 - the record label and the searched fields of its object;
 - the conditions it decides, and the cascades depending on it (`dependsOn` in its object,
   `dependsVia` in the relations of other objects pointing at its object);
@@ -75,7 +78,7 @@ index is dropped: it holds no data).
 **Archiving is refused while something uses it**, and the message lists every use, to be removed
 first. Archiving an object is refused while:
 
-- a relation field of another object points at it;
+- a relation or `many_to_many` field of another object points at it;
 - a composite form has a node on it.
 
 Archiving a field is refused while:
@@ -96,18 +99,21 @@ An object of the system cannot be archived nor renamed.
 Restoring brings the object or field back as it was. It is refused while what it relies on is
 archived:
 
-- an object whose relation fields point at an archived object: restore that one first;
-- a field whose relation points at an archived object, whose cascade goes through an archived
+- an object whose relation or `many_to_many` fields point at an archived object: restore that
+  one first;
+- a field whose relation or `many_to_many` link points at an archived object, whose cascade goes through an archived
   field, or which is shown depending on a field that is archived or purged.
 
 ## Purging
 
 Purging deletes for good what is archived, with its data: there is no way back.
 
-- A **field**: its column and every value, its translations; the name is free again.
-- An **object**: its table and every record, its fields, views and translations, its four
-  permissions (and their grants); the name is free again. Refused while a relation field of
-  another object points at it, archived or not: its foreign key needs the table.
+- A **field**: its column and every value (for a `many_to_many` field, its link table and every
+  link), its translations; the name is free again.
+- An **object**: its table and every record, the link tables of its `many_to_many` fields, its
+  fields, views and translations, its four permissions (and their grants); the name is free again.
+  Refused while a relation or `many_to_many` field of another object points at it, archived or
+  not: its foreign key needs the table.
 
 `metadata:purge` asks to type the name back (`pet`, or `pet.age` for a field); without a terminal
 it needs `--force`. The admin has no purge button.

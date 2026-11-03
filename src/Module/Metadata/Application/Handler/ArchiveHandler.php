@@ -65,9 +65,9 @@ final class ArchiveHandler
             $archived = $this->metadata->archivedObjects()[$objectName] ?? throw InvalidMetadataDefinition::unknownArchivedObject($objectName);
             $problems = [];
             foreach ($archived->fields as $field) {
-                $target = $field->relation()?->target;
+                $target = $field->target();
                 if (null !== $target && $target !== $objectName && !$this->metadata->hasObject($target)) {
-                    $problems[] = \sprintf('relation field "%s" points at object "%s", archived too: restore it first', $field->name, $target);
+                    $problems[] = \sprintf('%s field "%s" points at object "%s", archived too: restore it first', $field->storesColumn() ? 'relation' : 'many-to-many', $field->name, $target);
                 }
             }
             if ([] !== $problems) {
@@ -129,16 +129,17 @@ final class ArchiveHandler
         if (null !== $deciding && !isset($active[$deciding])) {
             $problems[] = \sprintf('it is shown depending on "%s", which is archived or gone: restore it, or restore the field after removing its condition', $deciding);
         }
+        $target = $field->target();
+        if (null !== $target && !$this->metadata->hasObject($target)) {
+            $problems[] = \sprintf('it points at object "%s", which is archived: restore it first', $target);
+        }
         $relation = $field->relation();
-        if (null !== $relation) {
-            if (!$this->metadata->hasObject($relation->target)) {
-                $problems[] = \sprintf('it points at object "%s", which is archived: restore it first', $relation->target);
-            } elseif (null !== $relation->dependsVia && !$this->metadata->getObject($relation->target)->hasField($relation->dependsVia)) {
-                $problems[] = \sprintf('its cascade filters through "%s.%s", which is archived', $relation->target, $relation->dependsVia);
-            }
-            if (null !== $relation->dependsOn && !isset($active[$relation->dependsOn])) {
-                $problems[] = \sprintf('its cascade depends on "%s", which is archived', $relation->dependsOn);
-            }
+        if (null !== $relation?->dependsVia && $this->metadata->hasObject($relation->target)
+            && !$this->metadata->getObject($relation->target)->hasField($relation->dependsVia)) {
+            $problems[] = \sprintf('its cascade filters through "%s.%s", which is archived', $relation->target, $relation->dependsVia);
+        }
+        if (null !== $relation?->dependsOn && !isset($active[$relation->dependsOn])) {
+            $problems[] = \sprintf('its cascade depends on "%s", which is archived', $relation->dependsOn);
         }
 
         return $problems;

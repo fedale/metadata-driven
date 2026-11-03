@@ -24,4 +24,6 @@ enum WidgetKind: string
     case Choice = 'choice';
     /** A record of another object; option "target" is its object name. */
     case Relation = 'relation';
+    /** Any number of records of another object; option "target" is its object name. */
+    case ManyToMany = 'many_to_many';
 }

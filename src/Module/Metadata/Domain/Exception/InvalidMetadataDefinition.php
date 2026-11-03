@@ -124,6 +124,11 @@ final class InvalidMetadataDefinition extends MetadataException
         return new self(\sprintf('Field "%s" is write-only (its value is never read back): it cannot be %s.', $fieldName, $use));
     }
 
+    public static function manyToManyField(string $fieldName, string $use): self
+    {
+        return new self(\sprintf('Field "%s" links several records (many-to-many): it cannot be %s.', $fieldName, $use));
+    }
+
     public static function fixedSetting(string $fieldName, string $setting): self
     {
         return new self(\sprintf('Setting "%s" of field "%s" cannot change once the field exists: it shapes the column.', $setting, $fieldName));

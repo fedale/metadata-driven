@@ -62,6 +62,10 @@ Create the objects and their relation fields first ([field types](field-types.md
 `cascade` delete rule on the relation is usually what a form wants: deleting the account
 deletes its profile, phones and qualifications.
 
+A [`many_to_many`](field-types.md#many_to_many) field (a contact's tags) is a field like the
+others in `fields`: an autocomplete picking any number of records, saved with its record. It
+can't be a section's `via`: a section's records point at their parent through a `relation`.
+
 ## Definition reference
 
 ### The root
@@ -124,7 +128,7 @@ A service field is checked like a field of its type, then **dropped**: no column
 | Key | Required | Description |
 |---|---|---|
 | `name` | yes | Machine name, unique within its node |
-| `type` | yes | Any field type but `relation` |
+| `type` | yes | Any field type but `relation` and `many_to_many` |
 | `label` | yes | The label shown |
 | `required` | no | `true`: must be given. A required **boolean must be checked** ("This box must be checked.") |
 | `ask` | no | `always` (default): asked on every save, a new record or an existing one. `create`: asked on a new record only |

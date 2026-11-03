@@ -10,6 +10,7 @@ use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ServiceFieldDto;
+use App\Module\Record\Application\RecordLabels;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordLookupInterface;
@@ -92,27 +93,30 @@ final class RecordFormFactory
             if ($requiredHere && WidgetKind::Checkbox === $widget->kind) {
                 $options['required'] = true;
             }
-            if ($placeholders && !\in_array($widget->kind, [WidgetKind::Choice, WidgetKind::Relation, WidgetKind::Checkbox], true)) {
+            if ($placeholders && !\in_array($widget->kind, [WidgetKind::Choice, WidgetKind::Relation, WidgetKind::ManyToMany, WidgetKind::Checkbox], true)) {
                 $options['attr'] = (\is_array($options['attr'] ?? null) ? $options['attr'] : []) + ['placeholder' => $field->label.($field->isRequired ? ' *' : '')];
             }
             $options += ['label' => $field->label];
             $options['row_attr'] = $this->rowAttr($field, $options['row_attr'] ?? []);
             $builder->add($name, $type, $options);
-            if (WidgetKind::Relation === $widget->kind) {
-                $relations[$name] = [$options, $this->target($widget)];
+            if (\in_array($widget->kind, [WidgetKind::Relation, WidgetKind::ManyToMany], true)) {
+                $relations[$name] = [$options, $this->target($widget), WidgetKind::ManyToMany === $widget->kind];
             }
         }
         if ([] === $relations) {
             return;
         }
 
-        // A relation offers only the current record until the user searches: the submitted
-        // record becomes a choice again, so that the form accepts it.
+        // A relation (or a many-to-many) offers only the current records until the user
+        // searches: the submitted records become choices again, so that the form accepts them.
         $builder->addEventListener(FormEvents::PRE_SUBMIT, function (PreSubmitEvent $event) use ($relations): void {
             $data = $event->getData();
-            foreach ($relations as $name => [$options, $target]) {
-                $id = \is_array($data) ? ($data[$name] ?? null) : null;
-                $options['choices'] = \is_string($id) && '' !== $id ? array_flip($this->lookup->labels($target, [$id])) : [];
+            foreach ($relations as $name => [$options, $target, $multiple]) {
+                $submitted = \is_array($data) ? ($data[$name] ?? null) : null;
+                $ids = array_values(array_filter(\is_array($submitted) ? $submitted : [$submitted], static fn (mixed $id): bool => \is_string($id) && '' !== $id));
+                $options = $multiple
+                    ? $this->linkChoices($target, $ids) + $options
+                    : ['choices' => [] !== $ids ? array_flip($this->lookup->labels($target, $ids)) : []] + $options;
                 $event->getForm()->add($name, ChoiceType::class, $options);
             }
         });
@@ -250,6 +254,13 @@ final class RecordFormFactory
                 // A cascade lists the few records of the chosen parent as soon as it opens.
                 'min_characters' => null === $field->relation()?->dependsOn ? 1 : 0,
             ]],
+            // The linked records, in the order they were linked; any number of them.
+            WidgetKind::ManyToMany => [ChoiceType::class, $required + $this->linkChoices($this->target($widget), \is_array($value) ? array_values(array_filter($value, \is_string(...))) : []) + [
+                'multiple' => true,
+                'autocomplete' => true,
+                'autocomplete_url' => $this->lookupUrl($field, $widget, null),
+                'min_characters' => 1,
+            ]],
         };
     }
 
@@ -292,6 +303,25 @@ final class RecordFormFactory
             'first_options' => ['label' => $field->label, 'attr' => $first] + $help,
             'second_options' => ['label' => 'form.repeat', 'label_translation_parameters' => ['%label%' => mb_strtolower($field->label)]],
         ]];
+    }
+
+    /**
+     * The choices of a many-to-many control: the linked ids, as the record holds them, named by
+     * the labels of their records. Ids, not labels, are the keys: two tags may share a label, and
+     * both must stay chosen.
+     *
+     * @param list<string> $ids
+     *
+     * @return array{choices: list<string>, choice_label: \Closure(string): string}
+     */
+    private function linkChoices(string $target, array $ids): array
+    {
+        $labels = [] !== $ids ? $this->lookup->labels($target, $ids) : [];
+
+        return [
+            'choices' => array_values(array_filter($ids, static fn (string $id): bool => isset($labels[strtolower($id)]))),
+            'choice_label' => static fn (string $id): string => $labels[strtolower($id)] ?? RecordLabels::fallback($id),
+        ];
     }
 
     private function target(Widget $widget): string

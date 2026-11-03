@@ -22,6 +22,7 @@ final class MetadataRecordValidator implements RecordValidatorInterface
     public const string REQUIRED_MESSAGE = 'This value is required.';
     public const string UNIQUE_MESSAGE = 'This value is already used.';
     public const string REFERENCE_MESSAGE = 'The selected record does not exist.';
+    public const string REFERENCES_MESSAGE = 'One of the selected records does not exist.';
     public const string PARENT_MISSING_MESSAGE = 'Choose the %s first.';
     public const string PARENT_MISMATCH_MESSAGE = 'The selected record does not belong to the chosen %s.';
 
@@ -50,6 +51,12 @@ final class MetadataRecordValidator implements RecordValidatorInterface
             }
             if ($field->isUnique && $this->uniqueValues->isTaken($object, $field, $value, $recordId)) {
                 $errors[$name][] = self::UNIQUE_MESSAGE;
+            }
+            $manyToMany = $field->manyToMany();
+            if (null !== $manyToMany && \is_array($value)
+                && [] !== $this->references->missing($this->metadata->getObject($manyToMany->target), array_values(array_filter($value, \is_string(...))))) {
+                $errors[$name][] = self::REFERENCES_MESSAGE;
+                continue;
             }
             $relation = $field->relation();
             if (null !== $relation && \is_string($value)

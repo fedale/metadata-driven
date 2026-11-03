@@ -46,4 +46,30 @@ final readonly class FieldDefinitionDto
     {
         return RelationSettings::FIELD_TYPE === $this->type ? RelationSettings::fromSettings($this->settings) : null;
     }
+
+    /**
+     * The many-to-many settings, for a "many_to_many" field; null for any other type.
+     */
+    public function manyToMany(): ?ManyToManySettings
+    {
+        return ManyToManySettings::FIELD_TYPE === $this->type ? ManyToManySettings::fromSettings($this->settings) : null;
+    }
+
+    /**
+     * Whether the field is a column of its object's table. A many-to-many field is not: its
+     * values are links, kept in a table of their own (its columnName names that table). Every
+     * module reading or writing columns skips the fields that answer false.
+     */
+    public function storesColumn(): bool
+    {
+        return ManyToManySettings::FIELD_TYPE !== $this->type;
+    }
+
+    /**
+     * The object a relation or a many-to-many field points at; null for any other type.
+     */
+    public function target(): ?string
+    {
+        return $this->relation()->target ?? $this->manyToMany()?->target;
+    }
 }

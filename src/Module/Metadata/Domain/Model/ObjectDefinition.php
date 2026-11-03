@@ -147,15 +147,14 @@ class ObjectDefinition
     }
 
     /**
-     * Follows the rename of an object in the relation fields pointing at it, the archived ones
-     * included (their foreign keys point at its table all the same).
+     * Follows the rename of an object in the relation and many-to-many fields pointing at it,
+     * the archived ones included (their foreign keys point at its table all the same).
      */
     public function retargetRelations(string $oldTarget, string $newTarget): void
     {
         foreach ($this->fields as $field) {
-            $settings = $field->getSettings();
-            if (RelationSettings::FIELD_TYPE === $field->getType() && ($settings['target'] ?? null) === $oldTarget) {
-                $field->changeSettings(['target' => $newTarget] + $settings);
+            if ($field->getTarget() === $oldTarget) {
+                $field->changeSettings(['target' => $newTarget] + $field->getSettings());
                 $this->updatedAt = new \DateTimeImmutable();
             }
         }
