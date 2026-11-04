@@ -63,7 +63,8 @@ Things that are not obvious from a single file, and that are easy to break.
 
 - **Metadata cache** (`Metadata/Infrastructure/Cache/CachedMetadataRegistry.php`): the snapshot
   key (`metadata_snapshot.vN`) and the forms key (`metadata_forms.vN`) are versioned. Bump the
-  version whenever the shape of a cached DTO changes. The snapshot key also carries a fingerprint
+  version whenever the shape of a cached DTO changes, and bump the key that holds that DTO: a
+  form DTO (e.g. `ServiceFieldDto`) lives under the forms key, not the snapshot key. The snapshot key also carries a fingerprint
   of every field type's default settings, so adding a setting renews the snapshot by itself.
 - **Localized metadata**: `LocalizedMetadataRegistry` (`#[Target('localizedMetadata')]`) returns
   metadata with labels in the user's locale; only the Record and Validation modules use it. Metadata

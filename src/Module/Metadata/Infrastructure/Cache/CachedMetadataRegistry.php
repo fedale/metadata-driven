@@ -36,10 +36,12 @@ final class CachedMetadataRegistry implements MetadataRegistryInterface, ResetIn
 {
     // Bump the version whenever the shape of the DTOs changes: the pool outlives deploys
     // (cache:clear does not empty it), and an old serialized snapshot would not hydrate.
+    // Bump the key that holds the changed DTO: CACHE_KEY for the object DTOs, FORMS_CACHE_KEY
+    // for the form DTOs (FormDefinitionDto, FormNodeDto, ServiceFieldDto, ...).
     // The key also carries a fingerprint of the field types' default settings: the snapshot
     // merges them into the stored settings, so a setting added to a type renews it by itself.
     private const string CACHE_KEY = 'metadata_snapshot.v10';
-    private const string FORMS_CACHE_KEY = 'metadata_forms.v4';
+    private const string FORMS_CACHE_KEY = 'metadata_forms.v5';
     private const string CACHE_TAG = 'metadata';
 
     /** @var array<string, ObjectDefinitionDto>|null */
