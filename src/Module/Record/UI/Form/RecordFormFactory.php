@@ -89,6 +89,10 @@ final class RecordFormFactory
         $relations = [];
         foreach ($fieldNames as $name) {
             $field = $object->field($name);
+            // Several files get their control in phase 6 of the plan.
+            if (null !== $field->fileList()) {
+                continue;
+            }
             $requiredHere = \in_array($name, $required, true);
             if ($requiredHere) {
                 $field = new FieldDefinitionDto($field->id, $field->name, $field->columnName, $field->type, $field->label, true, $field->isUnique, $field->settings, $field->position, $field->isSystem);

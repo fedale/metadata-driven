@@ -96,7 +96,10 @@ Things that are not obvious from a single file, and that are easy to break.
   through `LinkSource` (`RecordTable::links()`): no SQL names the link table by hand. With
   `through`, the links are the live records of a junction object: no link table, `andLive()` on
   every read, writes refused (they are junction records), the junction's relations carry the
-  delete rules.
+  delete rules. A `file` field with `multiple: true` (`FileListSettings`, `fileList()`) has no
+  column either, and a link table of its own (`target_id` → `core.file`, plus `position`):
+  code handling links must tell the two apart with `manyToMany()` / `fileList()`, never with
+  `!storesColumn()` alone.
   Cascading selects use `dependsOn`/`dependsVia`; the lookup takes
   `filter[<field>]=<id>` (empty means no results) and the validator checks parent membership.
 - **System columns** (`ObjectDefinition::SYSTEM_COLUMNS`, built by `TableDefinitionFactory`):
@@ -166,8 +169,8 @@ rename/archive/restore/purge of objects and fields.
     and `core.file`), 2 (the type in the record form) and 3 (download and thumbnails at
     `/files/{id}`) and 4 (grid: link, thumbnail, yes/no filter, export of the names) are merged
     into main. Several files per field: decided by the user (2026-11-04), a `multiple: true`
-    setting with a link table (phases 5–7 of the plan), then the GC (phase 8). Next is phase 5,
-    awaiting the user's go-ahead. Open decision in the plan: production storage.
+    setting with a link table (phases 5–7 of the plan), then the GC (phase 8). Phase 5
+    (storage: settings, link table) is merged into main; next is phase 6 (records and form). Open decision in the plan: production storage.
 - **Blueprints — plan under review, not started**: [blueprints-plan.md](blueprints-plan.md)
   (packaged, versioned models: a canonical format for every item, install, three-way upgrade,
   seeds, online indexes, export). Its open decisions are listed at the top: the name, local

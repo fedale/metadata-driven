@@ -1,6 +1,7 @@
 # Plan: the `file` field type
 
-Status: **phases 1 to 4 merged** into main; phase 5 (GC) next.
+Status: **phases 1 to 4 merged** into main; phase 5 (several files, storage) merged too;
+phase 6 (several files, records and form) next.
 Discussed with the user on 2026-11-03.
 
 A field type that stores a file (an image, a PDF, any document) on a record: a product's photo,
@@ -127,10 +128,12 @@ ones are:
 | Column | Type | Notes |
 |---|---|---|
 | `record_id` | uuid | FK to the object table, `ON DELETE CASCADE` (a purge only: records are soft-deleted) |
-| `file_id` | uuid | FK to `core.file(id)`, `ON DELETE RESTRICT`, indexed (access checks, GC) |
+| `target_id` | uuid | FK to `core.file(id)`, `ON DELETE RESTRICT`, indexed (access checks, GC) |
 | `position` | int | 0, 1, 2… in the order the user chose |
 
-Primary key `(record_id, file_id)`: the same file twice in one list makes no sense (the same
+The file column is `target_id`, as in the `many_to_many` link tables, so the names of the
+indexes and constraints (`TableDefinitionFactory::linkNames()`) and the code reading links can
+be shared. Primary key `(record_id, target_id)`: the same file twice in one list makes no sense (the same
 bytes uploaded twice are two rows of `core.file`, so two different ids anyway). The table is
 named by `DataSchema::linkTable()`, so `storesColumn()` / link table code paths are shared;
 whether `FieldDefinitionDto` needs a `linkKind()` (records or files) is decided in phase 5.
@@ -192,8 +195,8 @@ reusable, otherwise `md-file-list` in `app.css`.
      `FileFieldControllerTest` (functional).
    - SVG: not refused at upload, after all. Phase 3 must serve anything that is not a raster
      image as an attachment, with `nosniff`, so an SVG never runs in the app's origin.
-   - Open for later: a `file` field can still be chosen as the label of the records
-     (`metadata:object:label`), which would show an id.
+   - A `file` field can no longer be the label of the records nor searched (phase 5:
+     `InvalidMetadataDefinition::noTextValue()`, through `isSortable()`).
 3. **Serving** — done. As built:
    - `FileController` (Record UI) at `/files/{id}` and `/files/{id}/thumbnail/{small|medium}`.
      Readable when `FileReferences::objectsHolding()` (Record Domain, DBAL implementation: one
@@ -236,9 +239,22 @@ reusable, otherwise `md-file-list` in `app.css`.
    - Not done: each thumbnail is a request of its own, checked like any download
      (`FileReferences::objectsHolding()`, one query per object with file fields); fine for a
      page of 25, to watch on large grids.
-5. **Several files, storage**: the `multiple` and `max` settings (fixed, checked), the link
-   table in the Schema module (create, rename, archive, purge with the field and the object),
-   `storesColumn()` false, tests as for the `many_to_many` link tables.
+5. **Several files, storage** — done, merged. As built:
+   - `FileFieldType`: `multiple` (boolean, fixed) and `max` (1–100, only with `multiple`);
+     the widget carries both.
+   - `FileListSettings` (Metadata Contract) and `FieldDefinitionDto::fileList()`;
+     `storesColumn()` is false for a file list too. The Record paths that read and write
+     many-to-many links now ask `manyToMany()` instead of `!storesColumn()` (`writeLinks()`,
+     `linksOf()`, the grid filter), so a file list is not taken for links to records.
+   - `TableDefinitionFactory::fileListTable()`: `record_id`, `target_id` (→ `core.file`,
+     RESTRICT), `position`; no `created_at`/`created_by`. `objectNames()` lists it with the
+     link tables, so rename, archive, purge and drop handle it with no new code.
+   - Until phases 6–7: the record form skips the field (`RecordFormFactory`), a record reads
+     `[]`, the grid column is empty with no filter (the source refuses one), and
+     `DbalFileReferences` skips the field.
+   - Label and search refuse any `file` field (`isSortable()` false), one file or several.
+   - Tests: `FileListFieldTest` (integration: DDL, settings, renames, archive and purge, empty
+     reads), `FileFieldTypeTest` (settings).
 6. **Several files, records and form**: read and write the list (`FileUpload` or a held id),
    validation, the Record store, the form widget and its Stimulus controller, `/files/{id}`
    access through the link tables.

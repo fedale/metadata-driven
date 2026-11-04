@@ -26,6 +26,7 @@ final class FileFieldType extends AbstractFieldType
     // Decimal megabytes, as the File constraint counts them with binaryFormat: false.
     private const int BYTES_PER_MB = 1_000_000;
     private const int MAX_SIZE_MB = 100;
+    private const int MAX_FILES = 100;
     private const string MIME_PATTERN = '~^[a-z0-9][a-z0-9!#$&^_.+-]*/(\*|[a-z0-9][a-z0-9!#$&^_.+-]*)$~';
 
     public function __construct(
@@ -54,12 +55,14 @@ final class FileFieldType extends AbstractFieldType
             new SettingDefinition('accept', SettingKind::String, 'Accepted types', 'MIME types separated by commas, e.g. application/pdf, image/*. The type is read from the content of the file, not from its name. Empty: any type.'),
             new SettingDefinition('maxSize', SettingKind::Integer, 'Maximum size (MB)', \sprintf('From 1 to %d MB. The upload limits of the server apply too.', self::MAX_SIZE_MB), true, ['min' => 1, 'max' => self::MAX_SIZE_MB]),
             new SettingDefinition('image', SettingKind::Boolean, 'Images only', 'Accepts images only (JPEG, PNG, GIF, WebP...), checked to be real images.'),
+            new SettingDefinition('multiple', SettingKind::Boolean, 'Several files', 'The field holds a list of files, in the order chosen, instead of one file. It cannot change once the field exists.', fixed: true),
+            new SettingDefinition('max', SettingKind::Integer, 'Most files', \sprintf('With several files: how many the field may hold, from 1 to %d. Empty: no limit.', self::MAX_FILES), options: ['min' => 1, 'max' => self::MAX_FILES]),
         ];
     }
 
     public function defaultSettings(): array
     {
-        return ['accept' => null, 'maxSize' => 10, 'image' => false];
+        return ['accept' => null, 'maxSize' => 10, 'image' => false, 'multiple' => false, 'max' => null];
     }
 
     protected function validateKnownSettings(array $settings): array
@@ -77,6 +80,15 @@ final class FileFieldType extends AbstractFieldType
         }
         if (!self::isIntBetween($settings['maxSize'], 1, self::MAX_SIZE_MB)) {
             $errors[] = \sprintf('Setting "maxSize" must be an integer between 1 and %d (MB).', self::MAX_SIZE_MB);
+        }
+        if (!\is_bool($settings['multiple'])) {
+            $errors[] = 'Setting "multiple" must be a boolean.';
+        }
+        $max = $settings['max'];
+        if (null !== $max && !self::isIntBetween($max, 1, self::MAX_FILES)) {
+            $errors[] = \sprintf('Setting "max" must be an integer between 1 and %d, or empty for no limit.', self::MAX_FILES);
+        } elseif (null !== $max && true !== $settings['multiple']) {
+            $errors[] = 'Setting "max" applies to a field holding several files ("multiple") only.';
         }
         if (!\is_bool($settings['image'])) {
             $errors[] = 'Setting "image" must be a boolean.';
@@ -134,6 +146,8 @@ final class FileFieldType extends AbstractFieldType
             'accept' => implode(',', [] !== $types ? $types : ($image ? ['image/*'] : [])),
             'maxSize' => self::intSetting($settings, 'maxSize'),
             'image' => $image,
+            'multiple' => self::boolSetting($settings, 'multiple'),
+            'max' => self::nullableIntSetting($settings, 'max'),
         ]);
     }
 

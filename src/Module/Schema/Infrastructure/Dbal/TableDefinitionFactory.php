@@ -87,9 +87,9 @@ final class TableDefinitionFactory
     }
 
     /**
-     * The link tables of the many-to-many fields of an object, archived ones included, keyed
-     * by field id. A field going through a junction object has none: its links are the
-     * junction's records.
+     * The link tables of the many-to-many fields of an object, and of its file fields holding
+     * several files, archived ones included, keyed by field id. A many-to-many field going
+     * through a junction object has none: its links are the junction's records.
      *
      * A link is a row (record_id, target_id), the pair being the primary key; created_at and
      * created_by say when and by whom it was made. The index on target_id serves the inverse
@@ -101,6 +101,10 @@ final class TableDefinitionFactory
     {
         $tables = [];
         foreach ($this->allFields($object) as $field) {
+            if (null !== $field->fileList()) {
+                $tables[$field->id] = $this->fileListTable($object, $field);
+                continue;
+            }
             $settings = $field->manyToMany();
             if (null === $settings || $settings->goesThrough()) {
                 continue;
@@ -146,6 +150,48 @@ final class TableDefinitionFactory
         }
 
         return $tables;
+    }
+
+    /**
+     * The link table of a file field holding several files: a row (record_id, target_id) per
+     * file, the pair being the primary key, at its position in the list. The target is a file of
+     * core.file, RESTRICT as for a file column: the GC alone removes files. The index on
+     * target_id serves the access checks of /files/{id} and the GC.
+     */
+    private function fileListTable(ObjectDefinitionDto $object, FieldDefinitionDto $field): Table
+    {
+        $names = $this->linkNames($object, $field);
+
+        return Table::editor()
+            ->setUnquotedName($names['table'], DataSchema::NAME)
+            ->addColumn($this->column('record_id', Types::GUID, notNull: true))
+            ->addColumn($this->column('target_id', Types::GUID, notNull: true))
+            ->addColumn($this->column('position', Types::INTEGER, notNull: true))
+            ->addPrimaryKeyConstraint(
+                PrimaryKeyConstraint::editor()
+                    ->setUnquotedName($names['constraints']['pkey'])
+                    ->setUnquotedColumnNames('record_id', 'target_id')
+                    ->create(),
+            )
+            ->addIndex(Index::editor()
+                ->setUnquotedName($names['indexes']['target'])
+                ->setUnquotedColumnNames('target_id')
+                ->create())
+            // As for a many-to-many link table: named here, so a rename keeps it.
+            ->addIndex(Index::editor()
+                ->setUnquotedName($names['indexes']['record'])
+                ->setUnquotedColumnNames('record_id')
+                ->create())
+            // A record purged takes its list with it; a file is never removed while listed.
+            ->addForeignKeyConstraint($this->foreignKeyTo($names['constraints']['fk_record'], 'record_id', $object->tableName, ReferentialAction::CASCADE))
+            ->addForeignKeyConstraint(ForeignKeyConstraint::editor()
+                ->setUnquotedName($names['constraints']['fk_target'])
+                ->setUnquotedReferencingColumnNames('target_id')
+                ->setUnquotedReferencedTableName($this->nonEmpty($this->referencedCoreTable($field) ?? ''), CoreSchema::NAME)
+                ->setUnquotedReferencedColumnNames('id')
+                ->setOnDeleteAction(ReferentialAction::RESTRICT)
+                ->create())
+            ->create();
     }
 
     /**
@@ -259,7 +305,8 @@ final class TableDefinitionFactory
     /**
      * The names of the indexes and constraints of a table, keyed by what they stand for:
      * "pkey", and "<kind>:<field id>" for the index, unique index or foreign key of a field;
-     * under "links", the names of the link table of each many-to-many field, by field id.
+     * under "links", the names of the link table of each many-to-many field, and of each file
+     * field holding several files, by field id.
      * Two definitions of one object (before and after a rename) pair up by key.
      *
      * @return array{indexes: array<string, non-empty-string>, constraints: array<string, non-empty-string>, links: array<string, array{table: non-empty-string, indexes: array<string, non-empty-string>, constraints: array<string, non-empty-string>}>}

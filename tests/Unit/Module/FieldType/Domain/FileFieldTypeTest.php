@@ -41,13 +41,19 @@ final class FileFieldTypeTest extends TestCase
         self::assertSame([], $type->validateSettings(['accept' => 'application/pdf, IMAGE/*', 'maxSize' => 5]));
         self::assertEquals(new ColumnSpec(ColumnType::Guid, referencesCoreTable: 'file'), $type->columnSpec($type->defaultSettings()));
         self::assertEquals(
-            new Widget(WidgetKind::File, ['accept' => 'application/pdf,image/*', 'maxSize' => 5, 'image' => false]),
+            new Widget(WidgetKind::File, ['accept' => 'application/pdf,image/*', 'maxSize' => 5, 'image' => false, 'multiple' => false, 'max' => null]),
             $type->widget(['accept' => 'application/pdf, IMAGE/*', 'maxSize' => 5] + $type->defaultSettings()),
         );
         // An image field without types offers images to the browser's file picker.
         self::assertSame('image/*', $type->widget(['image' => true] + $type->defaultSettings())->options['accept']);
         self::assertFalse($type->supportsUnique());
         self::assertFalse($type->isWriteOnly());
+        self::assertFalse($type->isSortable());
+        self::assertSame([], $type->validateSettings(['multiple' => true, 'max' => 5]));
+        self::assertSame(['multiple' => true, 'max' => 5], array_intersect_key(
+            $type->widget(['multiple' => true, 'max' => 5] + $type->defaultSettings())->options,
+            ['multiple' => true, 'max' => true],
+        ));
     }
 
     /**
@@ -70,7 +76,11 @@ final class FileFieldTypeTest extends TestCase
         yield 'maxSize over the ceiling' => [['maxSize' => 101], 'between 1 and 100 (MB)'];
         yield 'image not bool' => [['image' => 'yes'], '"image" must be a boolean'];
         yield 'image with a document type' => [['image' => true, 'accept' => 'image/png, application/pdf'], '"application/pdf" is not an image type'];
-        yield 'unknown setting' => [['multiple' => true], 'Unknown setting "multiple"'];
+        yield 'multiple not bool' => [['multiple' => 'yes'], '"multiple" must be a boolean'];
+        yield 'max zero' => [['multiple' => true, 'max' => 0], '"max" must be an integer between 1 and 100'];
+        yield 'max over the ceiling' => [['multiple' => true, 'max' => 101], '"max" must be an integer between 1 and 100'];
+        yield 'max without multiple' => [['max' => 3], '"max" applies to a field holding several files'];
+        yield 'unknown setting' => [['multiple' => true, 'position' => 1], 'Unknown setting "position"'];
     }
 
     public function testDenormalizesUploadsAndStoredIds(): void

@@ -39,6 +39,9 @@ final class ConfigureObjectLabelHandler
             if (null !== $field && $object->hasField($field) && $object->getField($field)->isManyToMany()) {
                 throw InvalidMetadataDefinition::manyToManyField($field, 'the label of the records');
             }
+            if (null !== $field && $object->hasField($field) && !$this->fieldTypes->isSortable($type = $object->getField($field)->getType())) {
+                throw InvalidMetadataDefinition::noTextValue($field, $type, 'the label of the records');
+            }
             $object->useAsLabel($field);
             $this->objects->save($object);
         });

@@ -155,6 +155,15 @@ final class InvalidMetadataDefinition extends MetadataException
         return new self(\sprintf('Field "%s" links several records (many-to-many): it cannot be %s.', $fieldName, $use));
     }
 
+    /**
+     * A field whose value is no text of its own (a file: an id) cannot name, find or tell
+     * records apart.
+     */
+    public static function noTextValue(string $fieldName, string $type, string $use): self
+    {
+        return new self(\sprintf('Field "%s" is a %s field, with no text of its own: it cannot be %s.', $fieldName, $type, $use));
+    }
+
     public static function fixedSetting(string $fieldName, string $setting): self
     {
         return new self(\sprintf('Setting "%s" of field "%s" cannot change once the field exists: it shapes the column.', $setting, $fieldName));

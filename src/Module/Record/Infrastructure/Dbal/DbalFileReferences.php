@@ -27,7 +27,9 @@ final class DbalFileReferences implements FileReferences
         foreach ($this->metadata->allObjects() as $object) {
             $columns = [];
             foreach ($object->fields as $field) {
-                if (WidgetKind::File === $this->fieldTypes->get($field->type)->widget($field->settings)->kind) {
+                // A field holding several files keeps them in a link table, searched from phase 6
+                // of the plan on.
+                if ($field->storesColumn() && WidgetKind::File === $this->fieldTypes->get($field->type)->widget($field->settings)->kind) {
                     $columns[] = \sprintf('%s = :file', $this->table->column($field->columnName));
                 }
             }

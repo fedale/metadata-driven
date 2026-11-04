@@ -259,7 +259,8 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     {
         foreach ($values as $name => $value) {
             $field = $object->field($name);
-            if (!$field->storesColumn() && !$field->manyToMany()?->goesThrough()) {
+            $manyToMany = $field->manyToMany();
+            if (null !== $manyToMany && !$manyToMany->goesThrough()) {
                 $ids = \is_array($value) ? array_values(array_filter($value, \is_string(...))) : [];
                 $this->store->replaceLinks($object, $field, $id, $ids, $now);
             }

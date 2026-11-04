@@ -85,7 +85,7 @@ final class AdminControllerTest extends WebTestCase
         $manual = $this->registry()->getObject('product')->field('manual');
         self::assertSame('file', $manual->type);
         // assertEquals: JSONB does not keep the key order.
-        self::assertEquals(['accept' => 'application/pdf', 'maxSize' => 5, 'image' => false], $manual->settings);
+        self::assertEquals(['accept' => 'application/pdf', 'maxSize' => 5, 'image' => false, 'multiple' => false, 'max' => null], $manual->settings);
         $type = self::getContainer()->get(Connection::class)->fetchOne(
             "SELECT data_type FROM information_schema.columns WHERE table_schema = 'data' AND table_name = 'c_product' AND column_name = 'manual'",
         );
