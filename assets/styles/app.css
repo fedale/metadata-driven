@@ -227,6 +227,7 @@ a:hover { color: var(--gv-color-link-hover); }
 }
 .md-file-cell__icon { flex: none; color: var(--gv-color-text-muted); }
 .md-file-cell__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.md-file-cell__separator { color: var(--gv-color-text-muted); }
 
 /* ── Form sheets: a header with the actions, an index on the side, numbered cards ── */
 

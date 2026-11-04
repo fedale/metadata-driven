@@ -153,7 +153,8 @@ list. A write-only field (a password) cannot be listed. A
 records and filters on them, but it never sorts (`sortable: true` is refused, and so is a `sort`
 on it); its renderer, if any, gets the labels as its text. A [`file`](field-types.md#file) field
 follows the same rules: it shows a link to the file (with a thumbnail for an image), filters on
-whether there is one, never sorts, and its renderer gets the original name as its text.
+whether there is one, never sorts, and its renderer gets the original name as its text. With
+`multiple`, the cell shows each file in turn, and a renderer gets the names joined by ", ".
 
 ### Virtual columns
 

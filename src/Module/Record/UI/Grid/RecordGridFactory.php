@@ -284,11 +284,10 @@ final class RecordGridFactory
                 }),
                 $widget,
             ),
-            // A link to the file, with a thumbnail for an image; filters on whether there is one.
+            // A link to each file, with a thumbnail for an image; filters on whether there is one.
             WidgetKind::File => TextColumn::new($name)
                 ->value(fn (array $row): Markup => new Markup($this->fileCell->render($name, $row), 'UTF-8'))
-                // Several files are read by the grid from phase 7 of the plan on.
-                ->filter($field->storesColumn() ? FilterType::Boolean : false),
+                ->filter(FilterType::Boolean),
         };
     }
 

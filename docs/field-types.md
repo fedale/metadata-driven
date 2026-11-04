@@ -322,8 +322,9 @@ contract.
     controller); without it the form keeps the files as they are and still adds new ones.
   - **Downloading** a file of a list follows the same rule as a single file: a user who may read
     a live record listing it.
-  - **Not yet**: the grid shows an empty column with no filter, and the export leaves it empty;
-    the next phase of the work adds them.
+  - **In the grid** the cell shows every file, in the field's order, as a single file is shown,
+    separated by commas; the yes/no filter asks whether the record holds at least one file, and
+    the export writes the names joined by ", ".
 - **In the grid** a cell shows the original name of the file as a link to it, after the small
   thumbnail of an image or a document icon. An image opens in a new tab, any other file is
   downloaded. The filter is a yes/no on whether the record holds a file; the column never sorts,

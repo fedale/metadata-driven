@@ -40,7 +40,7 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
     /** Aliases of a link table and of its linked object's table, inside a subquery. */
     private const string LINK_ALIAS = 'l';
     private const string LINKED_ALIAS = 'x';
-    /** Of the SQL column carrying the linked ids of a many-to-many field ("<field>__ids"). */
+    /** Of the SQL column carrying the linked ids of a many-to-many field or the file ids of a file list ("<field>__ids"). */
     private const string LINK_IDS_SUFFIX = '__ids';
     /** Between the labels of the linked records in a cell. */
     private const string LINK_LABEL_SEPARATOR = ', ';
@@ -99,6 +99,14 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
                 $linkFields[] = $fieldName;
             }
         }
+        // Each file list brings the ids of its files, in their order; withFiles() names them.
+        $fileListFields = [];
+        foreach ($object->fields as $fieldName => $field) {
+            if (null !== $field->fileList()) {
+                $qb->addSelect($this->fileIdList($object, $field).' AS '.$this->table->quote($fieldName.self::LINK_IDS_SUFFIX));
+                $fileListFields[] = $fieldName;
+            }
+        }
 
         foreach ($query->sort as $order) {
             $qb->addOrderBy(
@@ -115,7 +123,7 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
         $page = [];
         foreach ($qb->executeQuery()->iterateAssociative() as $row) {
             $links = [];
-            foreach ($linkFields as $fieldName) {
+            foreach ([...$linkFields, ...$fileListFields] as $fieldName) {
                 $ids = $row[$fieldName.self::LINK_IDS_SUFFIX] ?? null;
                 $links[$fieldName] = \is_string($ids) && '' !== $ids ? explode(',', $ids) : [];
             }
@@ -133,7 +141,9 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
 
     /**
      * The files of a page of rows, looked up in one query through the File module, which owns
-     * core.file: under "<field>__file" and their names under "<field>__label".
+     * core.file: under "<field>__file" (a list, in the order of the field) and their names,
+     * joined by ", ", under "<field>__label". A file field holds an id, a file list a list of
+     * ids.
      *
      * @param list<array<string, mixed>> $rows
      *
@@ -148,24 +158,66 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
         $ids = [];
         foreach ($rows as $row) {
             foreach ($fileFields as $fieldName) {
-                if (\is_string($row[$fieldName] ?? null)) {
-                    $ids[] = $row[$fieldName];
-                }
+                array_push($ids, ...self::fileIds($row[$fieldName] ?? null));
             }
         }
         $files = $this->files->findMany(array_values(array_unique($ids)));
 
         foreach ($rows as $index => $row) {
             foreach ($fileFields as $fieldName) {
-                $id = $row[$fieldName] ?? null;
-                $file = \is_string($id) ? ($files[strtolower($id)] ?? null) : null;
-                $held = null === $file ? [] : [['id' => $file->id, 'name' => $file->originalName, 'image' => $file->isImage()]];
+                $held = [];
+                foreach (self::fileIds($row[$fieldName] ?? null) as $id) {
+                    $file = $files[strtolower($id)] ?? null;
+                    if (null !== $file) {
+                        $held[] = ['id' => $file->id, 'name' => $file->originalName, 'image' => $file->isImage()];
+                    }
+                }
                 $rows[$index][$fieldName.self::FILE_SUFFIX] = $held;
                 $rows[$index][$fieldName.self::LABEL_SUFFIX] = [] === $held ? null : implode(self::LINK_LABEL_SEPARATOR, array_column($held, 'name'));
             }
         }
 
         return $rows;
+    }
+
+    /**
+     * @return list<string> the ids a file field (one id) or a file list (a list) holds
+     */
+    private static function fileIds(mixed $value): array
+    {
+        return array_values(array_filter(\is_array($value) ? $value : [$value], \is_string(...)));
+    }
+
+    /**
+     * The correlated subquery listing the file ids of a file list, joined by ",", in their
+     * order; NULL when there are none. No join on core.file, which belongs to the File module:
+     * withFiles() looks the files up through it.
+     */
+    private function fileIdList(ObjectDefinitionDto $object, FieldDefinitionDto $field): string
+    {
+        return \sprintf(
+            "(SELECT STRING_AGG(CAST(%1\$s.%2\$s AS TEXT), ',' ORDER BY %1\$s.%3\$s) %4\$s)",
+            $this->table->quote(self::LINK_ALIAS),
+            $this->table->quote('target_id'),
+            $this->table->quote('position'),
+            $this->fileListFrom($object, $field),
+        );
+    }
+
+    /**
+     * FROM and WHERE of a subquery on the files of the current row in a file list; the link
+     * table is aliased "l".
+     */
+    private function fileListFrom(ObjectDefinitionDto $object, FieldDefinitionDto $field): string
+    {
+        return \sprintf(
+            'FROM %s %s WHERE %s.%s = %s',
+            $this->table->fileListTable($object, $field),
+            $this->table->quote(self::LINK_ALIAS),
+            $this->table->quote(self::LINK_ALIAS),
+            $this->table->quote('record_id'),
+            $this->table->column('id', self::ALIAS),
+        );
     }
 
     private function isFile(FieldDefinitionDto $field): bool
@@ -357,16 +409,18 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
 
     /**
      * A file field matches the records that hold a file (true) or hold none (false): its column
-     * is the id of a file, with nothing to compare but its presence.
+     * is the id of a file, with nothing to compare but its presence. A file list matches when
+     * its link table has a row for the record, or none.
      */
     private function applyFileCriterion(QueryBuilder $qb, ObjectDefinitionDto $object, FieldDefinitionDto $field, FilterCriterion $criterion): void
     {
         if (FilterOperator::Eq !== $criterion->operator || !\is_bool($criterion->value)) {
             throw new \InvalidArgumentException(\sprintf('Field "%s" of "%s" is a file: it is filtered on whether it holds one (true or false), not with "%s".', $field->name, $object->name, $criterion->operator->value));
         }
-        // Its files are rows of a link table, read by the grid from phase 7 of the plan on.
-        if (!$field->storesColumn()) {
-            throw new \InvalidArgumentException(\sprintf('Field "%s" of "%s" holds several files: the grid does not filter it yet.', $field->name, $object->name));
+        if (null !== $field->fileList()) {
+            $qb->andWhere(\sprintf('%sEXISTS (SELECT 1 %s)', $criterion->value ? '' : 'NOT ', $this->fileListFrom($object, $field)));
+
+            return;
         }
         $qb->andWhere(\sprintf('%s IS %sNULL', $this->table->column($field->columnName, self::ALIAS), $criterion->value ? 'NOT ' : ''));
     }
