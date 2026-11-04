@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Metadata\Application\Form;
 
 use App\Module\Metadata\Application\Translation\DefinedTexts;
+use App\Module\Metadata\Contract\Dto\FileListSettings;
 use App\Module\Metadata\Contract\Dto\FormNodeMode;
 use App\Module\Metadata\Contract\Dto\ManyToManySettings;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
@@ -412,10 +413,11 @@ final class FormDefinitionCompiler
 
             $type = $field['type'] ?? null;
             $settings = $field['settings'] ?? [];
-            // A service field belongs to no record: it cannot point at other records.
-            $linking = [RelationSettings::FIELD_TYPE, ManyToManySettings::FIELD_TYPE];
-            if (!\is_string($type) || !$this->fieldTypes->supports($type) || \in_array($type, $linking, true)) {
-                $this->errors[] = \sprintf('%s: "type" must be a field type other than %s (%s).', $fieldPath, implode(' and ', $linking), implode(', ', array_diff($this->fieldTypes->names(), $linking)));
+            // A service field belongs to no record: it cannot point at other records, and a file
+            // would be uploaded only to be thrown away.
+            $excluded = [RelationSettings::FIELD_TYPE, ManyToManySettings::FIELD_TYPE, FileListSettings::FIELD_TYPE];
+            if (!\is_string($type) || !$this->fieldTypes->supports($type) || \in_array($type, $excluded, true)) {
+                $this->errors[] = \sprintf('%s: "type" must be a field type other than relation, many_to_many and file (%s).', $fieldPath, implode(', ', array_diff($this->fieldTypes->names(), $excluded)));
                 continue;
             }
             if (!\is_array($settings) || ([] !== $settings && array_is_list($settings))) {

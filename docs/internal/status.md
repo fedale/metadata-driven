@@ -139,7 +139,9 @@ Things that are not obvious from a single file, and that are easy to break.
   a transaction rolls back) for the GC (`metadata:files:gc`), never a record pointing at nothing.
   The GC finds the references in the foreign keys to `core.file` (catalog), so a new table
   referencing files needs such a key. `store()` and the GC share an advisory lock per SHA-256
-  (`ContentLock`): never write or delete content bytes without it. The grid source
+  (`ContentLock`): never write or delete content bytes without it. A file id given to a record
+  (one file or a list) must be one the record holds (`RecordManager::checkHeldFiles()`): new
+  files arrive only as uploads. The grid source
   looks the files of a page up in one `FileStorageInterface::findMany()` call (core.file belongs
   to the File module: no SQL join on it from Record) and hands each row `<field>__file`, a list
   of `{id, name, image}` (every file of a file list, in order: their ids come from a correlated
@@ -180,9 +182,9 @@ new-composite pages.
     `/files/{id}`) and 4 (grid: link, thumbnail, yes/no filter, export of the names) are merged
     into main. Several files per field: decided by the user (2026-11-04), a `multiple: true`
     setting with a link table (phases 5–7 of the plan), then the GC (phase 8). Phases 5
-    (storage: settings, link table), 6 (records and form) and 7 (grid and export) are merged
-    into main; phase 8 (GC, `metadata:files:gc`) is done on `feature/file-gc`, awaiting review;
-    next is phase 9 (composite forms). Open decision in the plan: production storage.
+    (storage: settings, link table), 6 (records and form), 7 (grid and export), 8 (GC,
+    `metadata:files:gc`) and 9 (file fields in composite forms) are merged into main: the plan
+    is complete. Open decision in the plan: production storage.
 - **Blueprints — plan under review, not started**: [blueprints-plan.md](blueprints-plan.md)
   (packaged, versioned models: a canonical format for every item, install, three-way upgrade,
   seeds, online indexes, export). Its open decisions are listed at the top: the name, local

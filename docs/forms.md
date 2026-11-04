@@ -40,6 +40,7 @@ The page is a sheet:
   the title if it has one. Deeper sections are framed groups inside their card;
 - an **index** on the side, one link per card, with how far its filling has come: "2/6
   required" (or "1/7 filled" when the card requires nothing), "3 entries" for a section of rows.
+  A file field counts once, filled while it holds a file, stored or chosen.
   It follows the inputs as they change, and marks the card in view. On a narrow screen it is
   hidden and the cards fill the width;
 - the rows of a section are numbered ("01 Qualifications"), with **Remove** on each and
@@ -69,6 +70,12 @@ can't be a section's `via`: a section's records point at their parent through a 
 One going [through a junction object](field-types.md#through-a-junction-object) shows its rows
 inline (the target and the junction's fields, "+" and "×"), saved with its record as well, as far
 as the user's permissions on the junction go; a row's errors go on its inputs.
+
+A [`file`](field-types.md#file) field, one file or [several](field-types.md#several-files), works
+in any node, the root, a section or a row: the same control as in the record form, its files
+uploaded with the form and stored with their record. A row keeps only the files of its own
+record: posted with the id of another row, its files are refused ("This file is not the file of
+this record."). A row removed goes to the bin with its files.
 
 ## Definition reference
 
@@ -132,7 +139,7 @@ A service field is checked like a field of its type, then **dropped**: no column
 | Key | Required | Description |
 |---|---|---|
 | `name` | yes | Machine name, unique within its node |
-| `type` | yes | Any field type but `relation` and `many_to_many` |
+| `type` | yes | Any field type but `relation`, `many_to_many` and `file` (nothing would keep the file) |
 | `label` | yes | The label shown |
 | `required` | no | `true`: must be given. A required **boolean must be checked** ("This box must be checked.") |
 | `ask` | no | `always` (default): asked on every save, a new record or an existing one. `create`: asked on a new record only |
@@ -227,7 +234,9 @@ Unknown keys are refused too, so a typo does not go unnoticed.
   is shown on its input at once, and nothing is written until all is valid. Then the records are
   written top-down in one transaction.
 - **Empty rows are skipped.** A row nobody filled in (every field empty or left at its default
-  value) is not saved and not refused: a qualification row added by mistake does no harm. An
+  value) is not saved and not refused: a qualification row added by mistake does no harm. A
+  file chosen counts as filled in: a row holding only a file is saved, or refused as
+  incomplete. An
   empty one-to-one section (a profile left blank on a new form) creates no record.
 - **Editing** updates the records that are there, creates the rows added, and **deletes the rows
   removed**, with the delete rules of their relations. A deletion refused by a `restrict` rule

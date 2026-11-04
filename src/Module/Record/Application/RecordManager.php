@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Record\Application;
 
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
+use App\Module\Metadata\Contract\Dto\FileListSettings;
 use App\Module\Metadata\Contract\Dto\ManyToManyOnDelete;
 use App\Module\Metadata\Contract\Dto\ManyToManySettings;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
@@ -42,6 +43,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
 {
     public const string CONFLICT_MESSAGE = 'This record conflicts with an existing one, please try again.';
     public const string FOREIGN_FILE_MESSAGE = 'One of the files is not a file of this record.';
+    public const string FOREIGN_SINGLE_FILE_MESSAGE = 'This file is not the file of this record.';
     // The same message as an unknown row of a composite form.
     public const string UNKNOWN_ROW_MESSAGE = 'This row does not belong to the record.';
     public const string SET_BY_RECORD_MESSAGE = 'This field is set by the record.';
@@ -480,9 +482,9 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     }
 
     /**
-     * The ids given to a file list must be files the record holds already: a request must
-     * not attach somebody else's file by its id (uploads are new files, always accepted). A
-     * new record holds none.
+     * The ids given to a file field must be files the record holds already, one file or a list:
+     * a request must not attach somebody else's file by its id (uploads are new files, always
+     * accepted). A new record holds none.
      *
      * @param array<string, mixed> $values denormalized
      *
@@ -492,11 +494,12 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     {
         $given = [];
         foreach ($values as $name => $value) {
-            if (null !== $object->field($name)->fileList() && \is_array($value)) {
-                $ids = array_values(array_filter($value, \is_string(...)));
-                if ([] !== $ids) {
-                    $given[$name] = $ids;
-                }
+            if (FileListSettings::FIELD_TYPE !== $object->field($name)->type) {
+                continue;
+            }
+            $ids = array_map(strtolower(...), array_values(array_filter(\is_array($value) ? $value : [$value], \is_string(...))));
+            if ([] !== $ids) {
+                $given[$name] = $ids;
             }
         }
         if ([] === $given) {
@@ -506,9 +509,10 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         $held = null !== $recordId ? ($this->store->find($object, $recordId)->values ?? []) : [];
         $errors = [];
         foreach ($given as $name => $ids) {
-            $current = \is_array($held[$name] ?? null) ? array_filter($held[$name], \is_string(...)) : [];
+            $current = $held[$name] ?? null;
+            $current = array_map(strtolower(...), array_filter(\is_array($current) ? $current : [$current], \is_string(...)));
             if ([] !== array_diff($ids, $current)) {
-                $errors[$name][] = self::FOREIGN_FILE_MESSAGE;
+                $errors[$name][] = null !== $object->field($name)->fileList() ? self::FOREIGN_FILE_MESSAGE : self::FOREIGN_SINGLE_FILE_MESSAGE;
             }
         }
 

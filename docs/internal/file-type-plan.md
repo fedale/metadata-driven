@@ -1,7 +1,7 @@
 # Plan: the `file` field type
 
-Status: **phases 1 to 7 merged** into main; phase 8 (the GC) done on `feature/file-gc`;
-phase 9 (composite forms) next.
+Status: **all nine phases merged** into main. Only the open decision on production storage is
+left.
 Discussed with the user on 2026-11-03.
 
 A field type that stores a file (an image, a PDF, any document) on a record: a product's photo,
@@ -286,8 +286,7 @@ reusable, otherwise `md-file-list` in `app.css`.
      page ignored, `max`), `FileControllerTest::testAFileHeldInAListIsServedWhileTheRecordHoldsIt`,
      `FileFieldTypeTest` (list values, constraints, storage).
    - Not done: reordering the new files among the current ones before saving (they go to the
-     end), drag-and-drop, and the file list in a composite form section (phase 9; the control
-     is added there too, untested).
+     end), drag-and-drop. (The file list in a composite form: phase 9.)
 7. **Several files, grid and export** — merged into main (built on the same branch as phase
    6, at the user's request). As built:
    - `DbalRecordGridSource` selects, per file list, a correlated subquery
@@ -302,7 +301,7 @@ reusable, otherwise `md-file-list` in `app.css`.
    - Grid views needed nothing: the compiler's rules go by `isSortable()` of the type.
    - Tests: `FileGridTest` (a list in its order, its filter, its export, `sortable: true`
      refused).
-8. **GC** — done, on `feature/file-gc`. As built:
+8. **GC** — merged into main. As built:
    - `metadata:files:gc [--dry-run] [--older-than=24h]` (File UI), over
      `FileGarbageCollectorInterface` (File Application) and `DbalFileGarbageCollector` (File
      Infrastructure). The references are the foreign keys to `core.file` found in the catalog
@@ -327,8 +326,29 @@ reusable, otherwise `md-file-list` in `app.css`.
    - Not done: the listing of the storage is held in memory (fine for tens of thousands of
      files; to page through for millions), and nothing schedules the command: cron or a timer,
      see `console.md`.
-9. **Composite forms**: a file field in a section and in a `mode: many` row (the upload inputs
-   are nested names).
+9. **Composite forms** — merged into main (built on the same branch as phase 8, at the user's
+   request). As built:
+   - Nothing new was needed for the controls: `CompositeNodeType` builds each node's fields with
+     `RecordFormFactory::addControls()` on `PRE_SET_DATA`, so every node and row gets its own
+     current files from its data, never from the request; the upload inputs get nested names,
+     and `CollectionType` makes the form multipart from the prototype alone.
+     `CompositeRecordManager::isEmpty()` already counts an upload (an object) or a list as
+     filled.
+   - A row's id comes from the request while its current files come from the data of its key,
+     so two rows posted with each other's ids would have swapped their files. The list check
+     already refused it; `RecordManager::checkHeldFiles()` now covers a single file field too
+     (`FOREIGN_SINGLE_FILE_MESSAGE`): an id must be the file the record holds. A new record
+     takes no stored file by id, from any caller.
+   - A service field of type `file` is refused by `FormDefinitionCompiler`: it would be checked,
+     then thrown away.
+   - The `form-index` controller counts a file field once, filled while it holds a stored file
+     (not removed) or a chosen one; the "Remove" box no longer counts as an input.
+   - Tests: `CompositeFormFilesTest` (functional: nested names, multipart from the prototype,
+     files in the root, a section and rows, kept on an untouched save, reordered, replaced and
+     removed, a row holding only a file, errors on nested inputs, swapped row ids),
+     `FileFieldsInRecordsTest::testAFileOfAnotherRecordIsRefused`.
+   - Not done: no test of the JavaScript (the repository has none); the index and the file-list
+     controller in rows added with "+" are untested in a browser.
 
 Docs in the same branches: `field-types.md` (the eleventh type), `views.md` (the renderer),
 `console.md` (the GC), `architecture.md` (the `File` module and Deptrac), `README.md` (the count

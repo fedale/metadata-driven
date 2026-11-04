@@ -120,7 +120,7 @@ final class ManyToManyFieldTest extends KernelTestCase
         );
         $this->assertRefused(
             fn () => $this->manager->saveForm('signup', "label: Sign up\nobject: contact\nservice_fields:\n  - { name: interests, label: Interests, type: many_to_many, settings: { target: tag } }\n"),
-            '"type" must be a field type other than relation and many_to_many',
+            '"type" must be a field type other than relation, many_to_many and file',
         );
     }
 
