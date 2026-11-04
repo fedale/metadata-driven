@@ -22,11 +22,17 @@ Last updated: 2026-11-04.
   starting the next one. Merge with `--no-ff` ("Merge branch 'x'"), delete merged branches.
 - Sessions working in parallel (two agents, or an agent and the user) each use a `git worktree`
   of their own: in a shared checkout a branch switch carries the other session's uncommitted
-  changes along, and both end up editing the same files. In a new worktree (a sibling directory,
-  so `../<bundle>` still resolves): `composer install`, `symfony console sass:build`, and
-  `COMPOSE_PROJECT_NAME=metadata-driven` in the environment, so the Symfony CLI finds the
-  running database of the main checkout. Never `make up` (nor `make test`, which calls it) from a
-  worktree: it would start a second Compose project on the fixed port 5432.
+  changes along, and both end up editing the same files. Put it next to this repository
+  (`git worktree add ../metadata-driven-<topic> -b <branch> main`: the bundles are `../` path
+  repositories), then in it: `composer install`, `php bin/console importmap:install`,
+  `symfony console sass:build`, and `COMPOSE_PROJECT_NAME=metadata-driven` in the environment,
+  so the Symfony CLI finds the running database of the main checkout. For tests of its own, a
+  `.env.test.local` with `TEST_TOKEN=_<topic>` (database `app_test_<topic>`, through
+  `dbname_suffix`; without the Symfony CLI also the `DATABASE_URL` of the main checkout, from
+  `symfony var:export DATABASE_URL` there), created and migrated as `make db-test` does. Never
+  `make up` (nor `make test` or `make qa`, which call it) from a worktree: Docker Compose names
+  the project after the directory and would start a second database on the fixed port 5432. Run
+  `make cs phpstan deptrac` and `php bin/phpunit` instead.
 - Commit or push only when the user asks.
 - Never run `rm`: finish the task and list the paths the user should delete by hand.
 - Every change ships with its docs in the same branch: the topic page in `docs/`, the cross
@@ -96,6 +102,10 @@ Things that are not obvious from a single file, and that are easy to break.
   a manual order, negatives allowed) is not read, written nor sorted on yet.
 - **Search**: trigram GIN indexes on `LOWER(col)` are managed by `TrigramIndexPlanner` and kept out
   of the DBAL schema comparison.
+- **Unique together** (`ObjectDefinition::$uniqueTogether`): partial unique indexes (`WHERE
+  deleted_at IS NULL`, unlike single-field uniques), planned by `UniqueTogetherIndexPlanner` by
+  name prefix `uniqc_` and hidden from the DBAL comparison, as `TrigramIndexPlanner` does for
+  `trgm_`. A new planned index kind needs the same treatment in `DbalSchemaSynchronizer`.
 - **Grid**: `DbalRecordGridSource` + `RecordGridFactory` (Record module). The bundle's columns
   are sortable by default: a column that must not sort needs `sortable(false)`. Grid views are at
   `/o/<object>/grid/<name>` because the bundle owns `?view=`; YAML compiled by `GridViewCompiler`,
@@ -143,8 +153,10 @@ rename/archive/restore/purge of objects and fields.
     the user (field type `many_to_many`, read-only inverse). Phases 1 (storage: the type, metadata
     rules, link tables `data.l_<object>__<field>`) and 2 (records: write and read the links,
     validation, delete rules, inverse lists, form, composite forms) and 3 (grid: cell, filter,
-    export, grid views) are merged into main. Next is phase 4 (data on the link, through a junction object), still a
-    proposal to confirm.
+    export, grid views) are merged into main. Phase 4 (data on the link, through a junction
+    object) is confirmed and split: 4a, fields unique together (`metadata:object:unique`), is
+    merged into main; 4b, the `through` setting, is in progress on
+    `feature/many_to_many_through`, in the worktree `../metadata-driven-m2m`.
   - **The `file` field type**, plan in [file-type-plan.md](file-type-plan.md). Phases 1 (storage
     and `core.file`), 2 (the type in the record form) and 3 (download and thumbnails at
     `/files/{id}`) and 4 (grid: link, thumbnail, yes/no filter, export of the names) are merged

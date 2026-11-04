@@ -22,6 +22,7 @@ Under them, the **Archived** objects, each with **Restore** (see [Renaming and a
 | Labels | Rename the singular and plural labels | |
 | Record label | The field that names the records in relations and lookups | `metadata:object:label` |
 | Search | The search handler and the searched fields; the search indexes follow | `metadata:object:search` |
+| Unique together | The sets of fields no two records may share all the values of, each with **Remove**; **Make unique together** adds one from the fields ticked (at least two) | `metadata:object:unique` |
 | Table | Whether the table matches the metadata; **Apply** adds what is missing | `schema:sync <object>` |
 | Machine name | Renames the object, its table and everything named after it | `metadata:rename <object> <new-name>` |
 | Archive | Takes the object out of the application, its records kept; refused while a relation or a composite form uses it | `metadata:archive <object>` |

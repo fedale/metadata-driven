@@ -8,6 +8,7 @@ use App\Module\Metadata\Application\Command\ConfigureFieldConditionCommand;
 use App\Module\Metadata\Application\Command\ConfigureFieldSettingsCommand;
 use App\Module\Metadata\Application\Command\ConfigureObjectLabelCommand;
 use App\Module\Metadata\Application\Command\ConfigureObjectSearchCommand;
+use App\Module\Metadata\Application\Command\ConfigureUniqueTogetherCommand;
 use App\Module\Metadata\Application\Command\CreateFieldCommand;
 use App\Module\Metadata\Application\Command\CreateObjectCommand;
 use App\Module\Metadata\Application\Command\DeleteFormCommand;
@@ -22,6 +23,7 @@ use App\Module\Metadata\Application\Handler\ConfigureFieldConditionHandler;
 use App\Module\Metadata\Application\Handler\ConfigureFieldSettingsHandler;
 use App\Module\Metadata\Application\Handler\ConfigureObjectLabelHandler;
 use App\Module\Metadata\Application\Handler\ConfigureObjectSearchHandler;
+use App\Module\Metadata\Application\Handler\ConfigureUniqueTogetherHandler;
 use App\Module\Metadata\Application\Handler\CreateFieldHandler;
 use App\Module\Metadata\Application\Handler\CreateObjectHandler;
 use App\Module\Metadata\Application\Handler\DeleteFormHandler;
@@ -57,6 +59,7 @@ final class MetadataManager implements MetadataManagerInterface
         private readonly CreateFieldHandler $createField,
         private readonly ConfigureObjectLabelHandler $configureLabel,
         private readonly ConfigureObjectSearchHandler $configureSearch,
+        private readonly ConfigureUniqueTogetherHandler $configureUniqueTogether,
         private readonly ConfigureFieldConditionHandler $configureCondition,
         private readonly ConfigureFieldSettingsHandler $configureSettings,
         private readonly SaveViewHandler $saveView,
@@ -154,6 +157,16 @@ final class MetadataManager implements MetadataManagerInterface
     public function configureSearch(string $objectName, ?string $handler, ?array $fields): void
     {
         ($this->configureSearch)($this->valid(new ConfigureObjectSearchCommand($objectName, $handler, $fields)));
+    }
+
+    public function addUniqueTogether(string $objectName, array $fields): void
+    {
+        ($this->configureUniqueTogether)($this->valid(new ConfigureUniqueTogetherCommand($objectName, $fields)));
+    }
+
+    public function removeUniqueTogether(string $objectName, array $fields): void
+    {
+        ($this->configureUniqueTogether)($this->valid(new ConfigureUniqueTogetherCommand($objectName, $fields, remove: true)));
     }
 
     public function saveView(string $objectName, ViewKind $kind, string $name, string $template, bool $isDefault = false): string

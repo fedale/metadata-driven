@@ -167,6 +167,32 @@ final class AdminControllerTest extends WebTestCase
         self::assertSame('Town', $this->registry()->getObject('author')->field('city')->label);
     }
 
+    public function testMakesFieldsUniqueTogetherAndUndoesIt(): void
+    {
+        $this->createObject('seat', 'Seat', 'Seats');
+        $this->addField('seat', 'text', ['name' => 'room', 'label' => 'Room']);
+        $this->addField('seat', 'text', ['name' => 'number', 'label' => 'Number']);
+        $this->addField('seat', 'password', ['name' => 'code', 'label' => 'Code']);
+
+        $crawler = $this->client->request('GET', '/admin/objects/seat');
+        // A write-only field cannot be unique.
+        self::assertCount(0, $crawler->filter('input[name="unique[fields][]"][value="code"]'));
+        $this->client->submitForm('Make unique together', ['unique[fields]' => ['room']]);
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.md-flash--error', 'Name at least two fields.');
+
+        $this->client->submitForm('Make unique together', ['unique[fields]' => ['room', 'number']]);
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.md-flash--success', 'unique together');
+        self::assertSame([['room', 'number']], $this->registry()->getObject('seat')->uniqueTogether);
+        self::assertSelectorTextContains('.md-archived li span', 'Room, Number');
+
+        $this->client->submitForm('Remove');
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.md-flash--success', 'no longer unique together');
+        self::assertSame([], $this->registry()->getObject('seat')->uniqueTogether);
+    }
+
     public function testOffersTheSettingsOfTheRicherTypes(): void
     {
         $this->createObject('member', 'Member', 'Members');

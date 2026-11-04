@@ -32,7 +32,7 @@ Renaming a **field** renames everything naming it:
 
 - its column, and its unique index, relation index and foreign key; for a `many_to_many` field,
   its link table `data.l_<object>__<name>`, with its indexes and constraints;
-- the record label and the searched fields of its object;
+- the record label, the searched fields and the sets unique together of its object;
 - the conditions it decides, and the cascades depending on it (`dependsOn` in its object,
   `dependsVia` in the relations of other objects pointing at its object);
 - the views of its object: the `{field}` tokens of a form view, the columns, `{field}` tokens and
@@ -40,7 +40,7 @@ Renaming a **field** renames everything naming it:
 - the composite forms: `fields`, `required`, the `{field}` tokens of a `layout`, and `via`;
 - its translations (`field.<object>.<field>`, its options, its inverse title, its pattern message).
 
-The search indexes are built again under the new names. The table then matches the metadata: the
+The search indexes and the unique-together indexes are built again under the new names. The table then matches the metadata: the
 **Table** section of the object reports nothing to apply.
 
 ### The definitions written by hand
@@ -87,7 +87,9 @@ Archiving a field is refused while:
 - a relation depends on it, or filters through it (a cascade);
 - a view of its object places it: a `{field}` token, a grid column, a sort;
 - a composite form names it in `fields`, `required`, a `layout` or `via`. A node without
-  `fields` shows every field: the archived one simply leaves it.
+  `fields` shows every field: the archived one simply leaves it;
+- it is part of a set unique together: archiving it would silently drop a rule on the data
+  (`metadata:object:unique <object> <fields> --remove` first).
 
 > Refused: Field "account.active" cannot be archived, it is still used: field "lastname" is shown
 > depending on it; composite form "registration", (root): fields. Remove these uses first.

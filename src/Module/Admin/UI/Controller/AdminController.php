@@ -127,6 +127,14 @@ final class AdminController extends AbstractController
             'labels_form' => $this->labelsForm($definition)->createView(),
             'label_field_form' => $this->labelFieldForm($definition)->createView(),
             'search_form' => $this->searchForm($definition)->createView(),
+            'unique_together' => array_map(
+                fn (array $set): array => [
+                    'labels' => array_map(static fn (string $field): string => $definition->field($field)->label, $set),
+                    'remove_form' => $this->lifecycle->button('unique_remove', $this->generateUrl('admin_object_unique_remove', ['object' => $definition->name, 'fields' => implode(',', $set)]))->createView(),
+                ],
+                $definition->uniqueTogether,
+            ),
+            'unique_form' => $this->uniqueTogetherForm($definition)->createView(),
             'sync_form' => $this->actionForm('sync', 'admin_object_sync', $definition)->createView(),
             'rename_form' => $this->lifecycle->rename($this->generateUrl('admin_object_rename', ['object' => $definition->name]), $definition->name, self::RENAME_OBJECT_HELP)->createView(),
             'archive_form' => $this->lifecycle->button('archive', $this->generateUrl('admin_object_archive', ['object' => $definition->name]))->createView(),
@@ -187,6 +195,39 @@ final class AdminController extends AbstractController
                     \is_array($fields) && [] !== $fields ? array_values(array_filter($fields, is_string(...))) : null,
                 ),
                 'Search saved; the search indexes follow.',
+            );
+        }
+
+        return $this->backToObject($definition);
+    }
+
+    #[Route('/objects/{object}/unique', name: 'object_unique', methods: ['POST'])]
+    public function addUniqueTogether(string $object, Request $request): Response
+    {
+        $this->denyUnlessAdministrator();
+        $definition = $this->objectOr404($object);
+        $form = $this->uniqueTogetherForm($definition)->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
+            $fields = $form->get('fields')->getData();
+            $this->applyAndFlash(
+                fn () => $this->manager->addUniqueTogether($definition->name, \is_array($fields) ? array_values(array_filter($fields, is_string(...))) : []),
+                'The fields are unique together; their unique index is built.',
+            );
+        }
+
+        return $this->backToObject($definition);
+    }
+
+    #[Route('/objects/{object}/unique/{fields}/remove', name: 'object_unique_remove', requirements: ['fields' => '[a-z0-9_]+(,[a-z0-9_]+)+'], methods: ['POST'])]
+    public function removeUniqueTogether(string $object, string $fields, Request $request): Response
+    {
+        $this->denyUnlessAdministrator();
+        $definition = $this->objectOr404($object);
+        $form = $this->lifecycle->button('unique_remove', $this->generateUrl('admin_object_unique_remove', ['object' => $definition->name, 'fields' => $fields]))->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
+            $this->applyAndFlash(
+                fn () => $this->manager->removeUniqueTogether($definition->name, explode(',', $fields)),
+                'The fields are no longer unique together; their index is dropped.',
             );
         }
 
@@ -533,6 +574,34 @@ final class AdminController extends AbstractController
             ->add('fields', ChoiceType::class, [
                 'label' => 'Searched fields',
                 'help' => 'None ticked: every text field.',
+                'choices' => $fields,
+                'multiple' => true,
+                'expanded' => true,
+                'required' => false,
+            ])
+            ->getForm();
+    }
+
+    /**
+     * The fields that may be unique together: those a single field could be unique on.
+     *
+     * @return FormInterface<mixed>
+     */
+    private function uniqueTogetherForm(ObjectDefinitionDto $object): FormInterface
+    {
+        $fields = [];
+        foreach ($object->fields as $name => $field) {
+            if ($field->storesColumn() && $this->fieldTypes->get($field->type)->supportsUnique()) {
+                $fields[$field->label] = $name;
+            }
+        }
+
+        return $this->forms->createNamedBuilder('unique', FormType::class, null, [
+            'action' => $this->generateUrl('admin_object_unique', ['object' => $object->name]),
+        ])
+            ->add('fields', ChoiceType::class, [
+                'label' => 'Fields',
+                'help' => 'At least two: no two records may hold the same values in all of them.',
                 'choices' => $fields,
                 'multiple' => true,
                 'expanded' => true,

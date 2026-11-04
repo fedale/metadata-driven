@@ -108,6 +108,19 @@ interface MetadataManagerInterface
     public function configureSearch(string $objectName, ?string $handler, ?array $fields): void;
 
     /**
+     * Makes a set of fields unique together: no two live records may hold the same values in
+     * all of them. Refused while records already do.
+     *
+     * @param list<string> $fields at least two, in the order of the unique index
+     */
+    public function addUniqueTogether(string $objectName, array $fields): void;
+
+    /**
+     * @param list<string> $fields the fields of a set unique together, in any order
+     */
+    public function removeUniqueTogether(string $objectName, array $fields): void;
+
+    /**
      * Creates the view, or replaces the template of the existing one with that kind and name.
      *
      * @param string $template  HTML with {field} tokens; sanitized before it is stored

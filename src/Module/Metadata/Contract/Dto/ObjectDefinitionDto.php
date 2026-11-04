@@ -19,6 +19,8 @@ final readonly class ObjectDefinitionDto
      * @param list<ViewDefinitionDto>           $views          ordered by kind, then name
      * @param array<string, FieldDefinitionDto> $archivedFields keyed by field name: out of the application, their columns
      *                                                          stay (the schema keeps them, the admin lists them)
+     * @param list<list<string>>                $uniqueTogether the field sets no two live records may share all the values
+     *                                                          of, each set in the order of its index
      */
     public function __construct(
         public string $id,
@@ -35,6 +37,7 @@ final readonly class ObjectDefinitionDto
         public ?string $labelField = null,
         public array $views = [],
         public array $archivedFields = [],
+        public array $uniqueTogether = [],
     ) {
     }
 

@@ -124,6 +124,22 @@ final class InvalidMetadataDefinition extends MetadataException
         return new self(\sprintf('Field "%s" is of type "%s", which cannot be unique.', $fieldName, $type));
     }
 
+    /**
+     * @param list<string> $fields
+     */
+    public static function invalidUniqueTogether(string $objectName, array $fields, string $reason): self
+    {
+        return new self(\sprintf('Fields (%s) of "%s" cannot be unique together: %s.', implode(', ', $fields), $objectName, $reason));
+    }
+
+    /**
+     * @param list<string> $fields
+     */
+    public static function unknownUniqueTogether(string $objectName, array $fields): self
+    {
+        return new self(\sprintf('Fields (%s) of "%s" are not unique together.', implode(', ', $fields), $objectName));
+    }
+
     public static function writeOnlyField(string $fieldName, string $use): self
     {
         return new self(\sprintf('Field "%s" is write-only (its value is never read back): it cannot be %s.', $fieldName, $use));

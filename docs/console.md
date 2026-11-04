@@ -16,6 +16,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:field:condition`](#metadatafieldcondition) | Make a field apply only while another field holds some values |
 | [`metadata:object:label`](#metadataobjectlabel) | Choose the field that names the records of an object |
 | [`metadata:object:search`](#metadataobjectsearch) | Choose how the records of an object are searched |
+| [`metadata:object:unique`](#metadataobjectunique) | Make a set of fields unique together, or no longer |
 | [`metadata:view:save`](#metadataviewsave) | Create or replace a view: an HTML layout of the record form, or the YAML columns of the record grid |
 | [`metadata:view:delete`](#metadataviewdelete) | Delete a view |
 | [`metadata:form:save`](#metadataformsave) | Create or replace a composite form from its YAML definition |
@@ -259,6 +260,35 @@ be searched but get no index (PostgreSQL refuses their text cast in an index).
 
 Fails when a field does not exist or the handler is unknown.
 
+## `metadata:object:unique`
+
+Make a set of fields unique together: no two live records may hold the same values in all of
+them (a person in a team, once). See [Unique together](field-types.md#rules-common-to-every-type).
+
+```
+metadata:object:unique [--remove] <object> <fields>
+```
+
+| Argument / option | Description |
+|---|---|
+| `object` | The object's machine name |
+| `fields` | Comma separated fields, at least two, in the order of the index |
+| `--remove` | Remove the set (its fields in any order) instead of adding it |
+
+```bash
+symfony console metadata:object:unique membership person,team
+symfony console metadata:object:unique membership team,person --remove
+```
+
+Adding a set builds a partial unique index `uniqc_<table>__<column>__<column>` (`WHERE deleted_at
+IS NULL`); removing it drops the index. The index holds no data: it follows the set both ways, and
+is built again under its new name when a field of the set or the object is renamed.
+
+Fails when a field does not exist, is a password, a file or a `many_to_many` field, when the set
+has fewer than two different fields or exists already (in any order), and while live records
+already share the values ("3 records share their values with another one; change or delete them
+first"). `metadata:list <object>` lists the sets.
+
 ## `metadata:view:save`
 
 Create a view, or replace an existing one. A form view is HTML with a `{field}` token where each
@@ -423,7 +453,7 @@ symfony console metadata:list pet
 ```
 
 With an object, every field with its type, label, required and unique flags and resolved settings
-(defaults included).
+(defaults included), then the sets of fields unique together.
 
 ## `schema:sync`
 
@@ -466,7 +496,8 @@ warning:
 ```
 
 With `--allow-destructive` they are applied: a dropped column loses its data. Trigram search
-indexes hold no data and always follow the search configuration, both ways.
+indexes and unique-together indexes hold no data and always follow the search configuration and
+the sets unique together, both ways.
 
 Every applied change is logged in `core.schema_change_log` (object, table, statements, skipped
 changes, date).

@@ -1,8 +1,9 @@
 # Plan: many-to-many relations
 
-Status: reviewed by the user (type name, read-only inverse, delete rules decided). Phases 1 and
-2 merged into main; phase 3 committed on `feature/many_to_many_grid`, branched from main (not merged);
-phase 4 not started. Last updated: 2026-11-04.
+Status: reviewed by the user (type name, read-only inverse, delete rules decided). Phases 1–3
+merged into main. Phase 4 confirmed by the user and split in two: 4a (fields unique together)
+merged into main; 4b (`through`) on `feature/many_to_many_through`. Last updated:
+2026-11-04.
 
 ## Where we are
 
@@ -162,10 +163,11 @@ copy of the object machinery), a `many_to_many` can go **through a junction obje
   the record's transaction.
 - The grid cell lists the target labels; the filter becomes `EXISTS` on the junction object's
   live records.
-- **Prerequisite: a unique constraint on several fields.** Only single-field uniques exist today;
-  the junction object needs `(user, tag)` unique (or `(user, tag, type)`, if the same tag may be
-  linked twice with different types). That is a feature of objects in its own right
-  (`metadata:object:unique`, a composite unique index), useful beyond this phase.
+- **Prerequisite: a unique constraint on several fields** (phase 4a, below): the junction object
+  needs `(user, tag)` unique (or `(user, tag, type)`, if the same tag may be linked twice with
+  different types). Decided by the user: it counts live records only (a partial index `WHERE
+  deleted_at IS NULL`), so a junction record removed (soft deleted) and added back is not
+  refused; single-field uniques keep counting deleted records.
 - `through`, `throughSource` and `throughTarget` are fixed after creation. Converting a plain
   `many_to_many` into one with `through` (copying its links into the junction object) is not
   planned.
@@ -213,6 +215,27 @@ column for the field, `GridViewCompiler::readable()` accepts it. Differences fro
   `sortable(false)` for a many-to-many column, and for a file column too (it was sortable on its
   id, against the comment saying it was not).
 - No gridview-bundle change.
+
+**Phase 4a, as delivered** (`feature/composite-unique`, its own branch as the user chose):
+
+- `ObjectDefinition::$uniqueTogether` (`core.metadata_object.unique_together`, JSONB, null for
+  none): a list of field-name lists, in the order of the index, rewritten by a field rename.
+  `ObjectDefinitionDto::$uniqueTogether`; snapshot cache key `v11`.
+- `metadata:object:unique <object> <fields> [--remove]`, `MetadataManagerInterface::
+  addUniqueTogether()` / `removeUniqueTogether()`, the admin section "Unique together". Refused:
+  fewer than two different fields, a set already there (any order), a password, a file, a
+  `many_to_many` field; and while live records break the rule, counted through
+  `DuplicateRecordsInterface` (Metadata Contract, implemented by Record), so the error is readable
+  instead of a failed `CREATE UNIQUE INDEX`.
+- The indexes are planned by `UniqueTogetherIndexPlanner` (Schema), like the trigram indexes:
+  named `uniqc_<table>__<column>__<column>`, hidden from the DBAL comparison (which does not model
+  the predicate and would never drop them), dropped and built again when a set changes or a field
+  or the object is renamed.
+- Records: `UniqueValueCheckerInterface::isTakenTogether()`; a field of the set missing from an
+  update is compared with the stored value through a subquery. The error goes on the first field
+  of the set the write carries. A concurrent write is refused by the index, and `RecordManager`
+  turns the conflict into the same error, as for single uniques.
+- A field in a set cannot be archived (`MetadataUsages`).
 
 ## Out of scope
 

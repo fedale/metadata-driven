@@ -14,7 +14,8 @@ use App\Module\Metadata\Contract\MetadataRegistryInterface;
  * archived. Each use is one line naming the place, for the admin to fix it.
  *
  * What only describes the object itself (its label field, its searched fields, its own views
- * and translations) is no use: it follows the object, or is cleaned up with it.
+ * and translations) is no use: it follows the object, or is cleaned up with it. A field set
+ * unique together is: archiving one of its fields would silently drop a rule on the data.
  */
 final class MetadataUsages
 {
@@ -70,6 +71,11 @@ final class MetadataUsages
             }
             if ($other->relation()?->dependsOn === $fieldName) {
                 $usages[] = \sprintf('relation field "%s" depends on it (cascade)', $other->name);
+            }
+        }
+        foreach ($object->uniqueTogether as $set) {
+            if (\in_array($fieldName, $set, true)) {
+                $usages[] = \sprintf('it is unique together with %s', implode(', ', array_map(static fn (string $name): string => '"'.$name.'"', array_values(array_diff($set, [$fieldName])))));
             }
         }
         foreach ($this->metadata->incomingRelations($objectName) as $reference) {

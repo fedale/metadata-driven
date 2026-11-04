@@ -25,6 +25,11 @@
                 <option name="jsonb">true</option>
             </options>
         </field>
+        <field name="uniqueTogether" type="json" nullable="true">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
         <field name="createdAt" type="datetime_immutable"/>
         <field name="updatedAt" type="datetime_immutable"/>
 
