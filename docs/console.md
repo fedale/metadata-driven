@@ -27,6 +27,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:archive`](#metadataarchive) | Take an object or a field out of the application, its data kept; `--restore` brings it back |
 | [`metadata:purge`](#metadatapurge) | Delete an archived object or field for good, its data with it |
 | [`metadata:list`](#metadatalist) | List the objects, or the fields of one object, and what is archived |
+| [`metadata:files:gc`](#metadatafilesgc) | Delete the stored files no record references any more |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
 | `user:create` | Create a user who can sign in — see [Users and permissions](access.md#usercreate) |
 | `access:sync` | Create the permissions of every object, the admin permission and the super admin role — see [Users and permissions](access.md#permissions) |
@@ -462,6 +463,40 @@ symfony console metadata:list pet
 
 With an object, every field with its type, label, required and unique flags and resolved settings
 (defaults included), then the sets of fields unique together.
+
+## `metadata:files:gc`
+
+Delete the stored files that nothing references any more, with their bytes and thumbnails. A
+file is referenced while a [`file`](field-types.md#file) field of a record holds it, one file or
+in a list: records in the bin and archived fields count, since both can come back. Replacing,
+removing or unlinking a file, or purging a field or an object, leaves its file to this command;
+so does an upload whose record could not be saved.
+
+```
+metadata:files:gc [--dry-run] [--older-than=DURATION]
+```
+
+| Option | Meaning |
+|---|---|
+| `--dry-run` | List what would be deleted, delete nothing |
+| `--older-than` | Keep the files stored more recently than this, such as `30m`, `24h` (default) or `7d`. A file is stored before its record is saved: the grace period keeps the uploads in progress |
+
+```bash
+symfony console metadata:files:gc --dry-run
+symfony console metadata:files:gc --older-than=7d
+```
+
+The deleted files are listed (id, name, size, date stored), then a summary: the files, the
+stored contents freed with their size, and the thumbnails. The same bytes uploaded twice are
+two files and one stored content: the bytes go with the last file using them. Bytes left
+without a file (a write rolled back after its upload) are deleted as well; anything else in the
+storage is left alone.
+
+Run it on a schedule, for example every night from cron:
+
+```
+30 3 * * * cd /srv/app && php bin/console metadata:files:gc --no-interaction
+```
 
 ## `schema:sync`
 
