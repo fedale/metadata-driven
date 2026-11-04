@@ -347,12 +347,45 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
             $param = 'q'.$index;
             $matches = [];
             foreach ($clause->fields as $attribute) {
-                $matches[] = \sprintf('LOWER(%s) LIKE :%s', $this->table->asText($this->columnField($object, $attribute), self::ALIAS), $param);
+                $matches[] = $this->searchMatch($object, $attribute, $param);
             }
             $pattern = RecordTable::escapeLike($clause->value).'%';
             $qb->andWhere('('.implode(' OR ', $matches).')')
                 ->setParameter($param, SearchMatch::Contains === $clause->match ? '%'.$pattern : $pattern);
         }
+    }
+
+    /**
+     * The condition "the field matches the bound pattern". A relation or a many-to-many field
+     * matches through the label of a live record it points at (an EXISTS on the target); a
+     * target without a label field has only "#<id>" names, which are never searched.
+     */
+    private function searchMatch(ObjectDefinitionDto $object, string $attribute, string $param): string
+    {
+        $field = $this->readableField($object, $attribute);
+        $target = $field->target();
+        if (null === $target) {
+            return \sprintf('LOWER(%s) LIKE :%s', $this->table->asText($this->columnField($object, $attribute), self::ALIAS), $param);
+        }
+        $targetObject = $this->metadata->getObject($target);
+        $labelField = $this->labels->fieldFor($targetObject);
+        if (null === $labelField) {
+            return 'FALSE';
+        }
+        $label = \sprintf('LOWER(%s) LIKE :%s', $this->table->asText($labelField, self::LINKED_ALIAS), $param);
+        if (null !== $field->manyToMany()) {
+            return \sprintf('EXISTS (SELECT 1 %s AND %s)', $this->linkedFrom($object, $field), $label);
+        }
+
+        return \sprintf(
+            'EXISTS (SELECT 1 FROM %s %s WHERE %s = %s AND %s IS NULL AND %s)',
+            $this->table->table($targetObject),
+            $this->table->quote(self::LINKED_ALIAS),
+            $this->table->column('id', self::LINKED_ALIAS),
+            $this->table->column($field->columnName, self::ALIAS),
+            $this->table->column('deleted_at', self::LINKED_ALIAS),
+            $label,
+        );
     }
 
     /**

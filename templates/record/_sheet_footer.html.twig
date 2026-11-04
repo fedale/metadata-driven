@@ -5,6 +5,11 @@
         <a class="gv-btn" href="{{ back }}">{{ 'form.cancel'|trans }}</a>
         {% if can_save %}
             <button type="submit" class="gv-btn gv-btn-primary">{{ 'form.save'|trans }}</button>
+            {# After "Save" in the markup, so Enter in a field keeps saving plainly (the browser
+               submits with the first submit button); the stylesheet shows it before "Save". #}
+            {% if can_save_new|default(false) %}
+                <button type="submit" class="gv-btn md-sheet__save-new" name="_action" value="save_new">{{ 'form.save_and_new'|trans }}</button>
+            {% endif %}
         {% endif %}
     </div>
 </footer>

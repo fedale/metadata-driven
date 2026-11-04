@@ -15,7 +15,12 @@ namespace App\Module\Record\Contract\Dto;
 final readonly class RecordOutput
 {
     /**
-     * @param array<string, mixed> $values keyed by field name, in field order; write-only fields (passwords) are left out
+     * @param array<string, mixed>              $values keyed by field name, in field order; write-only fields (passwords) are left out
+     * @param array<string, list<RecordOutput>> $rows   for each many-to-many field going through a junction object, its links
+     *                                                  as the junction's live records, oldest first. Only the records read
+     *                                                  one by one carry them (RecordFinderInterface::find() and
+     *                                                  findReferencing(), the record a write returns), not latest() nor
+     *                                                  the grid: $values holds the linked ids in every case
      */
     public function __construct(
         public string $id,
@@ -23,11 +28,30 @@ final readonly class RecordOutput
         public array $values,
         public \DateTimeImmutable $createdAt,
         public \DateTimeImmutable $updatedAt,
+        public array $rows = [],
     ) {
     }
 
     public function get(string $fieldName): mixed
     {
         return $this->values[$fieldName] ?? null;
+    }
+
+    /**
+     * The rows of a many-to-many field going through a junction object (see $rows).
+     *
+     * @return list<RecordOutput>
+     */
+    public function rows(string $fieldName): array
+    {
+        return $this->rows[$fieldName] ?? [];
+    }
+
+    /**
+     * @param array<string, list<RecordOutput>> $rows
+     */
+    public function withRows(array $rows): self
+    {
+        return new self($this->id, $this->objectName, $this->values, $this->createdAt, $this->updatedAt, $rows);
     }
 }

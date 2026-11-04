@@ -149,6 +149,32 @@ final class RecordControllerTest extends WebTestCase
         self::assertSelectorTextSame('#gv-tbody-record_pet td[data-col-key="vaccinated"]', '✓');
     }
 
+    public function testSaveAndNewCreatesTheRecordThenOpensAnEmptyForm(): void
+    {
+        self::getContainer()->get(MetadataManagerInterface::class)->saveView('pet', ViewKind::Form, 'health', '<section class="health">{vaccinated}</section>');
+        $crawler = $this->client->request('GET', '/o/pet/new?view=health');
+        // Between "Cancel" and "Save", in both action rows.
+        self::assertCount(2, $crawler->filter('button[name="_action"][value="save_new"]'));
+
+        $this->client->submitForm('Save and new', ['record[name]' => 'Rex']);
+
+        // Back to an empty form, in the same view.
+        self::assertResponseRedirects('/o/pet/new?view=health', 303);
+        $crawler = $this->client->followRedirect();
+        self::assertCount(1, $crawler->filter('.md-view-layout section.health'));
+        self::assertSelectorTextContains('.md-flash--success', 'Pet created.');
+        self::assertSame('', (string) $crawler->filter('input[name="record[name]"]')->attr('value'));
+        self::assertSame('Rex', $this->finder()->latest('pet', 1)[0]->get('name'));
+    }
+
+    public function testAnExistingRecordHasNoSaveAndNew(): void
+    {
+        $record = $this->records()->create(new RecordInput('pet', ['name' => 'Rex']));
+
+        $crawler = $this->client->request('GET', \sprintf('/o/pet/%s/edit', $record->id));
+        self::assertCount(0, $crawler->filter('button[value="save_new"]'));
+    }
+
     public function testGridFiltersSearchesAndSorts(): void
     {
         foreach ([['Rex', 'dog', 3], ['Fido', 'dog', 7], ['Micia', 'cat', 4]] as [$name, $species, $age]) {

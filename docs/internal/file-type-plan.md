@@ -255,7 +255,7 @@ reusable, otherwise `md-file-list` in `app.css`.
    - Label and search refuse any `file` field (`isSortable()` false), one file or several.
    - Tests: `FileListFieldTest` (integration: DDL, settings, renames, archive and purge, empty
      reads), `FileFieldTypeTest` (settings).
-6. **Several files, records and form** — done, on `feature/file-multiple-records`. As built:
+6. **Several files, records and form** — merged into main. As built:
    - `FileFieldType` with `multiple`: `denormalize()` returns the items in order (a
      `FileUpload` or a lowercase id, each id once), null for an empty list, so `required` is the
      usual `NotNull`; anything else is "This value should be a list of files.". `constraints()`:
@@ -288,8 +288,8 @@ reusable, otherwise `md-file-list` in `app.css`.
    - Not done: reordering the new files among the current ones before saving (they go to the
      end), drag-and-drop, and the file list in a composite form section (phase 9; the control
      is added there too, untested).
-7. **Several files, grid and export** — done, on `feature/file-multiple-records` (the same
-   branch as phase 6, at the user's request). As built:
+7. **Several files, grid and export** — merged into main (built on the same branch as phase
+   6, at the user's request). As built:
    - `DbalRecordGridSource` selects, per file list, a correlated subquery
      `STRING_AGG(target_id, ',' ORDER BY position)` under `<field>__ids` (as for the
      many-to-many ids, no join on `core.file`), hydrated as the record's list; `withFiles()`

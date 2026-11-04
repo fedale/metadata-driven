@@ -189,6 +189,33 @@ final class CompositeFormControllerTest extends WebTestCase
         self::assertResponseRedirects();
     }
 
+    public function testSaveAndNewSavesThenOpensAnEmptyForm(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        $crawler = $this->client->request('GET', '/f/registration/new');
+        self::assertCount(2, $crawler->filter('button[name="_action"][value="save_new"]'));
+
+        $this->client->request('POST', '/f/registration/new', array_replace_recursive($this->values($crawler), ['_action' => 'save_new', 'composite' => [
+            'values' => ['username' => 'mario', 'email' => 'mario@example.com', 'firstname' => 'Mario', 'lastname' => 'Rossi', 'password' => ['first' => 'secret123', 'second' => 'secret123']],
+            'service' => ['terms' => '1'],
+            'sections' => ['profile' => [
+                'values' => ['city' => 'Milano'],
+                'sections' => ['phones' => [0 => ['id' => '', 'values' => ['prefix' => '+39', 'number' => '333 123 4567', 'type' => 'mobile']]]],
+            ]],
+        ]]));
+
+        self::assertResponseRedirects('/f/registration/new', 303);
+        $crawler = $this->client->followRedirect();
+        self::assertSelectorTextContains('.md-flash--success', 'User registration saved.');
+        self::assertSame('', (string) $crawler->filter('input[name="composite[values][username]"]')->attr('value'));
+        self::assertCount(1, self::getContainer()->get(RecordFinderInterface::class)->latest('account', 1));
+
+        // The edit page of the saved record does not offer it.
+        $account = self::getContainer()->get(RecordFinderInterface::class)->latest('account', 1)[0];
+        $crawler = $this->client->request('GET', '/f/registration/'.$account->id.'/edit');
+        self::assertCount(0, $crawler->filter('button[value="save_new"]'));
+    }
+
     public function testShowsTheErrorsOnTheNestedInputs(): void
     {
         self::signInAsSuperAdmin($this->client);

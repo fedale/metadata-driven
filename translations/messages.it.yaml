@@ -25,6 +25,7 @@ record:
     delete_confirm: 'Eliminare questo elemento (%object%)?'
 form:
     save: Salva
+    save_and_new: Salva e crea nuovo
     cancel: Annulla
     add: '%label%'
     remove: Rimuovi

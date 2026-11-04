@@ -59,6 +59,11 @@ final class CompositeFormController extends AbstractController
         if ($composite->isSubmitted() && $composite->isValid() && null !== $id = $this->save($definition, null, $composite)) {
             $this->addFlash('success', $this->translator->trans('flash.saved', ['%form%' => $definition->label]));
 
+            // "Save and new" (the `_action` of its button) opens an empty form again.
+            if ('save_new' === $request->request->get('_action')) {
+                return $this->redirectToRoute('composite_new', ['form' => $definition->name], Response::HTTP_SEE_OTHER);
+            }
+
             return $this->redirectToRoute('composite_edit', ['form' => $definition->name, 'id' => $id], Response::HTTP_SEE_OTHER);
         }
 

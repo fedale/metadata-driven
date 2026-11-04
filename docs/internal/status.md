@@ -155,7 +155,8 @@ and grid views, more field types (password, url, tel, settings), composite forms
 fields, cascading relations, editing field settings from the admin, role changes signing the user
 out, translations, the form graphics from the mock, the service-field `ask: always|create` option,
 gridview-bundle fixes 1–8 (`../gridview-bundle/docs/internal/METADATA-DRIVEN-feedback.md`),
-rename/archive/restore/purge of objects and fields.
+rename/archive/restore/purge of objects and fields, **Save and new** on the new-record and
+new-composite pages.
 
 ## Open
 
@@ -167,16 +168,17 @@ rename/archive/restore/purge of objects and fields.
     export, grid views) are merged into main. Phase 4 (data on the link, through a junction
     object) is confirmed and split: 4a, fields unique together (`metadata:object:unique`), is
     merged into main; 4b, split in two by the user: 4b-1 (the `through` setting, reading, grid,
-    lifecycle) is merged into main; 4b-2 (writing the rows from the record
-    form) comes next, its to-do list at the end of the plan.
+    lifecycle) is merged into main; 4b-2 (writing the rows: record pipeline, inline rows in the
+    record and composite forms, permissions on the junction) is merged into main (locally: not
+    pushed yet, SSH to GitHub refused on 2026-11-04). Search on the linked labels (relations too,
+    only when configured) is merged into main (locally as well).
   - **The `file` field type**, plan in [file-type-plan.md](file-type-plan.md). Phases 1 (storage
     and `core.file`), 2 (the type in the record form) and 3 (download and thumbnails at
     `/files/{id}`) and 4 (grid: link, thumbnail, yes/no filter, export of the names) are merged
     into main. Several files per field: decided by the user (2026-11-04), a `multiple: true`
-    setting with a link table (phases 5–7 of the plan), then the GC (phase 8). Phase 5
-    (storage: settings, link table) is merged into main; phases 6 (records and form) and 7
-    (grid and export) are done on `feature/file-multiple-records`, awaiting review; next is
-    phase 8 (GC). Open decision in the plan: production storage.
+    setting with a link table (phases 5–7 of the plan), then the GC (phase 8). Phases 5
+    (storage: settings, link table), 6 (records and form) and 7 (grid and export) are merged
+    into main; next is phase 8 (GC). Open decision in the plan: production storage.
 - **Blueprints — plan under review, not started**: [blueprints-plan.md](blueprints-plan.md)
   (packaged, versioned models: a canonical format for every item, install, three-way upgrade,
   seeds, online indexes, export). Its open decisions are listed at the top: the name, local

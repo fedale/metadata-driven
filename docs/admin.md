@@ -21,7 +21,7 @@ Under them, the **Archived** objects, each with **Restore** (see [Renaming and a
 | Pointed at by | The relation and `many_to_many` fields of other objects pointing at this one, with their delete rule | |
 | Labels | Rename the singular and plural labels | |
 | Record label | The field that names the records in relations and lookups | `metadata:object:label` |
-| Search | The search handler and the searched fields; the search indexes follow | `metadata:object:search` |
+| Search | The search handler and the searched fields (a relation or a many-to-many field, ticked, is searched on the labels of its records); the search indexes follow | `metadata:object:search` |
 | Unique together | The sets of fields no two records may share all the values of, each with **Remove**; **Make unique together** adds one from the fields ticked (at least two) | `metadata:object:unique` |
 | Table | Whether the table matches the metadata; **Apply** adds what is missing | `schema:sync <object>` |
 | Machine name | Renames the object, its table and everything named after it | `metadata:rename <object> <new-name>` |
