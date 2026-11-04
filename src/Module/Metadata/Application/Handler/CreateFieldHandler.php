@@ -62,7 +62,7 @@ final class CreateFieldHandler
             if (ManyToManySettings::FIELD_TYPE === $command->type) {
                 $manyToMany = ManyToManySettings::fromSettings($settings);
                 $this->assertTargetIsValid($manyToMany->target, $manyToMany->inverseName);
-                $this->assertJunctionIsValid($object->getName(), $command->name, $manyToMany, $command->isRequired);
+                $this->assertJunctionIsValid($object->getName(), $command->name, $manyToMany);
             }
 
             $field = $object->addField(
@@ -96,13 +96,10 @@ final class CreateFieldHandler
      * the target, and that keeps them unique together (any set holding both: a link is made at
      * most once, as in a link table).
      */
-    private function assertJunctionIsValid(string $objectName, string $fieldName, ManyToManySettings $settings, bool $required): void
+    private function assertJunctionIsValid(string $objectName, string $fieldName, ManyToManySettings $settings): void
     {
         if (!$settings->goesThrough()) {
             return;
-        }
-        if ($required) {
-            throw InvalidMetadataDefinition::invalidJunction($fieldName, 'it cannot be required yet: its links are written as records of the junction object');
         }
         $through = (string) $settings->through;
         if (\in_array($through, [$objectName, $settings->target], true)) {

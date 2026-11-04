@@ -8,6 +8,7 @@ use App\Module\FieldType\Contract\Exception\InvalidFieldValue;
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Record\Contract\Dto\RecordInput;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Converts the raw values of a RecordInput to typed PHP values, field by field.
@@ -15,7 +16,8 @@ use App\Module\Record\Contract\Dto\RecordInput;
 final class RecordInputDenormalizer
 {
     public const string UNKNOWN_FIELD_MESSAGE = 'This field does not exist.';
-    public const string JUNCTION_MESSAGE = 'These links are records of "%s": add or remove them there.';
+    public const string ROWS_MESSAGE = 'This value should be a list of rows.';
+    public const string ROW_ID_MESSAGE = 'This row has no valid id.';
 
     public function __construct(
         private readonly FieldTypeRegistryInterface $fieldTypes,
@@ -37,11 +39,17 @@ final class RecordInputDenormalizer
         }
 
         foreach ($object->fields as $name => $field) {
-            // Read-only here: the junction object's records are its links, written as records.
-            $through = $field->manyToMany()?->through;
-            if (null !== $through) {
+            // Rows of a junction object: only their shape here; each one is checked as a record
+            // of the junction by the record manager.
+            if (true === $field->manyToMany()?->goesThrough()) {
                 if ($input->has($name)) {
-                    $errors[$name][] = \sprintf(self::JUNCTION_MESSAGE, $through);
+                    $rows = self::rows($input->values[$name], $name, $errors);
+                    if (null !== $rows) {
+                        $values[$name] = [] === $rows ? null : $rows;
+                    }
+                } elseif ($complete) {
+                    // So that a required field without rows is reported.
+                    $values[$name] = null;
                 }
                 continue;
             }
@@ -67,5 +75,43 @@ final class RecordInputDenormalizer
         }
 
         return ['values' => $values, 'errors' => $errors];
+    }
+
+    /**
+     * The rows of a field going through a junction object, keys kept: a map each, with a valid
+     * "id" or none. Null (and errors) when the shape is wrong.
+     *
+     * @param array<string, list<string>> $errors
+     *
+     * @return array<int|string, array<string, mixed>>|null
+     */
+    private static function rows(mixed $raw, string $name, array &$errors): ?array
+    {
+        if (null === $raw || '' === $raw) {
+            return [];
+        }
+        if (!\is_array($raw)) {
+            $errors[$name][] = self::ROWS_MESSAGE;
+
+            return null;
+        }
+        $rows = [];
+        foreach ($raw as $key => $row) {
+            if (!\is_array($row) || ([] !== $row && array_is_list($row))) {
+                $errors[$name][] = self::ROWS_MESSAGE;
+
+                return null;
+            }
+            /** @var array<string, mixed> $row a map: its keys are strings */
+            $id = $row['id'] ?? null;
+            if (null !== $id && '' !== $id && (!\is_string($id) || !Uuid::isValid($id))) {
+                $errors[$name.'.'.$key][] = self::ROW_ID_MESSAGE;
+                continue;
+            }
+            $row['id'] = \is_string($id) && '' !== $id ? strtolower($id) : null;
+            $rows[$key] = $row;
+        }
+
+        return $rows;
     }
 }

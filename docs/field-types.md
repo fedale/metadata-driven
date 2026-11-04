@@ -486,15 +486,43 @@ symfony console metadata:field:create person tags many_to_many Tags \
   record deleted is a link removed. `onDelete` does not apply: the junction's relation fields carry
   the delete rules (`cascade` on both, typically: deleting a person or a tag deletes its junction
   records).
-- It reads like any `many_to_many` field: its value is the list of the linked ids, the record form
-  shows them, the grid lists, filters and exports their labels, the target's page lists the
-  records linking to it.
-- **The links are written as records of the junction object**, from its own pages or a composite
-  form section on it; the record form shows the field disabled ("Added and removed as records of
-  Person tags."), and a write naming it is refused ("These links are records of "person_tag": add
-  or remove them there."). For the same reason the field cannot be required yet.
-- While the field exists, the junction object, its two fields and the unique set holding them
-  cannot be archived nor removed; renaming them updates the field's settings.
+- It reads like any `many_to_many` field: its value is the list of the linked ids, the grid lists,
+  filters and exports their labels, the target's page lists the records linking to it. The
+  junction's records are not listed again on the record's page nor on the target's: the rows and
+  that list show them already. A record
+  read by itself (its page, a composite form, the record a write returns) also carries its
+  **rows**: the junction's live records, oldest first (`RecordOutput::rows('tags')`).
+- **The record form edits the rows inline**, one per line: the target (an autocomplete), then the
+  junction's other fields (`role`), in columns headed by their labels, with "+" to add a row and
+  "×" to remove one; a row added and
+  left blank is not a link. The same rows appear where a composite form shows the field.
+- **Writing the field** takes the rows, each a map of the junction's fields with the `id` of its
+  junction record when it has one; the junction's field pointing at the record is never given, the
+  record sets it:
 
-**Not yet.** Editing the links of a junction from the record form, as rows of the target and the
-junction's own fields.
+  ```json
+  {"name": "Ada", "tags": [{"id": "0193…", "tag": "0193…", "role": "editor"}, {"tag": "0193…", "role": "guest"}]}
+  ```
+
+  A row with an `id` updates that junction record, a row without one creates it, and a junction
+  record of the record missing from the rows is deleted, with its own delete rules. An empty list
+  deletes them all; a write leaving the field out keeps them. Everything is written in the
+  record's transaction: one error and nothing changes.
+- **Each row is checked as a record of the junction**, and its errors name the row and the field:
+  `tags.1.role`. On top of the junction's own rules:
+
+  | Error | When |
+  |---|---|
+  | This row does not belong to the record. | `id` names no live junction record of this record |
+  | This row has no valid id. | `id` is not a UUID |
+  | This field is set by the record. | a row gives the junction's field pointing at the record |
+  | This record is already linked. | two rows name the same target |
+  | This value should be a list of rows. | the value is not a list of maps |
+
+- **Required** means at least one row, **`max`** caps the rows, as for a plain `many_to_many`.
+- **Permissions.** The rows are records of the junction, so they follow its permissions: with
+  `record.<junction>.read` and its `create`, `update` and `delete` (and `delete` on the objects a
+  junction record's deletion cascades to, as for the delete button of a record), they're
+  editable; with less, they're shown read-only, and the form leaves them out of what it saves; without `read`,
+  the form shows the labels of the linked records only, as the grid does ("Added and removed as
+  records of Person tags.").

@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace App\Module\Record\UI\Form;
 
+use App\Module\Access\Contract\AccessCheckerInterface;
+use App\Module\Access\Contract\RecordAction;
 use App\Module\FieldType\Contract\Dto\Widget;
 use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
 use App\Module\File\Contract\FileStorageInterface;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
+use App\Module\Metadata\Contract\Dto\ManyToManySettings;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ServiceFieldDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Record\Application\CascadeTargets;
 use App\Module\Record\Application\RecordLabels;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
@@ -56,6 +60,8 @@ final class RecordFormFactory
         // The labels in the user's language.
         #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
+        private readonly AccessCheckerInterface $access,
+        private readonly CascadeTargets $cascadeTargets,
     ) {
     }
 
@@ -66,7 +72,7 @@ final class RecordFormFactory
      */
     public function create(ObjectDefinitionDto $object, ?RecordOutput $record = null, bool $readOnly = false): FormInterface
     {
-        $builder = $this->formFactory->createNamedBuilder('record', FormType::class, $record->values ?? $this->defaults($object), ['disabled' => $readOnly]);
+        $builder = $this->formFactory->createNamedBuilder('record', FormType::class, $this->data($object, $record), ['disabled' => $readOnly]);
         $this->addControls($builder, $object, array_keys($object->fields), null === $record, $record->values ?? []);
 
         return $builder->getForm();
@@ -109,10 +115,9 @@ final class RecordFormFactory
             }
             $options += ['label' => $field->label];
             $options['row_attr'] = $this->rowAttr($field, $options['row_attr'] ?? []);
-            // Links through a junction object are shown, not edited: they are its records.
-            $through = $field->manyToMany()?->through;
-            if (null !== $through) {
-                $builder->add($name, $type, ['disabled' => true, 'required' => false, 'help' => 'form.through_links', 'help_translation_parameters' => ['%object%' => $this->metadata->getObject($through)->labelPlural]] + $options);
+            $manyToMany = $field->manyToMany();
+            if (null !== $manyToMany && $manyToMany->goesThrough()) {
+                $this->addRows($builder, $field, $manyToMany, $options);
                 continue;
             }
             $builder->add($name, $type, $options);
@@ -211,12 +216,81 @@ final class RecordFormFactory
      */
     public function addErrors(FormInterface $form, RecordValidationFailed $failure): void
     {
-        foreach ($failure->errors as $field => $messages) {
-            $target = RecordValidationFailed::GLOBAL_ERRORS !== $field && $form->has($field) ? $form->get($field) : $form;
+        foreach ($failure->errors as $path => $messages) {
+            $target = self::errorTarget($form, $path);
             foreach ($messages as $message) {
                 $target->addError(new FormError($message));
             }
         }
+    }
+
+    /**
+     * The input an error path names ("city", "tags.0.role"), or the nearest form along it. A
+     * row of a many-to-many field going through a junction object holds its fields under
+     * "values": the path skips that level, as the record manager does not know it.
+     *
+     * @template T
+     *
+     * @param FormInterface<T> $form
+     *
+     * @return FormInterface<mixed>
+     */
+    public static function errorTarget(FormInterface $form, string $path): FormInterface
+    {
+        $target = $form;
+        foreach ('' === $path ? [] : explode('.', $path) as $segment) {
+            if ($target->has($segment)) {
+                $target = $target->get($segment);
+            } elseif ($target->has('values') && $target->get('values')->has($segment)) {
+                $target = $target->get('values')->get($segment);
+            } else {
+                break;
+            }
+        }
+
+        return $target;
+    }
+
+    /**
+     * The data of a record form: the record's values, or the default values of a new record.
+     * A many-to-many field going through a junction object holds its rows instead of the ids,
+     * when the user may read them.
+     *
+     * @return array<string, mixed>
+     */
+    public function data(ObjectDefinitionDto $object, ?RecordOutput $record): array
+    {
+        if (null === $record) {
+            return $this->defaults($object);
+        }
+        $data = $record->values;
+        foreach ($object->fields as $name => $field) {
+            $settings = $field->manyToMany();
+            if (null === $settings || !$settings->goesThrough() || JunctionAccess::Labels === $this->junctionAccess($settings)) {
+                continue;
+            }
+            $data[$name] = array_map(static function (RecordOutput $row) use ($settings): array {
+                $values = $row->values;
+                unset($values[(string) $settings->throughSource]);
+
+                return ['id' => $row->id] + $values;
+            }, $record->rows($name));
+        }
+
+        return $data;
+    }
+
+    /**
+     * Whether the rows of a field going through a junction object are input: the user may
+     * create, update and delete the junction's records, as saving a composite form asks of
+     * each of its objects, and delete the records a junction record's deletion cascades to.
+     * Otherwise they are only shown, and a form leaves them out.
+     */
+    public function editsRows(FieldDefinitionDto $field): bool
+    {
+        $settings = $field->manyToMany();
+
+        return null !== $settings && $settings->goesThrough() && JunctionAccess::Rows === $this->junctionAccess($settings);
     }
 
     /**
@@ -340,6 +414,65 @@ final class RecordFormFactory
             'first_options' => ['label' => $field->label, 'attr' => $first] + $help,
             'second_options' => ['label' => 'form.repeat', 'label_translation_parameters' => ['%label%' => mb_strtolower($field->label)]],
         ]];
+    }
+
+    /**
+     * The control of a many-to-many field going through a junction object, per the user's
+     * permissions on the junction: its rows, editable or not; or, without the read permission,
+     * the labels of the linked records only, as the grid shows them.
+     *
+     * @template T
+     *
+     * @param FormBuilderInterface<T> $builder
+     * @param array<string, mixed>    $options the options of the plain many-to-many control (a ChoiceType)
+     */
+    private function addRows(FormBuilderInterface $builder, FieldDefinitionDto $field, ManyToManySettings $settings, array $options): void
+    {
+        $junction = $this->metadata->getObject((string) $settings->through);
+        $access = $this->junctionAccess($settings);
+        if (JunctionAccess::Labels === $access) {
+            $builder->add($field->name, ChoiceType::class, ['disabled' => true, 'required' => false, 'help' => 'form.through_links', 'help_translation_parameters' => ['%object%' => $junction->labelPlural]] + $options);
+
+            return;
+        }
+
+        // The target first, then the junction's other fields; the record is the row's owner.
+        $target = (string) $settings->throughTarget;
+        $fields = [$target, ...array_values(array_diff(array_keys($junction->fields), [$target, (string) $settings->throughSource]))];
+        $builder->add($field->name, JunctionRowsType::class, [
+            'label' => $options['label'] ?? $field->label,
+            'row_attr' => $options['row_attr'] ?? [],
+            'required' => $field->isRequired,
+            'entry_options' => ['junction' => $junction, 'fields' => $fields],
+            // Distinct per field: a row's prototype is rendered inside the page.
+            'prototype_name' => '__'.$field->name.'__',
+            'prototype_data' => ['id' => null] + array_intersect_key($this->defaults($junction), array_flip($fields)),
+            'disabled' => JunctionAccess::ReadOnly === $access,
+            'min' => $field->isRequired ? 1 : 0,
+            'max' => $settings->max ?? 0,
+        ]);
+    }
+
+    private function junctionAccess(ManyToManySettings $settings): JunctionAccess
+    {
+        $junction = (string) $settings->through;
+        if (!$this->access->canRecords($junction, RecordAction::Read)) {
+            return JunctionAccess::Labels;
+        }
+        foreach ([RecordAction::Create, RecordAction::Update, RecordAction::Delete] as $action) {
+            if (!$this->access->canRecords($junction, $action)) {
+                return JunctionAccess::ReadOnly;
+            }
+        }
+        // A row removed deletes its junction record, and whatever that deletion cascades to:
+        // the same rule as the delete button of a record.
+        foreach (array_keys($this->cascadeTargets->of($junction)) as $target) {
+            if (!$this->access->canRecords($target, RecordAction::Delete)) {
+                return JunctionAccess::ReadOnly;
+            }
+        }
+
+        return JunctionAccess::Rows;
     }
 
     /**

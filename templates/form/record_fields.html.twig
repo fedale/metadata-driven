@@ -22,3 +22,36 @@
         {{- form_errors(form.upload) -}}
     </div>
 {%- endblock record_file_widget %}
+
+{#- The rows of a many-to-many field going through a junction object (JunctionRowsType): the
+    repeatable rows of the bundle (gridview-collection), each one on a line (junction_row), "+"
+    and "×" while the user may change them. -#}
+{%- block junction_rows_widget -%}
+    {%- set next = 0 -%}
+    {%- for key, row in form -%}{%- set next = max(next, key + 1) -%}{%- endfor -%}
+    <div class="gv-collection md-junction-rows" data-controller="gridview-collection"
+         {%- if prototype is defined %} data-gridview-collection-prototype-value="{{ form_widget(prototype)|e('html_attr') }}"{% endif %}
+         data-gridview-collection-prototype-name-value="{{ prototype_name }}"
+         data-gridview-collection-index-value="{{ next }}"
+         data-gridview-collection-min-value="{{ collection_min }}"
+         data-gridview-collection-max-value="{{ collection_max }}">
+        <div class="gv-collection__rows" data-gridview-collection-target="list">
+            {%- for row in form -%}{{ form_widget(row) }}{%- endfor -%}
+        </div>
+        {%- if not disabled -%}
+            <button type="button" class="gv-btn gv-collection__add" data-gridview-collection-target="add" data-action="gridview-collection#add">
+                + {{ 'form.add'|trans({'%label%': label}) }}
+            </button>
+        {%- endif -%}
+    </div>
+{%- endblock junction_rows_widget %}
+
+{%- block junction_row_widget -%}
+    <fieldset class="gv-collection__row gv-collection__row--inline" data-gridview-collection-target="row">
+        <div class="gv-collection__fields">{{ form_widget(form.values) }}{{ form_widget(form.id) }}</div>
+        {{- form_errors(form) -}}
+        {%- if not disabled -%}
+            <button type="button" class="gv-btn gv-collection__remove" data-action="gridview-collection#remove" aria-label="{{ 'form.remove'|trans }}">×</button>
+        {%- endif -%}
+    </fieldset>
+{%- endblock junction_row_widget %}

@@ -54,7 +54,8 @@ final class MetadataRecordValidator implements RecordValidatorInterface
                 $errors[$name][] = self::UNIQUE_MESSAGE;
             }
             $manyToMany = $field->manyToMany();
-            if (null !== $manyToMany && \is_array($value)
+            // The rows of a junction object are checked as its records, by the record manager.
+            if (null !== $manyToMany && !$manyToMany->goesThrough() && \is_array($value)
                 && [] !== $this->references->missing($this->metadata->getObject($manyToMany->target), array_values(array_filter($value, \is_string(...))))) {
                 $errors[$name][] = self::REFERENCES_MESSAGE;
                 continue;
