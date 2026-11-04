@@ -43,6 +43,9 @@ final class ConfigureObjectSearchHandler
                 if ($object->hasField($field) && $object->getField($field)->isManyToMany()) {
                     throw InvalidMetadataDefinition::manyToManyField($field, 'searched');
                 }
+                if ($object->hasField($field) && !$this->fieldTypes->isSortable($type = $object->getField($field)->getType())) {
+                    throw InvalidMetadataDefinition::noTextValue($field, $type, 'searched');
+                }
             }
             $object->configureSearch($command->handler, $command->fields);
             $this->objects->save($object);

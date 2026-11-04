@@ -263,7 +263,7 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
                 continue;
             }
             $field = $this->readableField($object, $criterion->attribute);
-            if (!$field->storesColumn()) {
+            if (null !== $field->manyToMany()) {
                 $this->applyLinkCriterion($qb, $object, $field, $criterion, 'c'.$index);
                 continue;
             }
@@ -362,6 +362,10 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
     {
         if (FilterOperator::Eq !== $criterion->operator || !\is_bool($criterion->value)) {
             throw new \InvalidArgumentException(\sprintf('Field "%s" of "%s" is a file: it is filtered on whether it holds one (true or false), not with "%s".', $field->name, $object->name, $criterion->operator->value));
+        }
+        // Its files are rows of a link table, read by the grid from phase 7 of the plan on.
+        if (!$field->storesColumn()) {
+            throw new \InvalidArgumentException(\sprintf('Field "%s" of "%s" holds several files: the grid does not filter it yet.', $field->name, $object->name));
         }
         $qb->andWhere(\sprintf('%s IS %sNULL', $this->table->column($field->columnName, self::ALIAS), $criterion->value ? 'NOT ' : ''));
     }
@@ -487,7 +491,7 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
     {
         $field = $this->readableField($object, $attribute);
         if (!$this->fieldTypes->get($field->type)->isSortable()) {
-            throw new \InvalidArgumentException(\sprintf('Field "%s" of "%s" is %s: it cannot be searched, sorted on or joined in a virtual column.', $attribute, $object->name, $field->storesColumn() ? 'a '.$field->type : 'many-to-many'));
+            throw new \InvalidArgumentException(\sprintf('Field "%s" of "%s" is %s: it cannot be searched, sorted on or joined in a virtual column.', $attribute, $object->name, null === $field->manyToMany() ? 'a '.$field->type : 'many-to-many'));
         }
 
         return $field;

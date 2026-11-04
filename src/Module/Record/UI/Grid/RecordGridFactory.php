@@ -30,6 +30,7 @@ use Fedale\GridviewBundle\Column\Config\UrlColumn;
 use Fedale\GridviewBundle\Contract\SearchModelInterface;
 use Fedale\GridviewBundle\Export\ExporterInterface;
 use Fedale\GridviewBundle\Export\GridExporterRegistry;
+use Fedale\GridviewBundle\Filter\FilterType;
 use Fedale\GridviewBundle\Grid\Gridview;
 use Fedale\GridviewBundle\Grid\GridviewBuilderFactory;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -286,7 +287,8 @@ final class RecordGridFactory
             // A link to the file, with a thumbnail for an image; filters on whether there is one.
             WidgetKind::File => TextColumn::new($name)
                 ->value(fn (array $row): Markup => new Markup($this->fileCell->render($name, $row), 'UTF-8'))
-                ->filterBoolean(),
+                // Several files are read by the grid from phase 7 of the plan on.
+                ->filter($field->storesColumn() ? FilterType::Boolean : false),
         };
     }
 

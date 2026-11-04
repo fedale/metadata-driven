@@ -260,7 +260,7 @@ final class DbalRecordStore implements RecordStore
             return $result;
         }
         foreach ($object->fields as $name => $field) {
-            if ($field->storesColumn()) {
+            if (null === $field->manyToMany()) {
                 continue;
             }
             $links = $this->table->links($object, $field);

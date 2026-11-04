@@ -56,13 +56,24 @@ final readonly class FieldDefinitionDto
     }
 
     /**
+     * The settings of a "file" field holding several files; null for any other field, a "file"
+     * field holding one file included.
+     */
+    public function fileList(): ?FileListSettings
+    {
+        return FileListSettings::FIELD_TYPE === $this->type ? FileListSettings::fromSettings($this->settings) : null;
+    }
+
+    /**
      * Whether the field is a column of its object's table. A many-to-many field is not: its
-     * values are links, kept in a table of their own (its columnName names that table). Every
-     * module reading or writing columns skips the fields that answer false.
+     * values are links, kept in a table of their own (its columnName names that table); nor is a
+     * file field holding several files, kept in a link table too. Every module reading or writing
+     * columns skips the fields that answer false; the ones handling links tell the two apart with
+     * manyToMany() and fileList().
      */
     public function storesColumn(): bool
     {
-        return ManyToManySettings::FIELD_TYPE !== $this->type;
+        return ManyToManySettings::FIELD_TYPE !== $this->type && null === $this->fileList();
     }
 
     /**

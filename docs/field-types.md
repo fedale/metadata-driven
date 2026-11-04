@@ -15,7 +15,7 @@ missing keys take their default, unknown keys are refused.
 | `url` | none | `varchar(2048)` | URL input | text (shown as a link) |
 | `select` | `options` (required), `default`, `display` (`dropdown`) | `varchar(100)` | select or buttons side by side | choice |
 | `password` | `minLength` (8), `requireMixedCase`, `requireDigit`, `requireSymbol`, `confirm`, `strengthMeter`, `revealToggle` (all false) | `varchar(255)`, a hash | password input, asked twice with `confirm` | none: never shown |
-| `file` | `accept` (any type), `maxSize` (10 MB), `image` (false) | `uuid` + foreign key to `core.file` | the current file, an upload input, "Remove the file" | yes / no: holds a file or none |
+| `file` | `accept` (any type), `maxSize` (10 MB), `image` (false), `multiple` (false), `max` | `uuid` + foreign key to `core.file`; with `multiple`, a link table of its own | the current file, an upload input, "Remove the file" | yes / no: holds a file or none |
 | `relation` | `target` (required), `onDelete` (`set_null`), `inverseName`, `inverseLabel` | `uuid` + foreign key | autocomplete | choice of records |
 | `many_to_many` | `target` (required), `onDelete` (`unlink`), `inverseName`, `inverseLabel`, `max` | none: a link table of its own | autocomplete, several records | choice of records (any of them) |
 
@@ -65,7 +65,7 @@ The settings of an existing field can change, from its admin page (section **Set
 | `boolean` | — | `default`, `display` |
 | `select` | — | `options`, `default`, `display` |
 | `password` | — | every setting |
-| `file` | — | every setting (they check the files uploaded from then on) |
+| `file` | `multiple` | `accept`, `maxSize`, `image`, `max` (they check the files uploaded from then on) |
 | `relation` | `target`, `onDelete`, `inverseName` | `inverseLabel`, `dependsOn`, `dependsVia` |
 
 - **Options** of a `select` can be added, relabelled and reordered at will. One can be removed
@@ -267,6 +267,8 @@ contract.
 | `accept` | string | MIME types separated by commas, wildcards allowed: `application/pdf, image/*`. Empty (the default): any type |
 | `maxSize` | int | the largest file, in MB, from 1 to 100 (default 10). 1 MB is 1,000,000 bytes |
 | `image` | bool | images only, checked to be real images (JPEG, PNG, GIF, WebP...); `accept` may then name image types only |
+| `multiple` | bool | several files, in the order chosen, instead of one (default false). Fixed once the field exists |
+| `max` | int | with `multiple`: the most files the field holds, from 1 to 100. Empty (the default): no limit |
 
 ```json
 {"accept": "application/pdf", "maxSize": 5}
@@ -299,7 +301,14 @@ contract.
   the image in a square of that side without enlarging it. They are made on the first request
   and kept with the file. An image over 40 megapixels, or one that cannot be decoded, has none
   (404); the file itself is still served.
-- A file field cannot be **unique**: every upload is a new file. It is not searched.
+- A file field cannot be **unique**: every upload is a new file. It cannot be **searched** nor
+  the **label** of the records either: its value is no text (refused when configured).
+- **Several files** (`multiple: true`): the field has no column; its files are rows of a link
+  table of its own, `data.l_<object>__<field>` (record, file, position), which follows the field
+  when it is renamed, archived or purged, like the link table of a
+  [`many_to_many`](#many_to_many) field. **Not yet**: the record form does not offer the field,
+  a record reads it as an empty list, and the grid shows an empty column with no filter. The
+  next phases of the work add the upload of several files, their order, and the grid.
 - **In the grid** a cell shows the original name of the file as a link to it, after the small
   thumbnail of an image or a document icon. An image opens in a new tab, any other file is
   downloaded. The filter is a yes/no on whether the record holds a file; the column never sorts,
