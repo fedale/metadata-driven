@@ -21,6 +21,7 @@ final class MetadataRecordValidator implements RecordValidatorInterface
 {
     public const string REQUIRED_MESSAGE = 'This value is required.';
     public const string UNIQUE_MESSAGE = 'This value is already used.';
+    public const string UNIQUE_TOGETHER_MESSAGE = 'Another record already has the same %s.';
     public const string REFERENCE_MESSAGE = 'The selected record does not exist.';
     public const string REFERENCES_MESSAGE = 'One of the selected records does not exist.';
     public const string PARENT_MISSING_MESSAGE = 'Choose the %s first.';
@@ -73,6 +74,32 @@ final class MetadataRecordValidator implements RecordValidatorInterface
                 } elseif (!$this->references->pointsAt($this->metadata->getObject($relation->target), $value, $relation->dependsVia, $parent)) {
                     $errors[$name][] = \sprintf(self::PARENT_MISMATCH_MESSAGE, $parentLabel);
                 }
+            }
+        }
+
+        return $this->checkUniqueTogether($object, $values, $recordId, $errors);
+    }
+
+    /**
+     * Each set unique together that the write touches is checked once; its error goes to the
+     * first of its fields the write carries. A set with a field already in error is skipped.
+     *
+     * @param array<string, mixed>        $values
+     * @param array<string, list<string>> $errors
+     *
+     * @return array<string, list<string>>
+     */
+    private function checkUniqueTogether(ObjectDefinitionDto $object, array $values, ?string $recordId, array $errors): array
+    {
+        foreach ($object->uniqueTogether as $set) {
+            $carried = array_values(array_filter($set, static fn (string $name): bool => \array_key_exists($name, $values)));
+            if ([] === $carried || [] !== array_intersect($set, array_keys($errors))) {
+                continue;
+            }
+            if ($this->uniqueValues->isTakenTogether($object, $set, $values, $recordId)) {
+                $labels = array_map(static fn (string $name): string => mb_strtolower($object->field($name)->label), $set);
+                $last = array_pop($labels);
+                $errors[$carried[0]][] = \sprintf(self::UNIQUE_TOGETHER_MESSAGE, implode(', ', $labels).' and '.$last);
             }
         }
 

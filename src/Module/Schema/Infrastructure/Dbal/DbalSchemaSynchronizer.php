@@ -29,6 +29,7 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
         private readonly MetadataRegistryInterface $metadata,
         private readonly TableDefinitionFactory $tables,
         private readonly TrigramIndexPlanner $trigramIndexes,
+        private readonly UniqueTogetherIndexPlanner $uniqueTogetherIndexes,
         private readonly SchemaChangeLogRepository $logs,
         private readonly TransactionRunner $transactions,
     ) {
@@ -42,7 +43,8 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
         $platform = $this->connection->getDatabasePlatform();
         $schemaManager = $this->connection->createSchemaManager();
 
-        $desiredTrigramIndexes = $this->trigramIndexes->desired($object);
+        // Planned on their own, by name: kept out of the DBAL comparison.
+        $desiredIndexes = [...$this->trigramIndexes->desired($object), ...$this->uniqueTogetherIndexes->desired($object)];
 
         // Renames are never guessed: a dropped plus an added column stay two separate changes.
         $comparator = $schemaManager->createComparator(new ComparatorConfig(
@@ -59,7 +61,7 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
         }
 
         try {
-            $actual = $this->withoutTrigramIndexes(
+            $actual = $this->withoutPlannedIndexes(
                 $schemaManager->introspectTableByUnquotedName($this->nonEmpty($object->tableName), DataSchema::NAME),
             );
         } catch (TableDoesNotExist) {
@@ -67,7 +69,7 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
                 $objectName,
                 $qualifiedName,
                 true,
-                [...$platform->getCreateTableSQL($desired), ...array_values($desiredTrigramIndexes), ...$linkStatements],
+                [...$platform->getCreateTableSQL($desired), ...array_values($desiredIndexes), ...$linkStatements],
                 $skipped,
             );
         }
@@ -77,16 +79,20 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
             $diff = $comparator->compareTables($actual, $this->withoutDestructiveChanges($actual, $desired, $diff, $skipped));
         }
 
-        // Trigram indexes hold no data: they follow the search configuration both ways.
-        $existingTrigramIndexes = $this->trigramIndexes->existing($object);
+        // Trigram and unique-together indexes hold no data: they follow the search
+        // configuration and the unique sets both ways. Dropped first: a set whose index is
+        // rebuilt under another name must not be checked twice.
+        $existingIndexes = [...$this->trigramIndexes->existing($object), ...$this->uniqueTogetherIndexes->existing($object)];
         $indexStatements = [];
-        foreach ($desiredTrigramIndexes as $name => $statement) {
-            if (!\in_array($name, $existingTrigramIndexes, true)) {
+        foreach (array_diff($existingIndexes, array_keys($desiredIndexes)) as $name) {
+            $indexStatements[] = UniqueTogetherIndexPlanner::isUniqueTogetherIndex($name)
+                ? $this->uniqueTogetherIndexes->dropStatement($name)
+                : $this->trigramIndexes->dropStatement($name);
+        }
+        foreach ($desiredIndexes as $name => $statement) {
+            if (!\in_array($name, $existingIndexes, true)) {
                 $indexStatements[] = $statement;
             }
-        }
-        foreach (array_diff($existingTrigramIndexes, array_keys($desiredTrigramIndexes)) as $name) {
-            $indexStatements[] = $this->trigramIndexes->dropStatement($name);
         }
 
         return new SchemaPlan(
@@ -127,14 +133,16 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
     }
 
     /**
-     * The trigram indexes are planned on their own: hide them from the DBAL comparison,
-     * which would otherwise report them as indexes the metadata does not define.
+     * The trigram and unique-together indexes are planned on their own: hide them from the
+     * DBAL comparison, which would otherwise report them as indexes the metadata does not
+     * define.
      */
-    private function withoutTrigramIndexes(Table $table): Table
+    private function withoutPlannedIndexes(Table $table): Table
     {
         $editor = $table->edit();
         foreach ($table->getIndexes() as $index) {
-            if (TrigramIndexPlanner::isTrigramIndex($index->getObjectName()->getIdentifier()->getValue())) {
+            $name = $index->getObjectName()->getIdentifier()->getValue();
+            if (TrigramIndexPlanner::isTrigramIndex($name) || UniqueTogetherIndexPlanner::isUniqueTogetherIndex($name)) {
                 $editor->dropIndex($index->getObjectName());
             }
         }
@@ -189,8 +197,9 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
         return $this->transactions->run(function () use ($after, $statements): SchemaPlan {
             $plan = new SchemaPlan($after->name, DataSchema::NAME.'.'.$after->tableName, false, $statements, []);
             $this->execute($plan);
-            // The trigram indexes hold no data and are named after the table and the columns:
-            // the synchronization drops the old ones and builds them again under the new names.
+            // The trigram and unique-together indexes hold no data and are named after the table
+            // and the columns: the synchronization drops the old ones and builds them again under
+            // the new names.
             $this->synchronize($after->name);
 
             return $plan;

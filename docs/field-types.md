@@ -35,6 +35,15 @@ field has no column: its links live in a table of their own (see [`many_to_many`
 - **Unique** (`--unique`): a value used by another record is refused with "This value is already
   used.". A unique index backs the rule against concurrent saves. Values of deleted records stay
   reserved (the index still holds them).
+- **Unique together** (`metadata:object:unique`): a set of fields of an object no two records may
+  share all the values of, e.g. a person and a team on a membership. A record holding the same
+  values as another one is refused with "Another record already has the same person and team.",
+  on the first field of the set the write carries; an update carrying one field of the set is
+  checked with the stored value of the others. Unlike a single unique field, **deleted records
+  do not count**: their values are free again, so a membership removed can be added back. A
+  record with one of the fields empty never clashes. A partial unique index (`WHERE deleted_at IS
+  NULL`) backs the rule. The fields may be of any type a single field could be unique on: not a
+  password, a file nor a `many_to_many` field.
 - **Errors are reported all at once**, per field, in the form and in `RecordValidationFailed` for code.
 - **Unknown fields** in the input are refused ("This field does not exist.").
 - **Default values**: on create, a field that is not given takes its default value (`boolean` and

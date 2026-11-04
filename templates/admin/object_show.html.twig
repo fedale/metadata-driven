@@ -136,6 +136,27 @@
     </section>
 
     <section class="md-admin__section">
+        <h2>Unique together</h2>
+        <p class="gv-muted">Sets of fields no two records may share all the values of, e.g. a user and a tag on a junction object. Deleted records do not count; a record with one of the fields empty never clashes.</p>
+        {% if unique_together is not empty %}
+            <ul class="md-archived">
+                {% for entry in unique_together %}
+                    <li>
+                        <span>{{ entry.labels|join(', ') }}</span>
+                        {{ form_start(entry.remove_form) }}
+                            <button type="submit" class="gv-btn">Remove</button>
+                        {{ form_end(entry.remove_form) }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        {{ form_start(unique_form, {attr: {class: 'md-form'}}) }}
+            {{ form_rest(unique_form) }}
+            <button type="submit" class="gv-btn gv-btn-primary">Make unique together</button>
+        {{ form_end(unique_form) }}
+    </section>
+
+    <section class="md-admin__section">
         <h2>Table <code>data.{{ object.tableName }}</code></h2>
         {% if plan.isEmpty and plan.skipped is empty %}
             <p class="md-flash md-flash--success">The table matches the metadata.</p>

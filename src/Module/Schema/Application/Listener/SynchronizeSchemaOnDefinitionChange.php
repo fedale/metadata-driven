@@ -12,6 +12,7 @@ use App\Module\Metadata\Contract\Event\ObjectDefinitionCreated;
 use App\Module\Metadata\Contract\Event\ObjectDefinitionPurged;
 use App\Module\Metadata\Contract\Event\ObjectDefinitionRenamed;
 use App\Module\Metadata\Contract\Event\ObjectSearchConfigured;
+use App\Module\Metadata\Contract\Event\ObjectUniqueTogetherConfigured;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Schema\Contract\SchemaSynchronizerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -42,6 +43,12 @@ final class SynchronizeSchemaOnDefinitionChange
 
     #[AsEventListener]
     public function onSearchConfigured(ObjectSearchConfigured $event): void
+    {
+        $this->synchronizer->synchronize($event->objectName);
+    }
+
+    #[AsEventListener]
+    public function onUniqueTogetherConfigured(ObjectUniqueTogetherConfigured $event): void
     {
         $this->synchronizer->synchronize($event->objectName);
     }

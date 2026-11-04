@@ -59,6 +59,10 @@ final class ListObjectsConsoleCommand
         }
         $io->title(\sprintf('%s (%s)', $definition->labelPlural, $definition->tableName));
         $io->table(['Name', 'Type', 'Label', 'Required', 'Unique', 'Settings'], $rows);
+        if ([] !== $definition->uniqueTogether) {
+            $io->section('Unique together (metadata:object:unique)');
+            $io->listing(array_map(static fn (array $set): string => implode(', ', $set), $definition->uniqueTogether));
+        }
         if ([] !== $definition->archivedFields) {
             $io->section('Archived fields (metadata:archive --restore, or metadata:purge)');
             $io->listing(array_keys($definition->archivedFields));

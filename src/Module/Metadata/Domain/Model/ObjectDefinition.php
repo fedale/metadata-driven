@@ -34,6 +34,8 @@ class ObjectDefinition
     private ?string $labelField = null;
     /** @var list<string>|null */
     private ?array $searchFields = null;
+    /** @var list<list<string>>|null the field sets unique together; null for none */
+    private ?array $uniqueTogether = null;
     /** @var Collection<int, FieldDefinition> */
     private Collection $fields;
     /** @var Collection<int, ViewDefinition> */
@@ -130,6 +132,12 @@ class ObjectDefinition
         }
         if (null !== $this->searchFields) {
             $this->searchFields = array_map(static fn (string $name): string => $name === $fieldName ? $newName : $name, $this->searchFields);
+        }
+        if (null !== $this->uniqueTogether) {
+            $this->uniqueTogether = array_map(
+                static fn (array $set): array => array_map(static fn (string $name): string => $name === $fieldName ? $newName : $name, $set),
+                $this->uniqueTogether,
+            );
         }
         foreach ($this->fields as $other) {
             $condition = $other->getCondition();
@@ -230,6 +238,42 @@ class ObjectDefinition
 
         $this->searchHandler = $handler;
         $this->searchFields = $fields;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    /**
+     * Makes a set of fields unique together: no two live records hold the same values in all
+     * of them. Whether the field types allow it is checked by the caller.
+     *
+     * @param list<string> $fields at least two different fields, in the order of the index
+     */
+    public function addUniqueTogether(array $fields): void
+    {
+        foreach ($fields as $field) {
+            if (!$this->hasField($field)) {
+                throw InvalidMetadataDefinition::unknownField($this->name, $field);
+            }
+        }
+        if (\count($fields) < 2 || \count(array_unique($fields)) !== \count($fields)) {
+            throw InvalidMetadataDefinition::invalidUniqueTogether($this->name, $fields, 'name at least two different fields (a single field is made unique when it is created)');
+        }
+        if (null !== $this->findUniqueTogether($fields)) {
+            throw InvalidMetadataDefinition::invalidUniqueTogether($this->name, $fields, 'these fields are already unique together');
+        }
+
+        $this->uniqueTogether = [...$this->uniqueTogether ?? [], $fields];
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    /**
+     * @param list<string> $fields the fields of the set, in any order
+     */
+    public function removeUniqueTogether(array $fields): void
+    {
+        $index = $this->findUniqueTogether($fields) ?? throw InvalidMetadataDefinition::unknownUniqueTogether($this->name, $fields);
+        $sets = $this->uniqueTogether ?? [];
+        array_splice($sets, $index, 1);
+        $this->uniqueTogether = [] === $sets ? null : $sets;
         $this->updatedAt = new \DateTimeImmutable();
     }
 
@@ -439,6 +483,14 @@ class ObjectDefinition
     }
 
     /**
+     * @return list<list<string>> the field sets unique together, each in the order of its index
+     */
+    public function getUniqueTogether(): array
+    {
+        return $this->uniqueTogether ?? [];
+    }
+
+    /**
      * @return list<FieldDefinition> the active fields, ordered by position
      */
     public function getFields(): array
@@ -501,6 +553,25 @@ class ObjectDefinition
                 throw $field->isArchived() ? InvalidMetadataDefinition::archivedFieldNameTaken($this->name, $name) : InvalidMetadataDefinition::duplicateField($this->name, $name);
             }
         }
+    }
+
+    /**
+     * @param list<string> $fields
+     *
+     * @return int|null the position of the set holding exactly these fields, in any order
+     */
+    private function findUniqueTogether(array $fields): ?int
+    {
+        $wanted = $fields;
+        sort($wanted);
+        foreach ($this->uniqueTogether ?? [] as $index => $set) {
+            sort($set);
+            if ($set === $wanted) {
+                return $index;
+            }
+        }
+
+        return null;
     }
 
     private function findView(ViewKind $kind, string $name): ?ViewDefinition
