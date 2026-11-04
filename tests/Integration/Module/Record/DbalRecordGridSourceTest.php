@@ -9,6 +9,7 @@ use App\Module\Record\Application\Grid\RecordGridSourceInterface;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\RecordManagerInterface;
 use App\Tests\Support\CreatesPetObject;
+use App\Tests\Support\CreatesTaggedContacts;
 use Fedale\GridviewBundle\DataSource\FilterCriterion;
 use Fedale\GridviewBundle\DataSource\FilterOperator;
 use Fedale\GridviewBundle\DataSource\GridQuery;
@@ -22,6 +23,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 final class DbalRecordGridSourceTest extends KernelTestCase
 {
     use CreatesPetObject;
+    use CreatesTaggedContacts;
 
     private RecordGridSourceInterface $source;
 
@@ -128,6 +130,98 @@ final class DbalRecordGridSourceTest extends KernelTestCase
         $this->expectException(FieldDefinitionNotFound::class);
 
         $this->rows(new GridQuery(source: ['object' => 'pet'], sort: [new SortOrder('deleted_at', SortDirection::Asc)]));
+    }
+
+    public function testAManyToManyFieldBringsTheLabelsOfTheLinkedRecords(): void
+    {
+        [$vip, $press, $gone] = $this->taggedContacts();
+
+        $rows = $this->rows($this->contacts());
+
+        self::assertSame(['Anna', 'Bruno', 'Carla', 'Dario'], array_column($rows, 'full_name'));
+        // Sorted by label, joined by ", "; a deleted record is left out; nothing is null.
+        self::assertSame(['Press, VIP', 'Press', null, null], array_column($rows, 'tags__label'));
+        // The ids, in the order of the labels.
+        self::assertSame([[$press, $vip], [$press], [], []], array_column($rows, 'tags'));
+        self::assertNotContains($gone, array_merge(...array_column($rows, 'tags')));
+    }
+
+    /**
+     * @param list<string> $tags     names of the tags filtered on
+     * @param list<string> $expected names of the contacts, sorted
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('linkCriteria')]
+    public function testAManyToManyFieldIsFilteredOnTheLinkedRecords(FilterOperator $operator, array $tags, array $expected): void
+    {
+        $ids = array_combine(['VIP', 'Press', 'Gone'], $this->taggedContacts());
+        $values = array_map(static fn (string $tag): string => $ids[$tag] ?? $tag, $tags);
+        $query = $this->contacts([new FilterCriterion('tags', $operator, FilterOperator::Eq === $operator ? $values[0] : $values)]);
+
+        self::assertSame($expected, array_column($this->rows($query), 'full_name'));
+        self::assertSame(\count($expected), $this->source->count($query));
+    }
+
+    /**
+     * @return iterable<string, array{FilterOperator, list<string>, list<string>}>
+     */
+    public static function linkCriteria(): iterable
+    {
+        yield 'one record' => [FilterOperator::In, ['VIP'], ['Anna']];
+        yield 'eq' => [FilterOperator::Eq, ['Press'], ['Anna', 'Bruno']];
+        yield 'any of several, each record once' => [FilterOperator::In, ['VIP', 'Press'], ['Anna', 'Bruno']];
+        yield 'a deleted record' => [FilterOperator::In, ['Gone'], []];
+        yield 'not an id' => [FilterOperator::In, ['nope'], []];
+    }
+
+    public function testAManyToManyFieldIsNeitherSortedNorSearched(): void
+    {
+        $this->taggedContacts();
+
+        $this->assertRefused(fn () => $this->rows($this->contacts(sort: [new SortOrder('tags', SortDirection::Asc)])));
+        $this->assertRefused(fn () => $this->rows(new GridQuery(source: ['object' => 'contact'], searchTerm: 'vip', searchFields: ['tags'])));
+        $this->assertRefused(fn () => $this->rows(new GridQuery(source: ['object' => 'contact', 'virtual' => ['line' => ['full_name', 'tags']]], criteria: [new FilterCriterion('line', FilterOperator::Contains, 'vip')])));
+        $this->assertRefused(fn () => $this->rows($this->contacts([new FilterCriterion('tags', FilterOperator::Contains, 'vip')])));
+    }
+
+    /**
+     * Anna is tagged VIP and Press, Bruno Press, Carla nothing, Dario with a tag deleted since.
+     *
+     * @return array{string, string, string} the ids of the tags VIP, Press and of the deleted one
+     */
+    private function taggedContacts(): array
+    {
+        $container = self::getContainer();
+        self::createTaggedContacts($container);
+        $records = $container->get(RecordManagerInterface::class);
+        [$vip, $press, $gone] = array_map(
+            static fn (string $name): string => $records->create(new RecordInput('tag', ['name' => $name]))->id,
+            ['VIP', 'Press', 'Gone'],
+        );
+        foreach (['Anna' => [$vip, $press], 'Bruno' => [$press], 'Carla' => [], 'Dario' => [$gone]] as $name => $tags) {
+            $records->create(new RecordInput('contact', ['full_name' => $name, 'tags' => $tags]));
+        }
+        $records->delete('tag', $gone);
+
+        return [$vip, $press, $gone];
+    }
+
+    /**
+     * @param list<FilterCriterion> $criteria
+     * @param list<SortOrder>       $sort
+     */
+    private function contacts(array $criteria = [], ?array $sort = null): GridQuery
+    {
+        return new GridQuery(source: ['object' => 'contact'], criteria: $criteria, sort: $sort ?? [new SortOrder('full_name', SortDirection::Asc)]);
+    }
+
+    private function assertRefused(callable $query): void
+    {
+        try {
+            $query();
+            self::fail('The query was not refused.');
+        } catch (\InvalidArgumentException $e) {
+            self::assertStringContainsString('"tags" of "contact" is many-to-many', $e->getMessage());
+        }
     }
 
     /**

@@ -1,9 +1,8 @@
 # Plan: many-to-many relations
 
-Status: reviewed by the user (type name, read-only inverse, delete rules decided). Phase 1
-committed on `feature/many_to_many_storage` (not merged); phase 2 committed on
-`feature/many_to_many_records`, branched from it (not merged); phases 3–4 not started. Last
-updated: 2026-11-03.
+Status: reviewed by the user (type name, read-only inverse, delete rules decided). Phases 1 and
+2 merged into main; phase 3 committed on `feature/many_to_many_grid`, branched from main (not merged);
+phase 4 not started. Last updated: 2026-11-04.
 
 ## Where we are
 
@@ -196,6 +195,24 @@ modules, except in the grid (phase 3). Differences from the design above:
 - `created_by` of a link stays null, as it does on records: nothing sets it yet.
 - The link table naming moved to `App\Shared\Database\DataSchema::linkTable()`, shared by the
   Schema and Record modules.
+
+**Phase 3, as delivered.** The last skips of phase 1 are gone: `RecordGridFactory` builds a
+column for the field, `GridViewCompiler::readable()` accepts it. Differences from the design:
+
+- The source selects two correlated subqueries per field, both on `LinkSource`: the labels
+  (`STRING_AGG(label, ', ' ORDER BY label, id)`) under `<field>__label`, and the ids in the same
+  order, hydrated as the field's value (a renderer gets them). A target with an empty label is
+  named `#<first 8 characters of its id>` in SQL, as `RecordLabels::fallback()` does in PHP.
+  The labels are joined in SQL, so a label holding ", " reads like two.
+- The filter accepts `eq` and `in` only (what the relation filter sends); a value that is not a
+  UUID is dropped before the query, and a filter left with none matches nothing. Other
+  operators, a sort, a search or a virtual column on the field are refused by the source with an
+  `InvalidArgumentException`, as the grid view compiler refuses them on save
+  (`sortable: true` on the column, a `sort` on it, a `{token}` of a virtual column).
+- The bundle's columns are sortable unless told otherwise: the default grid now calls
+  `sortable(false)` for a many-to-many column, and for a file column too (it was sortable on its
+  id, against the comment saying it was not).
+- No gridview-bundle change.
 
 ## Out of scope
 

@@ -23,6 +23,7 @@ use Symfony\Component\Yaml\Yaml;
  *       - { field: email, label: E-mail }
  *       - { field: bio, renderer: truncate, options: { length: 60 } }
  *       - { field: active, hidden: true }        # off until the user turns it on
+ *       - tags                                   # a many-to-many field: never sortable
  *       - { name: fullname, label: Full name, template: '{firstname} {lastname}' }
  *     sort: { lastname: asc }                    # optional: the initial order
  *     page_size: 50                              # optional
@@ -156,8 +157,21 @@ final class GridViewCompiler
 
                     return null;
                 }
+                if (!$object->field($source)->storesColumn()) {
+                    $this->errors[] = \sprintf('%s: {%s} is a many-to-many field: show it in a column of its own.', $path, $source);
+
+                    return null;
+                }
             }
             $key = $name;
+        }
+        // The records a many-to-many field links to have no order of their own.
+        $sortable = $this->flag($path, $column, 'sortable', true);
+        if (\is_string($field) && !$object->field($field)->storesColumn()) {
+            if (true === ($column['sortable'] ?? false)) {
+                $this->errors[] = \sprintf('%s: "%s" is a many-to-many field: it cannot be sorted.', $path, $field);
+            }
+            $sortable = false;
         }
 
         return [
@@ -168,7 +182,7 @@ final class GridViewCompiler
             'label' => $this->label($path, $column['label'] ?? null),
             ...$this->renderer($path, $column['renderer'] ?? null, $column['options'] ?? null),
             'hidden' => $this->flag($path, $column, 'hidden', false),
-            'sortable' => $this->flag($path, $column, 'sortable', true),
+            'sortable' => $sortable,
             'filter' => $this->flag($path, $column, 'filter', true),
         ];
     }
@@ -185,11 +199,6 @@ final class GridViewCompiler
         }
         if ($this->fieldTypes->isWriteOnly($object->field($field)->type)) {
             $this->errors[] = \sprintf('%s: "%s" is write-only: it cannot be shown.', $path, $field);
-
-            return false;
-        }
-        if (!$object->field($field)->storesColumn()) {
-            $this->errors[] = \sprintf('%s: "%s" is a many-to-many field: grid views cannot show it yet.', $path, $field);
 
             return false;
         }

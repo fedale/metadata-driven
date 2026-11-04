@@ -82,14 +82,14 @@ final class RecordGridFactory
             $columns = [];
             foreach ($object->fields as $field) {
                 $type = $this->fieldTypes->get($field->type);
-                // A many-to-many field has no column for the grid to read.
-                if (!$field->storesColumn() || $type->isWriteOnly()) {
+                if ($type->isWriteOnly()) {
                     continue;
                 }
                 $widget = $type->widget($field->settings);
                 $column = $this->column($field, $widget)->label($field->label);
-                // A file column holds an id: there is no order to sort it by.
-                $columns[] = WidgetKind::File === $widget->kind ? $column : $column->sortable();
+                // A file column holds an id, a many-to-many one a set of records: there is no
+                // order to sort them by (the bundle's columns are sortable unless told otherwise).
+                $columns[] = $column->sortable(!\in_array($widget->kind, [WidgetKind::File, WidgetKind::ManyToMany], true));
             }
         } else {
             $columns = array_map(fn (GridColumnDto $column): AbstractColumnConfig => $this->viewColumn($object, $column), $grid->columns);
@@ -225,6 +225,7 @@ final class RecordGridFactory
         $value = $row[$field->name] ?? null;
 
         return match (true) {
+            WidgetKind::ManyToMany === $widget->kind => self::linkedLabels($field->name, $row),
             null === $value => '',
             WidgetKind::Relation === $widget->kind => \is_string($label = $row[$field->name.RecordGridSourceInterface::LABEL_SUFFIX] ?? null) ? $label : (\is_string($value) ? RecordLabels::fallback($value) : ''),
             WidgetKind::Choice === $widget->kind && \is_scalar($value) => $widget->choices()[(string) $value] ?? (string) $value,
@@ -234,6 +235,18 @@ final class RecordGridFactory
             \is_scalar($value) => (string) $value,
             default => '',
         };
+    }
+
+    /**
+     * The labels of the records a many-to-many field links to, joined by the source.
+     *
+     * @param array<mixed> $row
+     */
+    private static function linkedLabels(string $name, array $row): string
+    {
+        $labels = $row[$name.RecordGridSourceInterface::LABEL_SUFFIX] ?? null;
+
+        return \is_string($labels) ? $labels : '';
     }
 
     private function column(FieldDefinitionDto $field, Widget $widget): AbstractColumnConfig
@@ -246,7 +259,11 @@ final class RecordGridFactory
             WidgetKind::Url => UrlColumn::new($name)->filterText(),
             WidgetKind::Tel => TelColumn::new($name)->filterText(),
             WidgetKind::Password => throw new \LogicException(\sprintf('Field "%s" is write-only: it has no grid column.', $name)),
-            WidgetKind::ManyToMany => throw new \LogicException(\sprintf('Field "%s" is many-to-many: it has no grid column yet.', $name)),
+            // Shows the labels of the linked records; filters on their ids (any of them), no sort.
+            WidgetKind::ManyToMany => $this->filterRecords(
+                TextColumn::new($name)->value(static fn (array $row): string => self::linkedLabels($name, $row)),
+                $widget,
+            ),
             WidgetKind::Integer => NumberColumn::new($name)->decimals(0)->filterNumber(),
             WidgetKind::Decimal => NumberColumn::new($name)
                 ->decimals(\is_int($widget->options['scale'] ?? null) ? $widget->options['scale'] : 2)
@@ -257,25 +274,36 @@ final class RecordGridFactory
             // Shows the option label, filters and sorts on the stored value.
             WidgetKind::Choice => SelectColumn::new($name)->choices(array_flip($widget->choices())),
             // Shows the label of the related record; filters on its id, sorts on its label.
-            WidgetKind::Relation => TextColumn::new($name)
-                ->value(static function (array $row) use ($name): string {
+            WidgetKind::Relation => $this->filterRecords(
+                TextColumn::new($name)->value(static function (array $row) use ($name): string {
                     $label = $row[$name.RecordGridSourceInterface::LABEL_SUFFIX] ?? null;
                     $id = $row[$name] ?? null;
 
                     return \is_string($label) ? $label : (\is_string($id) ? RecordLabels::fallback($id) : '');
-                })
-                ->filterRelation(
-                    ajaxUrl: $this->urls->generate('record_options', ['object' => $widget->options['target'] ?? '']),
-                    // Several records at once.
-                    multiple: true,
-                    searchable: true,
-                    optionLabel: 'label',
-                    optionValue: 'id',
-                ),
+                }),
+                $widget,
+            ),
             // Whether the record has a file; its name and a link come with the file renderer.
             WidgetKind::File => TextColumn::new($name)
                 ->value(static fn (array $row): string => \is_string($row[$name] ?? null) ? '✓' : ''),
         };
+    }
+
+    /**
+     * The relation filter of a column pointing at the records of the widget's target, looked
+     * up as the user types; several records at once.
+     */
+    private function filterRecords(AbstractColumnConfig $column, Widget $widget): AbstractColumnConfig
+    {
+        $target = $widget->options['target'] ?? '';
+
+        return $column->filterRelation(
+            ajaxUrl: $this->urls->generate('record_options', ['object' => \is_string($target) ? $target : '']),
+            multiple: true,
+            searchable: true,
+            optionLabel: 'label',
+            optionValue: 'id',
+        );
     }
 
     private function actions(ObjectDefinitionDto $object): ActionColumn

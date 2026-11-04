@@ -80,9 +80,11 @@ the uncommitted change; the cache is only refreshed once the change is committed
 
 A field is one column of its object's table, with one exception: a `many_to_many` field has no
 column, its links live in a link table of its own. `FieldDefinitionDto::storesColumn()` tells them
-apart, and every module reading or writing columns (the table factory, the record store, the
-grid, the validation) skips the fields that answer false. The Schema module builds the link
-tables with their object's table, and renames and drops them with the field or the object.
+apart: every module reading or writing columns (the table factory, the record store, the grid,
+the validation) leaves the fields that answer false out of its column lists, and the record store
+and the grid source read and write their links through `LinkSource` (`RecordTable::links()`), the
+one description of where the links are. The Schema module builds the link tables with their
+object's table, and renames and drops them with the field or the object.
 
 A rename goes the same way: `RenameObjectHandler` / `RenameFieldHandler` save the definitions,
 rewrite the views and composite forms naming the old name (compiled again against the renamed
