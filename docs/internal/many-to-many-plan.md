@@ -3,9 +3,9 @@
 Status: reviewed by the user (type name, read-only inverse, delete rules decided). Phases 1–3
 merged into main. Phase 4 confirmed by the user and split: 4a (fields unique together) merged
 into main; 4b split again by the user's choice: 4b-1 (`through`: settings, reading, grid,
-lifecycle) merged into main; 4b-2 (writing the rows from the record form) not started: see
-[Phase 4b-2, next](#phase-4b-2-next). Last updated:
-2026-11-04.
+lifecycle) merged into main; 4b-2 (writing the rows from the record form) done on
+`feature/many_to_many_through_rows`, awaiting review: see [Phase 4b-2, as
+delivered](#phase-4b-2-as-delivered). Last updated: 2026-11-04.
 
 ## Where we are
 
@@ -265,40 +265,47 @@ with other fields.
   set holding them are in use (archive, purge, unique removal refused); renames follow
   (`retargetRelations()`, `followTargetFieldRename()`); restore checks the junction.
 
-Not covered by a test in 4b-1: a `through` field inside a composite form (shown disabled by
-`RecordFormFactory::addControls()`, left out of the input by `CompositeFormFactory::input()`).
+Not covered by a test in 4b-1: a `through` field inside a composite form; covered in 4b-2
+(`ManyToManyThroughControllerTest::testACompositeFormEditsTheRowsToo()`).
 
-### Phase 4b-2, next
+### Phase 4b-2, as delivered
 
-To do on `feature/many_to_many_through_rows`, a branch from main:
+On `feature/many_to_many_through_rows`, a branch from main. Decided by the user before the code
+(2026-11-04): the value keeps the ids, the rows come apart; the permissions on the junction
+decide what is shown, as below.
 
-- **Value shape.** For a `through` field, rows of the junction instead of ids:
-  `[{"id": "<junction record id>", "tag": "<target id>", "role": "owner"}, …]`, keyed by the
-  junction's field names; `throughSource` is never in a row (it is the record). A row with an
-  `id` updates that junction record, a row without one creates it, a junction record of the
-  record missing from the rows is deleted (soft, with its own delete rules), as composite `mode:
-  many` rows (`CompositeRecordManager`). An id that is not a live junction record of this record
-  is refused (`CompositeRecordManager::UNKNOWN_ROW_MESSAGE` is the model). Decide whether
-  `RecordOutput` carries the rows too, or the ids as today plus the rows in another key: the
-  grid, the record page and the inverse lists read the ids.
-- **Write pipeline.** `RecordInputDenormalizer` stops refusing the field (`JUNCTION_MESSAGE`);
-  each row is checked as a junction record (`RecordManagerInterface::check()`, its errors keyed by
-  row, e.g. `tags.0.role`), then written in the record's transaction after the record itself (a new
-  record needs its id for `throughSource`). The unique set of the junction refuses a target twice
-  (an error on the row). `required` (at least one row) and `max` count live rows; lift the
-  "cannot be required yet" refusal in `CreateFieldHandler::assertJunctionIsValid()`.
-- **Form.** Inline rows in the record form: the target picker (autocomplete, as a relation) plus
-  the junction's other fields, add and remove buttons; reuse the row widgets of composite `mode:
-  many` sections (`CompositeFormFactory`, the gridview-bundle collection). Composite forms: the
-  field in a node gets the same rows. Stop disabling it in `RecordFormFactory::addControls()` and
-  filtering it out in `RecordController::submitted()` / `CompositeFormFactory::input()`.
-- **Permissions** (from a security review of 4b-1): the rows show and write records of the
-  junction, so they need its permissions: `record.<junction>.read` to see the rows,
-  `create` / `update` / `delete` to change them. Without read, show the labels only or nothing
-  (ask the user). In 4b-1 the field only shows the linked ids and labels, like a plain
-  `many_to_many`, under the source object's read permission.
-- **Docs.** `field-types.md` (drop the "Not yet" of "Through a junction object", the value shape,
-  errors), `forms.md`, this plan, `status.md`.
+- **Value shape.** `RecordOutput::$values` keeps the linked ids for every many-to-many field, so
+  the grid, the renderers and the conditions read them unchanged. `RecordOutput::$rows` (and
+  `rows()`, `withRows()`) holds, for each `through` field, the junction's live records, oldest
+  first; only the records read one by one carry them (`find()`, `findReferencing()`, the record a
+  write returns), not `latest()` nor the grid. In `RecordInput` a `through` field takes rows:
+  maps of the junction's fields with an optional `id`, keys kept to name the rows in the errors.
+- **Write pipeline.** `RecordInputDenormalizer` checks the shape only (a list of maps, a UUID
+  `id`; `ROWS_MESSAGE`, `ROW_ID_MESSAGE`); no rows is null, so `required` and `max` (the type's
+  `Count`) count the rows as a plain field counts its ids, and a create without the field gets
+  null. `RecordManager::checkRows()` checks each row through `check()` as a junction record (the
+  field pointing at the record is left out, as composite forms leave out `via`), plus an unknown
+  row (`UNKNOWN_ROW_MESSAGE`), the record's field given (`SET_BY_RECORD_MESSAGE`) and a target
+  twice (`LINKED_TWICE_MESSAGE`); errors are keyed `tags.<row key>.<field>`. `writeRows()` runs
+  in the record's transaction, after the record: deletions first (the junction's delete rules
+  apply; a restricted one becomes an error on the field), then updates and creates through
+  `update()` / `create()`, their errors re-keyed by row. `CreateFieldHandler` accepts a required
+  `through` field.
+- **Form.** `JunctionRowsType` (a `CollectionType`, block prefix `junction_rows`) of
+  `JunctionRowType` (hidden `id` plus `values`, a `RecordFieldsType` of the junction's fields,
+  the target first; its data is the flat row, through a model transformer), drawn by the
+  `junction_rows` / `junction_row` blocks of `templates/form/record_fields.html.twig` as the
+  bundle's `gridview-collection` inline rows. A blank new row is dropped (`delete_empty`).
+  `RecordFormFactory::data()` puts the rows in the form data, `errorTarget()` maps `tags.0.role`
+  to its input (skipping the row's `values` level), and composite forms use both.
+- **Permissions** (`JunctionAccess`): read, create, update and delete on the junction: the rows,
+  editable; read only: the rows, disabled, left out of what the record form saves
+  (`RecordController::submitted()` skips disabled controls) and of a composite form's input
+  (`RecordFormFactory::editsRows()`); no read: the labels, disabled, as in 4b-1. The record
+  manager itself checks no permission, as for any write.
+- Not done: a swap of targets between two existing rows in one write may hit the junction's
+  unique index on the first update and come back as an error; the check cannot see it. Rows are
+  not ordered beyond "oldest first".
 
 ### Working on it
 

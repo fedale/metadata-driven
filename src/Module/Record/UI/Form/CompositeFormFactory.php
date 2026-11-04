@@ -70,7 +70,7 @@ final class CompositeFormFactory
 
         // Only the fields the node shows: the "via" field is the form's business.
         $object = $this->metadata->getObject($node->object);
-        $values = array_intersect_key($record->record->values ?? $this->forms->defaults($object), array_flip($node->fieldNames($object)));
+        $values = array_intersect_key($this->forms->data($object, $record?->record), array_flip($node->fieldNames($object)));
 
         return [
             'id' => $record?->record->id,
@@ -102,9 +102,13 @@ final class CompositeFormFactory
         $id = $data['id'] ?? null;
         /** @var array<string, mixed> $values keyed by field name, as the form builds them */
         $values = \is_array($data['values'] ?? null) ? $data['values'] : [];
-        // Links through a junction object are only shown (disabled): they are not input.
+        // The rows of a junction object the user may only read are shown, not input.
         $object = $this->metadata->getObject($node->object);
-        $values = array_filter($values, static fn (string $name): bool => !$object->hasField($name) || null === $object->field($name)->manyToMany()?->through, \ARRAY_FILTER_USE_KEY);
+        $values = array_filter(
+            $values,
+            fn (string $name): bool => !$object->hasField($name) || null === $object->field($name)->manyToMany()?->through || $this->forms->editsRows($object->field($name)),
+            \ARRAY_FILTER_USE_KEY,
+        );
         /** @var array<string, mixed> $service keyed by service field name */
         $service = \is_array($data['service'] ?? null) ? $data['service'] : [];
 
@@ -122,13 +126,7 @@ final class CompositeFormFactory
     public function addErrors(FormInterface $form, CompositeValidationFailed $failure): void
     {
         foreach ($failure->errors as $path => $messages) {
-            $target = $form;
-            foreach ('' === $path ? [] : explode('.', $path) as $segment) {
-                if (!$target->has($segment)) {
-                    break;
-                }
-                $target = $target->get($segment);
-            }
+            $target = RecordFormFactory::errorTarget($form, $path);
             foreach ($messages as $message) {
                 $target->addError(new FormError($message));
             }

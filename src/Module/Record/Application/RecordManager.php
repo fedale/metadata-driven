@@ -6,6 +6,7 @@ namespace App\Module\Record\Application;
 
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
 use App\Module\Metadata\Contract\Dto\ManyToManyOnDelete;
+use App\Module\Metadata\Contract\Dto\ManyToManySettings;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\OnDelete;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
@@ -31,10 +32,19 @@ use Symfony\Component\Uid\Uuid;
  * that do not apply are emptied) → validation → conversion to the stored form (e.g. password
  * hashes) → storage: the columns, then the links of the many-to-many fields, in one
  * transaction.
+ *
+ * The rows of a many-to-many field going through a junction object are records of the
+ * junction: each one is checked, then written, through this same pipeline, after the record
+ * (a new one gives them its id). Their errors are keyed by field, row and junction field:
+ * "tags.0.role".
  */
 final class RecordManager implements RecordManagerInterface, RecordFinderInterface
 {
     public const string CONFLICT_MESSAGE = 'This record conflicts with an existing one, please try again.';
+    // The same message as an unknown row of a composite form.
+    public const string UNKNOWN_ROW_MESSAGE = 'This row does not belong to the record.';
+    public const string SET_BY_RECORD_MESSAGE = 'This field is set by the record.';
+    public const string LINKED_TWICE_MESSAGE = 'This record is already linked.';
 
     public function __construct(
         // The labels in the user's language.
@@ -62,7 +72,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
             $this->writeLinks($object, $id, $stored, $now);
         }));
 
-        return $this->store->find($object, $id) ?? throw new \LogicException('The record just created cannot be read back.');
+        return $this->withRows($object, $this->store->find($object, $id) ?? throw new \LogicException('The record just created cannot be read back.'));
     }
 
     public function update(string $id, RecordInput $input): RecordOutput
@@ -90,7 +100,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
             }
         }
 
-        return $this->store->find($object, $id) ?? throw RecordNotFound::withId($object->name, $id);
+        return $this->withRows($object, $this->store->find($object, $id) ?? throw RecordNotFound::withId($object->name, $id));
     }
 
     public function check(RecordInput $input, ?string $id = null): array
@@ -136,7 +146,13 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
 
     public function find(string $objectName, string $id): ?RecordOutput
     {
-        return Uuid::isValid($id) ? $this->store->find($this->metadata->getObject($objectName), $id) : null;
+        if (!Uuid::isValid($id)) {
+            return null;
+        }
+        $object = $this->metadata->getObject($objectName);
+        $record = $this->store->find($object, $id);
+
+        return null === $record ? null : $this->withRows($object, $record);
     }
 
     public function findReferencing(string $objectName, string $fieldName, string $targetId): array
@@ -147,7 +163,8 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         foreach (array_reverse($this->store->referencingIds($object, $object->field($fieldName), $targetId)) as $id) {
             $record = $this->store->find($object, $id);
             if (null !== $record) {
-                $records[] = $record;
+                // A composite form's rows: they carry their own junction rows, as their form edits them.
+                $records[] = $this->withRows($object, $record);
             }
         }
 
@@ -171,6 +188,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
 
         // Fields that could not be converted are already reported: validate the others only.
         $errors += $this->validator->validate($object, array_diff_key($values, $errors), $recordId);
+        $errors += $this->checkRows($object, array_diff_key($values, $errors), $recordId);
         if ([] !== $errors) {
             throw new RecordValidationFailed($object->name, $errors);
         }
@@ -260,11 +278,170 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         foreach ($values as $name => $value) {
             $field = $object->field($name);
             $manyToMany = $field->manyToMany();
-            if (null !== $manyToMany && !$manyToMany->goesThrough()) {
-                $ids = \is_array($value) ? array_values(array_filter($value, \is_string(...))) : [];
-                $this->store->replaceLinks($object, $field, $id, $ids, $now);
+            if (null === $manyToMany) {
+                continue;
+            }
+            if ($manyToMany->goesThrough()) {
+                $this->writeRows($object, $name, $manyToMany, $id, \is_array($value) ? $value : []);
+                continue;
+            }
+            $ids = \is_array($value) ? array_values(array_filter($value, \is_string(...))) : [];
+            $this->store->replaceLinks($object, $field, $id, $ids, $now);
+        }
+    }
+
+    /**
+     * Checks the rows of the fields going through a junction object, each one as a record of
+     * the junction; the record itself is not there yet, so its own field is left out. The
+     * unique set of the junction would refuse a target twice when the rows are written: the
+     * error is given here instead, on the row.
+     *
+     * @param array<string, mixed> $values denormalized
+     *
+     * @return array<string, list<string>> keyed by field, row and junction field
+     */
+    private function checkRows(ObjectDefinitionDto $object, array $values, ?string $recordId): array
+    {
+        $errors = [];
+        foreach ($values as $name => $rows) {
+            $settings = $object->field($name)->manyToMany();
+            if (null === $settings || !$settings->goesThrough() || !\is_array($rows)) {
+                continue;
+            }
+            [$junction, $source, $target] = $this->junction($settings);
+            $existing = null === $recordId ? [] : $this->store->referencingIds($junction, $junction->field($source), $recordId);
+            $linked = [];
+            foreach ($rows as $key => $row) {
+                $path = $name.'.'.$key;
+                if (!\is_array($row)) {
+                    continue;
+                }
+                $rowId = \is_string($row['id'] ?? null) ? $row['id'] : null;
+                $row = self::rowValues($row);
+                if (null !== $rowId && !\in_array($rowId, $existing, true)) {
+                    $errors[$path][] = self::UNKNOWN_ROW_MESSAGE;
+                    continue;
+                }
+                if (\array_key_exists($source, $row)) {
+                    $errors[$path.'.'.$source][] = self::SET_BY_RECORD_MESSAGE;
+                    unset($row[$source]);
+                }
+                foreach ($this->check(new RecordInput($junction->name, $row), $rowId) as $field => $messages) {
+                    if ($field !== $source) {
+                        $errors[RecordValidationFailed::GLOBAL_ERRORS === $field ? $path : $path.'.'.$field] = $messages;
+                    }
+                }
+                // A row updating its record without naming the target keeps the stored one.
+                $targetId = \array_key_exists($target, $row) ? $row[$target] : (null === $rowId ? null : $this->store->find($junction, $rowId)?->get($target));
+                if (\is_string($targetId) && '' !== $targetId) {
+                    if (isset($linked[strtolower($targetId)])) {
+                        $errors[$path.'.'.$target][] = self::LINKED_TWICE_MESSAGE;
+                    }
+                    $linked[strtolower($targetId)] = true;
+                }
             }
         }
+
+        return $errors;
+    }
+
+    /**
+     * Writes the rows of a field going through a junction object: the records of the junction
+     * missing from the rows are deleted first (a row added back may reuse the target of a
+     * removed one), then each row updates its record or creates one pointing at the record.
+     *
+     * @param array<mixed> $rows checked by checkRows()
+     *
+     * @throws RecordValidationFailed a conflict the check could not see (a concurrent write), or
+     *                                a junction record that cannot be deleted
+     */
+    private function writeRows(ObjectDefinitionDto $object, string $name, ManyToManySettings $settings, string $id, array $rows): void
+    {
+        [$junction, $source] = $this->junction($settings);
+        $kept = [];
+        foreach ($rows as $row) {
+            if (\is_array($row) && \is_string($row['id'] ?? null)) {
+                $kept[] = $row['id'];
+            }
+        }
+        foreach (array_diff($this->store->referencingIds($junction, $junction->field($source), $id), $kept) as $removed) {
+            try {
+                $this->delete($junction->name, $removed);
+            } catch (RecordDeleteRestricted $e) {
+                throw new RecordValidationFailed($object->name, [$name => [$e->getMessage()]]);
+            }
+        }
+        foreach ($rows as $key => $row) {
+            if (!\is_array($row)) {
+                continue;
+            }
+            $rowId = \is_string($row['id'] ?? null) ? $row['id'] : null;
+            $row = self::rowValues($row);
+            unset($row[$source]);
+            try {
+                null === $rowId
+                    ? $this->create(new RecordInput($junction->name, [$source => $id] + $row))
+                    : $this->update($rowId, new RecordInput($junction->name, $row));
+            } catch (RecordValidationFailed $e) {
+                $errors = [];
+                foreach ($e->errors as $field => $messages) {
+                    $errors[RecordValidationFailed::GLOBAL_ERRORS === $field ? $name.'.'.$key : $name.'.'.$key.'.'.$field] = $messages;
+                }
+                throw new RecordValidationFailed($object->name, $errors);
+            }
+        }
+    }
+
+    /**
+     * The values of a row: its junction fields, without its "id".
+     *
+     * @param array<mixed> $row
+     *
+     * @return array<string, mixed>
+     */
+    private static function rowValues(array $row): array
+    {
+        $values = [];
+        foreach ($row as $key => $value) {
+            if (\is_string($key) && 'id' !== $key) {
+                $values[$key] = $value;
+            }
+        }
+
+        return $values;
+    }
+
+    /**
+     * The rows of the fields going through a junction object, for a record read by itself.
+     */
+    private function withRows(ObjectDefinitionDto $object, RecordOutput $record): RecordOutput
+    {
+        $rows = [];
+        foreach ($object->fields as $name => $field) {
+            $settings = $field->manyToMany();
+            if (null === $settings || !$settings->goesThrough()) {
+                continue;
+            }
+            [$junction, $source] = $this->junction($settings);
+            $rows[$name] = [];
+            // The store lists the newest first.
+            foreach (array_reverse($this->store->referencingIds($junction, $junction->field($source), $record->id)) as $rowId) {
+                $row = $this->store->find($junction, $rowId);
+                if (null !== $row) {
+                    $rows[$name][] = $row;
+                }
+            }
+        }
+
+        return [] === $rows ? $record : $record->withRows($rows);
+    }
+
+    /**
+     * @return array{ObjectDefinitionDto, string, string} the junction object, its field pointing at the record, its field pointing at the target
+     */
+    private function junction(ManyToManySettings $settings): array
+    {
+        return [$this->metadata->getObject((string) $settings->through), (string) $settings->throughSource, (string) $settings->throughTarget];
     }
 
     /**

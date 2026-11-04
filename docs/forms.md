@@ -65,6 +65,9 @@ deletes its profile, phones and qualifications.
 A [`many_to_many`](field-types.md#many_to_many) field (a contact's tags) is a field like the
 others in `fields`: an autocomplete picking any number of records, saved with its record. It
 can't be a section's `via`: a section's records point at their parent through a `relation`.
+One going [through a junction object](field-types.md#through-a-junction-object) shows its rows
+inline (the target and the junction's fields, "+" and "×"), saved with its record as well, as far
+as the user's permissions on the junction go; a row's errors go on its inputs.
 
 ## Definition reference
 

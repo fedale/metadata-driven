@@ -9,6 +9,7 @@ use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Application\Grid\RecordGridSourceInterface;
 use App\Module\Record\Contract\Dto\RecordInput;
+use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
@@ -57,7 +58,6 @@ final class ManyToManyThroughTest extends KernelTestCase
         $this->assertRefused(fn () => $this->createTags(['throughTarget' => 'role'] + $through), '"role" must be a relation field of "person_tag" pointing at "tag"');
         $this->assertRefused(fn () => $this->createTags(['through' => 'tag'] + $through), 'a junction object is one of its own');
         $this->assertRefused(fn () => $this->createTags(['through' => 'nowhere'] + $through), 'the junction object "nowhere" does not exist');
-        $this->assertRefused(fn () => $this->manager->createField('person', 'tags', 'many_to_many', 'Tags', required: true, settings: $through), 'it cannot be required yet');
 
         // A set holding both fields, with others, is enough.
         $this->createTags($through);
@@ -101,21 +101,83 @@ final class ManyToManyThroughTest extends KernelTestCase
         self::assertFalse($this->connection()->fetchOne('SELECT 1 FROM data.c_person_tag WHERE person = ? AND deleted_at IS NULL', [$ada]));
     }
 
-    public function testTheLinksAreNotWrittenWithTheRecord(): void
+    public function testTheRowsAreWrittenWithTheRecord(): void
     {
         $this->createThroughField();
-        $vip = $this->create('tag', 'VIP');
-        $ada = $this->create('person', 'Ada');
+        [$vip, $press, $partner] = [$this->create('tag', 'VIP'), $this->create('tag', 'Press'), $this->create('tag', 'Partner')];
 
-        try {
-            $this->records->update($ada, new RecordInput('person', ['tags' => [$vip]]));
-            self::fail('The links were written.');
-        } catch (RecordValidationFailed $e) {
-            self::assertSame(['tags' => ['These links are records of "person_tag": add or remove them there.']], $e->errors);
-        }
-        // The other fields are written as usual.
-        $this->records->update($ada, new RecordInput('person', ['name' => 'Ada L.']));
-        self::assertSame('Ada L.', $this->finder()->find('person', $ada)?->get('name'));
+        $ada = $this->records->create(new RecordInput('person', ['name' => 'Ada', 'tags' => [
+            ['tag' => $vip, 'role' => 'owner'],
+            ['tag' => strtoupper($press)],
+        ]]));
+
+        // The ids stay the value; the rows come with a record read by itself.
+        self::assertEqualsCanonicalizing([$vip, $press], $ada->get('tags'));
+        self::assertSame([[$vip, 'owner'], [$press, null]], $this->rows($ada->id));
+        self::assertSame([], $this->finder()->latest('person')[0]->rows('tags'));
+        [$owner, $pressRow] = $this->finder()->find('person', $ada->id)?->rows('tags') ?? [];
+
+        // With an id: that record changes; without: a new one; missing: deleted.
+        $this->records->update($ada->id, new RecordInput('person', ['tags' => [
+            ['id' => $owner->id, 'role' => 'editor'],
+            ['tag' => $partner, 'role' => 'guest'],
+        ]]));
+        self::assertSame([[$vip, 'editor'], [$partner, 'guest']], $this->rows($ada->id));
+        self::assertSame($owner->id, $this->finder()->find('person', $ada->id)?->rows('tags')[0]->id);
+        self::assertNull($this->finder()->find('person_tag', $pressRow->id));
+
+        // Left out: untouched; empty: all deleted.
+        $this->records->update($ada->id, new RecordInput('person', ['name' => 'Ada L.']));
+        self::assertCount(2, $this->rows($ada->id));
+        $this->records->update($ada->id, new RecordInput('person', ['tags' => []]));
+        self::assertSame([], $this->rows($ada->id));
+        self::assertSame([], $this->finder()->find('person', $ada->id)?->get('tags'));
+    }
+
+    public function testEachRowIsCheckedAsARecordOfTheJunction(): void
+    {
+        $this->createThroughField();
+        [$vip, $press] = [$this->create('tag', 'VIP'), $this->create('tag', 'Press')];
+        $bob = $this->create('person', 'Bob');
+        $bobRow = $this->link($bob, $vip);
+
+        self::assertSame([
+            'tags.0' => ['This row does not belong to the record.'],
+            'tags.1.person' => ['This field is set by the record.'],
+            'tags.2.tag' => ['This value is required.'],
+            'tags.3.tag' => ['The selected record does not exist.'],
+            'tags.4.color' => ['This field does not exist.'],
+            'tags.5.tag' => ['This record is already linked.'],
+        ], $this->errors(['name' => 'Ada', 'tags' => [
+            ['id' => $bobRow, 'role' => 'thief'],
+            ['tag' => $vip, 'person' => $bob],
+            ['role' => 'owner'],
+            ['tag' => '0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f70'],
+            ['tag' => $press, 'color' => 'red'],
+            ['tag' => strtoupper($vip)],
+        ]]));
+        self::assertSame(['tags' => ['This value should be a list of rows.']], $this->errors(['name' => 'Ada', 'tags' => [$vip]]));
+        self::assertSame(['tags.x' => ['This row has no valid id.']], $this->errors(['name' => 'Ada', 'tags' => ['x' => ['id' => '42', 'tag' => $vip]]]));
+
+        // Nothing was written.
+        self::assertCount(1, $this->finder()->latest('person'));
+        self::assertSame([[$vip, null]], $this->rows($bob));
+    }
+
+    public function testRequiredAndMaxCountTheRows(): void
+    {
+        $this->manager->addUniqueTogether('person_tag', ['person', 'tag']);
+        $this->manager->createField('person', 'tags', 'many_to_many', 'Tags', required: true, settings: ['target' => 'tag', 'through' => 'person_tag', 'throughSource' => 'person', 'throughTarget' => 'tag', 'max' => 2]);
+        [$a, $b, $c] = [$this->create('tag', 'A'), $this->create('tag', 'B'), $this->create('tag', 'C')];
+
+        self::assertSame(['tags' => ['This value is required.']], $this->errors(['name' => 'Ada']));
+        self::assertSame(['tags' => ['This value is required.']], $this->errors(['name' => 'Ada', 'tags' => []]));
+        self::assertSame(['tags' => ['Choose at most 2 records.']], $this->errors(['name' => 'Ada', 'tags' => [['tag' => $a], ['tag' => $b], ['tag' => $c]]]));
+
+        $ada = $this->records->create(new RecordInput('person', ['name' => 'Ada', 'tags' => [['tag' => $a]]]));
+        // An update that leaves the field out keeps its rows: still valid.
+        $this->records->update($ada->id, new RecordInput('person', ['name' => 'Ada L.']));
+        self::assertSame([[$a, null]], $this->rows($ada->id));
     }
 
     public function testTheJunctionFollowsRenamesAndStaysInUse(): void
@@ -163,6 +225,32 @@ final class ManyToManyThroughTest extends KernelTestCase
     private function link(string $person, string $tag, ?string $role = null): string
     {
         return $this->records->create(new RecordInput('person_tag', ['person' => $person, 'tag' => $tag, 'role' => $role]))->id;
+    }
+
+    /**
+     * @return list<array{mixed, mixed}> target and role of each row, oldest first
+     */
+    private function rows(string $person): array
+    {
+        return array_map(
+            static fn (RecordOutput $row): array => [$row->get('tag'), $row->get('role')],
+            $this->finder()->find('person', $person)?->rows('tags') ?? [],
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $values
+     *
+     * @return array<string, list<string>>
+     */
+    private function errors(array $values): array
+    {
+        try {
+            $this->records->create(new RecordInput('person', $values));
+        } catch (RecordValidationFailed $e) {
+            return $e->errors;
+        }
+        self::fail('The record was created.');
     }
 
     private function assertRefused(callable $change, string $message): void
