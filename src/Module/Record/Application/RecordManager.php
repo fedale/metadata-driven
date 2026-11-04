@@ -126,9 +126,15 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     {
         $this->metadata->getObject($objectName);
         $groups = [];
+        $junctionSides = $this->junctionSides();
         // The relations pointing at it, then the many-to-many fields linking to it: both read
         // the same way, through the store.
         foreach ([...$this->metadata->incomingRelations($objectName), ...$this->metadata->incomingManyToMany($objectName)] as $reference) {
+            // The records of a junction object are links: the rows of the field going through
+            // it, and the list of its many-to-many inverse side, show them already.
+            if (isset($junctionSides[$reference->object->name.'.'.$reference->field->name]) && null !== $reference->field->relation()) {
+                continue;
+            }
             $total = $this->store->countReferencing($reference->object, $reference->field, $id);
             if (0 === $total) {
                 continue;
@@ -434,6 +440,28 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         }
 
         return [] === $rows ? $record : $record->withRows($rows);
+    }
+
+    /**
+     * The relation fields of junction objects that a many-to-many field goes through, as
+     * "<junction>.<field>".
+     *
+     * @return array<string, true>
+     */
+    private function junctionSides(): array
+    {
+        $sides = [];
+        foreach ($this->metadata->allObjects() as $object) {
+            foreach ($object->fields as $field) {
+                $settings = $field->manyToMany();
+                if (null !== $settings && $settings->goesThrough()) {
+                    $sides[$settings->through.'.'.$settings->throughSource] = true;
+                    $sides[$settings->through.'.'.$settings->throughTarget] = true;
+                }
+            }
+        }
+
+        return $sides;
     }
 
     /**

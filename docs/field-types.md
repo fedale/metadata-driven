@@ -487,7 +487,9 @@ symfony console metadata:field:create person tags many_to_many Tags \
   the delete rules (`cascade` on both, typically: deleting a person or a tag deletes its junction
   records).
 - It reads like any `many_to_many` field: its value is the list of the linked ids, the grid lists,
-  filters and exports their labels, the target's page lists the records linking to it. A record
+  filters and exports their labels, the target's page lists the records linking to it. The
+  junction's records are not listed again on the record's page nor on the target's: the rows and
+  that list show them already. A record
   read by itself (its page, a composite form, the record a write returns) also carries its
   **rows**: the junction's live records, oldest first (`RecordOutput::rows('tags')`).
 - **The record form edits the rows inline**, one per line: the target (an autocomplete), then the

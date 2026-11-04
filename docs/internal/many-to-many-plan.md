@@ -304,6 +304,14 @@ decide what is shown, as below.
   (`RecordController::submitted()` skips disabled controls) and of a composite form's input
   (`RecordFormFactory::editsRows()`); no read: the labels, disabled, as in 4b-1. The record
   manager itself checks no permission, as for any write.
+- The pages no longer list the junction's records as related records ("Person tags (Person)" on
+  the person, "Person tags (Tag)" on the tag): `RecordManager::referencing()` skips the junction's
+  `throughSource` and `throughTarget` relations, which the rows and the many-to-many inverse list
+  show already. Found in the browser check, where that list showed the junction records as
+  `#<id>`.
+- Browser check (headless Chromium on a throw-away database): "+" adds a row whose target
+  autocomplete works, "+" is disabled at `max`, a blank row is dropped, "×" removes a row and the
+  save deletes its junction record, a duplicate target is reported on its row.
 - Not done: a swap of targets between two existing rows in one write may hit the junction's
   unique index on the first update and come back as an error; the check cannot see it. Rows are
   not ordered beyond "oldest first".

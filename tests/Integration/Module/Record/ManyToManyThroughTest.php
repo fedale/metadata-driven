@@ -83,10 +83,12 @@ final class ManyToManyThroughTest extends KernelTestCase
         self::assertSame([$vip], $this->finder()->find('person', $ada)?->get('tags'));
         self::assertSame([$press], $this->finder()->latest('person')[0]->get('tags'));
 
-        // The tag lists the people linked to it, through the junction.
+        // The tag lists the people linked to it, through the junction; the junction records
+        // themselves are not listed again, on the tag nor on the person.
         $groups = $this->finder()->referencing('tag', $press);
-        $people = array_values(array_filter($groups, static fn ($group): bool => 'person' === $group->objectName));
-        self::assertSame(['Bob'], array_map(static fn ($record): string => $record->label, $people[0]->records));
+        self::assertSame(['person'], array_map(static fn ($group): string => $group->objectName, $groups));
+        self::assertSame(['Bob'], array_map(static fn ($record): string => $record->label, $groups[0]->records));
+        self::assertSame([], $this->finder()->referencing('person', $ada));
 
         // The grid shows the labels and filters on the live links only.
         $source = self::getContainer()->get(RecordGridSourceInterface::class);
