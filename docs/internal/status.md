@@ -85,6 +85,11 @@ Things that are not obvious from a single file, and that are easy to break.
   through `LinkSource` (`RecordTable::links()`): no SQL names the link table by hand.
   Cascading selects use `dependsOn`/`dependsVia`; the lookup takes
   `filter[<field>]=<id>` (empty means no results) and the validator checks parent membership.
+- **System columns** (`ObjectDefinition::SYSTEM_COLUMNS`, built by `TableDefinitionFactory`):
+  `id`, `created_at`, `updated_at`, `created_by`, `deleted_at`, `sort`. Field names may not
+  shadow them. Only the first three are read into `RecordOutput`; `deleted_at` is the soft
+  delete filter; `created_by` is never written yet; `sort` (`INTEGER NOT NULL DEFAULT 0`, for
+  a manual order, negatives allowed) is not read, written nor sorted on yet.
 - **Search**: trigram GIN indexes on `LOWER(col)` are managed by `TrigramIndexPlanner` and kept out
   of the DBAL schema comparison.
 - **Grid**: `DbalRecordGridSource` + `RecordGridFactory` (Record module). The bundle's columns

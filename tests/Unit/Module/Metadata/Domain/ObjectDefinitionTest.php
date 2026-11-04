@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Module\Metadata\Domain;
 
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
 use App\Module\Metadata\Domain\Model\ObjectDefinition;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
@@ -51,12 +52,23 @@ final class ObjectDefinitionTest extends TestCase
         $object->addField(Uuid::v7(), 'name', 'text', 'Other name', false, false, []);
     }
 
-    public function testRejectsSystemColumnNames(): void
+    #[DataProvider('systemColumns')]
+    public function testRejectsSystemColumnNames(string $name): void
     {
         $this->expectException(InvalidMetadataDefinition::class);
         $this->expectExceptionMessage('reserved');
 
-        $this->createPet()->addField(Uuid::v7(), 'created_at', 'date', 'Created', false, false, []);
+        $this->createPet()->addField(Uuid::v7(), $name, 'number', 'System', false, false, []);
+    }
+
+    /**
+     * @return iterable<array{string}>
+     */
+    public static function systemColumns(): iterable
+    {
+        foreach (ObjectDefinition::SYSTEM_COLUMNS as $name) {
+            yield $name => [$name];
+        }
     }
 
     public function testRejectsInvalidFieldNames(): void

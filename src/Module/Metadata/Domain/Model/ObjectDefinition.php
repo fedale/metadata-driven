@@ -22,7 +22,7 @@ use Symfony\Component\Uid\Uuid;
 class ObjectDefinition
 {
     /** Columns every record table gets: field names may not shadow them. */
-    public const array SYSTEM_COLUMNS = ['id', 'created_at', 'updated_at', 'created_by', 'deleted_at'];
+    public const array SYSTEM_COLUMNS = ['id', 'created_at', 'updated_at', 'created_by', 'deleted_at', 'sort'];
     public const string TABLE_PREFIX = 'c_';
 
     private string $name;

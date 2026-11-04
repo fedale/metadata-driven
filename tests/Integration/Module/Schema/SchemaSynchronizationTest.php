@@ -43,6 +43,7 @@ final class SchemaSynchronizationTest extends KernelTestCase
             'updated_at' => 'timestamp(0) without time zone NOT NULL',
             'created_by' => 'uuid NULL',
             'deleted_at' => 'timestamp(0) without time zone NULL',
+            'sort' => 'integer NOT NULL',
         ], $this->columns('c_pet'));
         self::assertSame(['c_pet_pkey' => 'PRIMARY KEY (id)'], $this->constraints('c_pet'));
     }
@@ -82,6 +83,24 @@ final class SchemaSynchronizationTest extends KernelTestCase
 
         self::assertTrue($plan->isEmpty(), implode("\n", $plan->statements));
         self::assertSame([], $plan->skipped);
+    }
+
+    public function testSortIsAddedToTablesThatHoldRecords(): void
+    {
+        ($this->createObject)(new CreateObjectCommand('pet', 'Pet', 'Pets'));
+        // A table created before the sort column existed, already holding a record.
+        $this->connection->executeStatement('ALTER TABLE data.c_pet DROP sort');
+        $this->connection->executeStatement(
+            "INSERT INTO data.c_pet (id, created_at, updated_at) VALUES ('01a14b6b-f371-729f-8e48-9a43d9f04c84', NOW(), NOW())",
+        );
+
+        $plan = $this->synchronizer->synchronize('pet');
+
+        self::assertSame(['ALTER TABLE data.c_pet ADD sort INT DEFAULT 0 NOT NULL'], $plan->statements);
+        self::assertSame(0, $this->connection->fetchOne('SELECT sort FROM data.c_pet'));
+        $this->connection->executeStatement('UPDATE data.c_pet SET sort = -5');
+        self::assertSame(-5, $this->connection->fetchOne('SELECT sort FROM data.c_pet'));
+        self::assertTrue($this->synchronizer->plan('pet')->isEmpty());
     }
 
     public function testReservedSqlKeywordsAreQuoted(): void

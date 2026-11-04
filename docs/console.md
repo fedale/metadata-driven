@@ -70,7 +70,9 @@ symfony console metadata:object:create contact Contatto Contatti --icon=user
 ```
 
 The table starts with the system columns: `id` (UUID, primary key), `created_at`, `updated_at`,
-`created_by`, `deleted_at` (records are soft deleted).
+`created_by`, `deleted_at` (records are soft deleted) and `sort` (an integer, positive or
+negative, default `0`, for the manual order of the records; the application does not use it yet).
+Tables created before `sort` existed get it from [`schema:sync`](#schemasync).
 
 Fails when the name is invalid or already used.
 
@@ -85,7 +87,7 @@ metadata:field:create [--required] [--unique] [--settings=JSON] <object> <name> 
 | Argument / option | Description |
 |---|---|
 | `object` | The object's machine name |
-| `name` | The field's machine name; also the column name. `id`, `created_at`, `updated_at`, `created_by`, `deleted_at` are reserved. |
+| `name` | The field's machine name; also the column name. `id`, `created_at`, `updated_at`, `created_by`, `deleted_at`, `sort` are reserved. |
 | `type` | `text`, `number`, `boolean`, `date`, `email`, `tel`, `url`, `select`, `password`, `file`, `relation` or `many_to_many`: see [field types](field-types.md) |
 | `label` | Shown in forms, grid headers and errors |
 | `--required` | A value is mandatory. Checked by validation; the column stays nullable, so a required field can be added to a table that already has records. |

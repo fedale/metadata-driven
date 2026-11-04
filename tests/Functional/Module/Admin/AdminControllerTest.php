@@ -52,7 +52,7 @@ final class AdminControllerTest extends WebTestCase
         $columns = self::getContainer()->get(Connection::class)->fetchFirstColumn(
             "SELECT column_name FROM information_schema.columns WHERE table_schema = 'data' AND table_name = 'c_book' ORDER BY ordinal_position",
         );
-        self::assertSame(['id', 'created_at', 'updated_at', 'created_by', 'deleted_at', 'title', 'genre', 'price'], $columns);
+        self::assertSame(['id', 'created_at', 'updated_at', 'created_by', 'deleted_at', 'sort', 'title', 'genre', 'price'], $columns);
         $this->client->request('GET', '/o/book');
         self::assertResponseIsSuccessful();
     }
