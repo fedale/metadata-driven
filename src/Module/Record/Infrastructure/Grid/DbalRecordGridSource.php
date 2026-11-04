@@ -208,7 +208,7 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
         $links = $this->table->links($object, $field);
 
         return \sprintf(
-            'FROM %1$s %2$s JOIN %3$s %4$s ON %5$s = %2$s.%6$s AND %7$s IS NULL WHERE %2$s.%8$s = %9$s',
+            'FROM %1$s %2$s JOIN %3$s %4$s ON %5$s = %2$s.%6$s AND %7$s IS NULL WHERE %2$s.%8$s = %9$s%10$s',
             $links->table,
             $this->table->quote(self::LINK_ALIAS),
             $links->targetTable,
@@ -218,6 +218,7 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
             $this->table->column('deleted_at', self::LINKED_ALIAS),
             $links->recordColumn,
             $this->table->column('id', self::ALIAS),
+            $links->andLive($this->table->quote(self::LINK_ALIAS)),
         );
     }
 

@@ -15,6 +15,7 @@ use App\Module\Record\Contract\Dto\RecordInput;
 final class RecordInputDenormalizer
 {
     public const string UNKNOWN_FIELD_MESSAGE = 'This field does not exist.';
+    public const string JUNCTION_MESSAGE = 'These links are records of "%s": add or remove them there.';
 
     public function __construct(
         private readonly FieldTypeRegistryInterface $fieldTypes,
@@ -36,6 +37,14 @@ final class RecordInputDenormalizer
         }
 
         foreach ($object->fields as $name => $field) {
+            // Read-only here: the junction object's records are its links, written as records.
+            $through = $field->manyToMany()?->through;
+            if (null !== $through) {
+                if ($input->has($name)) {
+                    $errors[$name][] = \sprintf(self::JUNCTION_MESSAGE, $through);
+                }
+                continue;
+            }
             $type = $this->fieldTypes->get($field->type);
             if (!$input->has($name)) {
                 if ($complete) {

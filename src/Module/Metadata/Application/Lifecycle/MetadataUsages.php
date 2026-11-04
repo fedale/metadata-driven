@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Application\Lifecycle;
 
+use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\FormNodeDto;
+use App\Module\Metadata\Contract\Dto\ManyToManySettings;
+use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
@@ -39,6 +42,9 @@ final class MetadataUsages
             if ($reference->object->name !== $objectName) {
                 $usages[] = \sprintf('many-to-many field "%s.%s" points at it', $reference->object->name, $reference->field->name);
             }
+        }
+        foreach ($this->throughFields($objectName) as [$object, $field]) {
+            $usages[] = \sprintf('many-to-many field "%s.%s" goes through it', $object->name, $field->name);
         }
         foreach ($this->metadata->allForms() as $form) {
             $paths = [];
@@ -78,6 +84,11 @@ final class MetadataUsages
                 $usages[] = \sprintf('it is unique together with %s', implode(', ', array_map(static fn (string $name): string => '"'.$name.'"', array_values(array_diff($set, [$fieldName])))));
             }
         }
+        foreach ($this->throughFields($objectName) as [$through, $field, $settings]) {
+            if (\in_array($fieldName, [$settings->throughSource, $settings->throughTarget], true)) {
+                $usages[] = \sprintf('many-to-many field "%s.%s" goes through it', $through->name, $field->name);
+            }
+        }
         foreach ($this->metadata->incomingRelations($objectName) as $reference) {
             if ($reference->settings->dependsVia === $fieldName) {
                 $usages[] = \sprintf('relation field "%s.%s" filters through it (cascade)', $reference->object->name, $reference->field->name);
@@ -106,6 +117,26 @@ final class MetadataUsages
         }
 
         return $usages;
+    }
+
+    /**
+     * The active many-to-many fields whose links are the records of a junction object.
+     *
+     * @return list<array{ObjectDefinitionDto, FieldDefinitionDto, ManyToManySettings}>
+     */
+    public function throughFields(string $junction): array
+    {
+        $fields = [];
+        foreach ($this->metadata->allObjects() as $object) {
+            foreach ($object->fields as $field) {
+                $settings = $field->manyToMany();
+                if (null !== $settings && $settings->through === $junction) {
+                    $fields[] = [$object, $field, $settings];
+                }
+            }
+        }
+
+        return $fields;
     }
 
     private static function viewUses(ViewDefinitionDto $view, string $fieldName): bool

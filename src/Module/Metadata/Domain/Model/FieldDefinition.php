@@ -170,6 +170,16 @@ class FieldDefinition
     /**
      * The object a relation or a many-to-many field points at; null for any other type.
      */
+    /**
+     * The junction object a many-to-many field goes through; null for any other field.
+     */
+    public function getThrough(): ?string
+    {
+        $through = $this->isManyToMany() ? ($this->settings['through'] ?? null) : null;
+
+        return \is_string($through) ? $through : null;
+    }
+
     public function getTarget(): ?string
     {
         if (RelationSettings::FIELD_TYPE !== $this->type && !$this->isManyToMany()) {

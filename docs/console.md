@@ -142,6 +142,10 @@ symfony console metadata:field:create pet owner relation Owner \
 # Many-to-many link to another object
 symfony console metadata:field:create contact tags many_to_many Tags \
   --settings='{"target":"tag","inverseName":"contacts"}'
+
+# Many-to-many link through a junction object (see field-types.md)
+symfony console metadata:field:create person tags many_to_many Tags \
+  --settings='{"target":"tag","through":"person_tag","throughSource":"person","throughTarget":"tag"}'
 ```
 
 What it changes in the table:
@@ -151,7 +155,8 @@ What it changes in the table:
 - `--unique`: a unique index `uniq_<table>_<column>`;
 - `relation`: an index `idx_<table>_<column>` and a foreign key `fk_<table>_<column>` to the target table;
 - `many_to_many`: no column, but a link table `data.l_<object>__<field>` (`record_id`, `target_id`,
-  `created_at`, `created_by`), with foreign keys to both tables;
+  `created_at`, `created_by`), with foreign keys to both tables; none with `through`: the links
+  are the records of the junction object;
 - a text field searched by the object (see `metadata:object:search`): a trigram index
   `trgm_<table>_<column>`.
 

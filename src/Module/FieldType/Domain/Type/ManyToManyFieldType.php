@@ -50,6 +50,9 @@ final class ManyToManyFieldType extends AbstractFieldType
             new SettingDefinition('inverseName', SettingKind::String, 'Inverse name', 'Machine name of the list of these records on the related object, e.g. "contacts".', fixed: true),
             new SettingDefinition('inverseLabel', SettingKind::String, 'Inverse label', 'Title of that list, e.g. "Contacts".'),
             new SettingDefinition('max', SettingKind::Integer, 'Maximum', 'How many records may be linked. Empty: no limit.', options: ['min' => 1]),
+            new SettingDefinition('through', SettingKind::ObjectName, 'Through (junction object)', 'Empty: a link table of its own. Otherwise the object whose records are the links, e.g. "user_tag".', fixed: true),
+            new SettingDefinition('throughSource', SettingKind::String, 'Junction field to this object', 'With "through": its relation field pointing at these records, e.g. "user".', fixed: true),
+            new SettingDefinition('throughTarget', SettingKind::String, 'Junction field to the related object', 'With "through": its relation field pointing at the related records, e.g. "tag".', fixed: true),
         ];
     }
 

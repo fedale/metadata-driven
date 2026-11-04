@@ -11,10 +11,12 @@ use App\Module\File\Contract\FileStorageInterface;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ServiceFieldDto;
+use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Application\RecordLabels;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordLookupInterface;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Form\Event\PreSubmitEvent;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -51,6 +53,9 @@ final class RecordFormFactory
         private readonly RecordLookupInterface $lookup,
         private readonly UrlGeneratorInterface $urls,
         private readonly FileStorageInterface $files,
+        // The labels in the user's language.
+        #[Target('localizedMetadata')]
+        private readonly MetadataRegistryInterface $metadata,
     ) {
     }
 
@@ -100,6 +105,12 @@ final class RecordFormFactory
             }
             $options += ['label' => $field->label];
             $options['row_attr'] = $this->rowAttr($field, $options['row_attr'] ?? []);
+            // Links through a junction object are shown, not edited: they are its records.
+            $through = $field->manyToMany()?->through;
+            if (null !== $through) {
+                $builder->add($name, $type, ['disabled' => true, 'required' => false, 'help' => 'form.through_links', 'help_translation_parameters' => ['%object%' => $this->metadata->getObject($through)->labelPlural]] + $options);
+                continue;
+            }
             $builder->add($name, $type, $options);
             if (\in_array($widget->kind, [WidgetKind::Relation, WidgetKind::ManyToMany], true)) {
                 $relations[$name] = [$options, $this->target($widget), WidgetKind::ManyToMany === $widget->kind];

@@ -34,6 +34,7 @@ form:
     file_max_size: 'Fino a %size% MB.'
     file_replace: Scegli un file per sostituire quello attuale.
     file_remove: Rimuovi il file
+    through_links: 'Si aggiungono e si tolgono come record di %object%.'
     repeat: 'Ripeti %label%'
     required_note: Campo obbligatorio
     index:
