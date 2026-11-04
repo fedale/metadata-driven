@@ -164,8 +164,9 @@ rename/archive/restore/purge of objects and fields.
     object) is confirmed and split: 4a, fields unique together (`metadata:object:unique`), is
     merged into main; 4b, split in two by the user: 4b-1 (the `through` setting, reading, grid,
     lifecycle) is merged into main; 4b-2 (writing the rows: record pipeline, inline rows in the
-    record and composite forms, permissions on the junction) is merged into main. Next, decided
-    by the user: search on the linked labels (see the plan's "Decisions").
+    record and composite forms, permissions on the junction) is merged into main (locally: not
+    pushed yet, SSH to GitHub refused on 2026-11-04). Search on the linked labels (relations too,
+    only when configured) is merged into main (locally as well).
   - **The `file` field type**, plan in [file-type-plan.md](file-type-plan.md). Phases 1 (storage
     and `core.file`), 2 (the type in the record form) and 3 (download and thumbnails at
     `/files/{id}`) and 4 (grid: link, thumbnail, yes/no filter, export of the names) are merged

@@ -355,7 +355,8 @@ Input and display:
 - Records are shown by their label: the object's label field, chosen with `metadata:object:label`,
   or its first text field.
 - The form offers an autocomplete over the target's records; the grid shows the label, sorts on it,
-  and filters on one or several related records.
+  and filters on one or several related records. Listed among the [searched
+  fields](console.md#metadataobjectsearch), the field is searched on that label too.
 - For a link to any number of records (a contact's tags), see [`many_to_many`](#many_to_many).
 
 ### Cascades (region, province, municipality)
@@ -433,8 +434,8 @@ once. The table follows the field: it's renamed with the field or its object, ke
 is archived, dropped when the field or its object is purged (see [Renaming and
 archiving](lifecycle.md)).
 
-What a `many_to_many` field cannot be: unique, the label of the records, searched, the field
-deciding a [condition](#conditions), part of a cascade (`dependsOn`, `dependsVia`), the `via` of a
+What a `many_to_many` field cannot be: unique, the label of the records, the field deciding a
+[condition](#conditions), part of a cascade (`dependsOn`, `dependsVia`), the `via` of a
 composite form section, a service field. It can have a condition of its own.
 
 Input and display:
@@ -455,8 +456,9 @@ Input and display:
 - The grid shows the labels of the linked records, in alphabetical order, joined by ", "
   ("Press, VIP"); a record whose label is empty is shown by the first 8 characters of its id. The
   column filters on one or several records of the target, picked with an autocomplete, and keeps
-  the records linked to **any** of them. It does not sort, and the search box does not look into
-  it. The export writes the same labels, joined by ", ". In a [grid view](views.md#grid-views) the
+  the records linked to **any** of them. It does not sort. The search box looks into it only when
+  it's among the [searched fields](console.md#metadataobjectsearch): a record matches when one of
+  its linked records' labels does. The export writes the same labels, joined by ", ". In a [grid view](views.md#grid-views) the
   field can be a column of its own, never part of a virtual column nor sorted.
 
 ### Through a junction object

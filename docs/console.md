@@ -242,7 +242,7 @@ metadata:object:search [--handler=HANDLER] [--fields=FIELDS] <object>
 |---|---|
 | `object` | The object's machine name |
 | `--handler` | `free_text_multi_field` (default) or `phrase` |
-| `--fields` | Comma separated fields to search. Default: every text-like field (text, multiline text, email). A password or a `many_to_many` field is refused. |
+| `--fields` | Comma separated fields to search. Default: every text-like field (text, multiline text, email). A `relation` or `many_to_many` field is searched on the labels of the records it points at, and only when listed here: it is never a default. A password or a file field is refused. |
 
 The handlers:
 
@@ -257,11 +257,14 @@ The handlers:
 symfony console metadata:object:search contact --fields=first_name,last_name,city
 symfony console metadata:object:search pet --handler=phrase --fields=chip_code
 symfony console metadata:object:search contact                 # back to the defaults
+symfony console metadata:object:search course --fields=title,tags,owner  # "php" finds the courses tagged PHP
 ```
 
 Running it also re-synchronizes the table's trigram indexes: one GIN index per searched text
 column, so that the search uses an index instead of scanning the table. Number and date fields can
-be searched but get no index (PostgreSQL refuses their text cast in an index).
+be searched but get no index (PostgreSQL refuses their text cast in an index). A `relation` or
+`many_to_many` field gets none either: its search looks up the target's labels (an `EXISTS` on
+the target's table), indexed only if the target searches its own label field.
 
 Fails when a field does not exist or the handler is unknown.
 

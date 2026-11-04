@@ -556,7 +556,10 @@ final class AdminController extends AbstractController
     {
         $fields = [];
         foreach ($object->fields as $name => $field) {
-            if (null === $field->relation() && $field->storesColumn() && !$this->fieldTypes->get($field->type)->isWriteOnly()) {
+            // A relation or a many-to-many field is searched on the labels of its records.
+            if (null !== $field->target()) {
+                $fields[\sprintf('%s (by the %s label)', $field->label, mb_strtolower($this->metadata->getObject($field->target())->labelSingular))] = $name;
+            } elseif ($field->storesColumn() && !$this->fieldTypes->get($field->type)->isWriteOnly()) {
                 $fields[$field->label] = $name;
             }
         }
@@ -573,7 +576,7 @@ final class AdminController extends AbstractController
             ])
             ->add('fields', ChoiceType::class, [
                 'label' => 'Searched fields',
-                'help' => 'None ticked: every text field.',
+                'help' => 'None ticked: every text field. Related records are searched only when ticked.',
                 'choices' => $fields,
                 'multiple' => true,
                 'expanded' => true,

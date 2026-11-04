@@ -4,8 +4,9 @@ Status: reviewed by the user (type name, read-only inverse, delete rules decided
 merged into main. Phase 4 confirmed by the user and split: 4a (fields unique together) merged
 into main; 4b split again by the user's choice: 4b-1 (`through`: settings, reading, grid,
 lifecycle) merged into main; 4b-2 (writing the rows from the record form) merged into main: see
-[Phase 4b-2, as delivered](#phase-4b-2-as-delivered). Next, decided by the user: search on the
-linked labels. Last updated: 2026-11-04.
+[Phase 4b-2, as delivered](#phase-4b-2-as-delivered). Search on the linked labels (relations
+too, only when configured) merged into main. Last updated:
+2026-11-04.
 
 ## Where we are
 
@@ -51,10 +52,9 @@ the new type in every module.
   too (its refusals) and cannot see the FieldType module; the DTO is the single place. The domain
   `FieldDefinition` has the matching `isManyToMany()` and `getTarget()`.
 - `columnName` is still assigned (no migration of `core.metadata_field`): it names the link table.
-- Refused for a `many_to_many`: unique, label field (`metadata:object:label`), search field
-  (`metadata:object:search`), deciding field of a condition, `via` of a composite form section,
-  `dependsOn` / `dependsVia` of a cascade. It may itself be conditional (emptied when the
-  condition is not met).
+- Refused for a `many_to_many`: unique, label field (`metadata:object:label`), deciding field of
+  a condition, `via` of a composite form section, `dependsOn` / `dependsVia` of a cascade. It may
+  itself be conditional (emptied when the condition is not met).
 - *Done differently:* `incomingRelations()` is unchanged; a separate
   `MetadataRegistryInterface::incomingManyToMany()` returns `ManyToManyReference`s (the delete rule
   enums differ, so one reference type with a `kind` would need casts everywhere).
@@ -114,8 +114,8 @@ the new type in every module.
   relation filter with `multiple: true`, applied as `EXISTS (link where target_id IN …)`; no sort;
   export writes the labels joined by ", ". Grid views (`GridViewCompiler`) accept it as a column,
   not in a virtual column nor as a sort.
-- Admin: the type appears in the builder through `settingDefinitions()`; the label-field and
-  search-field pickers leave it out.
+- Admin: the type appears in the builder through `settingDefinitions()`; the label-field picker
+  leaves it out; the search-field picker offers it as "by the <target> label".
 
 ## Phases (one branch each, docs in the same branch)
 
@@ -335,6 +335,11 @@ decide what is shown, as below.
 - Type name: `many_to_many`.
 - The inverse side is read-only.
 - `onDelete`: `unlink` (default) and `restrict`.
-- Search on the linked labels: undecided, not in phases 1–3; it can be added later with an
-  `EXISTS` on the target's label.
+- Search on the linked labels: decided by the user (2026-11-04), merged into main.
+  A `many_to_many` field, and a `relation` too, is searched on the labels of the live records it
+  points at (`DbalRecordGridSource::searchMatch()`, an `EXISTS` on the target, through
+  `linkedFrom()` for a many-to-many, a junction included), **only when listed** in the searched
+  fields (`metadata:object:search --fields`, the admin's "Searched fields"): the default stays the
+  text fields. A target without a label field matches nothing. No trigram index on the target's
+  label unless the target searches it itself.
 - Data on the link: phase 4, through a junction object (proposal, to confirm when phase 3 is done).
