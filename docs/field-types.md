@@ -17,7 +17,7 @@ missing keys take their default, unknown keys are refused.
 | `password` | `minLength` (8), `requireMixedCase`, `requireDigit`, `requireSymbol`, `confirm`, `strengthMeter`, `revealToggle` (all false) | `varchar(255)`, a hash | password input, asked twice with `confirm` | none: never shown |
 | `file` | `accept` (any type), `maxSize` (10 MB), `image` (false) | `uuid` + foreign key to `core.file` | the current file, an upload input, "Remove the file" | none (✓ when there is a file) |
 | `relation` | `target` (required), `onDelete` (`set_null`), `inverseName`, `inverseLabel` | `uuid` + foreign key | autocomplete | choice of records |
-| `many_to_many` | `target` (required), `onDelete` (`unlink`), `inverseName`, `inverseLabel`, `max` | none: a link table of its own | autocomplete, several records | not yet |
+| `many_to_many` | `target` (required), `onDelete` (`unlink`), `inverseName`, `inverseLabel`, `max` | none: a link table of its own | autocomplete, several records | choice of records (any of them) |
 
 Settings added to a type after a field was created take their default on that field: a boolean
 created before `display` existed is a checkbox.
@@ -429,7 +429,12 @@ Input and display:
   works in [composite forms](forms.md) too. The record page shows the linked records by their
   label, and the target's page lists the records linking to it, as for a `relation`.
 - A record whose condition stops applying loses its links, as any field loses its value.
+- The grid shows the labels of the linked records, in alphabetical order, joined by ", "
+  ("Press, VIP"); a record whose label is empty is shown by the first 8 characters of its id. The
+  column filters on one or several records of the target, picked with an autocomplete, and keeps
+  the records linked to **any** of them. It does not sort, and the search box does not look into
+  it. The export writes the same labels, joined by ", ". In a [grid view](views.md#grid-views) the
+  field can be a column of its own, never part of a virtual column nor sorted.
 
-**Not yet.** The grids leave the field out: no column, no filter, and a grid view refuses it as a
-column. When the link carries data of its own (a role, a description), use a junction object with
-two `relation` fields instead.
+**Not yet.** When the link carries data of its own (a role, a description), use a junction object
+with two `relation` fields instead.

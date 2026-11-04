@@ -105,13 +105,33 @@ final class ManyToManyFieldTest extends KernelTestCase
         $this->manager->createField('contact', 'notes', 'text', 'Notes');
         $this->assertRefused(fn () => $this->manager->configureFieldCondition('contact', 'notes', 'tags', ['x']), '"tags" cannot decide');
         $this->assertRefused(
-            fn () => $this->manager->saveView('contact', ViewKind::Grid, 'main', "columns:\n  - full_name\n  - tags\n"),
-            '"tags" is a many-to-many field: grid views cannot show it yet.',
+            fn () => $this->manager->saveView('contact', ViewKind::Grid, 'main', "columns:\n  - { name: line, template: '{full_name} {tags}' }\n"),
+            'Column "line": {tags} is a many-to-many field: show it in a column of its own.',
+        );
+        $this->assertRefused(
+            fn () => $this->manager->saveView('contact', ViewKind::Grid, 'main', "columns:\n  - { field: tags, sortable: true }\n"),
+            'Column #1: "tags" is a many-to-many field: it cannot be sorted.',
+        );
+        $this->assertRefused(
+            fn () => $this->manager->saveView('contact', ViewKind::Grid, 'main', "columns: [full_name, tags]\nsort: { tags: asc }\n"),
+            '"sort": "tags" is no sortable column of the grid',
         );
         $this->assertRefused(
             fn () => $this->manager->saveForm('signup', "label: Sign up\nobject: contact\nservice_fields:\n  - { name: interests, label: Interests, type: many_to_many, settings: { target: tag } }\n"),
             '"type" must be a field type other than relation and many_to_many',
         );
+    }
+
+    public function testAGridViewShowsItAsAColumnThatIsNeverSorted(): void
+    {
+        $this->createTags(['target' => 'tag']);
+
+        $this->manager->saveView('contact', ViewKind::Grid, 'main', "columns:\n  - full_name\n  - { field: tags, label: Labels, renderer: truncate }\n");
+
+        $grid = $this->metadata->getObject('contact')->view(ViewKind::Grid)?->grid;
+        $tags = $grid?->column('tags');
+        self::assertNotNull($tags);
+        self::assertSame(['tags', 'Labels', 'truncate', false, true], [$tags->field, $tags->label, $tags->renderer, $tags->sortable, $tags->filter]);
     }
 
     public function testTheLinkTableFollowsRenames(): void

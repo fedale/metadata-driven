@@ -4,7 +4,7 @@ Internal notes for whoever (human or agent) picks the work up, on any machine. R
 starting a task; update it in the same branch whenever a decision is taken, a feature lands or the
 work queue changes. The user-facing documentation is in [../README.md](../README.md).
 
-Last updated: 2026-11-03.
+Last updated: 2026-11-04.
 
 ## Setting up on a new machine
 
@@ -20,6 +20,9 @@ Last updated: 2026-11-03.
 
 - One phase or work item at a time, each on its own branch; wait for the user's review before
   starting the next one. Merge with `--no-ff` ("Merge branch 'x'"), delete merged branches.
+- Sessions working in parallel (two agents, or an agent and the user) each use a `git worktree`
+  of their own: in a shared checkout a branch switch carries the other session's uncommitted
+  changes along, and both end up editing the same files.
 - Commit or push only when the user asks.
 - Never run `rm`: finish the task and list the paths the user should delete by hand.
 - Every change ships with its docs in the same branch: the topic page in `docs/`, the cross
@@ -77,12 +80,15 @@ Things that are not obvious from a single file, and that are easy to break.
   table. A `many_to_many` field (`ManyToManySettings`) has no column: `FieldDefinitionDto::
   storesColumn()` is false and every module touching columns must skip it; its link table
   (`DataSchema::linkTable()`) is built, renamed and dropped by the Schema module with the object,
-  and read and written by the Record store (`replaceLinks()`, links loaded with the record).
+  and read and written by the Record store (`replaceLinks()`, links loaded with the record) and
+  read by the grid source (labels and ids in correlated subqueries, filter as `EXISTS`), both
+  through `LinkSource` (`RecordTable::links()`): no SQL names the link table by hand.
   Cascading selects use `dependsOn`/`dependsVia`; the lookup takes
   `filter[<field>]=<id>` (empty means no results) and the validator checks parent membership.
 - **Search**: trigram GIN indexes on `LOWER(col)` are managed by `TrigramIndexPlanner` and kept out
   of the DBAL schema comparison.
-- **Grid**: `DbalRecordGridSource` + `RecordGridFactory` (Record module). Grid views are at
+- **Grid**: `DbalRecordGridSource` + `RecordGridFactory` (Record module). The bundle's columns
+  are sortable by default: a column that must not sort needs `sortable(false)`. Grid views are at
   `/o/<object>/grid/<name>` because the bundle owns `?view=`; YAML compiled by `GridViewCompiler`,
   cells rendered by `CellRendererInterface` implementations.
 - **Composite forms**: YAML compiled by `FormDefinitionCompiler` into JSONB
@@ -121,8 +127,10 @@ rename/archive/restore/purge of objects and fields.
   - **Many-to-many relations**, plan in [many-to-many-plan.md](many-to-many-plan.md), reviewed by
     the user (field type `many_to_many`, read-only inverse). Phases 1 (storage: the type, metadata
     rules, link tables `data.l_<object>__<field>`) and 2 (records: write and read the links,
-    validation, delete rules, inverse lists, form, composite forms) are merged into main. Next is
-    phase 3 (grid: cell, filter, export, grid views), on a branch from main.
+    validation, delete rules, inverse lists, form, composite forms) are merged into main. Phase 3
+    (grid: cell, filter, export, grid views) is on `feature/many_to_many_grid`, awaiting the
+    user's review. Next is phase 4 (data on the link, through a junction object), still a
+    proposal to confirm.
   - **The `file` field type**, plan in [file-type-plan.md](file-type-plan.md). Phases 1 (storage
     and `core.file`), 2 (the type in the record form) and 3 (download and thumbnails at
     `/files/{id}`) are merged into main. Next is phase 4 (the file renderer in the grid and the

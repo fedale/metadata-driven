@@ -148,7 +148,10 @@ A column is a field name, or a map:
 | `filter` | `false`: no filter for the column. Default `true` |
 
 The fields a view leaves out are not in the grid: unlike a form view, a grid view is the whole
-list. A write-only field (a password) cannot be listed.
+list. A write-only field (a password) cannot be listed. A
+[`many_to_many`](field-types.md#many_to_many) field can: it shows the labels of the linked
+records and filters on them, but it never sorts (`sortable: true` is refused, and so is a `sort`
+on it); its renderer, if any, gets the labels as its text.
 
 ### Virtual columns
 
@@ -158,8 +161,8 @@ A virtual column shows several fields as one: `'{first_name} {last_name}'` reads
   `'{last_name} {first_name}'`.
 - Its **filter** is a text filter on its fields joined by spaces, empty ones skipped: "lovel"
   and "ada lov" both find Ada Lovelace. A select is matched on its stored value, not its label.
-- Its fields cannot be relations: show a relation in a column of its own, where it filters
-  on the related record.
+- Its fields cannot be relations nor `many_to_many` fields: show them in a column of their
+  own, where they filter on the related records.
 
 ### Renderers
 
@@ -202,7 +205,8 @@ Column #3: "renderer" must be one of badge, date, truncate.
 ```
 
 Also refused: a field listed twice, a write-only field, a template without tokens or with a
-relation, unknown keys and renderer options, a sort direction other than `asc`/`desc`, a
+relation or a `many_to_many` field, a `many_to_many` column marked `sortable: true`, unknown keys
+and renderer options, a sort direction other than `asc`/`desc`, a
 `page_size` outside 1–500.
 
 ## Rules checked on save (form views)
@@ -271,6 +275,6 @@ A composite form is laid out the same way, with a `layout` in its definition: se
 - Views of other pages: the record detail, cards. `ViewKind` is the place where such kinds
   will be added.
 - Grid views: computed columns (counts, sums of related records) and virtual columns over
-  relations.
+  relations or many-to-many fields.
 - Renaming or deleting a field: neither exists yet. When it arrives, the views that place the
   field will have to follow.

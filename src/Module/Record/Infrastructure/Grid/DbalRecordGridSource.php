@@ -20,6 +20,7 @@ use Fedale\GridviewBundle\DataSource\FilterCriterion;
 use Fedale\GridviewBundle\DataSource\FilterOperator;
 use Fedale\GridviewBundle\DataSource\GridQuery;
 use Fedale\GridviewBundle\DataSource\SortDirection;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Runs a grid query on an object table with DBAL.
@@ -33,6 +34,13 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
     private const array SORTABLE_SYSTEM_COLUMNS = ['created_at', 'updated_at'];
     /** Alias of the object table; related tables are joined as r0, r1... */
     private const string ALIAS = 't';
+    /** Aliases of a link table and of its linked object's table, inside a subquery. */
+    private const string LINK_ALIAS = 'l';
+    private const string LINKED_ALIAS = 'x';
+    /** Of the SQL column carrying the linked ids of a many-to-many field ("<field>__ids"). */
+    private const string LINK_IDS_SUFFIX = '__ids';
+    /** Between the labels of the linked records in a cell. */
+    private const string LINK_LABEL_SEPARATOR = ', ';
 
     public function __construct(
         private readonly Connection $connection,
@@ -75,6 +83,18 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
             }
         }
 
+        // Each many-to-many field brings the labels of the linked records, joined, in the order
+        // of the labels, and their ids in the same order.
+        $linkFields = [];
+        foreach ($object->fields as $fieldName => $field) {
+            if (null !== $field->manyToMany()) {
+                [$labelList, $idList] = $this->linkLists($object, $field);
+                $qb->addSelect($labelList.' AS '.$this->table->quote($fieldName.self::LABEL_SUFFIX))
+                    ->addSelect($idList.' AS '.$this->table->quote($fieldName.self::LINK_IDS_SUFFIX));
+                $linkFields[] = $fieldName;
+            }
+        }
+
         foreach ($query->sort as $order) {
             $qb->addOrderBy(
                 $labels[$order->attribute] ?? $this->sortColumn($object, $order->attribute),
@@ -88,15 +108,68 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
         $qb->addOrderBy($this->table->column('id', self::ALIAS), 'DESC');
 
         foreach ($qb->executeQuery()->iterateAssociative() as $row) {
-            $record = $this->table->hydrate($object, $row);
+            $links = [];
+            foreach ($linkFields as $fieldName) {
+                $ids = $row[$fieldName.self::LINK_IDS_SUFFIX] ?? null;
+                $links[$fieldName] = \is_string($ids) && '' !== $ids ? explode(',', $ids) : [];
+            }
+            $record = $this->table->hydrate($object, $row, $links);
             $values = ['id' => $record->id] + $record->values;
-            foreach (array_keys($labels) as $fieldName) {
+            foreach ([...array_keys($labels), ...$linkFields] as $fieldName) {
                 $label = $row[$fieldName.self::LABEL_SUFFIX] ?? null;
                 $values[$fieldName.self::LABEL_SUFFIX] = \is_string($label) ? $label : null;
             }
 
             yield $values;
         }
+    }
+
+    /**
+     * The correlated subqueries listing the live records linked to the row by a many-to-many
+     * field: their labels joined by ", " and their ids joined by ",", both in the order of the
+     * labels (then of the ids); NULL when there are none. A record whose label is empty is named
+     * as RecordLabels::fallback() names it.
+     *
+     * @return array{string, string} [labels, ids]
+     */
+    private function linkLists(ObjectDefinitionDto $object, FieldDefinitionDto $field): array
+    {
+        $target = $this->metadata->getObject((string) $field->target());
+        $labelField = $this->labels->fieldFor($target);
+        $id = $this->table->column('id', self::LINKED_ALIAS);
+        $fallback = \sprintf("'#' || LEFT(CAST(%s AS TEXT), 8)", $id);
+        $label = null === $labelField
+            ? $fallback
+            : \sprintf("COALESCE(NULLIF(%s, ''), %s)", $this->table->asText($labelField, self::LINKED_ALIAS), $fallback);
+        $from = $this->linkedFrom($object, $field);
+        $order = \sprintf('ORDER BY %s, %s', $label, $id);
+
+        return [
+            \sprintf('(SELECT STRING_AGG(%s, %s %s) %s)', $label, $this->connection->quote(self::LINK_LABEL_SEPARATOR), $order, $from),
+            \sprintf("(SELECT STRING_AGG(CAST(%s AS TEXT), ',' %s) %s)", $id, $order, $from),
+        ];
+    }
+
+    /**
+     * FROM and WHERE of a subquery on the live records linked to the current row of the object
+     * table by a many-to-many field; the link table is aliased "l", the linked records "x".
+     */
+    private function linkedFrom(ObjectDefinitionDto $object, FieldDefinitionDto $field): string
+    {
+        $links = $this->table->links($object, $field);
+
+        return \sprintf(
+            'FROM %1$s %2$s JOIN %3$s %4$s ON %5$s = %2$s.%6$s AND %7$s IS NULL WHERE %2$s.%8$s = %9$s',
+            $links->table,
+            $this->table->quote(self::LINK_ALIAS),
+            $links->targetTable,
+            $this->table->quote(self::LINKED_ALIAS),
+            $this->table->column('id', self::LINKED_ALIAS),
+            $links->targetColumn,
+            $this->table->column('deleted_at', self::LINKED_ALIAS),
+            $links->recordColumn,
+            $this->table->column('id', self::ALIAS),
+        );
     }
 
     /**
@@ -140,7 +213,12 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
                 $this->applyTextCriterion($qb, \sprintf("CONCAT_WS(' ', %s)", implode(', ', $virtual[$criterion->attribute])), $criterion, 'c'.$index);
                 continue;
             }
-            $this->applyCriterion($qb, $this->readableField($object, $criterion->attribute), $criterion, 'c'.$index);
+            $field = $this->readableField($object, $criterion->attribute);
+            if (!$field->storesColumn()) {
+                $this->applyLinkCriterion($qb, $object, $field, $criterion, 'c'.$index);
+                continue;
+            }
+            $this->applyCriterion($qb, $field, $criterion, 'c'.$index);
         }
 
         $term = null !== $query->searchTerm ? trim($query->searchTerm) : '';
@@ -163,7 +241,7 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
             $param = 'q'.$index;
             $matches = [];
             foreach ($clause->fields as $attribute) {
-                $matches[] = \sprintf('LOWER(%s) LIKE :%s', $this->table->asText($this->readableField($object, $attribute), self::ALIAS), $param);
+                $matches[] = \sprintf('LOWER(%s) LIKE :%s', $this->table->asText($this->columnField($object, $attribute), self::ALIAS), $param);
             }
             $pattern = RecordTable::escapeLike($clause->value).'%';
             $qb->andWhere('('.implode(' OR ', $matches).')')
@@ -184,13 +262,43 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
         foreach ($declared as $name => $fields) {
             if (\is_string($name) && \is_array($fields) && [] !== $fields) {
                 $virtual[$name] = array_values(array_map(
-                    fn (mixed $field): string => $this->table->asText($this->readableField($object, \is_string($field) ? $field : ''), self::ALIAS),
+                    fn (mixed $field): string => $this->table->asText($this->columnField($object, \is_string($field) ? $field : ''), self::ALIAS),
                     $fields,
                 ));
             }
         }
 
         return $virtual;
+    }
+
+    /**
+     * A many-to-many field matches the records linked to any of the given ids (the relation
+     * filter sends one id, or a list of them). A value that is no id matches nothing.
+     */
+    private function applyLinkCriterion(QueryBuilder $qb, ObjectDefinitionDto $object, FieldDefinitionDto $field, FilterCriterion $criterion, string $param): void
+    {
+        if (!\in_array($criterion->operator, [FilterOperator::Eq, FilterOperator::In], true)) {
+            throw new \InvalidArgumentException(\sprintf('Field "%s" of "%s" is many-to-many: it is filtered by the records it links to, not with "%s".', $field->name, $object->name, $criterion->operator->value));
+        }
+        $ids = [];
+        foreach (\is_array($criterion->value) ? $criterion->value : [$criterion->value] as $value) {
+            if (\is_string($value) && Uuid::isValid(trim($value))) {
+                $ids[] = strtolower(trim($value));
+            }
+        }
+        if ([] === $ids) {
+            $qb->andWhere('1 = 0');
+
+            return;
+        }
+        $links = $this->table->links($object, $field);
+        $qb->andWhere(\sprintf(
+            'EXISTS (SELECT 1 %s AND %s.%s IN (:%s))',
+            $this->linkedFrom($object, $field),
+            $this->table->quote(self::LINK_ALIAS),
+            $links->targetColumn,
+            $param,
+        ))->setParameter($param, array_values(array_unique($ids)), ArrayParameterType::STRING);
     }
 
     private function applyCriterion(QueryBuilder $qb, FieldDefinitionDto $field, FilterCriterion $criterion, string $param): void
@@ -302,7 +410,21 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
             return $this->table->column($attribute, self::ALIAS);
         }
 
-        return $this->table->column($this->readableField($object, $attribute)->columnName, self::ALIAS);
+        return $this->table->column($this->columnField($object, $attribute)->columnName, self::ALIAS);
+    }
+
+    /**
+     * A readable field with a column of its own, for a search, a virtual column or a sort: a
+     * many-to-many field has a set of linked records instead, with no single text or order.
+     */
+    private function columnField(ObjectDefinitionDto $object, string $attribute): FieldDefinitionDto
+    {
+        $field = $this->readableField($object, $attribute);
+        if (!$field->storesColumn()) {
+            throw new \InvalidArgumentException(\sprintf('Field "%s" of "%s" is many-to-many: it cannot be searched, sorted on or joined in a virtual column.', $attribute, $object->name));
+        }
+
+        return $field;
     }
 
     /**
