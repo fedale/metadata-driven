@@ -297,7 +297,10 @@ final class RecordController extends AbstractController
     {
         $data = [];
         foreach ($form->all() as $child) {
-            $data[$child->getName()] = $child->getData();
+            // A disabled control only shows a value (links through a junction object).
+            if (!$child->isDisabled()) {
+                $data[$child->getName()] = $child->getData();
+            }
         }
 
         return $data;

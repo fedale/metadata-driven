@@ -140,6 +140,11 @@ final class InvalidMetadataDefinition extends MetadataException
         return new self(\sprintf('Fields (%s) of "%s" are not unique together.', implode(', ', $fields), $objectName));
     }
 
+    public static function invalidJunction(string $fieldName, string $reason): self
+    {
+        return new self(\sprintf('Field "%s" cannot go through a junction object: %s.', $fieldName, $reason));
+    }
+
     public static function writeOnlyField(string $fieldName, string $use): self
     {
         return new self(\sprintf('Field "%s" is write-only (its value is never read back): it cannot be %s.', $fieldName, $use));

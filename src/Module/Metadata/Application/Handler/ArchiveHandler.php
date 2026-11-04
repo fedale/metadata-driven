@@ -69,6 +69,10 @@ final class ArchiveHandler
                 if (null !== $target && $target !== $objectName && !$this->metadata->hasObject($target)) {
                     $problems[] = \sprintf('%s field "%s" points at object "%s", archived too: restore it first', $field->storesColumn() ? 'relation' : 'many-to-many', $field->name, $target);
                 }
+                $through = $field->manyToMany()?->through;
+                if (null !== $through && !$this->metadata->hasObject($through)) {
+                    $problems[] = \sprintf('many-to-many field "%s" goes through object "%s", archived too: restore it first', $field->name, $through);
+                }
             }
             if ([] !== $problems) {
                 throw InvalidMetadataDefinition::cannotRestore(\sprintf('Object "%s"', $objectName), $problems);
@@ -132,6 +136,19 @@ final class ArchiveHandler
         $target = $field->target();
         if (null !== $target && !$this->metadata->hasObject($target)) {
             $problems[] = \sprintf('it points at object "%s", which is archived: restore it first', $target);
+        }
+        $manyToMany = $field->manyToMany();
+        if (null !== $manyToMany?->through) {
+            $junction = $this->metadata->hasObject($manyToMany->through) ? $this->metadata->getObject($manyToMany->through) : null;
+            if (null === $junction) {
+                $problems[] = \sprintf('it goes through object "%s", which is archived: restore it first', $manyToMany->through);
+            } else {
+                foreach ([(string) $manyToMany->throughSource, (string) $manyToMany->throughTarget] as $junctionField) {
+                    if (!$junction->hasField($junctionField)) {
+                        $problems[] = \sprintf('it goes through "%s.%s", which is archived', $manyToMany->through, $junctionField);
+                    }
+                }
+            }
         }
         $relation = $field->relation();
         if (null !== $relation?->dependsVia && $this->metadata->hasObject($relation->target)

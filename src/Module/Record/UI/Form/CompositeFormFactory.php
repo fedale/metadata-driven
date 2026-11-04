@@ -102,6 +102,9 @@ final class CompositeFormFactory
         $id = $data['id'] ?? null;
         /** @var array<string, mixed> $values keyed by field name, as the form builds them */
         $values = \is_array($data['values'] ?? null) ? $data['values'] : [];
+        // Links through a junction object are only shown (disabled): they are not input.
+        $object = $this->metadata->getObject($node->object);
+        $values = array_filter($values, static fn (string $name): bool => !$object->hasField($name) || null === $object->field($name)->manyToMany()?->through, \ARRAY_FILTER_USE_KEY);
         /** @var array<string, mixed> $service keyed by service field name */
         $service = \is_array($data['service'] ?? null) ? $data['service'] : [];
 

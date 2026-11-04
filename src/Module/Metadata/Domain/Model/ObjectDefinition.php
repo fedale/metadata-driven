@@ -156,7 +156,8 @@ class ObjectDefinition
 
     /**
      * Follows the rename of an object in the relation and many-to-many fields pointing at it,
-     * the archived ones included (their foreign keys point at its table all the same).
+     * and in the many-to-many fields going through it, the archived ones included (their
+     * foreign keys point at its table all the same).
      */
     public function retargetRelations(string $oldTarget, string $newTarget): void
     {
@@ -165,12 +166,17 @@ class ObjectDefinition
                 $field->changeSettings(['target' => $newTarget] + $field->getSettings());
                 $this->updatedAt = new \DateTimeImmutable();
             }
+            if ($field->getThrough() === $oldTarget) {
+                $field->changeSettings(['through' => $newTarget] + $field->getSettings());
+                $this->updatedAt = new \DateTimeImmutable();
+            }
         }
     }
 
     /**
      * Follows the rename of a field of another object in the cascades of the relations
-     * pointing at it ("dependsVia" names a field of the target).
+     * pointing at it ("dependsVia" names a field of the target), and in the many-to-many
+     * fields going through it ("throughSource" and "throughTarget" name its fields).
      */
     public function followTargetFieldRename(string $target, string $oldField, string $newField): void
     {
@@ -179,6 +185,15 @@ class ObjectDefinition
             if (RelationSettings::FIELD_TYPE === $field->getType() && ($settings['target'] ?? null) === $target && ($settings['dependsVia'] ?? null) === $oldField) {
                 $field->changeSettings(['dependsVia' => $newField] + $settings);
                 $this->updatedAt = new \DateTimeImmutable();
+            }
+            if ($field->getThrough() === $target) {
+                foreach (['throughSource', 'throughTarget'] as $key) {
+                    if (($settings[$key] ?? null) === $oldField) {
+                        $settings = [$key => $newField] + $settings;
+                        $field->changeSettings($settings);
+                        $this->updatedAt = new \DateTimeImmutable();
+                    }
+                }
             }
         }
     }
