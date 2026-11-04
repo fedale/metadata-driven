@@ -251,13 +251,43 @@ reusable, otherwise `md-file-list` in `app.css`.
      link tables, so rename, archive, purge and drop handle it with no new code.
    - Until phases 6–7: the record form skips the field (`RecordFormFactory`), a record reads
      `[]`, the grid column is empty with no filter (the source refuses one), and
-     `DbalFileReferences` skips the field.
+     `DbalFileReferences` skips the field. Phase 6 replaced all of these but the grid.
    - Label and search refuse any `file` field (`isSortable()` false), one file or several.
    - Tests: `FileListFieldTest` (integration: DDL, settings, renames, archive and purge, empty
      reads), `FileFieldTypeTest` (settings).
-6. **Several files, records and form**: read and write the list (`FileUpload` or a held id),
-   validation, the Record store, the form widget and its Stimulus controller, `/files/{id}`
-   access through the link tables.
+6. **Several files, records and form** — done, on `feature/file-multiple-records`. As built:
+   - `FileFieldType` with `multiple`: `denormalize()` returns the items in order (a
+     `FileUpload` or a lowercase id, each id once), null for an empty list, so `required` is the
+     usual `NotNull`; anything else is "This value should be a list of files.". `constraints()`:
+     `All([NewFile])` and `Count(max)`; `toStorage()` stores the uploads and returns the list of
+     ids (`[]` for none).
+   - `MetadataRecordValidator` keys a violation by the first segment of its path, so an item's
+     error (`[gallery][1]`) lands on its field.
+   - `RecordManager::checkHeldFiles()`, after denormalization: an id must be one the record holds
+     already (read back from the store; a new record holds none), otherwise
+     `FOREIGN_FILE_MESSAGE`. The type cannot check it: it does not know the record.
+   - `RecordStore::replaceFiles()` rewrites the rows of the record (DELETE, then one INSERT with
+     the positions) inside the record's transaction, from `writeLinks()`, which tells the two
+     kinds of links apart with `manyToMany()` / `fileList()`. `linksOf()` reads the lists ordered
+     by `position`, with no join on `core.file` (the RESTRICT foreign key keeps the files there).
+     `RecordTable::fileListTable()` names the table; `links()` / `LinkSource` stay many-to-many
+     only.
+   - `DbalFileReferences` also matches `id IN (SELECT record_id FROM <list> WHERE target_id =
+     :file)` for every file list (the `target_id` index serves it).
+   - `RecordFileListType` (Record UI): a hidden `kept` input (ids in order, comma-separated;
+     only the ids of the current files, from the options, are taken from it) and one
+     `FileType` with `multiple`; its data is the kept ids then a `FileUpload` per new file.
+     Theme block `record_file_list_widget`, styles `md-file-list` in `app.css` (nothing generic
+     enough for gridview-bundle yet), the `file-list` Stimulus controller (`assets/controllers/
+     file_list_controller.js`: up, down, remove, the hidden input; the buttons are hidden until
+     it connects). Read-only forms show the list only.
+   - Tests: `FileListsInRecordsTest` (integration), `FileListFieldControllerTest` (functional:
+     upload of several files, reorder and removal through the hidden input, an id not on the
+     page ignored, `max`), `FileControllerTest::testAFileHeldInAListIsServedWhileTheRecordHoldsIt`,
+     `FileFieldTypeTest` (list values, constraints, storage).
+   - Not done: reordering the new files among the current ones before saving (they go to the
+     end), drag-and-drop, and the file list in a composite form section (phase 9; the control
+     is added there too, untested).
 7. **Several files, grid and export**: the source subquery, the `EXISTS` filter, the export
    of the names, grid views.
 8. **GC**: `metadata:files:gc`, with tests on orphans and on archived fields; columns and link

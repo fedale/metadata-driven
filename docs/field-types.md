@@ -15,7 +15,7 @@ missing keys take their default, unknown keys are refused.
 | `url` | none | `varchar(2048)` | URL input | text (shown as a link) |
 | `select` | `options` (required), `default`, `display` (`dropdown`) | `varchar(100)` | select or buttons side by side | choice |
 | `password` | `minLength` (8), `requireMixedCase`, `requireDigit`, `requireSymbol`, `confirm`, `strengthMeter`, `revealToggle` (all false) | `varchar(255)`, a hash | password input, asked twice with `confirm` | none: never shown |
-| `file` | `accept` (any type), `maxSize` (10 MB), `image` (false), `multiple` (false), `max` | `uuid` + foreign key to `core.file`; with `multiple`, a link table of its own | the current file, an upload input, "Remove the file" | yes / no: holds a file or none |
+| `file` | `accept` (any type), `maxSize` (10 MB), `image` (false), `multiple` (false), `max` | `uuid` + foreign key to `core.file`; with `multiple`, a link table of its own | the current file, an upload input, "Remove the file"; with `multiple`, the list of files to reorder and remove, and an input adding several | yes / no: holds a file or none |
 | `relation` | `target` (required), `onDelete` (`set_null`), `inverseName`, `inverseLabel` | `uuid` + foreign key | autocomplete | choice of records |
 | `many_to_many` | `target` (required), `onDelete` (`unlink`), `inverseName`, `inverseLabel`, `max` | none: a link table of its own | autocomplete, several records | choice of records (any of them) |
 
@@ -306,9 +306,24 @@ contract.
 - **Several files** (`multiple: true`): the field has no column; its files are rows of a link
   table of its own, `data.l_<object>__<field>` (record, file, position), which follows the field
   when it is renamed, archived or purged, like the link table of a
-  [`many_to_many`](#many_to_many) field. **Not yet**: the record form does not offer the field,
-  a record reads it as an empty list, and the grid shows an empty column with no filter. The
-  next phases of the work add the upload of several files, their order, and the grid.
+  [`many_to_many`](#many_to_many) field.
+  - **The value** is a list of file ids, in order; a record without files reads an empty list.
+    Written from code, each item is a `FileUpload` (a new file) or the id of a file **the record
+    already holds** (kept, possibly moved); any other id is refused ("One of the files is not a
+    file of this record."), so a request cannot attach somebody else's file. The list given
+    replaces the one stored, in the record's transaction: a file left out is unlinked, and stays
+    in the storage like a replaced one. An empty list, or null, removes every file.
+  - **Validation**: every new file is checked against `accept`, `maxSize` and `image`, as a single
+    file is; `max` bounds the count ("Keep at most 3 files."); `required` asks for one file at
+    least.
+  - **The form** lists the current files in their order (a thumbnail or an icon, the name as a
+    link, the size), each with buttons to move it up or down and *Remove*, then one input adding
+    files, which go to the end of the list. The buttons need JavaScript (the `file-list`
+    controller); without it the form keeps the files as they are and still adds new ones.
+  - **Downloading** a file of a list follows the same rule as a single file: a user who may read
+    a live record listing it.
+  - **Not yet**: the grid shows an empty column with no filter, and the export leaves it empty;
+    the next phase of the work adds them.
 - **In the grid** a cell shows the original name of the file as a link to it, after the small
   thumbnail of an image or a document icon. An image opens in a new tab, any other file is
   downloaded. The filter is a yes/no on whether the record holds a file; the column never sorts,

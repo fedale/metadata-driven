@@ -136,12 +136,13 @@ final class FileListFieldTest extends KernelTestCase
         self::assertFalse($this->tableExists('c_product'));
     }
 
-    public function testRecordsAndGridsReadAnEmptyListUntilTheFilesCanBeWritten(): void
+    public function testARecordWithoutFilesReadsAnEmptyList(): void
     {
         $this->createGallery(['multiple' => true]);
         $record = self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('product', ['name' => 'Oslo chair']));
 
         self::assertSame([], $record->values['gallery']);
+        // The grid shows no files until phase 7 of the plan.
         $rows = iterator_to_array(self::getContainer()->get(RecordGridSourceInterface::class)->fetch(new GridQuery(source: ['object' => 'product'])), false);
         self::assertSame('Oslo chair', $rows[0]['name']);
         self::assertSame([], $rows[0]['gallery'.RecordGridSourceInterface::FILE_SUFFIX]);

@@ -44,6 +44,7 @@ final class FileControllerTest extends WebTestCase
         $createField(new CreateFieldCommand('product', 'name', 'text', 'Name', isRequired: true));
         $createField(new CreateFieldCommand('product', 'manual', 'file', 'Manual'));
         $createField(new CreateFieldCommand('product', 'photo', 'file', 'Photo', settings: ['image' => true]));
+        $createField(new CreateFieldCommand('product', 'leaflets', 'file', 'Leaflets', settings: ['multiple' => true]));
         $createField(new CreateFieldCommand('supplier', 'name', 'text', 'Name'));
         self::signInAsSuperAdmin($this->client);
     }
@@ -129,6 +130,35 @@ final class FileControllerTest extends WebTestCase
         $this->client->request('GET', '/files/'.$id);
         self::assertResponseStatusCodeSame(404);
         $this->client->request('GET', '/files/0193a5b2-0000-7000-8000-000000000000');
+        self::assertResponseStatusCodeSame(404);
+    }
+
+    public function testAFileHeldInAListIsServedWhileTheRecordHoldsIt(): void
+    {
+        $records = self::getContainer()->get(RecordManagerInterface::class);
+        $product = $records->create(new RecordInput('product', [
+            'name' => 'Oslo chair',
+            'leaflets' => [new FileUpload($this->file(self::PDF.'leaflet'), 'leaflet.pdf')],
+        ]));
+        $leaflets = $product->values['leaflets'] ?? null;
+        self::assertIsArray($leaflets);
+        $id = $leaflets[0];
+        self::assertIsString($id);
+
+        $this->client->request('GET', '/files/'.$id);
+        self::assertResponseIsSuccessful();
+        self::assertResponseHeaderSame('Content-Type', 'application/pdf');
+
+        self::signIn($this->client, 'buyer@example.com', [Permissions::record('supplier', RecordAction::Read)]);
+        $this->client->request('GET', '/files/'.$id);
+        self::assertResponseStatusCodeSame(404);
+        self::signIn($this->client, 'reader@example.com', [Permissions::record('product', RecordAction::Read)]);
+        $this->client->request('GET', '/files/'.$id);
+        self::assertResponseIsSuccessful();
+
+        // Once the record no longer lists it, nobody reaches the file through it.
+        $records->update($product->id, new RecordInput('product', ['leaflets' => []]));
+        $this->client->request('GET', '/files/'.$id);
         self::assertResponseStatusCodeSame(404);
     }
 

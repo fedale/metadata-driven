@@ -29,12 +29,13 @@ use Symfony\Component\Uid\Uuid;
 /**
  * Pipeline of every record write: RecordInput → denormalization → conditions (the fields
  * that do not apply are emptied) → validation → conversion to the stored form (e.g. password
- * hashes) → storage: the columns, then the links of the many-to-many fields, in one
- * transaction.
+ * hashes, uploads stored as files) → storage: the columns, then the links of the many-to-many
+ * fields and the files of the file lists, in one transaction.
  */
 final class RecordManager implements RecordManagerInterface, RecordFinderInterface
 {
     public const string CONFLICT_MESSAGE = 'This record conflicts with an existing one, please try again.';
+    public const string FOREIGN_FILE_MESSAGE = 'One of the files is not a file of this record.';
 
     public function __construct(
         // The labels in the user's language.
@@ -168,6 +169,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     {
         ['values' => $values, 'errors' => $errors] = $this->denormalizer->denormalize($object, $input, complete: null === $recordId);
         $values = $this->applyConditions($object, $values, $recordId);
+        $errors += $this->checkHeldFiles($object, array_diff_key($values, $errors), $recordId);
 
         // Fields that could not be converted are already reported: validate the others only.
         $errors += $this->validator->validate($object, array_diff_key($values, $errors), $recordId);
@@ -238,7 +240,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     }
 
     /**
-     * The values stored in columns: a many-to-many field has none.
+     * The values stored in columns: a many-to-many field and a file list have none.
      *
      * @param array<string, mixed> $values
      *
@@ -250,21 +252,59 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     }
 
     /**
-     * Writes the links of the many-to-many fields among $values; a field left out keeps its
-     * links, a null one loses them all.
+     * Writes the links of the many-to-many fields and the files of the file lists among
+     * $values; a field left out keeps them, a null or empty one loses them all.
      *
-     * @param array<string, mixed> $values valid values
+     * @param array<string, mixed> $values stored values (a file list is a list of file ids)
      */
     private function writeLinks(ObjectDefinitionDto $object, string $id, array $values, \DateTimeImmutable $now): void
     {
         foreach ($values as $name => $value) {
             $field = $object->field($name);
+            $ids = \is_array($value) ? array_values(array_filter($value, \is_string(...))) : [];
             $manyToMany = $field->manyToMany();
             if (null !== $manyToMany && !$manyToMany->goesThrough()) {
-                $ids = \is_array($value) ? array_values(array_filter($value, \is_string(...))) : [];
                 $this->store->replaceLinks($object, $field, $id, $ids, $now);
+            } elseif (null !== $field->fileList()) {
+                $this->store->replaceFiles($object, $field, $id, $ids);
             }
         }
+    }
+
+    /**
+     * The ids given to a file list must be files the record holds already: a request must
+     * not attach somebody else's file by its id (uploads are new files, always accepted). A
+     * new record holds none.
+     *
+     * @param array<string, mixed> $values denormalized
+     *
+     * @return array<string, list<string>> errors by field
+     */
+    private function checkHeldFiles(ObjectDefinitionDto $object, array $values, ?string $recordId): array
+    {
+        $given = [];
+        foreach ($values as $name => $value) {
+            if (null !== $object->field($name)->fileList() && \is_array($value)) {
+                $ids = array_values(array_filter($value, \is_string(...)));
+                if ([] !== $ids) {
+                    $given[$name] = $ids;
+                }
+            }
+        }
+        if ([] === $given) {
+            return [];
+        }
+
+        $held = null !== $recordId ? ($this->store->find($object, $recordId)->values ?? []) : [];
+        $errors = [];
+        foreach ($given as $name => $ids) {
+            $current = \is_array($held[$name] ?? null) ? array_filter($held[$name], \is_string(...)) : [];
+            if ([] !== array_diff($ids, $current)) {
+                $errors[$name][] = self::FOREIGN_FILE_MESSAGE;
+            }
+        }
+
+        return $errors;
     }
 
     /**

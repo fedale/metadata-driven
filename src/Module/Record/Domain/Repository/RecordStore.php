@@ -10,11 +10,12 @@ use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Domain\Exception\UniqueValueConflict;
 
 /**
- * Storage of records in the physical object tables, and of the links of their many-to-many
- * fields in the link tables.
+ * Storage of records in the physical object tables, of the links of their many-to-many fields
+ * and of the files of their file lists in the link tables.
  *
- * insert() and update() write the columns only; the links are written by replaceLinks(). A
- * record read back carries its links (the live linked records only).
+ * insert() and update() write the columns only; the links are written by replaceLinks(), the
+ * file lists by replaceFiles(). A record read back carries its links (the live linked records
+ * only) and its file ids, in order.
  */
 interface RecordStore
 {
@@ -58,6 +59,14 @@ interface RecordStore
      * @param list<string> $targetIds
      */
     public function replaceLinks(ObjectDefinitionDto $object, FieldDefinitionDto $field, string $recordId, array $targetIds, \DateTimeImmutable $now): void;
+
+    /**
+     * Makes the file list $field of a record hold exactly $fileIds, in this order. The files
+     * left out are unlinked only: they stay in core.file for the GC.
+     *
+     * @param list<string> $fileIds stored files, each once
+     */
+    public function replaceFiles(ObjectDefinitionDto $object, FieldDefinitionDto $field, string $recordId, array $fileIds): void;
 
     /**
      * Ids of the live records of $object whose relation $field points at $targetId (or whose

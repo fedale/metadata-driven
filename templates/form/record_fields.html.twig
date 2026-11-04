@@ -22,3 +22,44 @@
         {{- form_errors(form.upload) -}}
     </div>
 {%- endblock record_file_widget %}
+
+{#- A file field holding several files (RecordFileListType): the current files in their order,
+    each with buttons to move it and to remove it, then the input adding files at the end. The
+    buttons are hidden until the file-list controller runs: without it the list is kept as is.
+    Read-only, only the list. -#}
+{%- block record_file_list_widget -%}
+    <div {{ block('widget_container_attributes') }}>
+        {%- if current_files is not empty -%}
+            <ol class="md-file-list__items">
+                {%- for item in current_files -%}
+                    {%- set name = item.file.originalName -%}
+                    <li class="md-file-list__item" data-file-list-target="item" data-id="{{ item.file.id }}">
+                        {%- if item.file.isImage -%}
+                            {#- Decorative: the name next to it says what the file is. -#}
+                            <img class="md-file-list__thumbnail" src="{{ path('file_thumbnail', {id: item.file.id, size: 'small'}) }}" alt="" loading="lazy">
+                        {%- else -%}
+                            <svg class="md-file-list__icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M4 1.5h5L12.5 5v9.5h-8.5z M9 1.5V5h3.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+                        {%- endif -%}
+                        <a class="md-file-list__name" href="{{ path('file_download', {id: item.file.id}) }}" data-turbo="false">{{ name }}</a>
+                        <span class="md-file-list__size">{{ item.size }}</span>
+                        {%- if not disabled -%}
+                            <span class="md-file-list__actions" data-file-list-target="actions" hidden>
+                                <button type="button" class="gv-btn gv-btn-icon" data-action="file-list#up" aria-label="{{ 'form.file_list_up'|trans({'%name%': name}) }}" title="{{ 'form.file_list_up'|trans({'%name%': name}) }}">↑</button>
+                                <button type="button" class="gv-btn gv-btn-icon" data-action="file-list#down" aria-label="{{ 'form.file_list_down'|trans({'%name%': name}) }}" title="{{ 'form.file_list_down'|trans({'%name%': name}) }}">↓</button>
+                                <button type="button" class="gv-btn" data-action="file-list#remove" aria-label="{{ 'form.file_list_remove'|trans({'%name%': name}) }}">{{ 'form.remove'|trans }}</button>
+                            </span>
+                        {%- endif -%}
+                    </li>
+                {%- endfor -%}
+            </ol>
+        {%- endif -%}
+        {%- if disabled -%}
+            {%- do form.kept.setRendered -%}
+            {%- do form.upload.setRendered -%}
+        {%- else -%}
+            {{- form_widget(form.kept, {attr: {'data-file-list-target': 'kept'}}) -}}
+            {{- form_widget(form.upload) -}}
+            {{- form_errors(form.upload) -}}
+        {%- endif -%}
+    </div>
+{%- endblock record_file_list_widget %}

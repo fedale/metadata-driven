@@ -124,6 +124,58 @@ final class FileFieldTypeTest extends TestCase
         self::assertNull($type->toStorage(null, $type->defaultSettings()));
     }
 
+    public function testDenormalizesAListOfUploadsAndIds(): void
+    {
+        $type = self::type();
+        $settings = ['multiple' => true] + $type->defaultSettings();
+        $upload = new FileUpload('/tmp/upload', 'photo.png');
+        $other = '0193A5B2-0000-7000-8000-000000000002';
+
+        // In order, the ids lowercase and once each; unknown ids are for the record to refuse.
+        self::assertSame(
+            [self::STORED_ID, $upload, strtolower($other)],
+            $type->denormalize([self::STORED_ID, '', $upload, $other, self::STORED_ID], $settings),
+        );
+        self::assertSame([$upload], $type->denormalize($upload, $settings));
+        // An empty list is no value: "required" asks for at least one file.
+        self::assertNull($type->denormalize([], $settings));
+        self::assertNull($type->denormalize(['', null], $settings));
+        self::assertNull($type->denormalize(null, $settings));
+    }
+
+    public function testRefusesAListItemThatIsNoFile(): void
+    {
+        $this->expectException(InvalidFieldValue::class);
+        $this->expectExceptionMessage('This value should be a list of files.');
+
+        self::type()->denormalize([self::STORED_ID, 'photo.png'], ['multiple' => true] + self::type()->defaultSettings());
+    }
+
+    public function testChecksEveryUploadOfAListAndItsCount(): void
+    {
+        $type = self::type();
+        $settings = ['accept' => 'application/pdf', 'multiple' => true, 'max' => 2] + $type->defaultSettings();
+        $validator = Validation::createValidator();
+        $pdf = new FileUpload($this->file("%PDF-1.4\n"), 'manual.pdf');
+
+        self::assertCount(0, $validator->validate([self::STORED_ID, $pdf], $type->constraints($settings)));
+        $violations = $validator->validate([$pdf, new FileUpload($this->file('Plain text'), 'fake.pdf')], $type->constraints($settings));
+        self::assertCount(1, $violations);
+        self::assertSame('[1]', $violations->get(0)->getPropertyPath());
+        self::assertStringContainsString('Keep at most 2 files.', (string) $validator->validate([self::STORED_ID, $pdf, $pdf], $type->constraints($settings)));
+        self::assertCount(0, $validator->validate(null, $type->constraints($settings)));
+    }
+
+    public function testStoresTheUploadsOfAListAndKeepsItsOrder(): void
+    {
+        $type = self::type();
+        $settings = ['multiple' => true] + $type->defaultSettings();
+        $kept = '0193a5b2-0000-7000-8000-000000000002';
+
+        self::assertSame([$kept, self::STORED_ID], $type->toStorage([$kept, new FileUpload('/tmp/upload', 'photo.png')], $settings));
+        self::assertSame([], $type->toStorage(null, $settings));
+    }
+
     private function file(string $content): string
     {
         $path = (string) tempnam(sys_get_temp_dir(), 'md-file-');

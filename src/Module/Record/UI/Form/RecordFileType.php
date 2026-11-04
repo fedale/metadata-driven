@@ -92,8 +92,9 @@ final class RecordFileType extends AbstractType
 
     /**
      * A size in decimal units (1 kB = 1000 bytes), as the size limit of the field counts them.
+     * RecordFileListType shows its files' sizes the same way.
      */
-    private static function size(int $bytes): string
+    public static function size(int $bytes): string
     {
         return match (true) {
             $bytes < 1000 => \sprintf('%d B', $bytes),
