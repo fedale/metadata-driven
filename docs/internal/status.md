@@ -160,8 +160,7 @@ rename/archive/restore/purge of objects and fields.
     export, grid views) are merged into main. Phase 4 (data on the link, through a junction
     object) is confirmed and split: 4a, fields unique together (`metadata:object:unique`), is
     merged into main; 4b, split in two by the user: 4b-1 (the `through` setting, reading, grid,
-    lifecycle) is committed and pushed on `feature/many_to_many_through` (worktree
-    `../metadata-driven-m2m`), awaiting the user's review; 4b-2 (writing the rows from the record
+    lifecycle) is merged into main; 4b-2 (writing the rows from the record
     form) comes next, its to-do list at the end of the plan.
   - **The `file` field type**, plan in [file-type-plan.md](file-type-plan.md). Phases 1 (storage
     and `core.file`), 2 (the type in the record form) and 3 (download and thumbnails at

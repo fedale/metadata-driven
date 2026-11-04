@@ -3,8 +3,7 @@
 Status: reviewed by the user (type name, read-only inverse, delete rules decided). Phases 1–3
 merged into main. Phase 4 confirmed by the user and split: 4a (fields unique together) merged
 into main; 4b split again by the user's choice: 4b-1 (`through`: settings, reading, grid,
-lifecycle) committed and pushed on `feature/many_to_many_through`, awaiting the user's review
-(not merged); 4b-2 (writing the rows from the record form) not started: see
+lifecycle) merged into main; 4b-2 (writing the rows from the record form) not started: see
 [Phase 4b-2, next](#phase-4b-2-next). Last updated:
 2026-11-04.
 
@@ -271,8 +270,7 @@ Not covered by a test in 4b-1: a `through` field inside a composite form (shown 
 
 ### Phase 4b-2, next
 
-To do on a branch from `feature/many_to_many_through` (or from main once 4b-1 is merged),
-`feature/many_to_many_through_rows`:
+To do on `feature/many_to_many_through_rows`, a branch from main:
 
 - **Value shape.** For a `through` field, rows of the junction instead of ids:
   `[{"id": "<junction record id>", "tag": "<target id>", "role": "owner"}, …]`, keyed by the
@@ -294,6 +292,11 @@ To do on a branch from `feature/many_to_many_through` (or from main once 4b-1 is
   many` sections (`CompositeFormFactory`, the gridview-bundle collection). Composite forms: the
   field in a node gets the same rows. Stop disabling it in `RecordFormFactory::addControls()` and
   filtering it out in `RecordController::submitted()` / `CompositeFormFactory::input()`.
+- **Permissions** (from a security review of 4b-1): the rows show and write records of the
+  junction, so they need its permissions: `record.<junction>.read` to see the rows,
+  `create` / `update` / `delete` to change them. Without read, show the labels only or nothing
+  (ask the user). In 4b-1 the field only shows the linked ids and labels, like a plain
+  `many_to_many`, under the source object's read permission.
 - **Docs.** `field-types.md` (drop the "Not yet" of "Through a junction object", the value shape,
   errors), `forms.md`, this plan, `status.md`.
 
