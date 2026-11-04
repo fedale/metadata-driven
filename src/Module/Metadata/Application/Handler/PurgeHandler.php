@@ -53,6 +53,9 @@ final class PurgeHandler
                     if ($field->getTarget() === $objectName) {
                         $usages[] = \sprintf('%s field "%s.%s"%s points at it', $field->isManyToMany() ? 'many-to-many' : 'relation', $other->getName(), $field->getName(), $field->isArchived() || !$other->isActive() ? ' (archived)' : '');
                     }
+                    if ($field->getThrough() === $objectName) {
+                        $usages[] = \sprintf('many-to-many field "%s.%s"%s goes through it', $other->getName(), $field->getName(), $field->isArchived() || !$other->isActive() ? ' (archived)' : '');
+                    }
                 }
             }
             if ([] !== $usages) {

@@ -223,6 +223,10 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
     public function dropColumn(ObjectDefinitionDto $object, FieldDefinitionDto $field): SchemaPlan
     {
         if (!$field->storesColumn()) {
+            // A field going through a junction object owns no table: the junction keeps its records.
+            if (true === $field->manyToMany()?->goesThrough()) {
+                return new SchemaPlan($object->name, DataSchema::NAME.'.'.$object->tableName, false, [], []);
+            }
             $plan = new SchemaPlan($object->name, DataSchema::NAME.'.'.$object->tableName, false, [
                 $this->dropTableStatement($this->tables->linkNames($object, $field)['table']),
             ], []);

@@ -116,6 +116,9 @@ final class DbalRecordStore implements RecordStore
     public function replaceLinks(ObjectDefinitionDto $object, FieldDefinitionDto $field, string $recordId, array $targetIds, \DateTimeImmutable $now): void
     {
         $links = $this->table->links($object, $field);
+        if ($links->isJunction) {
+            throw new \LogicException(\sprintf('Field "%s.%s" goes through a junction object: its links are written as records of that object.', $object->name, $field->name));
+        }
         if ([] === $targetIds) {
             $this->connection->executeStatement(
                 \sprintf('DELETE FROM %s WHERE %s = ?', $links->table, $links->recordColumn),
@@ -191,6 +194,9 @@ final class DbalRecordStore implements RecordStore
         if (!$field->storesColumn()) {
             $live = \sprintf('SELECT %s FROM %s WHERE %s IS NULL', $this->table->column('id'), $this->table->table($object), $this->table->column('deleted_at'));
             $links = $this->table->links($object, $field);
+            if ($links->isJunction) {
+                throw new \LogicException(\sprintf('Field "%s.%s" goes through a junction object: the relation fields of that object carry the delete rules.', $object->name, $field->name));
+            }
             $this->connection->executeStatement(
                 \sprintf(
                     'UPDATE %s SET %s = ? WHERE %s IS NULL AND %s IN (SELECT %s FROM %s WHERE %s = ?)',
@@ -236,11 +242,12 @@ final class DbalRecordStore implements RecordStore
         $links = $this->table->links($object, $field);
 
         return \sprintf(
-            '%s IN (SELECT %s FROM %s WHERE %s = ?)',
+            '%s IN (SELECT %s FROM %s WHERE %s = ?%s)',
             $this->table->column('id'),
             $links->recordColumn,
             $links->table,
             $links->targetColumn,
+            $links->andLive(),
         );
     }
 
@@ -266,7 +273,7 @@ final class DbalRecordStore implements RecordStore
             $links = $this->table->links($object, $field);
             $rows = $this->connection->fetchAllNumeric(
                 \sprintf(
-                    'SELECT l.%1$s, l.%2$s FROM %3$s l JOIN %4$s t ON t.%5$s = l.%2$s AND t.%6$s IS NULL WHERE l.%1$s IN (?) ORDER BY l.%7$s, l.%2$s',
+                    'SELECT l.%1$s, l.%2$s FROM %3$s l JOIN %4$s t ON t.%5$s = l.%2$s AND t.%6$s IS NULL WHERE l.%1$s IN (?)%8$s ORDER BY l.%7$s, l.%2$s',
                     $links->recordColumn,
                     $links->targetColumn,
                     $links->table,
@@ -274,6 +281,7 @@ final class DbalRecordStore implements RecordStore
                     $this->table->quote('id'),
                     $this->table->quote('deleted_at'),
                     $this->table->quote('created_at'),
+                    $links->andLive('l'),
                 ),
                 [$recordIds],
                 [ArrayParameterType::STRING],

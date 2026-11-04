@@ -1,8 +1,10 @@
 # Plan: many-to-many relations
 
 Status: reviewed by the user (type name, read-only inverse, delete rules decided). Phases 1–3
-merged into main. Phase 4 confirmed by the user and split in two: 4a (fields unique together)
-merged into main; 4b (`through`) on `feature/many_to_many_through`. Last updated:
+merged into main. Phase 4 confirmed by the user and split: 4a (fields unique together) merged
+into main; 4b split again by the user's choice: 4b-1 (`through`: settings, reading, grid,
+lifecycle) merged into main; 4b-2 (writing the rows from the record form) not started: see
+[Phase 4b-2, next](#phase-4b-2-next). Last updated:
 2026-11-04.
 
 ## Where we are
@@ -236,6 +238,75 @@ column for the field, `GridViewCompiler::readable()` accepts it. Differences fro
   of the set the write carries. A concurrent write is refused by the index, and `RecordManager`
   turns the conflict into the same error, as for single uniques.
 - A field in a set cannot be archived (`MetadataUsages`).
+
+**Decisions for 4b (user, 2026-11-04):** two branches (4b-1 reading, 4b-2 writing the rows);
+a row of the value is identified by the id of its junction record (with an id: update; without:
+create; missing: delete), as composite `mode: many` rows are; a `through` field requires the
+junction to keep `throughSource` and `throughTarget` unique together, in a set of their own or
+with other fields.
+
+**Phase 4b-1, as delivered** (`feature/many_to_many_through`):
+
+- `ManyToManySettings` gained `through`, `throughSource`, `throughTarget` (all three or none,
+  fixed) and `goesThrough()`; with them, `onDelete` must stay at its default: the junction's
+  relation fields carry the delete rules, and `RecordManager` skips the field's own rules.
+  `CreateFieldHandler` checks the junction (an object of its own, active, two relation fields
+  pointing at the object and the target, a unique set holding both).
+- No link table (`TableDefinitionFactory`, `objectNames()`, `dropColumn()`).
+- `LinkSource` gained the soft-delete column of the links (`andLive()`) and `isJunction`;
+  `RecordTable::links()` builds it on the junction's table. The store's reads (`linksOf()`,
+  `pointsAt()`) and the grid (`linkedFrom()`) keep the live links only; `replaceLinks()` and
+  `clearReferences()` refuse a junction.
+- Value as for a plain field: the list of the linked ids (not rows yet). The denormalizer refuses
+  the field in a write ("These links are records of ...") and never defaults it; the record form
+  and composite forms show it disabled, and their submitted data leaves it out. It cannot be
+  required (until 4b-2).
+- Lifecycle: `MetadataUsages::throughFields()`; the junction object, its two fields and the unique
+  set holding them are in use (archive, purge, unique removal refused); renames follow
+  (`retargetRelations()`, `followTargetFieldRename()`); restore checks the junction.
+
+Not covered by a test in 4b-1: a `through` field inside a composite form (shown disabled by
+`RecordFormFactory::addControls()`, left out of the input by `CompositeFormFactory::input()`).
+
+### Phase 4b-2, next
+
+To do on `feature/many_to_many_through_rows`, a branch from main:
+
+- **Value shape.** For a `through` field, rows of the junction instead of ids:
+  `[{"id": "<junction record id>", "tag": "<target id>", "role": "owner"}, …]`, keyed by the
+  junction's field names; `throughSource` is never in a row (it is the record). A row with an
+  `id` updates that junction record, a row without one creates it, a junction record of the
+  record missing from the rows is deleted (soft, with its own delete rules), as composite `mode:
+  many` rows (`CompositeRecordManager`). An id that is not a live junction record of this record
+  is refused (`CompositeRecordManager::UNKNOWN_ROW_MESSAGE` is the model). Decide whether
+  `RecordOutput` carries the rows too, or the ids as today plus the rows in another key: the
+  grid, the record page and the inverse lists read the ids.
+- **Write pipeline.** `RecordInputDenormalizer` stops refusing the field (`JUNCTION_MESSAGE`);
+  each row is checked as a junction record (`RecordManagerInterface::check()`, its errors keyed by
+  row, e.g. `tags.0.role`), then written in the record's transaction after the record itself (a new
+  record needs its id for `throughSource`). The unique set of the junction refuses a target twice
+  (an error on the row). `required` (at least one row) and `max` count live rows; lift the
+  "cannot be required yet" refusal in `CreateFieldHandler::assertJunctionIsValid()`.
+- **Form.** Inline rows in the record form: the target picker (autocomplete, as a relation) plus
+  the junction's other fields, add and remove buttons; reuse the row widgets of composite `mode:
+  many` sections (`CompositeFormFactory`, the gridview-bundle collection). Composite forms: the
+  field in a node gets the same rows. Stop disabling it in `RecordFormFactory::addControls()` and
+  filtering it out in `RecordController::submitted()` / `CompositeFormFactory::input()`.
+- **Permissions** (from a security review of 4b-1): the rows show and write records of the
+  junction, so they need its permissions: `record.<junction>.read` to see the rows,
+  `create` / `update` / `delete` to change them. Without read, show the labels only or nothing
+  (ask the user). In 4b-1 the field only shows the linked ids and labels, like a plain
+  `many_to_many`, under the source object's read permission.
+- **Docs.** `field-types.md` (drop the "Not yet" of "Through a junction object", the value shape,
+  errors), `forms.md`, this plan, `status.md`.
+
+### Working on it
+
+- Worktree used for phase 4: `../metadata-driven-m2m` (see "Sessions working in parallel" in
+  `status.md`): its `.env.test.local` sets `TEST_TOKEN=_m2m`, database `app_test_m2m`.
+- Tests of the phase: `tests/Integration/Module/Record/ManyToManyThroughTest.php`,
+  `tests/Functional/Module/Record/ManyToManyThroughControllerTest.php`,
+  `tests/Integration/Module/Metadata/UniqueTogetherTest.php`.
 
 ## Out of scope
 

@@ -23,7 +23,8 @@ Renaming an **object** renames everything named after it:
 - its table `data.c_<name>`, and the indexes and constraints named after the table;
 - the link tables of its `many_to_many` fields, `data.l_<name>__<field>`, with their indexes and
   constraints;
-- the relation and `many_to_many` fields pointing at it, in every object (`target`);
+- the relation and `many_to_many` fields pointing at it, in every object (`target`), and the
+  `many_to_many` fields going through it (`through`);
 - the composite forms naming it (`object:`);
 - its translations (`object.<name>.*`, `field.<name>.*`, `option.<name>.*`, ...);
 - its permissions `record.<name>.*`: the roles and users holding them keep them.
@@ -35,6 +36,7 @@ Renaming a **field** renames everything naming it:
 - the record label, the searched fields and the sets unique together of its object;
 - the conditions it decides, and the cascades depending on it (`dependsOn` in its object,
   `dependsVia` in the relations of other objects pointing at its object);
+- the `many_to_many` fields going through its object (`throughSource`, `throughTarget`);
 - the views of its object: the `{field}` tokens of a form view, the columns, `{field}` tokens and
   sort of a grid view;
 - the composite forms: `fields`, `required`, the `{field}` tokens of a `layout`, and `via`;
@@ -78,7 +80,7 @@ index is dropped: it holds no data).
 **Archiving is refused while something uses it**, and the message lists every use, to be removed
 first. Archiving an object is refused while:
 
-- a relation or `many_to_many` field of another object points at it;
+- a relation or `many_to_many` field of another object points at it, or goes through it;
 - a composite form has a node on it.
 
 Archiving a field is refused while:
@@ -88,6 +90,7 @@ Archiving a field is refused while:
 - a view of its object places it: a `{field}` token, a grid column, a sort;
 - a composite form names it in `fields`, `required`, a `layout` or `via`. A node without
   `fields` shows every field: the archived one simply leaves it;
+- a `many_to_many` field goes through it (`throughSource`, `throughTarget`);
 - it is part of a set unique together: archiving it would silently drop a rule on the data
   (`metadata:object:unique <object> <fields> --remove` first).
 
@@ -101,21 +104,23 @@ An object of the system cannot be archived nor renamed.
 Restoring brings the object or field back as it was. It is refused while what it relies on is
 archived:
 
-- an object whose relation or `many_to_many` fields point at an archived object: restore that
-  one first;
+- an object whose relation or `many_to_many` fields point at an archived object, or go through
+  one: restore that one first;
 - a field whose relation or `many_to_many` link points at an archived object, whose cascade goes through an archived
-  field, or which is shown depending on a field that is archived or purged.
+  field, which goes through an archived junction object or field, or which is shown depending
+  on a field that is archived or purged.
 
 ## Purging
 
 Purging deletes for good what is archived, with its data: there is no way back.
 
 - A **field**: its column and every value (for a `many_to_many` field, its link table and every
-  link), its translations; the name is free again.
+  link; with `through`, nothing: the junction object keeps its records), its translations; the
+  name is free again.
 - An **object**: its table and every record, the link tables of its `many_to_many` fields, its
   fields, views and translations, its four permissions (and their grants); the name is free again.
   Refused while a relation or `many_to_many` field of another object points at it, archived or
-  not: its foreign key needs the table.
+  not: its foreign key needs the table; and while a `many_to_many` field goes through it.
 
 `metadata:purge` asks to type the name back (`pet`, or `pet.age` for a field); without a terminal
 it needs `--force`. The admin has no purge button.

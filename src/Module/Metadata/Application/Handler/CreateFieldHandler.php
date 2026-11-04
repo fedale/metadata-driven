@@ -62,6 +62,7 @@ final class CreateFieldHandler
             if (ManyToManySettings::FIELD_TYPE === $command->type) {
                 $manyToMany = ManyToManySettings::fromSettings($settings);
                 $this->assertTargetIsValid($manyToMany->target, $manyToMany->inverseName);
+                $this->assertJunctionIsValid($object->getName(), $command->name, $manyToMany, $command->isRequired);
             }
 
             $field = $object->addField(
@@ -88,6 +89,44 @@ final class CreateFieldHandler
         $this->events->dispatch(new MetadataChanged($command->objectName));
 
         return $fieldId;
+    }
+
+    /**
+     * A junction object of its own, active, whose two relation fields point at the object and at
+     * the target, and that keeps them unique together (any set holding both: a link is made at
+     * most once, as in a link table).
+     */
+    private function assertJunctionIsValid(string $objectName, string $fieldName, ManyToManySettings $settings, bool $required): void
+    {
+        if (!$settings->goesThrough()) {
+            return;
+        }
+        if ($required) {
+            throw InvalidMetadataDefinition::invalidJunction($fieldName, 'it cannot be required yet: its links are written as records of the junction object');
+        }
+        $through = (string) $settings->through;
+        if (\in_array($through, [$objectName, $settings->target], true)) {
+            throw InvalidMetadataDefinition::invalidJunction($fieldName, \sprintf('"%s" is the object or the target: a junction object is one of its own', $through));
+        }
+        $junction = $this->objects->findByName($through);
+        if (null === $junction || !$junction->isActive()) {
+            throw InvalidMetadataDefinition::invalidJunction($fieldName, \sprintf('the junction object "%s" does not exist', $through));
+        }
+        foreach ([(string) $settings->throughSource => $objectName, (string) $settings->throughTarget => $settings->target] as $junctionField => $pointsAt) {
+            $field = $junction->hasField($junctionField) ? $junction->getField($junctionField) : null;
+            if (null === $field || RelationSettings::FIELD_TYPE !== $field->getType() || $field->getTarget() !== $pointsAt) {
+                throw InvalidMetadataDefinition::invalidJunction($fieldName, \sprintf('"%s" must be a relation field of "%s" pointing at "%s"', $junctionField, $through, $pointsAt));
+            }
+        }
+        if ($settings->throughSource === $settings->throughTarget) {
+            throw InvalidMetadataDefinition::invalidJunction($fieldName, '"throughSource" and "throughTarget" must be two different fields');
+        }
+        foreach ($junction->getUniqueTogether() as $set) {
+            if (\in_array($settings->throughSource, $set, true) && \in_array($settings->throughTarget, $set, true)) {
+                return;
+            }
+        }
+        throw InvalidMetadataDefinition::invalidJunction($fieldName, \sprintf('make "%s" and "%s" of "%s" unique together first (metadata:object:unique %s %s,%s)', $settings->throughSource, $settings->throughTarget, $through, $through, $settings->throughSource, $settings->throughTarget));
     }
 
     /**

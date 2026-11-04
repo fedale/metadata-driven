@@ -403,6 +403,7 @@ contacts. The target sees the other side read-only, as for a [`relation`](#relat
 | `inverseName` | string or null | machine name of the inverse side; must not be a field of the target, nor the inverse name of another relation or many-to-many field pointing at it |
 | `inverseLabel` | string or null | its title on the target's page; default "<Plural label> (<Field label>)" |
 | `max` | integer or null | how many records may be linked, at least 1; null (default) for no limit |
+| `through`, `throughSource`, `throughTarget` | string or null | a junction object and its two relation fields, all three or none (default): see [Through a junction object](#through-a-junction-object); fixed once the field exists |
 
 ```bash
 symfony console metadata:field:create contact tags many_to_many Tags \
@@ -458,5 +459,42 @@ Input and display:
   it. The export writes the same labels, joined by ", ". In a [grid view](views.md#grid-views) the
   field can be a column of its own, never part of a virtual column nor sorted.
 
-**Not yet.** When the link carries data of its own (a role, a description), use a junction object
-with two `relation` fields instead.
+### Through a junction object
+
+When a link carries data of its own (a role, the date it starts), the links can be the records of
+a **junction object** instead of a link table: an ordinary object with a `relation` field to each
+side and any other field. It has its own grid, views, permissions, translations and lifecycle.
+
+```bash
+symfony console metadata:object:create person_tag "Person tag" "Person tags"
+symfony console metadata:field:create person_tag person relation Person --required \
+  --settings='{"target":"person","onDelete":"cascade"}'
+symfony console metadata:field:create person_tag tag relation Tag --required \
+  --settings='{"target":"tag","onDelete":"cascade"}'
+symfony console metadata:field:create person_tag role text Role
+symfony console metadata:object:unique person_tag person,tag
+symfony console metadata:field:create person tags many_to_many Tags \
+  --settings='{"target":"tag","through":"person_tag","throughSource":"person","throughTarget":"tag","inverseName":"people"}'
+```
+
+- `through` names the junction object, `throughSource` its relation field pointing at this object,
+  `throughTarget` the one pointing at `target`. The junction must be an object of its own (not the
+  object nor the target), and keep the two fields
+  [unique together](#rules-common-to-every-type), alone or with others (`person, tag, role` lets
+  the same tag come twice with different roles). Refused otherwise, with the command to run.
+- The field has no link table: its links are the **live** records of the junction. A junction
+  record deleted is a link removed. `onDelete` does not apply: the junction's relation fields carry
+  the delete rules (`cascade` on both, typically: deleting a person or a tag deletes its junction
+  records).
+- It reads like any `many_to_many` field: its value is the list of the linked ids, the record form
+  shows them, the grid lists, filters and exports their labels, the target's page lists the
+  records linking to it.
+- **The links are written as records of the junction object**, from its own pages or a composite
+  form section on it; the record form shows the field disabled ("Added and removed as records of
+  Person tags."), and a write naming it is refused ("These links are records of "person_tag": add
+  or remove them there."). For the same reason the field cannot be required yet.
+- While the field exists, the junction object, its two fields and the unique set holding them
+  cannot be archived nor removed; renaming them updates the field's settings.
+
+**Not yet.** Editing the links of a junction from the record form, as rows of the target and the
+junction's own fields.

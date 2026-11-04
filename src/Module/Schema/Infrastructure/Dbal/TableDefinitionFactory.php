@@ -88,7 +88,8 @@ final class TableDefinitionFactory
 
     /**
      * The link tables of the many-to-many fields of an object, and of its file fields holding
-     * several files, archived ones included, keyed by field id.
+     * several files, archived ones included, keyed by field id. A many-to-many field going
+     * through a junction object has none: its links are the junction's records.
      *
      * A link is a row (record_id, target_id), the pair being the primary key; created_at and
      * created_by say when and by whom it was made. The index on target_id serves the inverse
@@ -105,7 +106,7 @@ final class TableDefinitionFactory
                 continue;
             }
             $settings = $field->manyToMany();
-            if (null === $settings) {
+            if (null === $settings || $settings->goesThrough()) {
                 continue;
             }
             $names = $this->linkNames($object, $field);
@@ -315,7 +316,9 @@ final class TableDefinitionFactory
         $names = ['indexes' => [], 'constraints' => ['pkey' => $this->identifier($object->tableName.'_pkey')], 'links' => []];
         foreach ($this->allFields($object) as $field) {
             if (!$field->storesColumn()) {
-                $names['links'][$field->id] = $this->linkNames($object, $field);
+                if (!$field->manyToMany()?->goesThrough()) {
+                    $names['links'][$field->id] = $this->linkNames($object, $field);
+                }
                 continue;
             }
             if ($field->isUnique) {

@@ -29,11 +29,24 @@ final class RecordTable
     }
 
     /**
-     * Where the links of a many-to-many field of $object live.
+     * Where the links of a many-to-many field of $object live: its link table, or the table of
+     * the junction object it goes through.
      */
     public function links(ObjectDefinitionDto $object, FieldDefinitionDto $field): LinkSource
     {
         $settings = $field->manyToMany() ?? throw new \LogicException(\sprintf('Field "%s.%s" is not many-to-many: it has no links.', $object->name, $field->name));
+        if ($settings->goesThrough()) {
+            $junction = $this->metadata->getObject((string) $settings->through);
+
+            return new LinkSource(
+                $this->table($junction),
+                $this->quote($junction->field((string) $settings->throughSource)->columnName),
+                $this->quote($junction->field((string) $settings->throughTarget)->columnName),
+                $this->table($this->metadata->getObject($settings->target)),
+                $this->quote('deleted_at'),
+                isJunction: true,
+            );
+        }
 
         return new LinkSource(
             $this->quote(DataSchema::NAME).'.'.$this->quote(DataSchema::linkTable($object->name, $field->columnName)),

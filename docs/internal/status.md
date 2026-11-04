@@ -73,7 +73,8 @@ Things that are not obvious from a single file, and that are easy to break.
 
 - **Metadata cache** (`Metadata/Infrastructure/Cache/CachedMetadataRegistry.php`): the snapshot
   key (`metadata_snapshot.vN`) and the forms key (`metadata_forms.vN`) are versioned. Bump the
-  version whenever the shape of a cached DTO changes. The snapshot key also carries a fingerprint
+  version whenever the shape of a cached DTO changes, and bump the key that holds that DTO: a
+  form DTO (e.g. `ServiceFieldDto`) lives under the forms key, not the snapshot key. The snapshot key also carries a fingerprint
   of every field type's default settings, so adding a setting renews the snapshot by itself.
 - **Localized metadata**: `LocalizedMetadataRegistry` (`#[Target('localizedMetadata')]`) returns
   metadata with labels in the user's locale; only the Record and Validation modules use it. Metadata
@@ -92,10 +93,13 @@ Things that are not obvious from a single file, and that are easy to break.
   (`DataSchema::linkTable()`) is built, renamed and dropped by the Schema module with the object,
   and read and written by the Record store (`replaceLinks()`, links loaded with the record) and
   read by the grid source (labels and ids in correlated subqueries, filter as `EXISTS`), both
-  through `LinkSource` (`RecordTable::links()`): no SQL names the link table by hand. A `file`
-  field with `multiple: true` (`FileListSettings`, `fileList()`) has no column either, and a
-  link table of its own (`target_id` → `core.file`, plus `position`): code handling links must
-  tell the two apart with `manyToMany()` / `fileList()`, never with `!storesColumn()` alone.
+  through `LinkSource` (`RecordTable::links()`): no SQL names the link table by hand. With
+  `through`, the links are the live records of a junction object: no link table, `andLive()` on
+  every read, writes refused (they are junction records), the junction's relations carry the
+  delete rules. A `file` field with `multiple: true` (`FileListSettings`, `fileList()`) has no
+  column either, and a link table of its own (`target_id` → `core.file`, plus `position`):
+  code handling links must tell the two apart with `manyToMany()` / `fileList()`, never with
+  `!storesColumn()` alone.
   Cascading selects use `dependsOn`/`dependsVia`; the lookup takes
   `filter[<field>]=<id>` (empty means no results) and the validator checks parent membership.
 - **System columns** (`ObjectDefinition::SYSTEM_COLUMNS`, built by `TableDefinitionFactory`):
@@ -158,8 +162,9 @@ rename/archive/restore/purge of objects and fields.
     validation, delete rules, inverse lists, form, composite forms) and 3 (grid: cell, filter,
     export, grid views) are merged into main. Phase 4 (data on the link, through a junction
     object) is confirmed and split: 4a, fields unique together (`metadata:object:unique`), is
-    merged into main; 4b, the `through` setting, is in progress on
-    `feature/many_to_many_through`, in the worktree `../metadata-driven-m2m`.
+    merged into main; 4b, split in two by the user: 4b-1 (the `through` setting, reading, grid,
+    lifecycle) is merged into main; 4b-2 (writing the rows from the record
+    form) comes next, its to-do list at the end of the plan.
   - **The `file` field type**, plan in [file-type-plan.md](file-type-plan.md). Phases 1 (storage
     and `core.file`), 2 (the type in the record form) and 3 (download and thumbnails at
     `/files/{id}`) and 4 (grid: link, thumbnail, yes/no filter, export of the names) are merged

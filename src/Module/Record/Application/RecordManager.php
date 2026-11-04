@@ -259,7 +259,8 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     {
         foreach ($values as $name => $value) {
             $field = $object->field($name);
-            if (null !== $field->manyToMany()) {
+            $manyToMany = $field->manyToMany();
+            if (null !== $manyToMany && !$manyToMany->goesThrough()) {
                 $ids = \is_array($value) ? array_values(array_filter($value, \is_string(...))) : [];
                 $this->store->replaceLinks($object, $field, $id, $ids, $now);
             }
@@ -303,7 +304,12 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         $visited[$key] = true;
 
         $references = $this->metadata->incomingRelations($object->name);
-        $links = $this->metadata->incomingManyToMany($object->name);
+        // A many-to-many field going through a junction object has no rule of its own: the
+        // relation fields of the junction object, among $references, carry them.
+        $links = array_filter(
+            $this->metadata->incomingManyToMany($object->name),
+            static fn ($link): bool => !$link->settings->goesThrough(),
+        );
         foreach ($references as $reference) {
             if (OnDelete::Restrict === $reference->settings->onDelete
                 && 0 < $count = $this->store->countReferencing($reference->object, $reference->field, $id)) {
