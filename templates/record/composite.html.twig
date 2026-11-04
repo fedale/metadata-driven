@@ -7,6 +7,8 @@
     then each section of the root.
 #}
 {% set root = definition.root %}
+{# Only a new composite offers "Save and new": it saves, then opens an empty form again. #}
+{% set can_save_new = id is null and can_save %}
 {% set back = can_list ? path('record_index', {object: object.name}) : path('app_home') %}
 {% set parts = [{id: 'part-root', title: object.labelSingular, description: root.description, many: false}] %}
 {% for section in root.sections %}
@@ -19,7 +21,7 @@
     {{ form_start(form, {attr: {class: 'md-sheet', novalidate: 'novalidate', id: 'composite-form'}}) }}
         {{ include('record/_sheet_header.html.twig', {
             crumb: object.labelPlural, crumb_url: can_list ? back : null, title: definition.label,
-            back: back, can_save: can_save,
+            back: back, can_save: can_save, can_save_new: can_save_new,
         }) }}
 
         <div class="md-sheet__body" data-controller="form-index"
@@ -65,7 +67,7 @@
                 {% endfor %}
                 {% if form.sections is defined %}{% do form.sections.setRendered %}{% endif %}
 
-                {{ include('record/_sheet_footer.html.twig', {back: back, can_save: can_save}) }}
+                {{ include('record/_sheet_footer.html.twig', {back: back, can_save: can_save, can_save_new: can_save_new}) }}
             </div>
         </div>
     {{ form_end(form) }}

@@ -151,7 +151,8 @@ and grid views, more field types (password, url, tel, settings), composite forms
 fields, cascading relations, editing field settings from the admin, role changes signing the user
 out, translations, the form graphics from the mock, the service-field `ask: always|create` option,
 gridview-bundle fixes 1–8 (`../gridview-bundle/docs/internal/METADATA-DRIVEN-feedback.md`),
-rename/archive/restore/purge of objects and fields.
+rename/archive/restore/purge of objects and fields, **Save and new** on the new-record and
+new-composite pages.
 
 ## Open
 

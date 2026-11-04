@@ -94,7 +94,8 @@ or `grid`), and a name that is unique within its kind.
 - `/o/<object>/new` and `/o/<object>/<id>/edit` use the object's **default** form view.
 - `?view=<name>` uses another one, e.g. `/o/book/new?view=quick`. When no view has that name, the
   page answers 404. The query string stays on the form's URL, so the form is submitted with the
-  same view and shows its errors there.
+  same view and shows its errors there. **Save and new** on a new record reopens an empty form
+  in the same view.
 - When the object has no default view, the form shows the fields one after another, as before
   views existed.
 - The grid works the same way, with a path instead of `?view=` (see [Grid views](#grid-views)):
