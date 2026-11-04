@@ -3,9 +3,9 @@
 Status: reviewed by the user (type name, read-only inverse, delete rules decided). Phases 1–3
 merged into main. Phase 4 confirmed by the user and split: 4a (fields unique together) merged
 into main; 4b split again by the user's choice: 4b-1 (`through`: settings, reading, grid,
-lifecycle) merged into main; 4b-2 (writing the rows from the record form) done on
-`feature/many_to_many_through_rows`, awaiting review: see [Phase 4b-2, as
-delivered](#phase-4b-2-as-delivered). Last updated: 2026-11-04.
+lifecycle) merged into main; 4b-2 (writing the rows from the record form) merged into main: see
+[Phase 4b-2, as delivered](#phase-4b-2-as-delivered). Next, decided by the user: search on the
+linked labels. Last updated: 2026-11-04.
 
 ## Where we are
 
