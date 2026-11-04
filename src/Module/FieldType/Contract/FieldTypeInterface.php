@@ -105,6 +105,13 @@ interface FieldTypeInterface
     public function supportsUnique(): bool;
 
     /**
+     * Whether its values have an order and a text of their own, so a grid can sort on them,
+     * search them and join them in a virtual column: not a write-only value, nor a file (its
+     * column holds an id), nor a many-to-many field (a set of records).
+     */
+    public function isSortable(): bool;
+
+    /**
      * Converts a valid, denormalized value to what the column stores (e.g. a password hash).
      * Called after validation, so the constraints see the value as typed.
      *

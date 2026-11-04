@@ -1,7 +1,6 @@
 # Plan: the `file` field type
 
-Status: **phases 1 to 3 done** (branch `feature/file-field-type`), awaiting review before
-phase 4.
+Status: **phases 1 to 3 merged** into main; phase 4 on `feature/file-grid`, awaiting review.
 Discussed with the user on 2026-11-03.
 
 A field type that stores a file (an image, a PDF, any document) on a record: a product's photo,
@@ -13,8 +12,10 @@ files (see [blueprints-plan.md](blueprints-plan.md#seeds-with-files)).
 - **Production storage**: local disk or S3 (or compatible)? Flysystem lets us postpone it, but it
   changes what we test.
 - **Several files on one record**: a child object (`product_image` with a relation, a `file`
-  field and a `position`), or a `file` field with `multiple: true`? Recommended: the child
-  object, see [Several files](#several-files).
+  field and a `position`), or a `file` field with `multiple: true`? The user (2026-11-04) wants
+  to choose per field between one file and many. Proposal: both, a `multiple` setting fixed at
+  creation (a link table, as `many_to_many` has) for plain lists of files, and the child object
+  when each file carries data of its own (a caption, a kind). See [Several files](#several-files).
 
 ## Storage
 
@@ -154,7 +155,29 @@ the first version, if the child object proves heavy in practice.
    - Tests: `FileControllerTest` (functional; `disableReboot()`, since the memory storage lives
      in the container), `ThumbnailerTest` (integration).
    - Not done: EXIF orientation of photos (a phone picture may show rotated).
-4. **Grid and export**: `FileRenderer`, export as file name.
+4. **Grid and export** — done (branch `feature/file-grid`). As built:
+   - No named renderer: the cell needs the file's name and type, which a `CellRendererInterface`
+     does not get (it gets the value and its text). `FileCell` (Record UI) draws the default
+     cell of a file field, in the default grid and in a grid view column without a renderer: a
+     link to `/files/{id}` with the small thumbnail of an image (opens in a new tab) or a
+     document icon (downloaded), then the original name; `data-turbo="false"`. A renderer picked
+     in a grid view gets the name as its text.
+   - The grid source looks the files of the page up in one query through the File module,
+     `FileStorageInterface::findMany()`, instead of joining `core.file`, which the File module
+     owns. Rows carry `<field>__file` (a list, so `multiple` can reuse it) and the names under
+     `<field>__label`.
+   - Filter: the bundle's yes/no filter, `IS [NOT] NULL` on the column; any other operator is
+     refused by the source.
+   - `FieldTypeInterface::isSortable()` (and the catalog's): false for `file` and
+     `many_to_many`. The default grid, the grid view compiler (no `sortable: true`, no `sort`,
+     no `{token}` in a virtual column) and the source (sort, search, virtual columns) all use
+     it, in place of the many-to-many-only `storesColumn()` checks.
+   - The export writes the names: the cell's only text, once the tags are stripped.
+   - Tests: `FileGridTest` (functional: cell, filter, CSV export, grid view rules),
+     `FileStorageTest::testFindsSeveralFilesAtOnceSkippingUnknownIds`.
+   - Not done: each thumbnail is a request of its own, checked like any download
+     (`FileReferences::objectsHolding()`, one query per object with file fields); fine for a
+     page of 25, to watch on large grids.
 5. **GC**: `metadata:files:gc`, with tests on orphans and on archived fields.
 6. **Composite forms**: a file field in a section and in a `mode: many` row (the upload inputs
    are nested names).

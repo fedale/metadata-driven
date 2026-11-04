@@ -23,7 +23,7 @@ use Symfony\Component\Yaml\Yaml;
  *       - { field: email, label: E-mail }
  *       - { field: bio, renderer: truncate, options: { length: 60 } }
  *       - { field: active, hidden: true }        # off until the user turns it on
- *       - tags                                   # a many-to-many field: never sortable
+ *       - tags                                   # a many-to-many or file field: never sortable
  *       - { name: fullname, label: Full name, template: '{firstname} {lastname}' }
  *     sort: { lastname: asc }                    # optional: the initial order
  *     page_size: 50                              # optional
@@ -157,19 +157,20 @@ final class GridViewCompiler
 
                     return null;
                 }
-                if (!$object->field($source)->storesColumn()) {
-                    $this->errors[] = \sprintf('%s: {%s} is a many-to-many field: show it in a column of its own.', $path, $source);
+                // A many-to-many field (a set of records) or a file (an id) has no text to join.
+                if (!$this->fieldTypes->isSortable($object->field($source)->type)) {
+                    $this->errors[] = \sprintf('%s: {%s} is a %s field: show it in a column of its own.', $path, $source, str_replace('_', '-', $object->field($source)->type));
 
                     return null;
                 }
             }
             $key = $name;
         }
-        // The records a many-to-many field links to have no order of their own.
+        // The records a many-to-many field links to, and a file, have no order of their own.
         $sortable = $this->flag($path, $column, 'sortable', true);
-        if (\is_string($field) && !$object->field($field)->storesColumn()) {
+        if (\is_string($field) && !$this->fieldTypes->isSortable($object->field($field)->type)) {
             if (true === ($column['sortable'] ?? false)) {
-                $this->errors[] = \sprintf('%s: "%s" is a many-to-many field: it cannot be sorted.', $path, $field);
+                $this->errors[] = \sprintf('%s: "%s" is a %s field: it cannot be sorted.', $path, $field, str_replace('_', '-', $object->field($field)->type));
             }
             $sortable = false;
         }

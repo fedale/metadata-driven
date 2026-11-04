@@ -184,6 +184,18 @@ a:hover { color: var(--gv-color-link-hover); }
     background: var(--gv-color-bg-subtle);
 }
 
+/* A file in a grid cell: a thumbnail (images) or an icon, then the name. */
+.md-file-cell { display: inline-flex; align-items: center; gap: .4rem; max-inline-size: 100%; }
+.md-file-cell__thumbnail {
+    inline-size: auto;
+    max-inline-size: 2.5rem;
+    max-block-size: 2.5rem;
+    border-radius: var(--gv-radius);
+    background: var(--gv-color-bg-subtle);
+}
+.md-file-cell__icon { flex: none; color: var(--gv-color-text-muted); }
+.md-file-cell__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* ── Form sheets: a header with the actions, an index on the side, numbered cards ── */
 
 .md-sheet__header {

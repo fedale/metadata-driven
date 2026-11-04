@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Module\Record\Infrastructure\Grid;
 
+use App\Module\FieldType\Contract\Dto\WidgetKind;
+use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
+use App\Module\File\Contract\FileStorageInterface;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
@@ -48,6 +51,8 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
         private readonly RecordTable $table,
         private readonly SearchConfigurationInterface $search,
         private readonly RecordLabels $labels,
+        private readonly FieldTypeRegistryInterface $fieldTypes,
+        private readonly FileStorageInterface $files,
     ) {
     }
 
@@ -107,6 +112,7 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
         // A unique tie-breaker keeps the pages stable whatever the user sorts on.
         $qb->addOrderBy($this->table->column('id', self::ALIAS), 'DESC');
 
+        $page = [];
         foreach ($qb->executeQuery()->iterateAssociative() as $row) {
             $links = [];
             foreach ($linkFields as $fieldName) {
@@ -119,9 +125,52 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
                 $label = $row[$fieldName.self::LABEL_SUFFIX] ?? null;
                 $values[$fieldName.self::LABEL_SUFFIX] = \is_string($label) ? $label : null;
             }
-
-            yield $values;
+            $page[] = $values;
         }
+
+        yield from $this->withFiles($object, $page);
+    }
+
+    /**
+     * The files of a page of rows, looked up in one query through the File module, which owns
+     * core.file: under "<field>__file" and their names under "<field>__label".
+     *
+     * @param list<array<string, mixed>> $rows
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function withFiles(ObjectDefinitionDto $object, array $rows): array
+    {
+        $fileFields = array_keys(array_filter($object->fields, $this->isFile(...)));
+        if ([] === $fileFields || [] === $rows) {
+            return $rows;
+        }
+        $ids = [];
+        foreach ($rows as $row) {
+            foreach ($fileFields as $fieldName) {
+                if (\is_string($row[$fieldName] ?? null)) {
+                    $ids[] = $row[$fieldName];
+                }
+            }
+        }
+        $files = $this->files->findMany(array_values(array_unique($ids)));
+
+        foreach ($rows as $index => $row) {
+            foreach ($fileFields as $fieldName) {
+                $id = $row[$fieldName] ?? null;
+                $file = \is_string($id) ? ($files[strtolower($id)] ?? null) : null;
+                $held = null === $file ? [] : [['id' => $file->id, 'name' => $file->originalName, 'image' => $file->isImage()]];
+                $rows[$index][$fieldName.self::FILE_SUFFIX] = $held;
+                $rows[$index][$fieldName.self::LABEL_SUFFIX] = [] === $held ? null : implode(self::LINK_LABEL_SEPARATOR, array_column($held, 'name'));
+            }
+        }
+
+        return $rows;
+    }
+
+    private function isFile(FieldDefinitionDto $field): bool
+    {
+        return WidgetKind::File === $this->fieldTypes->get($field->type)->widget($field->settings)->kind;
     }
 
     /**
@@ -218,6 +267,10 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
                 $this->applyLinkCriterion($qb, $object, $field, $criterion, 'c'.$index);
                 continue;
             }
+            if ($this->isFile($field)) {
+                $this->applyFileCriterion($qb, $object, $field, $criterion);
+                continue;
+            }
             $this->applyCriterion($qb, $field, $criterion, 'c'.$index);
         }
 
@@ -299,6 +352,18 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
             $links->targetColumn,
             $param,
         ))->setParameter($param, array_values(array_unique($ids)), ArrayParameterType::STRING);
+    }
+
+    /**
+     * A file field matches the records that hold a file (true) or hold none (false): its column
+     * is the id of a file, with nothing to compare but its presence.
+     */
+    private function applyFileCriterion(QueryBuilder $qb, ObjectDefinitionDto $object, FieldDefinitionDto $field, FilterCriterion $criterion): void
+    {
+        if (FilterOperator::Eq !== $criterion->operator || !\is_bool($criterion->value)) {
+            throw new \InvalidArgumentException(\sprintf('Field "%s" of "%s" is a file: it is filtered on whether it holds one (true or false), not with "%s".', $field->name, $object->name, $criterion->operator->value));
+        }
+        $qb->andWhere(\sprintf('%s IS %sNULL', $this->table->column($field->columnName, self::ALIAS), $criterion->value ? 'NOT ' : ''));
     }
 
     private function applyCriterion(QueryBuilder $qb, FieldDefinitionDto $field, FilterCriterion $criterion, string $param): void
@@ -415,13 +480,14 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
 
     /**
      * A readable field with a column of its own, for a search, a virtual column or a sort: a
-     * many-to-many field has a set of linked records instead, with no single text or order.
+     * many-to-many field has a set of linked records instead, with no single text or order; the
+     * column of a file field holds an id, whose text and order mean nothing.
      */
     private function columnField(ObjectDefinitionDto $object, string $attribute): FieldDefinitionDto
     {
         $field = $this->readableField($object, $attribute);
-        if (!$field->storesColumn()) {
-            throw new \InvalidArgumentException(\sprintf('Field "%s" of "%s" is many-to-many: it cannot be searched, sorted on or joined in a virtual column.', $attribute, $object->name));
+        if (!$this->fieldTypes->get($field->type)->isSortable()) {
+            throw new \InvalidArgumentException(\sprintf('Field "%s" of "%s" is %s: it cannot be searched, sorted on or joined in a virtual column.', $attribute, $object->name, $field->storesColumn() ? 'a '.$field->type : 'many-to-many'));
         }
 
         return $field;

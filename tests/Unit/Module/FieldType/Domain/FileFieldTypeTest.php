@@ -138,6 +138,11 @@ final class FileFieldTypeTest extends TestCase
                 return FileFieldTypeTest::STORED_ID === $id ? self::stored('manual.pdf') : null;
             }
 
+            public function findMany(array $ids): array
+            {
+                throw new \LogicException('Not listed in these tests.');
+            }
+
             public function readStream(string $id)
             {
                 throw new \LogicException('Not read in these tests.');

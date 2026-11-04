@@ -31,6 +31,15 @@ interface FileStorageInterface
     public function find(string $id): ?StoredFile;
 
     /**
+     * Several files in one query, for a page of records.
+     *
+     * @param list<string> $ids malformed and unknown ids are skipped
+     *
+     * @return array<string, StoredFile> by id, as the ids were given (lowercase RFC 4122)
+     */
+    public function findMany(array $ids): array;
+
+    /**
      * @return resource the bytes of the file, to be closed by the caller
      *
      * @throws FileNotFound unknown id, or bytes missing from the storage

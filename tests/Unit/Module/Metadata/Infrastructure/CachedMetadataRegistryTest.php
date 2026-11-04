@@ -143,6 +143,11 @@ final class CachedMetadataRegistryTest extends TestCase
                 return true;
             }
 
+            public function isSortable(string $type): bool
+            {
+                return true;
+            }
+
             public function resolveSettings(string $type, array $settings): array
             {
                 return $settings + $this->defaultSettings($type);

@@ -68,6 +68,22 @@ final class FlysystemFileStorage implements FileStorageInterface
         return null !== $file ? self::toDto($file) : null;
     }
 
+    public function findMany(array $ids): array
+    {
+        $uuids = [];
+        foreach ($ids as $id) {
+            if (Uuid::isValid($id)) {
+                $uuids[strtolower($id)] = Uuid::fromString($id);
+            }
+        }
+        $found = [];
+        foreach ($this->files->findMany(array_values($uuids)) as $file) {
+            $found[$file->getId()->toRfc4122()] = self::toDto($file);
+        }
+
+        return array_intersect_key($found, $uuids);
+    }
+
     public function readStream(string $id)
     {
         $file = (Uuid::isValid($id) ? $this->files->find(Uuid::fromString($id)) : null) ?? throw FileNotFound::withId($id);

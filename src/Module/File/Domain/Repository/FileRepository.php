@@ -12,4 +12,11 @@ interface FileRepository
     public function save(File $file): void;
 
     public function find(Uuid $id): ?File;
+
+    /**
+     * @param list<Uuid> $ids
+     *
+     * @return list<File> the files found, in no particular order
+     */
+    public function findMany(array $ids): array;
 }
