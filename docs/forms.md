@@ -33,7 +33,8 @@ The page is a sheet:
 
 - a **header** that stays in view: the plural of the root object (a link to its records), the
   title of the form, **Cancel** (back to the records) and **Save**, repeated at the foot of the
-  form;
+  form. A new form also has **Save and new**, between the two: it saves, then opens an empty
+  form again. Enter in a field is a plain **Save**;
 - numbered **cards**: first the fields of the root, titled with the singular of the root object
   (e.g. "Account"), then one card per section of the root, each with its `description` under
   the title if it has one. Deeper sections are framed groups inside their card;
@@ -44,7 +45,7 @@ The page is a sheet:
 - the rows of a section are numbered ("01 Qualifications"), with **Remove** on each and
   **+ <section>** below.
 
-The texts of the page itself (Save, Cancel, Required field...) are in the user's language too
+The texts of the page itself (Save, Save and new, Cancel, Required field...) are in the user's language too
 (see [Languages](i18n.md#the-texts-of-the-application)).
 
 ## The model behind it

@@ -155,6 +155,11 @@ final class RecordController extends AbstractController
                 $this->records->create(new RecordInput($definition->name, $this->submitted($form)));
                 $this->addFlash('success', $this->translator->trans('flash.created', ['%object%' => $definition->labelSingular]));
 
+                // "Save and new" (the `_action` of its button) opens an empty form again, in the same view.
+                if ('save_new' === $request->request->get('_action')) {
+                    return $this->redirectToRoute('record_new', array_filter(['object' => $definition->name, 'view' => $request->query->getString('view')]), Response::HTTP_SEE_OTHER);
+                }
+
                 return $this->redirectToRoute('record_index', ['object' => $definition->name], Response::HTTP_SEE_OTHER);
             } catch (RecordValidationFailed $failure) {
                 $this->forms->addErrors($form, $failure);
