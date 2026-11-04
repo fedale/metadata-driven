@@ -29,7 +29,7 @@
 {%- block junction_rows_widget -%}
     {%- set next = 0 -%}
     {%- for key, row in form -%}{%- set next = max(next, key + 1) -%}{%- endfor -%}
-    <div class="gv-collection" data-controller="gridview-collection"
+    <div class="gv-collection md-junction-rows" data-controller="gridview-collection"
          {%- if prototype is defined %} data-gridview-collection-prototype-value="{{ form_widget(prototype)|e('html_attr') }}"{% endif %}
          data-gridview-collection-prototype-name-value="{{ prototype_name }}"
          data-gridview-collection-index-value="{{ next }}"

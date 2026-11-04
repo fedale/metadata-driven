@@ -276,6 +276,21 @@ a:hover { color: var(--gv-color-link-hover); }
 .md-row__remove { border-color: transparent; background: transparent; color: var(--gv-color-text-muted); }
 .md-row__remove:hover { color: var(--gv-danger-color); background: transparent; }
 .md-row__body { padding: 1rem; }
+
+/* The rows of a many-to-many field going through a junction object (junction_rows_widget): the
+   first row shows the labels, as the headings of the columns below it (a select has no
+   placeholder to name it); the other rows keep them for screen readers, as the bundle does. */
+.md-junction-rows .gv-collection__row--inline:first-child .gv-form-label {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+}
+.md-junction-rows .gv-collection__row--inline:first-child .gv-collection__remove { align-self: flex-end; }
+/* One width for every field, whatever it holds, so that the columns line up under the labels. */
+.md-junction-rows .gv-collection__row--inline .gv-form-row { flex: 0 0 13rem; min-width: 0; }
 .md-sheet .gv-collection__add { border-style: dashed; color: var(--gv-color-link); font-weight: 600; }
 
 @media (max-width: 60rem) {

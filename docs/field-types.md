@@ -493,7 +493,8 @@ symfony console metadata:field:create person tags many_to_many Tags \
   read by itself (its page, a composite form, the record a write returns) also carries its
   **rows**: the junction's live records, oldest first (`RecordOutput::rows('tags')`).
 - **The record form edits the rows inline**, one per line: the target (an autocomplete), then the
-  junction's other fields (`role`), with "+" to add a row and "×" to remove one; a row added and
+  junction's other fields (`role`), in columns headed by their labels, with "+" to add a row and
+  "×" to remove one; a row added and
   left blank is not a link. The same rows appear where a composite form shows the field.
 - **Writing the field** takes the rows, each a map of the junction's fields with the `id` of its
   junction record when it has one; the junction's field pointing at the record is never given, the
