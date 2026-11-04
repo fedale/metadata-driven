@@ -11,11 +11,9 @@ files (see [blueprints-plan.md](blueprints-plan.md#seeds-with-files)).
 
 - **Production storage**: local disk or S3 (or compatible)? Flysystem lets us postpone it, but it
   changes what we test.
-- **Several files on one record**: a child object (`product_image` with a relation, a `file`
-  field and a `position`), or a `file` field with `multiple: true`? The user (2026-11-04) wants
-  to choose per field between one file and many. Proposal: both, a `multiple` setting fixed at
-  creation (a link table, as `many_to_many` has) for plain lists of files, and the child object
-  when each file carries data of its own (a caption, a kind). See [Several files](#several-files).
+- **Several files on one record** — decided by the user on 2026-11-04: a `multiple: true` setting
+  with a link table, see [Several files](#several-files). The child object stays the way to go
+  when each file carries data of its own (a caption, a kind).
 
 ## Storage
 
@@ -102,11 +100,71 @@ DBAL). `FieldType` and `Record` only see its `Contract`, as Deptrac requires.
 
 ## Several files
 
-A gallery, attachments: a child object, e.g. `product_image` with `product` (relation, cascade),
-`image` (file, `image: true`) and `position` (number). It fits what exists already: a composite
-form with a `mode: many` section edits it, and the grid of the child lists it. A `multiple: true`
-setting would need a join table or a JSONB array, and its own form widget; to be decided after
-the first version, if the child object proves heavy in practice.
+Decided (2026-11-04): each `file` field chooses between one file and many, with a `multiple`
+setting. A gallery or a list of attachments is a `file` field with `multiple: true`; when every
+file needs data of its own (a caption, a kind, a date), a child object (`product_image` with a
+relation, a `file` field and a `position`) remains the tool, edited by a `mode: many` section of a
+composite form.
+
+### Settings
+
+| Setting | Default | Description |
+|---|---|---|
+| `multiple` | `false` | `true`: the field holds an ordered list of files. **Fixed at creation**, like the column it replaces |
+| `max` | none | With `multiple`: the most files the field holds (1–100) |
+
+`accept`, `maxSize` and `image` apply to every file of the list. `required` means at least one
+file. A `file` field with `multiple` cannot be unique, the label of the records, searched,
+sorted, nor the deciding field of a condition (as today).
+
+### Storage
+
+No column on the object table: `FieldDefinitionDto::storesColumn()` is false, as for
+`many_to_many`, and the modules that skip columns already skip it. A link table built, renamed,
+archived and dropped by the Schema module with the object and the field, as the `many_to_many`
+ones are:
+
+| Column | Type | Notes |
+|---|---|---|
+| `record_id` | uuid | FK to the object table, `ON DELETE CASCADE` (a purge only: records are soft-deleted) |
+| `file_id` | uuid | FK to `core.file(id)`, `ON DELETE RESTRICT`, indexed (access checks, GC) |
+| `position` | int | 0, 1, 2… in the order the user chose |
+
+Primary key `(record_id, file_id)`: the same file twice in one list makes no sense (the same
+bytes uploaded twice are two rows of `core.file`, so two different ids anyway). The table is
+named by `DataSchema::linkTable()`, so `storesColumn()` / link table code paths are shared;
+whether `FieldDefinitionDto` needs a `linkKind()` (records or files) is decided in phase 5.
+
+### Value
+
+- Read: a list of file ids, in order (empty list, never null).
+- Write: a list whose items are a `FileUpload` (new) or the id of a file **the record already
+  holds** (kept, possibly moved). An id the record does not hold is refused: a request must not
+  attach somebody else's file by its id. Anything left out of the list is unlinked; the file
+  itself stays for the GC.
+- `toStorage()` stores the uploads; the Record store replaces the rows of the record in the
+  link table in one statement set, inside the record's transaction (as `replaceLinks()` does).
+- Validation: `NewFile` on each upload, `max` on the count, at least one when required.
+
+### Form
+
+The current files as a list (thumbnail or icon, name, size, a link), each with *Remove* and
+handles to reorder (up/down buttons, no drag-and-drop library); one `<input type="file"
+multiple>` adding files at the end. A Stimulus controller keeps the order in hidden inputs; the
+kept ids come from the form options, never from the request (as for one file). Generic parts
+(the list, the reorder buttons) go to gridview-bundle with the `gv-` prefix if they prove
+reusable, otherwise `md-file-list` in `app.css`.
+
+### Grid, export, access
+
+- The grid source selects the ids from the link table, in order (a correlated subquery, as for
+  `many_to_many`), then looks the files of the page up with the one `findMany()` call it makes
+  already; `<field>__file` is the list that `FileCell` draws (built for it in phase 4). The
+  yes/no filter becomes `EXISTS` on the link table.
+- The export writes the names joined by ", ".
+- `FileReferences::objectsHolding()` also searches the link tables, so `/files/{id}` serves a
+  file held only through a list.
+- The GC (its phase, below) treats the link tables as references too.
 
 ## Phases
 
@@ -178,8 +236,17 @@ the first version, if the child object proves heavy in practice.
    - Not done: each thumbnail is a request of its own, checked like any download
      (`FileReferences::objectsHolding()`, one query per object with file fields); fine for a
      page of 25, to watch on large grids.
-5. **GC**: `metadata:files:gc`, with tests on orphans and on archived fields.
-6. **Composite forms**: a file field in a section and in a `mode: many` row (the upload inputs
+5. **Several files, storage**: the `multiple` and `max` settings (fixed, checked), the link
+   table in the Schema module (create, rename, archive, purge with the field and the object),
+   `storesColumn()` false, tests as for the `many_to_many` link tables.
+6. **Several files, records and form**: read and write the list (`FileUpload` or a held id),
+   validation, the Record store, the form widget and its Stimulus controller, `/files/{id}`
+   access through the link tables.
+7. **Several files, grid and export**: the source subquery, the `EXISTS` filter, the export
+   of the names, grid views.
+8. **GC**: `metadata:files:gc`, with tests on orphans and on archived fields; columns and link
+   tables both count as references. After 5–7, so it is written once for both.
+9. **Composite forms**: a file field in a section and in a `mode: many` row (the upload inputs
    are nested names).
 
 Docs in the same branches: `field-types.md` (the eleventh type), `views.md` (the renderer),
