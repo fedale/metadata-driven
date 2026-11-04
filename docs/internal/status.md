@@ -99,7 +99,10 @@ Things that are not obvious from a single file, and that are easy to break.
   delete rules. A `file` field with `multiple: true` (`FileListSettings`, `fileList()`) has no
   column either, and a link table of its own (`target_id` → `core.file`, plus `position`):
   code handling links must tell the two apart with `manyToMany()` / `fileList()`, never with
-  `!storesColumn()` alone.
+  `!storesColumn()` alone. A file list is read and written by the Record store too
+  (`replaceFiles()`, read with the record, in `position` order) through
+  `RecordTable::fileListTable()`, not `LinkSource`; its ids must be files the record already
+  holds (`RecordManager::checkHeldFiles()`), uploads aside.
   Cascading selects use `dependsOn`/`dependsVia`; the lookup takes
   `filter[<field>]=<id>` (empty means no results) and the validator checks parent membership.
 - **System columns** (`ObjectDefinition::SYSTEM_COLUMNS`, built by `TableDefinitionFactory`):
@@ -136,8 +139,9 @@ Things that are not obvious from a single file, and that are easy to break.
   a transaction rolls back) for the future GC, never a record pointing at nothing. The grid source
   looks the files of a page up in one `FileStorageInterface::findMany()` call (core.file belongs
   to the File module: no SQL join on it from Record) and hands each row `<field>__file`, a list
-  of `{id, name, image}` (ready for several files per field), and the names under
-  `<field>__label`; `FileCell` (Record UI) draws them. `FieldTypeInterface::isSortable()` (false
+  of `{id, name, image}` (every file of a file list, in order: their ids come from a correlated
+  subquery on the list's table), and the names, joined by ", ", under `<field>__label`;
+  `FileCell` (Record UI) draws them. `FieldTypeInterface::isSortable()` (false
   for `file` and `many_to_many`) decides sorting, searching and virtual columns, in the default
   grid, the grid view compiler and the grid source alike.
 - **Security forms**: the stateless CSRF token input needs `data-controller="csrf-protection"` to
@@ -172,8 +176,9 @@ new-composite pages.
     and `core.file`), 2 (the type in the record form) and 3 (download and thumbnails at
     `/files/{id}`) and 4 (grid: link, thumbnail, yes/no filter, export of the names) are merged
     into main. Several files per field: decided by the user (2026-11-04), a `multiple: true`
-    setting with a link table (phases 5–7 of the plan), then the GC (phase 8). Phase 5
-    (storage: settings, link table) is merged into main; next is phase 6 (records and form). Open decision in the plan: production storage.
+    setting with a link table (phases 5–7 of the plan), then the GC (phase 8). Phases 5
+    (storage: settings, link table), 6 (records and form) and 7 (grid and export) are merged
+    into main; next is phase 8 (GC). Open decision in the plan: production storage.
 - **Blueprints — plan under review, not started**: [blueprints-plan.md](blueprints-plan.md)
   (packaged, versioned models: a canonical format for every item, install, three-way upgrade,
   seeds, online indexes, export). Its open decisions are listed at the top: the name, local

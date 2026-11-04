@@ -155,6 +155,39 @@ final class DbalRecordStore implements RecordStore
         );
     }
 
+    public function replaceFiles(ObjectDefinitionDto $object, FieldDefinitionDto $field, string $recordId, array $fileIds): void
+    {
+        $table = $this->table->fileListTable($object, $field);
+        // Rewritten whole: a move changes the positions of every file between the two places.
+        $this->connection->executeStatement(
+            \sprintf('DELETE FROM %s WHERE %s = ?', $table, $this->table->quote('record_id')),
+            [$recordId],
+            [Types::GUID],
+        );
+        if ([] === $fileIds) {
+            return;
+        }
+
+        $params = [];
+        $types = [];
+        foreach ($fileIds as $position => $fileId) {
+            array_push($params, $recordId, $fileId, $position);
+            array_push($types, Types::GUID, Types::GUID, Types::INTEGER);
+        }
+        $this->connection->executeStatement(
+            \sprintf(
+                'INSERT INTO %s (%s, %s, %s) VALUES %s',
+                $table,
+                $this->table->quote('record_id'),
+                $this->table->quote('target_id'),
+                $this->table->quote('position'),
+                implode(', ', array_fill(0, \count($fileIds), '(?, ?, ?)')),
+            ),
+            $params,
+            $types,
+        );
+    }
+
     public function referencingIds(ObjectDefinitionDto $object, FieldDefinitionDto $field, string $targetId, ?int $limit = null): array
     {
         $sql = \sprintf(
@@ -252,9 +285,10 @@ final class DbalRecordStore implements RecordStore
     }
 
     /**
-     * The live linked ids of every many-to-many field of some records, oldest link first. The
-     * delete rules remove the links to a deleted record (or refuse the deletion); one left over
-     * all the same is not shown.
+     * The live linked ids of every many-to-many field of some records, oldest link first, and
+     * the file ids of every file list, in their order. The delete rules remove the links to a
+     * deleted record (or refuse the deletion); one left over all the same is not shown. A
+     * listed file always exists: its foreign key restricts deleting it.
      *
      * @param list<string> $recordIds
      *
@@ -267,6 +301,25 @@ final class DbalRecordStore implements RecordStore
             return $result;
         }
         foreach ($object->fields as $name => $field) {
+            if (null !== $field->fileList()) {
+                $rows = $this->connection->fetchAllNumeric(
+                    \sprintf(
+                        'SELECT %1$s, %2$s FROM %3$s WHERE %1$s IN (?) ORDER BY %1$s, %4$s',
+                        $this->table->quote('record_id'),
+                        $this->table->quote('target_id'),
+                        $this->table->fileListTable($object, $field),
+                        $this->table->quote('position'),
+                    ),
+                    [$recordIds],
+                    [ArrayParameterType::STRING],
+                );
+                foreach ($rows as [$recordId, $fileId]) {
+                    if (\is_string($recordId) && \is_string($fileId)) {
+                        $result[$recordId][$name][] = $fileId;
+                    }
+                }
+                continue;
+            }
             if (null === $field->manyToMany()) {
                 continue;
             }

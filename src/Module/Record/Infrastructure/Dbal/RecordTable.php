@@ -56,6 +56,20 @@ final class RecordTable
         );
     }
 
+    /**
+     * The link table of a file field holding several files (record_id, target_id, position),
+     * quoted and qualified. Not a LinkSource: its targets are files of core.file, which belongs
+     * to the File module, not records to join.
+     */
+    public function fileListTable(ObjectDefinitionDto $object, FieldDefinitionDto $field): string
+    {
+        if (null === $field->fileList()) {
+            throw new \LogicException(\sprintf('Field "%s.%s" does not hold several files: it has no file list.', $object->name, $field->name));
+        }
+
+        return $this->quote(DataSchema::NAME).'.'.$this->quote(DataSchema::linkTable($object->name, $field->columnName));
+    }
+
     public function table(ObjectDefinitionDto $object): string
     {
         return $this->quote(DataSchema::NAME).'.'.$this->quote($object->tableName);
@@ -126,9 +140,10 @@ final class RecordTable
 
     /**
      * @param array<string, mixed>        $row   as returned by a query on selectList()
-     * @param array<string, list<string>> $links the linked ids of the many-to-many fields, by field
-     *                                           name: they are not part of the row; a field left
-     *                                           out links to nothing
+     * @param array<string, list<string>> $links the linked ids of the many-to-many fields and the
+     *                                           file ids of the file lists, by field name: they
+     *                                           are not part of the row; a field left out holds
+     *                                           an empty list
      */
     public function hydrate(ObjectDefinitionDto $object, array $row, array $links = []): RecordOutput
     {

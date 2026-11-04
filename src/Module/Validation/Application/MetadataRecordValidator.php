@@ -42,7 +42,9 @@ final class MetadataRecordValidator implements RecordValidatorInterface
     {
         $errors = [];
         foreach ($this->validator->validate($values, $this->buildConstraint($object, $values)) as $violation) {
-            $errors[trim($violation->getPropertyPath(), '[]')][] = (string) $violation->getMessage();
+            // "[gallery][2]": an item of a list (a file of several) reports on its field.
+            $path = $violation->getPropertyPath();
+            $errors[1 === preg_match('/^\[([^\]]*)\]/', $path, $match) ? $match[1] : $path][] = (string) $violation->getMessage();
         }
 
         foreach ($object->fields as $name => $field) {

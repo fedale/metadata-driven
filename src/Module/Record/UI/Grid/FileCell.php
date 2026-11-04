@@ -11,7 +11,8 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * The cell of a file field: each file it holds as a link to /files/{id}, with the small
  * thumbnail of an image or an icon for anything else, and the original name.
  *
- * The name is the only text of the cell: an export, which strips the tags, writes the names.
+ * The names, with ", " between them, are the only text of the cell: an export, which strips
+ * the tags, writes them.
  * Every file is served by FileController, which checks the user's permissions again.
  */
 final class FileCell
@@ -42,7 +43,9 @@ final class FileCell
             $links[] = $this->link($file['id'], $file['name'], true === ($file['image'] ?? false));
         }
 
-        return implode(' ', $links);
+        // A text separator, not a space: the export reads "a.pdf, b.pdf", as the grid views'
+        // renderers do (RecordGridSourceInterface::LABEL_SUFFIX).
+        return implode('<span class="md-file-cell__separator">, </span>', $links);
     }
 
     private function link(string $id, string $name, bool $image): string

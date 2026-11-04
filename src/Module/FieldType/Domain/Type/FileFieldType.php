@@ -14,12 +14,19 @@ use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\Exception\InvalidFieldValue;
 use App\Module\FieldType\Domain\Constraint\NewFile;
 use App\Module\File\Contract\FileStorageInterface;
+use App\Module\Metadata\Contract\Dto\FileListSettings;
+use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * A document or an image. The column holds the id of a file of core.file; the bytes are in the
  * file storage. A value is either a new file (a FileUpload, checked and then stored) or the id
  * of the file already there (kept as it is).
+ *
+ * With "multiple" the field holds an ordered list of files instead, in a link table of its own
+ * (FileListSettings): its value is a list whose items are a FileUpload or an id, and an empty
+ * list is null, so that "required" means at least one file. Whether an id is one the record
+ * holds is for the Record module to check: the type does not know the record.
  */
 final class FileFieldType extends AbstractFieldType
 {
@@ -108,8 +115,14 @@ final class FileFieldType extends AbstractFieldType
         return new ColumnSpec(ColumnType::Guid, referencesCoreTable: 'file');
     }
 
-    public function denormalize(mixed $value, array $settings): FileUpload|string|null
+    /**
+     * @return FileUpload|string|non-empty-list<FileUpload|string>|null
+     */
+    public function denormalize(mixed $value, array $settings): FileUpload|string|array|null
     {
+        if (null !== FileListSettings::fromSettings($settings)) {
+            return self::denormalizeList($value);
+        }
         if (null === $value || '' === $value) {
             return null;
         }
@@ -133,7 +146,18 @@ final class FileFieldType extends AbstractFieldType
             ? new Assert\Image(maxSize: $maxSize, binaryFormat: false, mimeTypes: [] !== $types ? $types : ['image/*'])
             : new Assert\File(maxSize: $maxSize, binaryFormat: false, mimeTypes: [] !== $types ? $types : null);
 
-        return [new NewFile([$rule])];
+        $list = FileListSettings::fromSettings($settings);
+        if (null === $list) {
+            return [new NewFile([$rule])];
+        }
+
+        // Each upload of the list is checked as the one file of a field would be.
+        $constraints = [new Assert\All([new NewFile([$rule])])];
+        if (null !== $list->max) {
+            $constraints[] = new Assert\Count(max: $list->max, maxMessage: 'Keep at most {{ limit }} files.');
+        }
+
+        return $constraints;
     }
 
     public function widget(array $settings): Widget
@@ -161,13 +185,67 @@ final class FileFieldType extends AbstractFieldType
         return false;
     }
 
-    public function toStorage(mixed $value, array $settings): ?string
+    /**
+     * @return string|list<string>|null the id of the file, or the ids of the list in order (an
+     *                                  empty list for none)
+     */
+    public function toStorage(mixed $value, array $settings): string|array|null
+    {
+        if (null !== FileListSettings::fromSettings($settings)) {
+            $ids = [];
+            foreach (\is_array($value) ? $value : [] as $item) {
+                $id = $this->storedId($item);
+                if (null !== $id) {
+                    $ids[] = $id;
+                }
+            }
+
+            return $ids;
+        }
+
+        return $this->storedId($value);
+    }
+
+    private function storedId(mixed $value): ?string
     {
         if ($value instanceof FileUpload) {
             return $this->files->store($value->path, $value->originalName)->id;
         }
 
         return \is_string($value) ? $value : null;
+    }
+
+    /**
+     * The items of a list in order, the ids lowercase and once each; an empty list is null.
+     *
+     * @return non-empty-list<FileUpload|string>|null
+     */
+    private static function denormalizeList(mixed $value): ?array
+    {
+        if (null === $value || '' === $value) {
+            return null;
+        }
+        $items = [];
+        $ids = [];
+        foreach (\is_array($value) ? $value : [$value] as $item) {
+            if ($item instanceof FileUpload) {
+                $items[] = $item;
+                continue;
+            }
+            if (null === $item || '' === $item) {
+                continue;
+            }
+            if (!\is_string($item) || !Uuid::isValid($item)) {
+                throw new InvalidFieldValue('This value should be a list of files.');
+            }
+            $id = strtolower($item);
+            if (!isset($ids[$id])) {
+                $ids[$id] = true;
+                $items[] = $id;
+            }
+        }
+
+        return [] === $items ? null : $items;
     }
 
     /**

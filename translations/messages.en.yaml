@@ -36,6 +36,11 @@ form:
     file_max_size: 'Up to %size% MB.'
     file_replace: Choose a file to replace the current one.
     file_remove: Remove the file
+    file_list: 'New files go to the end of the list, up to %size% MB each.'
+    file_list_max: 'Up to %max% files, %size% MB each; new files go to the end of the list.'
+    file_list_up: 'Move %name% up'
+    file_list_down: 'Move %name% down'
+    file_list_remove: 'Remove %name%'
     through_links: 'Added and removed as records of %object%.'
     repeat: 'Repeat %label%'
     required_note: Required field

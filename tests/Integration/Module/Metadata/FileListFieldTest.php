@@ -136,7 +136,7 @@ final class FileListFieldTest extends KernelTestCase
         self::assertFalse($this->tableExists('c_product'));
     }
 
-    public function testRecordsAndGridsReadAnEmptyListUntilTheFilesCanBeWritten(): void
+    public function testARecordWithoutFilesReadsAnEmptyList(): void
     {
         $this->createGallery(['multiple' => true]);
         $record = self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('product', ['name' => 'Oslo chair']));

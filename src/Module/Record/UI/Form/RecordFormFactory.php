@@ -95,10 +95,6 @@ final class RecordFormFactory
         $relations = [];
         foreach ($fieldNames as $name) {
             $field = $object->field($name);
-            // Several files get their control in phase 6 of the plan.
-            if (null !== $field->fileList()) {
-                continue;
-            }
             $requiredHere = \in_array($name, $required, true);
             if ($requiredHere) {
                 $field = new FieldDefinitionDto($field->id, $field->name, $field->columnName, $field->type, $field->label, true, $field->isUnique, $field->settings, $field->position, $field->isSystem);
@@ -309,7 +305,7 @@ final class RecordFormFactory
     }
 
     /**
-     * @return array{class-string<FormType|TextType|TextareaType|IntegerType|NumberType|CheckboxType|DateType|DateTimeType|EmailType|ChoiceType|PasswordType|RepeatedType|UrlType|TelType|RecordFileType>, array<string, mixed>}
+     * @return array{class-string<FormType|TextType|TextareaType|IntegerType|NumberType|CheckboxType|DateType|DateTimeType|EmailType|ChoiceType|PasswordType|RepeatedType|UrlType|TelType|RecordFileType|RecordFileListType>, array<string, mixed>}
      */
     private function control(FieldDefinitionDto $field, Widget $widget, mixed $value, bool $isNew, mixed $parentValue = null): array
     {
@@ -358,12 +354,29 @@ final class RecordFormFactory
 
     /**
      * The current file is looked up here, from the stored value: the form never takes a file id
-     * from the request.
+     * from the request. The same for the current files of a file list, in their order.
      *
-     * @return array{class-string<RecordFileType>, array<string, mixed>}
+     * @return array{class-string<RecordFileType|RecordFileListType>, array<string, mixed>}
      */
     private function file(FieldDefinitionDto $field, Widget $widget, mixed $value): array
     {
+        $list = $field->fileList();
+        if (null !== $list) {
+            $ids = \is_array($value) ? array_values(array_filter($value, \is_string(...))) : [];
+            $found = [] !== $ids ? $this->files->findMany($ids) : [];
+            $current = array_values(array_filter(array_map(static fn (string $id) => $found[strtolower($id)] ?? null, $ids)));
+
+            return [RecordFileListType::class, [
+                'required' => $field->isRequired,
+                'current' => $current,
+                'accept' => \is_string($widget->options['accept'] ?? null) ? $widget->options['accept'] : '',
+                'help' => null !== $list->max ? 'form.file_list_max' : 'form.file_list',
+                'help_translation_parameters' => [
+                    '%size%' => \is_int($widget->options['maxSize'] ?? null) ? $widget->options['maxSize'] : 0,
+                    '%max%' => $list->max ?? 0,
+                ],
+            ]];
+        }
         $current = \is_string($value) ? $this->files->find($value) : null;
 
         return [RecordFileType::class, [
