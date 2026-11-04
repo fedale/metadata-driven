@@ -10,9 +10,9 @@ namespace App\Module\Record\UI\Form;
  */
 enum JunctionAccess
 {
-    /** Read, create, update and delete: the rows, editable. */
+    /** Read, create, update and delete, and delete on what that cascades to: the rows, editable. */
     case Rows;
-    /** Read only: the rows, shown. */
+    /** Read without the rest: the rows, shown. */
     case ReadOnly;
     /** No read: the labels of the linked records only, as the grid shows them. */
     case Labels;

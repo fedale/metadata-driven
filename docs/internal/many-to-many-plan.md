@@ -298,8 +298,9 @@ decide what is shown, as below.
   bundle's `gridview-collection` inline rows. A blank new row is dropped (`delete_empty`).
   `RecordFormFactory::data()` puts the rows in the form data, `errorTarget()` maps `tags.0.role`
   to its input (skipping the row's `values` level), and composite forms use both.
-- **Permissions** (`JunctionAccess`): read, create, update and delete on the junction: the rows,
-  editable; read only: the rows, disabled, left out of what the record form saves
+- **Permissions** (`JunctionAccess`): read, create, update and delete on the junction, and delete
+  on every object a junction record's deletion cascades to (`CascadeTargets`, found missing by a
+  security review of the first commit): the rows, editable; read only: the rows, disabled, left out of what the record form saves
   (`RecordController::submitted()` skips disabled controls) and of a composite form's input
   (`RecordFormFactory::editsRows()`); no read: the labels, disabled, as in 4b-1. The record
   manager itself checks no permission, as for any write.

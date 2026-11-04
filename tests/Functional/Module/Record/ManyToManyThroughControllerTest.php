@@ -112,6 +112,18 @@ final class ManyToManyThroughControllerTest extends WebTestCase
         self::assertResponseRedirects();
         self::assertSame([[$vip, 'owner']], $this->rows($ada));
 
+        // Every right on the junction, but not on what deleting one of its records cascades to.
+        $manager = self::getContainer()->get(MetadataManagerInterface::class);
+        $manager->createObject('tag_note', 'Tag note', 'Tag notes');
+        $manager->createField('tag_note', 'link', 'relation', 'Link', settings: ['target' => 'person_tag', 'onDelete' => 'cascade']);
+        $junction = ['record.person_tag.read', 'record.person_tag.create', 'record.person_tag.update', 'record.person_tag.delete'];
+        self::signIn($this->client, 'partial@example.com', [...$person, ...$junction]);
+        $crawler = $this->client->request('GET', \sprintf('/o/person/%s/edit', $ada));
+        self::assertSame('disabled', $crawler->filter('input[name="record[tags][0][values][role]"]')->attr('disabled'));
+        self::signIn($this->client, 'editor@example.com', [...$person, ...$junction, 'record.tag_note.delete']);
+        $crawler = $this->client->request('GET', \sprintf('/o/person/%s/edit', $ada));
+        self::assertNull($crawler->filter('input[name="record[tags][0][values][role]"]')->attr('disabled'));
+
         // No read: the labels of the linked records only, as the grid shows them.
         self::signIn($this->client, 'stranger@example.com', $person);
         $crawler = $this->client->request('GET', \sprintf('/o/person/%s/edit', $ada));

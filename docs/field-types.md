@@ -518,7 +518,8 @@ symfony console metadata:field:create person tags many_to_many Tags \
 
 - **Required** means at least one row, **`max`** caps the rows, as for a plain `many_to_many`.
 - **Permissions.** The rows are records of the junction, so they follow its permissions: with
-  `record.<junction>.read` and its `create`, `update` and `delete`, they're editable; with `read`
-  alone, they're shown read-only, and the form leaves them out of what it saves; without `read`,
+  `record.<junction>.read` and its `create`, `update` and `delete` (and `delete` on the objects a
+  junction record's deletion cascades to, as for the delete button of a record), they're
+  editable; with less, they're shown read-only, and the form leaves them out of what it saves; without `read`,
   the form shows the labels of the linked records only, as the grid does ("Added and removed as
   records of Person tags.").

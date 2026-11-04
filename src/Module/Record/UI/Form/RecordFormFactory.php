@@ -15,6 +15,7 @@ use App\Module\Metadata\Contract\Dto\ManyToManySettings;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ServiceFieldDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Record\Application\CascadeTargets;
 use App\Module\Record\Application\RecordLabels;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
@@ -60,6 +61,7 @@ final class RecordFormFactory
         #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
         private readonly AccessCheckerInterface $access,
+        private readonly CascadeTargets $cascadeTargets,
     ) {
     }
 
@@ -281,7 +283,8 @@ final class RecordFormFactory
     /**
      * Whether the rows of a field going through a junction object are input: the user may
      * create, update and delete the junction's records, as saving a composite form asks of
-     * each of its objects. Otherwise they are only shown, and a form leaves them out.
+     * each of its objects, and delete the records a junction record's deletion cascades to.
+     * Otherwise they are only shown, and a form leaves them out.
      */
     public function editsRows(FieldDefinitionDto $field): bool
     {
@@ -458,6 +461,13 @@ final class RecordFormFactory
         }
         foreach ([RecordAction::Create, RecordAction::Update, RecordAction::Delete] as $action) {
             if (!$this->access->canRecords($junction, $action)) {
+                return JunctionAccess::ReadOnly;
+            }
+        }
+        // A row removed deletes its junction record, and whatever that deletion cascades to:
+        // the same rule as the delete button of a record.
+        foreach (array_keys($this->cascadeTargets->of($junction)) as $target) {
+            if (!$this->access->canRecords($target, RecordAction::Delete)) {
                 return JunctionAccess::ReadOnly;
             }
         }
