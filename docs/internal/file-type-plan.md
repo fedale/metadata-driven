@@ -1,7 +1,7 @@
 # Plan: the `file` field type
 
-Status: **phases 1 to 4 merged** into main; phase 5 (several files, storage) on
-`feature/file-multiple-storage`, awaiting review.
+Status: **phases 1 to 4 merged** into main; phase 5 (several files, storage) merged too;
+phase 6 (several files, records and form) next.
 Discussed with the user on 2026-11-03.
 
 A field type that stores a file (an image, a PDF, any document) on a record: a product's photo,
@@ -239,7 +239,7 @@ reusable, otherwise `md-file-list` in `app.css`.
    - Not done: each thumbnail is a request of its own, checked like any download
      (`FileReferences::objectsHolding()`, one query per object with file fields); fine for a
      page of 25, to watch on large grids.
-5. **Several files, storage** — done (branch `feature/file-multiple-storage`). As built:
+5. **Several files, storage** — done, merged. As built:
    - `FileFieldType`: `multiple` (boolean, fixed) and `max` (1–100, only with `multiple`);
      the widget carries both.
    - `FileListSettings` (Metadata Contract) and `FieldDefinitionDto::fileList()`;
