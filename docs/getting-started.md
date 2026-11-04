@@ -43,7 +43,7 @@ symfony console metadata:object:create book Book Books
 ```
 
 Each object gets a table in the `data` schema (`data.c_author`, `data.c_book`) with the system
-columns `id`, `created_at`, `updated_at`, `created_by`, `deleted_at`.
+columns `id`, `created_at`, `updated_at`, `created_by`, `deleted_at`, `sort`.
 
 ### 2. Fields
 

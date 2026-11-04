@@ -49,6 +49,8 @@ final class TableDefinitionFactory
             ->addColumn($this->column('updated_at', Types::DATETIME_IMMUTABLE, notNull: true))
             ->addColumn($this->column('created_by', Types::GUID))
             ->addColumn($this->column('deleted_at', Types::DATETIME_IMMUTABLE))
+            // Manual order of the records, any integer: negatives go before the default.
+            ->addColumn($this->column('sort', Types::INTEGER, notNull: true, default: 0))
             ->addPrimaryKeyConstraint(
                 PrimaryKeyConstraint::editor()
                     // Same name PostgreSQL would generate, so introspection compares equal.
@@ -304,12 +306,13 @@ final class TableDefinitionFactory
         return $column->create();
     }
 
-    private function column(string $name, string $type, bool $notNull = false): Column
+    private function column(string $name, string $type, bool $notNull = false, mixed $default = null): Column
     {
         return Column::editor()
             ->setUnquotedName($this->nonEmpty($name))
             ->setTypeName($type)
             ->setNotNull($notNull)
+            ->setDefaultValue($default)
             ->create();
     }
 
