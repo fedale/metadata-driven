@@ -1,6 +1,6 @@
 # Plan: the `file` field type
 
-Status: **phases 1 to 3 merged** into main; phase 4 on `feature/file-grid`, awaiting review.
+Status: **phases 1 to 4 merged** into main; phase 5 (GC) next.
 Discussed with the user on 2026-11-03.
 
 A field type that stores a file (an image, a PDF, any document) on a record: a product's photo,
@@ -155,7 +155,7 @@ the first version, if the child object proves heavy in practice.
    - Tests: `FileControllerTest` (functional; `disableReboot()`, since the memory storage lives
      in the container), `ThumbnailerTest` (integration).
    - Not done: EXIF orientation of photos (a phone picture may show rotated).
-4. **Grid and export** — done (branch `feature/file-grid`). As built:
+4. **Grid and export** — done, merged. As built:
    - No named renderer: the cell needs the file's name and type, which a `CellRendererInterface`
      does not get (it gets the value and its text). `FileCell` (Record UI) draws the default
      cell of a file field, in the default grid and in a grid view column without a renderer: a

@@ -142,14 +142,13 @@ rename/archive/restore/purge of objects and fields.
   - **Many-to-many relations**, plan in [many-to-many-plan.md](many-to-many-plan.md), reviewed by
     the user (field type `many_to_many`, read-only inverse). Phases 1 (storage: the type, metadata
     rules, link tables `data.l_<object>__<field>`) and 2 (records: write and read the links,
-    validation, delete rules, inverse lists, form, composite forms) are merged into main. Phase 3
-    (grid: cell, filter, export, grid views) is on `feature/many_to_many_grid`, awaiting the
-    user's review. Next is phase 4 (data on the link, through a junction object), still a
+    validation, delete rules, inverse lists, form, composite forms) and 3 (grid: cell, filter,
+    export, grid views) are merged into main. Next is phase 4 (data on the link, through a junction object), still a
     proposal to confirm.
   - **The `file` field type**, plan in [file-type-plan.md](file-type-plan.md). Phases 1 (storage
     and `core.file`), 2 (the type in the record form) and 3 (download and thumbnails at
-    `/files/{id}`) are merged into main. Phase 4 (grid: link, thumbnail, yes/no filter, export
-    of the names) is on `feature/file-grid`, awaiting the user's review. Next is phase 5 (GC).
+    `/files/{id}`) and 4 (grid: link, thumbnail, yes/no filter, export of the names) are merged
+    into main. Next is phase 5 (GC).
     Open decisions in the plan: production storage; several files per record (the user wants to
     choose per field between one file and many: proposal `multiple: true` with a link table,
     alongside the child object).
