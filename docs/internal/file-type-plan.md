@@ -1,7 +1,7 @@
 # Plan: the `file` field type
 
-Status: **phases 1 to 4 merged** into main; phase 5 (several files, storage) merged too;
-phase 6 (several files, records and form) next.
+Status: **all nine phases merged** into main. Only the open decision on production storage is
+left.
 Discussed with the user on 2026-11-03.
 
 A field type that stores a file (an image, a PDF, any document) on a record: a product's photo,
@@ -95,7 +95,7 @@ DBAL). `FieldType` and `Record` only see its `Contract`, as Deptrac requires.
 - A record in soft delete keeps its files: restoring it must bring them back.
 - `metadata:files:gc` (CLI, `--dry-run`): deletes the `core.file` rows, and their bytes, that
   no column of any table references (archived fields included), older than a grace period
-  (`--older-than=24h`) so an upload in progress is never collected.
+  (`--older-than=24h`) so an upload in progress is never collected. Built in phase 8.
 - Purging an object or a field leaves its files orphaned; the next GC removes them.
 - Rename and archive need nothing new: the column follows the field.
 
@@ -286,8 +286,7 @@ reusable, otherwise `md-file-list` in `app.css`.
      page ignored, `max`), `FileControllerTest::testAFileHeldInAListIsServedWhileTheRecordHoldsIt`,
      `FileFieldTypeTest` (list values, constraints, storage).
    - Not done: reordering the new files among the current ones before saving (they go to the
-     end), drag-and-drop, and the file list in a composite form section (phase 9; the control
-     is added there too, untested).
+     end), drag-and-drop. (The file list in a composite form: phase 9.)
 7. **Several files, grid and export** — merged into main (built on the same branch as phase
    6, at the user's request). As built:
    - `DbalRecordGridSource` selects, per file list, a correlated subquery
@@ -302,10 +301,54 @@ reusable, otherwise `md-file-list` in `app.css`.
    - Grid views needed nothing: the compiler's rules go by `isSortable()` of the type.
    - Tests: `FileGridTest` (a list in its order, its filter, its export, `sortable: true`
      refused).
-8. **GC**: `metadata:files:gc`, with tests on orphans and on archived fields; columns and link
-   tables both count as references. After 5–7, so it is written once for both.
-9. **Composite forms**: a file field in a section and in a `mode: many` row (the upload inputs
-   are nested names).
+8. **GC** — merged into main. As built:
+   - `metadata:files:gc [--dry-run] [--older-than=24h]` (File UI), over
+     `FileGarbageCollectorInterface` (File Application) and `DbalFileGarbageCollector` (File
+     Infrastructure). The references are the foreign keys to `core.file` found in the catalog
+     (`pg_constraint`): file columns and file list tables, archived fields and objects included
+     (archiving keeps both), records in the bin included (their rows are there). The File
+     module needs no other module, and a future table with such a key counts with no change.
+   - Rows: `DELETE ... WHERE created_at < :before AND NOT EXISTS (...)` per foreign key, the
+     condition repeated in the DELETE (and the RESTRICT keys refuse a referenced row anyway).
+   - Bytes: the storage is listed; a content key (`<sha256[0:2]>/<sha256>`) no row uses is
+     deleted, the stray bytes of a rolled-back write included; a thumbnail
+     (`thumbnails/<size>/<sha256>.<format>`) goes with its content. Any other key is left
+     alone. No grace period on bytes: the lock below covers the uploads in progress.
+   - `ContentLock`: a transaction-scoped advisory lock on the SHA-256. `store()` writes the
+     bytes and the row under it (`FileRepository::underContentLock()`), held until the record's
+     transaction commits; the GC takes it before checking that no row uses a content and deleting
+     its bytes. Without it, a store() finding the bytes already there (deduplication) could add
+     a row the GC cannot see yet, and lose its bytes.
+   - Sizes in decimal units (1 MB = 1,000,000 bytes), as `maxSize`.
+   - Tests: `FileGarbageCollectorTest` (integration: referenced, in the bin, unlinked from a list,
+     shared bytes, archived then purged fields, grace period, stray bytes, thumbnails, foreign
+     keys of the storage, the lock, dry run, the command).
+   - Not done: the listing of the storage is held in memory (fine for tens of thousands of
+     files; to page through for millions), and nothing schedules the command: cron or a timer,
+     see `console.md`.
+9. **Composite forms** — merged into main (built on the same branch as phase 8, at the user's
+   request). As built:
+   - Nothing new was needed for the controls: `CompositeNodeType` builds each node's fields with
+     `RecordFormFactory::addControls()` on `PRE_SET_DATA`, so every node and row gets its own
+     current files from its data, never from the request; the upload inputs get nested names,
+     and `CollectionType` makes the form multipart from the prototype alone.
+     `CompositeRecordManager::isEmpty()` already counts an upload (an object) or a list as
+     filled.
+   - A row's id comes from the request while its current files come from the data of its key,
+     so two rows posted with each other's ids would have swapped their files. The list check
+     already refused it; `RecordManager::checkHeldFiles()` now covers a single file field too
+     (`FOREIGN_SINGLE_FILE_MESSAGE`): an id must be the file the record holds. A new record
+     takes no stored file by id, from any caller.
+   - A service field of type `file` is refused by `FormDefinitionCompiler`: it would be checked,
+     then thrown away.
+   - The `form-index` controller counts a file field once, filled while it holds a stored file
+     (not removed) or a chosen one; the "Remove" box no longer counts as an input.
+   - Tests: `CompositeFormFilesTest` (functional: nested names, multipart from the prototype,
+     files in the root, a section and rows, kept on an untouched save, reordered, replaced and
+     removed, a row holding only a file, errors on nested inputs, swapped row ids),
+     `FileFieldsInRecordsTest::testAFileOfAnotherRecordIsRefused`.
+   - Not done: no test of the JavaScript (the repository has none); the index and the file-list
+     controller in rows added with "+" are untested in a browser.
 
 Docs in the same branches: `field-types.md` (the eleventh type), `views.md` (the renderer),
 `console.md` (the GC), `architecture.md` (the `File` module and Deptrac), `README.md` (the count

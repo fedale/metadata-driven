@@ -287,10 +287,15 @@ contract.
   replaced, never removed.
 - **Stored files never change.** A new upload is a new file; the one it replaces stays in the
   storage (see [Architecture](architecture.md#two-schemas)). The column holds the id of a row of
-  `core.file`, with a foreign key that refuses to delete a file a record still points at.
+  `core.file`, with a foreign key that refuses to delete a file a record still points at. The
+  files no record holds any more (replaced, removed, unlinked from a list, or left by a purged
+  field) are deleted by [`metadata:files:gc`](console.md#metadatafilesgc), run on a schedule.
+  A record in the bin and an archived field keep their files.
 - **From code**, a new file is a `FileUpload` (the path of a readable local file and the name to
-  show); the id of a stored file is accepted as the value the record already holds, and an id
-  of no stored file is refused ("This file does not exist.").
+  show); the id of a stored file is accepted only as the value the record already holds: an id
+  of no stored file is refused ("This file does not exist."), the file of another record, or
+  any id given to a new record, too ("This file is not the file of this record."), so a request
+  cannot attach somebody else's file.
 - **Downloading** goes through `/files/<id>`, and only for a user who may read a record holding
   the file (`record.<object>.read`); anybody else, and a file held only by records in the bin,
   gets a 404, as for a file that does not exist. JPEG, PNG, GIF and WebP images open in the

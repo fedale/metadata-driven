@@ -6,6 +6,7 @@ namespace App\Module\File\Infrastructure\Doctrine;
 
 use App\Module\File\Domain\Model\File;
 use App\Module\File\Domain\Repository\FileRepository;
+use App\Module\File\Infrastructure\Dbal\ContentLock;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -20,6 +21,17 @@ final class DoctrineFileRepository implements FileRepository
     {
         $this->entityManager->persist($file);
         $this->entityManager->flush();
+    }
+
+    public function underContentLock(string $sha256, callable $write): mixed
+    {
+        $connection = $this->entityManager->getConnection();
+
+        return $connection->transactional(static function () use ($connection, $sha256, $write): mixed {
+            ContentLock::acquire($connection, $sha256);
+
+            return $write();
+        });
     }
 
     public function find(Uuid $id): ?File

@@ -11,6 +11,18 @@ interface FileRepository
 {
     public function save(File $file): void;
 
+    /**
+     * Runs $write in a transaction holding the lock of a content until the outermost
+     * transaction ends, so the GC never deletes bytes a new row is about to use.
+     *
+     * @template T
+     *
+     * @param callable(): T $write
+     *
+     * @return T
+     */
+    public function underContentLock(string $sha256, callable $write): mixed;
+
     public function find(Uuid $id): ?File;
 
     /**

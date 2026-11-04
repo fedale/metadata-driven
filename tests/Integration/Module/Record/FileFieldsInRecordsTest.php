@@ -111,6 +111,24 @@ final class FileFieldsInRecordsTest extends KernelTestCase
         $this->assertRefused(['manual' => 42], 'manual', 'This value should be a file.');
     }
 
+    public function testAFileOfAnotherRecordIsRefused(): void
+    {
+        $chair = $this->records->create(new RecordInput('product', ['name' => 'Oslo chair', 'manual' => new FileUpload($this->file(self::PDF), 'chair.pdf')]));
+        $sofa = $this->records->create(new RecordInput('product', ['name' => 'Bergen sofa', 'manual' => new FileUpload($this->file(self::PDF.'sofa'), 'sofa.pdf')]));
+        $chairManual = $this->fileId($chair->values['manual'] ?? null);
+
+        // Neither a new record nor another one takes a stored file by its id.
+        $this->assertRefused(['manual' => $chairManual], 'manual', 'This file is not the file of this record.');
+        try {
+            $this->records->update($sofa->id, new RecordInput('product', ['manual' => $chairManual]));
+            self::fail('The file of another record must be refused.');
+        } catch (RecordValidationFailed $e) {
+            self::assertSame(['manual' => ['This file is not the file of this record.']], $e->errors);
+        }
+        // Its own, in any case, is kept.
+        self::assertSame($chairManual, $this->records->update($chair->id, new RecordInput('product', ['manual' => strtoupper($chairManual)]))->values['manual']);
+    }
+
     public function testTheColumnPointsAtTheStoredFile(): void
     {
         // The foreign key compares equal to the one in the database: nothing left to change.

@@ -122,6 +122,10 @@ Purging deletes for good what is archived, with its data: there is no way back.
   Refused while a relation or `many_to_many` field of another object points at it, archived or
   not: its foreign key needs the table; and while a `many_to_many` field goes through it.
 
+A purged `file` field, or an object with file fields, leaves its files in the storage: the next
+[`metadata:files:gc`](console.md#metadatafilesgc) deletes them. Until the purge, an archived
+field keeps its files, as it keeps its other values.
+
 `metadata:purge` asks to type the name back (`pet`, or `pet.age` for a field); without a terminal
 it needs `--force`. The admin has no purge button.
 

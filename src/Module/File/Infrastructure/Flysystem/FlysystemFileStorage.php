@@ -37,26 +37,31 @@ final class FlysystemFileStorage implements FileStorageInterface
             throw InvalidFile::unreadable($originalName);
         }
 
-        // The key is the content, never the name: no path from the outside reaches the storage,
-        // and the same bytes uploaded twice are stored once.
-        $key = substr($sha256, 0, 2).'/'.$sha256;
-        if (!$this->storage->fileExists($key)) {
-            $stream = fopen($path, 'r');
-            if (false === $stream) {
-                throw InvalidFile::unreadable($originalName);
-            }
-            try {
-                $this->storage->writeStream($key, $stream);
-            } finally {
-                fclose($stream);
-            }
-        }
-
         $mimeType = $this->mimeTypes->guessMimeType($path) ?? 'application/octet-stream';
         [$width, $height] = self::dimensions($path, $mimeType);
 
-        $file = new File(Uuid::v7(), $key, $originalName, $mimeType, $size, $sha256, $width, $height, new \DateTimeImmutable());
-        $this->files->save($file);
+        // The key is the content, never the name: no path from the outside reaches the storage,
+        // and the same bytes uploaded twice are stored once. The bytes and the row are written
+        // under the lock of the content, so the GC cannot delete bytes found here before the
+        // row is visible.
+        $key = substr($sha256, 0, 2).'/'.$sha256;
+        $file = $this->files->underContentLock($sha256, function () use ($path, $key, $originalName, $mimeType, $size, $sha256, $width, $height): File {
+            if (!$this->storage->fileExists($key)) {
+                $stream = fopen($path, 'r');
+                if (false === $stream) {
+                    throw InvalidFile::unreadable($originalName);
+                }
+                try {
+                    $this->storage->writeStream($key, $stream);
+                } finally {
+                    fclose($stream);
+                }
+            }
+            $file = new File(Uuid::v7(), $key, $originalName, $mimeType, $size, $sha256, $width, $height, new \DateTimeImmutable());
+            $this->files->save($file);
+
+            return $file;
+        });
 
         return self::toDto($file);
     }
