@@ -26,4 +26,13 @@ final class DoctrineFileRepository implements FileRepository
     {
         return $this->entityManager->find(File::class, $id);
     }
+
+    public function findMany(array $ids): array
+    {
+        if ([] === $ids) {
+            return [];
+        }
+
+        return $this->entityManager->getRepository(File::class)->findBy(['id' => $ids]);
+    }
 }

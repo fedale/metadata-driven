@@ -15,7 +15,7 @@ missing keys take their default, unknown keys are refused.
 | `url` | none | `varchar(2048)` | URL input | text (shown as a link) |
 | `select` | `options` (required), `default`, `display` (`dropdown`) | `varchar(100)` | select or buttons side by side | choice |
 | `password` | `minLength` (8), `requireMixedCase`, `requireDigit`, `requireSymbol`, `confirm`, `strengthMeter`, `revealToggle` (all false) | `varchar(255)`, a hash | password input, asked twice with `confirm` | none: never shown |
-| `file` | `accept` (any type), `maxSize` (10 MB), `image` (false) | `uuid` + foreign key to `core.file` | the current file, an upload input, "Remove the file" | none (✓ when there is a file) |
+| `file` | `accept` (any type), `maxSize` (10 MB), `image` (false) | `uuid` + foreign key to `core.file` | the current file, an upload input, "Remove the file" | yes / no: holds a file or none |
 | `relation` | `target` (required), `onDelete` (`set_null`), `inverseName`, `inverseLabel` | `uuid` + foreign key | autocomplete | choice of records |
 | `many_to_many` | `target` (required), `onDelete` (`unlink`), `inverseName`, `inverseLabel`, `max` | none: a link table of its own | autocomplete, several records | choice of records (any of them) |
 
@@ -290,10 +290,14 @@ contract.
   the image in a square of that side without enlarging it. They are made on the first request
   and kept with the file. An image over 40 megapixels, or one that cannot be decoded, has none
   (404); the file itself is still served.
-- A file field cannot be **unique**: every upload is a new file. It is not searched, and the grid
-  shows ✓ when the record has a file, with no filter or sort.
-- **Not yet**: the name, a link and a thumbnail in the grid, a file field in a composite form
-  section, and removing the files no record uses any more.
+- A file field cannot be **unique**: every upload is a new file. It is not searched.
+- **In the grid** a cell shows the original name of the file as a link to it, after the small
+  thumbnail of an image or a document icon. An image opens in a new tab, any other file is
+  downloaded. The filter is a yes/no on whether the record holds a file; the column never sorts,
+  and it cannot be joined in a [virtual column](views.md#virtual-columns). The export writes the
+  original name.
+- **Not yet**: a file field in a composite form section, and removing the files no record uses
+  any more.
 
 ## `relation`
 

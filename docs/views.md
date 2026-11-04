@@ -151,7 +151,9 @@ The fields a view leaves out are not in the grid: unlike a form view, a grid vie
 list. A write-only field (a password) cannot be listed. A
 [`many_to_many`](field-types.md#many_to_many) field can: it shows the labels of the linked
 records and filters on them, but it never sorts (`sortable: true` is refused, and so is a `sort`
-on it); its renderer, if any, gets the labels as its text.
+on it); its renderer, if any, gets the labels as its text. A [`file`](field-types.md#file) field
+follows the same rules: it shows a link to the file (with a thumbnail for an image), filters on
+whether there is one, never sorts, and its renderer gets the original name as its text.
 
 ### Virtual columns
 
@@ -161,8 +163,8 @@ A virtual column shows several fields as one: `'{first_name} {last_name}'` reads
   `'{last_name} {first_name}'`.
 - Its **filter** is a text filter on its fields joined by spaces, empty ones skipped: "lovel"
   and "ada lov" both find Ada Lovelace. A select is matched on its stored value, not its label.
-- Its fields cannot be relations nor `many_to_many` fields: show them in a column of their
-  own, where they filter on the related records.
+- Its fields cannot be relations, `many_to_many` or `file` fields: show them in a column of
+  their own, where they filter on the related records, or on whether there is a file.
 
 ### Renderers
 
@@ -205,7 +207,8 @@ Column #3: "renderer" must be one of badge, date, truncate.
 ```
 
 Also refused: a field listed twice, a write-only field, a template without tokens or with a
-relation or a `many_to_many` field, a `many_to_many` column marked `sortable: true`, unknown keys
+relation, a `many_to_many` or a `file` field, a `many_to_many` or `file` column marked
+`sortable: true`, unknown keys
 and renderer options, a sort direction other than `asc`/`desc`, a
 `page_size` outside 1–500.
 

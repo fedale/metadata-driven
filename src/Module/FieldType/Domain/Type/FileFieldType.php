@@ -142,6 +142,11 @@ final class FileFieldType extends AbstractFieldType
         return false;
     }
 
+    public function isSortable(): bool
+    {
+        return false;
+    }
+
     public function toStorage(mixed $value, array $settings): ?string
     {
         if ($value instanceof FileUpload) {

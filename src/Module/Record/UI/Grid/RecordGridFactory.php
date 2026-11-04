@@ -54,6 +54,7 @@ final class RecordGridFactory
         private readonly GridExporterRegistry $exporters,
         private readonly UrlGeneratorInterface $urls,
         private readonly GridRenderers $renderers,
+        private readonly FileCell $fileCell,
     ) {
     }
 
@@ -85,11 +86,10 @@ final class RecordGridFactory
                 if ($type->isWriteOnly()) {
                     continue;
                 }
-                $widget = $type->widget($field->settings);
-                $column = $this->column($field, $widget)->label($field->label);
+                $column = $this->column($field, $type->widget($field->settings))->label($field->label);
                 // A file column holds an id, a many-to-many one a set of records: there is no
                 // order to sort them by (the bundle's columns are sortable unless told otherwise).
-                $columns[] = $column->sortable(!\in_array($widget->kind, [WidgetKind::File, WidgetKind::ManyToMany], true));
+                $columns[] = $column->sortable($type->isSortable());
             }
         } else {
             $columns = array_map(fn (GridColumnDto $column): AbstractColumnConfig => $this->viewColumn($object, $column), $grid->columns);
@@ -225,11 +225,10 @@ final class RecordGridFactory
         $value = $row[$field->name] ?? null;
 
         return match (true) {
-            WidgetKind::ManyToMany === $widget->kind => self::linkedLabels($field->name, $row),
+            WidgetKind::ManyToMany === $widget->kind, WidgetKind::File === $widget->kind => self::linkedLabels($field->name, $row),
             null === $value => '',
             WidgetKind::Relation === $widget->kind => \is_string($label = $row[$field->name.RecordGridSourceInterface::LABEL_SUFFIX] ?? null) ? $label : (\is_string($value) ? RecordLabels::fallback($value) : ''),
             WidgetKind::Choice === $widget->kind && \is_scalar($value) => $widget->choices()[(string) $value] ?? (string) $value,
-            WidgetKind::File === $widget->kind => '✓',
             \is_bool($value) => $value ? '✓' : '✗',
             $value instanceof \DateTimeInterface => $value->format(WidgetKind::DateTime === $widget->kind ? 'Y-m-d H:i' : 'Y-m-d'),
             \is_scalar($value) => (string) $value,
@@ -238,7 +237,8 @@ final class RecordGridFactory
     }
 
     /**
-     * The labels of the records a many-to-many field links to, joined by the source.
+     * The labels of the records a many-to-many field links to, or the names of the files a file
+     * field holds, joined by the source.
      *
      * @param array<mixed> $row
      */
@@ -283,9 +283,10 @@ final class RecordGridFactory
                 }),
                 $widget,
             ),
-            // Whether the record has a file; its name and a link come with the file renderer.
+            // A link to the file, with a thumbnail for an image; filters on whether there is one.
             WidgetKind::File => TextColumn::new($name)
-                ->value(static fn (array $row): string => \is_string($row[$name] ?? null) ? '✓' : ''),
+                ->value(fn (array $row): Markup => new Markup($this->fileCell->render($name, $row), 'UTF-8'))
+                ->filterBoolean(),
         };
     }
 

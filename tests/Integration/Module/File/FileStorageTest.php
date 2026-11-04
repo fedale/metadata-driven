@@ -102,6 +102,19 @@ final class FileStorageTest extends KernelTestCase
         $storage->readStream('0193a5b2-0000-7000-8000-000000000000');
     }
 
+    public function testFindsSeveralFilesAtOnceSkippingUnknownIds(): void
+    {
+        $storage = self::getContainer()->get(FileStorageInterface::class);
+        $manual = $storage->store($this->file('manual'), 'manual.txt');
+        $photo = $storage->store($this->png(2, 2), 'photo.png');
+
+        $found = $storage->findMany([strtoupper($photo->id), $manual->id, 'not-a-uuid', '0193a5b2-0000-7000-8000-000000000000']);
+
+        self::assertEqualsCanonicalizing([$manual->id, $photo->id], array_keys($found));
+        self::assertEquals($photo, $found[$photo->id]);
+        self::assertSame([], $storage->findMany([]));
+    }
+
     public function testReportsBytesMissingFromTheStorage(): void
     {
         $stored = self::getContainer()->get(FileStorageInterface::class)->store($this->file('gone'), 'gone.txt');

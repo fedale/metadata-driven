@@ -22,7 +22,11 @@ Last updated: 2026-11-04.
   starting the next one. Merge with `--no-ff` ("Merge branch 'x'"), delete merged branches.
 - Sessions working in parallel (two agents, or an agent and the user) each use a `git worktree`
   of their own: in a shared checkout a branch switch carries the other session's uncommitted
-  changes along, and both end up editing the same files.
+  changes along, and both end up editing the same files. In a new worktree (a sibling directory,
+  so `../<bundle>` still resolves): `composer install`, `symfony console sass:build`, and
+  `COMPOSE_PROJECT_NAME=metadata-driven` in the environment, so the Symfony CLI finds the
+  running database of the main checkout. Never `make up` (nor `make test`, which calls it) from a
+  worktree: it would start a second Compose project on the fixed port 5432.
 - Commit or push only when the user asks.
 - Never run `rm`: finish the task and list the paths the user should delete by hand.
 - Every change ships with its docs in the same branch: the topic page in `docs/`, the cross
@@ -112,7 +116,13 @@ Things that are not obvious from a single file, and that are easy to break.
   adapter (`when@test` in `config/packages/flysystem.yaml`). A file field's value is a
   `FileUpload` (new), the id of a stored file (kept) or null; `toStorage()` stores the upload,
   so a write that fails after it leaves an orphaned file (a `core.file` row, or only its bytes when
-  a transaction rolls back) for the future GC, never a record pointing at nothing.
+  a transaction rolls back) for the future GC, never a record pointing at nothing. The grid source
+  looks the files of a page up in one `FileStorageInterface::findMany()` call (core.file belongs
+  to the File module: no SQL join on it from Record) and hands each row `<field>__file`, a list
+  of `{id, name, image}` (ready for several files per field), and the names under
+  `<field>__label`; `FileCell` (Record UI) draws them. `FieldTypeInterface::isSortable()` (false
+  for `file` and `many_to_many`) decides sorting, searching and virtual columns, in the default
+  grid, the grid view compiler and the grid source alike.
 - **Security forms**: the stateless CSRF token input needs `data-controller="csrf-protection"` to
   work in a real browser.
 
@@ -138,9 +148,11 @@ rename/archive/restore/purge of objects and fields.
     proposal to confirm.
   - **The `file` field type**, plan in [file-type-plan.md](file-type-plan.md). Phases 1 (storage
     and `core.file`), 2 (the type in the record form) and 3 (download and thumbnails at
-    `/files/{id}`) are merged into main. Next is phase 4 (the file renderer in the grid and the
-    export), on a branch from main. Open decisions in the plan: production storage, several files
-    per record.
+    `/files/{id}`) are merged into main. Phase 4 (grid: link, thumbnail, yes/no filter, export
+    of the names) is on `feature/file-grid`, awaiting the user's review. Next is phase 5 (GC).
+    Open decisions in the plan: production storage; several files per record (the user wants to
+    choose per field between one file and many: proposal `multiple: true` with a link table,
+    alongside the child object).
 - **Blueprints — plan under review, not started**: [blueprints-plan.md](blueprints-plan.md)
   (packaged, versioned models: a canonical format for every item, install, three-way upgrade,
   seeds, online indexes, export). Its open decisions are listed at the top: the name, local

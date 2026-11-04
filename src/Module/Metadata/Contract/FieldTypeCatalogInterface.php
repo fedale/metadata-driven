@@ -58,6 +58,12 @@ interface FieldTypeCatalogInterface
     public function supportsUnique(string $type): bool;
 
     /**
+     * Whether a grid can sort on a field of this type, search it and join it in a virtual
+     * column: not a file (an id), nor a many-to-many field (a set of records).
+     */
+    public function isSortable(string $type): bool;
+
+    /**
      * Validates the given settings and merges them with the type defaults.
      *
      * @param array<string, mixed> $settings

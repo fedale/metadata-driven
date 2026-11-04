@@ -114,4 +114,9 @@ final class ManyToManyFieldType extends AbstractFieldType
     {
         return new Widget(WidgetKind::ManyToMany, ['target' => ManyToManySettings::fromSettings($settings)->target]);
     }
+
+    public function isSortable(): bool
+    {
+        return false;
+    }
 }
