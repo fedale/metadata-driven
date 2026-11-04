@@ -173,12 +173,13 @@ final class DbalRecordGridSourceTest extends KernelTestCase
         yield 'not an id' => [FilterOperator::In, ['nope'], []];
     }
 
-    public function testAManyToManyFieldIsNeitherSortedNorSearched(): void
+    public function testAManyToManyFieldIsNotSortedButSearchedOnItsLabels(): void
     {
         $this->taggedContacts();
 
         $this->assertRefused(fn () => $this->rows($this->contacts(sort: [new SortOrder('tags', SortDirection::Asc)])));
-        $this->assertRefused(fn () => $this->rows(new GridQuery(source: ['object' => 'contact'], searchTerm: 'vip', searchFields: ['tags'])));
+        // Searched, when listed, on the labels of the linked records (LinkedLabelSearchTest).
+        self::assertSame(['Anna'], array_column($this->rows(new GridQuery(source: ['object' => 'contact'], searchTerm: 'vip', searchFields: ['tags'])), 'full_name'));
         $this->assertRefused(fn () => $this->rows(new GridQuery(source: ['object' => 'contact', 'virtual' => ['line' => ['full_name', 'tags']]], criteria: [new FilterCriterion('line', FilterOperator::Contains, 'vip')])));
         $this->assertRefused(fn () => $this->rows($this->contacts([new FilterCriterion('tags', FilterOperator::Contains, 'vip')])));
     }

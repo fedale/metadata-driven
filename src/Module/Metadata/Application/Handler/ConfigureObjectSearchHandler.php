@@ -40,10 +40,9 @@ final class ConfigureObjectSearchHandler
                 if ($object->hasField($field) && $this->fieldTypes->isWriteOnly($object->getField($field)->getType())) {
                     throw InvalidMetadataDefinition::writeOnlyField($field, 'searched');
                 }
-                if ($object->hasField($field) && $object->getField($field)->isManyToMany()) {
-                    throw InvalidMetadataDefinition::manyToManyField($field, 'searched');
-                }
-                if ($object->hasField($field) && !$this->fieldTypes->isSortable($type = $object->getField($field)->getType())) {
+                // A relation or a many-to-many field is searched on the labels of its records.
+                if ($object->hasField($field) && null === $object->getField($field)->getTarget()
+                    && !$this->fieldTypes->isSortable($type = $object->getField($field)->getType())) {
                     throw InvalidMetadataDefinition::noTextValue($field, $type, 'searched');
                 }
             }

@@ -101,7 +101,9 @@ final class ManyToManyFieldTest extends KernelTestCase
         );
 
         $this->assertRefused(fn () => $this->manager->configureLabel('contact', 'tags'), 'it cannot be the label of the records');
-        $this->assertRefused(fn () => $this->manager->configureSearch('contact', null, ['full_name', 'tags']), 'it cannot be searched');
+        // Searched on the labels of the linked records (RecordSearchTest, LinkedLabelSearchTest).
+        $this->manager->configureSearch('contact', null, ['full_name', 'tags']);
+        self::assertSame(['full_name', 'tags'], $this->metadata->getObject('contact')->searchFields);
         $this->manager->createField('contact', 'notes', 'text', 'Notes');
         $this->assertRefused(fn () => $this->manager->configureFieldCondition('contact', 'notes', 'tags', ['x']), '"tags" cannot decide');
         $this->assertRefused(
