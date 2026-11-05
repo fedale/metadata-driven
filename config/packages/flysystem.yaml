@@ -1,12 +1,19 @@
 # Read the documentation at https://github.com/thephpleague/flysystem-bundle/blob/master/docs/1-getting-started.md
+parameters:
+    # Where the bytes of the stored files live. In production, point it at a directory that
+    # outlives the deploys (not inside a release), and back it up with the database: the rows
+    # of core.file and the bytes go together.
+    env(RECORD_FILES_DIR): '%kernel.project_dir%/var/storage/files'
+
 flysystem:
     storages:
         # The bytes of the files of the records (the "file" field type), keyed by their hash;
         # their metadata is in core.file. Outside public/: files are served by the app,
-        # after a permission check. Production may point it at S3 by configuration only.
+        # after a permission check. The local disk is the production storage too; another
+        # Flysystem adapter (S3...) would be a change of this file only.
         record_files.storage:
             local:
-                directory: '%kernel.project_dir%/var/storage/files'
+                directory: '%env(resolve:RECORD_FILES_DIR)%'
 
 when@test:
     flysystem:

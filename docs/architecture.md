@@ -20,9 +20,17 @@ Records are read and written with DBAL, never as ORM entities: their tables do n
 code is written.
 
 The bytes of stored files are in neither schema: they are in the `record_files` storage of
-`league/flysystem-bundle` (`config/packages/flysystem.yaml`), on the local disk under
-`var/storage/files` by default and in memory in the tests. Production may point it at S3 or any
-Flysystem adapter by configuration only.
+`league/flysystem-bundle` (`config/packages/flysystem.yaml`), on the local disk, and in memory in
+the tests. The directory is the `RECORD_FILES_DIR` environment variable, `var/storage/files` of
+the project when it's not set.
+
+In production, set `RECORD_FILES_DIR` to a directory that outlives the deploys, such as
+`/srv/metadata-driven/files`: a deploy that builds each release in a directory of its own (or a
+new container image) would otherwise leave the files behind. The web server's user needs to write
+there. Back it up together with the database: a row of `core.file` without its bytes is a file
+that can't be downloaded, and bytes without a row are deleted by
+[`metadata:files:gc`](console.md#metadatafilesgc). Another Flysystem adapter (S3 or compatible)
+would be a change of `config/packages/flysystem.yaml` only.
 
 ## Modules
 

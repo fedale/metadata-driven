@@ -1,7 +1,7 @@
 # Plan: the `file` field type
 
-Status: **all nine phases merged** into main. Only the open decision on production storage is
-left.
+Status: **all nine phases merged** into main; production storage decided (2026-11-05).
+Complete.
 Discussed with the user on 2026-11-03.
 
 A field type that stores a file (an image, a PDF, any document) on a record: a product's photo,
@@ -10,8 +10,10 @@ files (see [blueprints-plan.md](blueprints-plan.md#seeds-with-files)).
 
 ## Open decisions
 
-- **Production storage**: local disk or S3 (or compatible)? Flysystem lets us postpone it, but it
-  changes what we test.
+- **Production storage** — decided by the user on 2026-11-05: the local disk, in a directory
+  set by the `RECORD_FILES_DIR` environment variable (default `var/storage/files` of the
+  project), to be kept out of the release directories and backed up with the database. Another
+  Flysystem adapter remains a configuration change.
 - **Several files on one record** — decided by the user on 2026-11-04: a `multiple: true` setting
   with a link table, see [Several files](#several-files). The child object stays the way to go
   when each file carries data of its own (a caption, a kind).
@@ -20,8 +22,9 @@ files (see [blueprints-plan.md](blueprints-plan.md#seeds-with-files)).
 
 - `league/flysystem-bundle`, installed with `composer require` (Symfony has no storage
   component). One storage, `record_files`:
-  - dev and test: local adapter under `var/storage/files`, outside `public/`;
-  - production: whatever the open decision picks, by configuration only.
+  - dev: local adapter under `var/storage/files`, outside `public/`; test: in memory;
+  - production: the local adapter too, in the directory `RECORD_FILES_DIR` names (decided on
+    2026-11-05); another adapter would be a change of configuration only.
 - Files are stored under a key derived from their content, `sha256[0:2]/sha256`, so the same
   bytes are stored once. The original name is metadata, never part of the key: no path
   traversal, no clashes.
