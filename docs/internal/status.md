@@ -184,7 +184,8 @@ new-composite pages.
     setting with a link table (phases 5–7 of the plan), then the GC (phase 8). Phases 5
     (storage: settings, link table), 6 (records and form), 7 (grid and export), 8 (GC,
     `metadata:files:gc`) and 9 (file fields in composite forms) are merged into main: the plan
-    is complete. Open decision in the plan: production storage.
+    is complete. Production storage (2026-11-05): the local disk, in `RECORD_FILES_DIR`
+    (default `var/storage/files`); see `architecture.md`.
 - **Blueprints — plan under review, not started**: [blueprints-plan.md](blueprints-plan.md)
   (packaged, versioned models: a canonical format for every item, install, three-way upgrade,
   seeds, online indexes, export). Its open decisions are listed at the top: the name, local
