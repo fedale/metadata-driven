@@ -1,0 +1,15 @@
+format: metadata-driven/v1
+kind: Template
+id: acme/shop
+spec:
+  version: 1.0.0
+  label: Shop
+  description: Products, their categories and their tags.
+  license: MIT
+  requires:
+    format: metadata-driven/v1
+  resources:
+    - objects/*.yaml
+    - forms/*.yaml
+    - views/*.yaml
+    - translations/*.yaml

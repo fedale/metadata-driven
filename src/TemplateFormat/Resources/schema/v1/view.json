@@ -1,0 +1,15 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:metadata-driven:schema:v1:view",
+    "title": "The spec of a View document: a form layout or a grid view of an object",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["object", "kind", "name", "template"],
+    "properties": {
+        "object": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$" },
+        "kind": { "enum": ["form", "grid"] },
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$", "maxLength": 50 },
+        "default": { "type": "boolean" },
+        "template": { "type": "string", "minLength": 1, "description": "The view template as the app stores it: the HTML layout of a form view, the YAML of a grid view" }
+    }
+}

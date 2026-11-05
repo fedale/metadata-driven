@@ -15,6 +15,7 @@
         "fedale/setting-bundle": "1.1.x-dev",
         "imagine/imagine": "^1.5",
         "league/flysystem-bundle": "^3.7",
+        "opis/json-schema": "^2.6",
         "symfony/asset-mapper": "8.1.*",
         "symfony/cache": "8.1.*",
         "symfony/console": "8.1.*",

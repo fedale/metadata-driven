@@ -111,6 +111,15 @@ deptrac:
       collectors:
         - { type: directory, value: src/Module/File/Contract/.* }
 
+    - name: Template
+      collectors:
+        - type: bool
+          must: [{ type: directory, value: src/Module/Template/.* }]
+          must_not: [{ type: directory, value: src/Module/Template/Contract/.* }]
+    - name: TemplateContract
+      collectors:
+        - { type: directory, value: src/Module/Template/Contract/.* }
+
     - name: Admin
       collectors:
         - type: bool
@@ -155,6 +164,9 @@ deptrac:
 
     File: [FileContract, Shared]
     FileContract: [Shared]
+
+    Template: [TemplateContract, MetadataContract, Shared]
+    TemplateContract: [Shared]
 
     Admin: [AdminContract, MetadataContract, FieldTypeContract, SchemaContract, ViewContract, SettingsContract, AccessContract, Shared]
     AdminContract: [Shared]

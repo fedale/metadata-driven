@@ -1,0 +1,63 @@
+{
+    "$comment": "The field types of format metadata-driven/v1 and their settings. A setting of kind object or field holds the id of an item of the template; of: self (a field of the same object), target (of the object named by its target setting) or through (of the object named by its through setting). The app checks this file against its own field types (FieldTypeCatalogTest).",
+    "text": {
+        "maxLength": { "kind": "integer", "min": 1, "max": 10000, "default": 255 },
+        "multiline": { "kind": "boolean", "default": false },
+        "pattern": { "kind": "string", "nullable": true, "default": null },
+        "patternMessage": { "kind": "string", "nullable": true, "default": null }
+    },
+    "number": {
+        "decimals": { "kind": "integer", "min": 0, "max": 10, "default": 0 },
+        "min": { "kind": "integer", "nullable": true, "default": null },
+        "max": { "kind": "integer", "nullable": true, "default": null }
+    },
+    "boolean": {
+        "default": { "kind": "boolean", "default": false },
+        "display": { "kind": "choice", "choices": ["checkbox", "switch"], "default": "checkbox" }
+    },
+    "date": {
+        "includeTime": { "kind": "boolean", "default": false }
+    },
+    "email": {},
+    "tel": {},
+    "url": {},
+    "select": {
+        "options": { "kind": "options", "default": [] },
+        "default": { "kind": "string", "nullable": true, "default": null },
+        "display": { "kind": "choice", "choices": ["dropdown", "radio"], "default": "dropdown" }
+    },
+    "password": {
+        "minLength": { "kind": "integer", "min": 1, "max": 128, "default": 8 },
+        "requireMixedCase": { "kind": "boolean", "default": false },
+        "requireDigit": { "kind": "boolean", "default": false },
+        "requireSymbol": { "kind": "boolean", "default": false },
+        "confirm": { "kind": "boolean", "default": false },
+        "strengthMeter": { "kind": "boolean", "default": false },
+        "revealToggle": { "kind": "boolean", "default": false }
+    },
+    "file": {
+        "accept": { "kind": "string", "nullable": true, "default": null },
+        "maxSize": { "kind": "integer", "min": 1, "max": 100, "default": 10 },
+        "image": { "kind": "boolean", "default": false },
+        "multiple": { "kind": "boolean", "default": false },
+        "max": { "kind": "integer", "min": 1, "max": 100, "nullable": true, "default": null }
+    },
+    "relation": {
+        "target": { "kind": "object", "default": "" },
+        "onDelete": { "kind": "choice", "choices": ["set_null", "restrict", "cascade"], "default": "set_null" },
+        "inverseName": { "kind": "string", "nullable": true, "default": null },
+        "inverseLabel": { "kind": "string", "nullable": true, "default": null },
+        "dependsOn": { "kind": "field", "of": "self", "nullable": true, "default": null },
+        "dependsVia": { "kind": "field", "of": "target", "nullable": true, "default": null }
+    },
+    "many_to_many": {
+        "target": { "kind": "object", "default": "" },
+        "onDelete": { "kind": "choice", "choices": ["unlink", "restrict"], "default": "unlink" },
+        "inverseName": { "kind": "string", "nullable": true, "default": null },
+        "inverseLabel": { "kind": "string", "nullable": true, "default": null },
+        "max": { "kind": "integer", "min": 1, "nullable": true, "default": null },
+        "through": { "kind": "object", "nullable": true, "default": null },
+        "throughSource": { "kind": "field", "of": "through", "nullable": true, "default": null },
+        "throughTarget": { "kind": "field", "of": "through", "nullable": true, "default": null }
+    }
+}

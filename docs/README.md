@@ -18,6 +18,7 @@ Objects are defined from the admin UI at `/admin` or from the console.
 | [Languages](i18n.md) | Translations of the labels, options and titles, `{t:name}` texts in layouts, the language of each user |
 | [Users and permissions](access.md) | Signing in, users, the permissions of every object, roles |
 | [Renaming and archiving](lifecycle.md) | New machine names for objects and fields (table, columns and every reference follow), archiving with the data kept, restoring, purging for good |
+| [Templates](templates.md) | A model as a package of YAML documents: exporting objects, views, forms and translations, validating a template |
 | [Console commands](console.md) | Every command, its arguments and options, what it changes in the database |
 | [Field types](field-types.md) | The twelve field types, their settings, columns, validation and grid behaviour |
 | [Architecture](architecture.md) | Modules and layers, the boundaries Deptrac enforces, how a definition becomes a table |

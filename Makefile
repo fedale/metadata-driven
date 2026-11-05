@@ -39,6 +39,7 @@ phpstan: ## Static analysis
 deptrac: ## Check layer and module boundaries
 	$(PHP) vendor/bin/deptrac analyse --config-file=deptrac.layers.yaml --no-progress
 	$(PHP) vendor/bin/deptrac analyse --config-file=deptrac.modules.yaml --no-progress
+	$(PHP) vendor/bin/deptrac analyse --config-file=deptrac.template-format.yaml --no-progress
 
 assets: ## Compile the Sass stylesheets (the pages fail to render without them)
 	$(CONSOLE) sass:build --quiet

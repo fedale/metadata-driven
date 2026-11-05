@@ -28,6 +28,8 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:purge`](#metadatapurge) | Delete an archived object or field for good, its data with it |
 | [`metadata:list`](#metadatalist) | List the objects, or the fields of one object, and what is archived |
 | [`metadata:files:gc`](#metadatafilesgc) | Delete the stored files no record references any more |
+| [`metadata:template:export`](#metadatatemplateexport) | Write objects, their fields and views, composite forms and their translations as a template |
+| [`metadata:template:validate`](#metadatatemplatevalidate) | Check that a template follows the format, without installing it |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
 | `user:create` | Create a user who can sign in — see [Users and permissions](access.md#usercreate) |
 | `access:sync` | Create the permissions of every object, the admin permission and the super admin role — see [Users and permissions](access.md#permissions) |
@@ -463,6 +465,44 @@ symfony console metadata:list pet
 
 With an object, every field with its type, label, required and unique flags and resolved settings
 (defaults included), then the sets of fields unique together.
+
+## `metadata:template:export`
+
+Write objects, with their fields and views, composite forms and their translations as a
+template: a directory of YAML documents (see [Templates](templates.md)).
+
+```
+metadata:template:export <name> <release> <directory> [--object=OBJECT]... [--form=FORM]... [--label=LABEL] [--description=DESCRIPTION] [--license=LICENSE]
+```
+
+| Argument or option | Meaning |
+|---|---|
+| `name` | The template's name, `vendor/name` (`acme/shop`) |
+| `release` | Its version, `major.minor.patch` (`1.0.0`) |
+| `directory` | A new or empty directory to write it into |
+| `--object` | An object to export, with its fields and views (repeatable) |
+| `--form` | A composite form to export; its objects must be exported too (repeatable) |
+| `--label`, `--description` | The title (default: from the name) and a line about the template |
+| `--license` | An SPDX identifier, such as `MIT` (default `proprietary`) |
+
+```bash
+symfony console metadata:template:export acme/shop 1.0.0 templates/shop --object=category --object=product --form=catalogue --license=MIT
+```
+
+Records in `core.template_item` the id each item received, so that the next export of the same
+template gives it the same id, renamed or not. Fails when an exported item points at an object
+that is not exported, when a form writes one, or when the name or the version is invalid.
+
+## `metadata:template:validate`
+
+Check a template's structure without a database: the schemas, the settings of every field type,
+ids, names and references (see [Templates](templates.md#validating-a-template)).
+
+```
+metadata:template:validate <directory>
+```
+
+Lists every problem with its file and where in it, and fails when there is one. Changes nothing.
 
 ## `metadata:files:gc`
 

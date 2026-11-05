@@ -1,0 +1,67 @@
+format: metadata-driven/v1
+kind: Object
+id: acme.product
+spec:
+  name: product
+  label: Product
+  plural: Products
+  icon: box
+  label_field: acme.product.name
+  search:
+    handler: phrase
+    fields: [acme.product.name, acme.product.sku]
+  unique_together:
+    - [acme.product.category, acme.product.name]
+  fields:
+    - id: acme.product.name
+      name: name
+      type: text
+      label: Name
+      required: true
+    - id: acme.product.sku
+      name: sku
+      type: text
+      label: SKU
+      unique: true
+      settings:
+        maxLength: 20
+        pattern: '[A-Z]{3}-\d{2}'
+    - id: acme.product.kind
+      name: kind
+      type: select
+      label: Kind
+      settings:
+        options:
+          - { value: chair, label: Chair }
+          - { value: table, label: Table }
+    - id: acme.product.seats
+      name: seats
+      type: number
+      label: Seats
+      settings:
+        min: 1
+      condition:
+        field: acme.product.kind
+        values: [chair]
+    - id: acme.product.category
+      name: category
+      type: relation
+      label: Category
+      settings:
+        target: acme.category
+        onDelete: restrict
+        inverseName: products
+        inverseLabel: Products
+    - id: acme.product.tags
+      name: tags
+      type: many_to_many
+      label: Tags
+      settings:
+        target: acme.tag
+    - id: acme.product.photo
+      name: photo
+      type: file
+      label: Photo
+      settings:
+        image: true
+        maxSize: 5

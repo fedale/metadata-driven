@@ -1,0 +1,13 @@
+format: metadata-driven/v1
+kind: Object
+id: acme.tag
+spec:
+  name: tag
+  label: Tag
+  plural: Tags
+  fields:
+    - id: acme.tag.name
+      name: name
+      type: text
+      label: Name
+      required: true

@@ -149,6 +149,13 @@ Things that are not obvious from a single file, and that are easy to break.
   `FileCell` (Record UI) draws them. `FieldTypeInterface::isSortable()` (false
   for `file` and `many_to_many`) decides sorting, searching and virtual columns, in the default
   grid, the grid view compiler and the grid source alike.
+- **Templates**: `App\TemplateFormat` (`src/TemplateFormat/`) must stay free of the app
+  (`deptrac.template-format.yaml`, run by `make deptrac`): only `symfony/yaml` and
+  `opis/json-schema`. It describes the field types on its own (`Resources/field-types.v1.json`):
+  **a new field type or setting must be added there too**, or
+  `FieldTypeCatalogMatchesTheAppTest` fails. The `Template` module is the only bridge to the
+  metadata; `core.template_item` keeps the id of each exported item across exports (a renamed
+  item keeps its id).
 - **Security forms**: the stateless CSRF token input needs `data-controller="csrf-protection"` to
   work in a real browser.
 
@@ -186,9 +193,10 @@ new-composite pages.
   (`fedale/template-catalog`). Decided on 2026-11-05: the name "template", three-way upgrades,
   the central catalog with GitHub sign-in, the format in `src/TemplateFormat/` behind a Deptrac
   boundary (extracted into `fedale/template-format` when the catalog starts), `requires` naming
-  the format version. Still open (top of the plan): how the format checks field settings
-  without the app (phase 1), the catalog's hosting and review policy. Next is phase 1 (format and
-  export). Its seeds are
+  the format version, field settings checked by a static description in the format. Still open
+  (top of the plan): the catalog's hosting and review policy. Phase 1 (format and export,
+  `metadata:template:export` and `metadata:template:validate`) is done on
+  `feature/template-format`, awaiting the user's review before phase 2 (install). Its seeds are
   the CSV import service below.
 - **CSV import — part of the template seeds (phase 3).** Plan: (A) a service plus `record:import` CLI
   with `--dry-run` and `--key`, all-or-nothing with a two-pass check; (B) a web wizard; (C) async

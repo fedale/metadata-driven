@@ -1,7 +1,8 @@
 # Plan: templates (packaged, versioned models)
 
-Status: **decided, not started**. Discussed with the user on 2026-11-03; name, upgrade model
-and distribution decided on 2026-11-05 (see [Decisions](#decisions)).
+Status: **phase 1 done** (format and export, branch `feature/template-format`), awaiting review
+before phase 2. Discussed with the user on 2026-11-03; name, upgrade model and distribution
+decided on 2026-11-05 (see [Decisions](#decisions)).
 
 A template packages a model, meaning its objects, fields, relations, composite forms, views,
 translations and seed data, so it can be:
@@ -47,15 +48,14 @@ original machine (see [status.md](status.md#setting-up-on-a-new-machine)). It al
   user or organization.
 - **`requires` names the format version** (2026-11-05), since the app has no version number;
   the app version joins it when the app gets one.
+- **Field settings without the app: a static description** (phase 1). The format carries
+  `Resources/field-types.v1.json`: every field type, every setting with its kind, range, choices
+  and default, and which settings name an object or a field (and of which object). The catalog
+  can then refuse a broken template on publish. `FieldTypeCatalogMatchesTheAppTest` fails when
+  the app gains a type or a setting the description lacks.
 
 ## Open decisions
 
-- **Field settings without the app.** The format must check a field's settings (each type has
-  its own: `maxLength`, `accept`, `target`...) without depending on the app, where they are
-  defined today (`FieldTypeInterface::settingDefinitions()`). Phase 1 decides how: the format
-  carries a static description of the field types it knows (and a test in metadata-driven
-  checks it matches every registered type), or it checks the envelope only and leaves settings
-  to the install. The first is what the catalog needs to refuse a broken template on publish.
 - **The catalog**: its domain and hosting, and whether a template is reviewed before it is listed
   or only reported and removed after. To decide when the catalog starts. See
   [The catalog](#the-catalog).
@@ -114,8 +114,9 @@ acme-registration-1.0.0/
   objects/account.yaml
   objects/profile.yaml
   forms/registration.yaml
-  views/account.form.html
-  views/account.grid.yaml
+  views/account.form.main.yaml    # every document is YAML: a layout is a literal block
+  views/account.grid.main.yaml
+  translations/en.yaml            # the {t:name} texts, in the default language too
   translations/it.yaml
   seeds/qualifications.csv
   files/...                       # files referenced by seeds
@@ -375,9 +376,28 @@ start; this section is its brief.
 
 In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts):
 
-1. **Format and export**: the envelope, the kinds, the JSON Schemas, the field settings without
-   the app, the Deptrac boundary of `App\TemplateFormat`, the export command, ids. Test: export a
-   model built in a test, then validate it against the schemas.
+1. **Format and export** — done. As built:
+   - `App\TemplateFormat` (`src/TemplateFormat/`): `DocumentCodec` (envelope, YAML both ways,
+     layouts as literal blocks), the JSON Schemas of Template, Object, Form, View and
+     Translations (`Resources/schema/v1/`, checked with `opis/json-schema`), `FieldTypeCatalog`
+     (settings: check, defaults, references), `PackageChecker` (schemas, settings, unique ids
+     and names, every reference resolved inside the package), `PackageDirectory` (read and
+     write; resources stay inside the package). Its boundary: `deptrac.template-format.yaml`,
+     in `make deptrac`. Tests: `tests/Unit/TemplateFormat/`, with an example package in
+     `Fixtures/shop/`.
+   - Ids are unique **per kind** (an object and a form may share one); field ids are unique
+     across the package, so that a reference names a field by its id alone. A setting naming a
+     field holds its id too (`dependsOn`, `dependsVia`, `throughSource`, `throughTarget`).
+   - Settings, `required` and `unique` are written only when they differ from their default.
+   - Views and forms keep naming fields by name inside their templates and definitions; only
+     `object` and `via` become ids. A rename in phase 4 rewrites them, as the app does today.
+   - The `Template` module: `TemplateExporter`, `core.template_item` (the id of each exported
+     object, field, view and form, kept across exports; phase 2 records installed items there
+     too), `metadata:template:export <name> <release> <directory>` (`release`, since
+     `--version` is the console's own) and `metadata:template:validate`. Tests:
+     `tests/Integration/Module/Template/`.
+   - References outside the package (to another template, through `requires`) are refused for
+     now: they come with phase 2.
 2. **Install**: read, check, plan, apply in one transaction, `--dry-run`, the tracking tables.
    Test: the round trip, collisions, a failure halfway that leaves nothing behind.
 3. **Seeds**: the import service, `once` and `managed`, references by key, files. With the
