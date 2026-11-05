@@ -1,20 +1,22 @@
 # Plan: many-to-many relations
 
-Status: reviewed by the user (type name, read-only inverse, delete rules decided). Phases 1–3
-merged into main. Phase 4 confirmed by the user and split: 4a (fields unique together) merged
-into main; 4b split again by the user's choice: 4b-1 (`through`: settings, reading, grid,
-lifecycle) merged into main; 4b-2 (writing the rows from the record form) merged into main: see
-[Phase 4b-2, as delivered](#phase-4b-2-as-delivered). Search on the linked labels (relations
-too, only when configured) merged into main. Last updated:
-2026-11-04.
+Status: **complete**, merged into main and pushed (2026-11-05). Reviewed by the user (type name,
+read-only inverse, delete rules decided). Phases 1–3 merged; phase 4 confirmed by the user and
+split: 4a (fields unique together), 4b-1 (`through`: settings, reading, grid, lifecycle) and 4b-2
+(writing the rows from the record form, see
+[Phase 4b-2, as delivered](#phase-4b-2-as-delivered)), all merged. Search on the linked labels
+(relations too, only when configured) merged. Known limits: see the end of 4b-2.
 
-## Where we are
+## Where we started
+
+The sections up to "Phases" describe the situation and the design before the work began; the
+"as delivered" notes record where the result differs.
 
 - `relation` is many-to-one: one `guid` column on the source table, a foreign key to the target,
   `onDelete` applied by the application (soft delete), a read-only inverse list (one-to-many) on
   the target's page.
 - One-to-one is a `relation` marked unique, edited from a composite form section `mode: one`.
-- Many-to-many is not available. Today the only way is a **junction object** with two `relation`
+- Many-to-many was not available. The only way was a **junction object** with two `relation`
   fields (e.g. `membership` → `project`, `membership` → `person`), edited as a `mode: many`
   section. Phases 1–3 cover the plain case (a contact has many tags, a tag has many contacts);
   phase 4 lets a `many_to_many` go through such a junction object when the link carries data of
@@ -316,11 +318,9 @@ decide what is shown, as below.
   unique index on the first update and come back as an error; the check cannot see it. Rows are
   not ordered beyond "oldest first".
 
-### Working on it
+### Tests
 
-- Worktree used for phase 4: `../metadata-driven-m2m` (see "Sessions working in parallel" in
-  `status.md`): its `.env.test.local` sets `TEST_TOKEN=_m2m`, database `app_test_m2m`.
-- Tests of the phase: `tests/Integration/Module/Record/ManyToManyThroughTest.php`,
+- Tests of phase 4: `tests/Integration/Module/Record/ManyToManyThroughTest.php`,
   `tests/Functional/Module/Record/ManyToManyThroughControllerTest.php`,
   `tests/Integration/Module/Metadata/UniqueTogetherTest.php`.
 
@@ -342,4 +342,5 @@ decide what is shown, as below.
   fields (`metadata:object:search --fields`, the admin's "Searched fields"): the default stays the
   text fields. A target without a label field matches nothing. No trigram index on the target's
   label unless the target searches it itself.
-- Data on the link: phase 4, through a junction object (proposal, to confirm when phase 3 is done).
+- Data on the link: phase 4, through a junction object (confirmed by the user after phase 3,
+  delivered as 4a and 4b).

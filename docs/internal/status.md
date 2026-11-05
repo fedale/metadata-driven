@@ -163,29 +163,23 @@ gridview-bundle fixes 1–8 (`../gridview-bundle/docs/internal/METADATA-DRIVEN-f
 rename/archive/restore/purge of objects and fields, **Save and new** on the new-record and
 new-composite pages.
 
+- **Many-to-many relations**, complete (pushed 2026-11-05), plan in
+  [many-to-many-plan.md](many-to-many-plan.md): the `many_to_many` field type with a read-only
+  inverse; phase 1 (storage: the type, metadata rules, link tables `data.l_<object>__<field>`),
+  phase 2 (records: links, validation, delete rules, inverse lists, form, composite forms), phase 3
+  (grid: cell, filter, export, grid views), phase 4a (fields unique together,
+  `metadata:object:unique`), phase 4b (data on the link through a junction object: the `through`
+  setting, then writing its rows from the record and composite forms, with permissions on the
+  junction), and search on the linked labels (relations too, only when configured). Known limits
+  are listed in the plan, under "Phase 4b-2, as delivered".
+- **The `file` field type**, complete, plan in [file-type-plan.md](file-type-plan.md): storage and
+  `core.file`, the record form, download and thumbnails at `/files/{id}`, grid and export, several
+  files per field (`multiple: true` with a link table), the GC (`metadata:files:gc`) and file
+  fields in composite forms. Production storage (2026-11-05): the local disk, in
+  `RECORD_FILES_DIR` (default `var/storage/files`); see `architecture.md`.
+
 ## Open
 
-- **Work queue**, two items, each with its next phase awaiting the user's go-ahead:
-  - **Many-to-many relations**, plan in [many-to-many-plan.md](many-to-many-plan.md), reviewed by
-    the user (field type `many_to_many`, read-only inverse). Phases 1 (storage: the type, metadata
-    rules, link tables `data.l_<object>__<field>`) and 2 (records: write and read the links,
-    validation, delete rules, inverse lists, form, composite forms) and 3 (grid: cell, filter,
-    export, grid views) are merged into main. Phase 4 (data on the link, through a junction
-    object) is confirmed and split: 4a, fields unique together (`metadata:object:unique`), is
-    merged into main; 4b, split in two by the user: 4b-1 (the `through` setting, reading, grid,
-    lifecycle) is merged into main; 4b-2 (writing the rows: record pipeline, inline rows in the
-    record and composite forms, permissions on the junction) is merged into main (locally: not
-    pushed yet, SSH to GitHub refused on 2026-11-04). Search on the linked labels (relations too,
-    only when configured) is merged into main (locally as well).
-  - **The `file` field type**, plan in [file-type-plan.md](file-type-plan.md). Phases 1 (storage
-    and `core.file`), 2 (the type in the record form) and 3 (download and thumbnails at
-    `/files/{id}`) and 4 (grid: link, thumbnail, yes/no filter, export of the names) are merged
-    into main. Several files per field: decided by the user (2026-11-04), a `multiple: true`
-    setting with a link table (phases 5–7 of the plan), then the GC (phase 8). Phases 5
-    (storage: settings, link table), 6 (records and form), 7 (grid and export), 8 (GC,
-    `metadata:files:gc`) and 9 (file fields in composite forms) are merged into main: the plan
-    is complete. Production storage (2026-11-05): the local disk, in `RECORD_FILES_DIR`
-    (default `var/storage/files`); see `architecture.md`.
 - **Blueprints — plan under review, not started**: [blueprints-plan.md](blueprints-plan.md)
   (packaged, versioned models: a canonical format for every item, install, three-way upgrade,
   seeds, online indexes, export). Its open decisions are listed at the top: the name, local
