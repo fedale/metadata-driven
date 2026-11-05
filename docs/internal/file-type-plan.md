@@ -5,8 +5,8 @@ Complete.
 Discussed with the user on 2026-11-03.
 
 A field type that stores a file (an image, a PDF, any document) on a record: a product's photo,
-its manual, a contract's signed copy. It is a prerequisite of the blueprint seeds that ship
-files (see [blueprints-plan.md](blueprints-plan.md#seeds-with-files)).
+its manual, a contract's signed copy. It is a prerequisite of the template seeds that ship
+files (see [template-plan.md](template-plan.md#seeds-with-files)).
 
 ## Open decisions
 
@@ -40,7 +40,7 @@ A new static table, `core.file`, through a migration:
 | `original_name` | string(255) | As uploaded, sanitized; used for downloads |
 | `mime_type` | string(127) | Detected from the content, not from the extension |
 | `size` | bigint | Bytes |
-| `sha256` | char(64) | Indexed; deduplication and blueprint upgrades |
+| `sha256` | char(64) | Indexed; deduplication and template upgrades |
 | `width`, `height` | int, nullable | Images only |
 | `created_at` | datetime | |
 
