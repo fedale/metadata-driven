@@ -1,0 +1,10 @@
+format: metadata-driven/v1
+kind: Translations
+id: acme.translations.it
+spec:
+  locale: it
+  entries:
+    object.product.singular: Prodotto
+    object.product.plural: Prodotti
+    field.product.name: Nome
+    text.identity: Identità

@@ -1,0 +1,12 @@
+format: metadata-driven/v1
+kind: View
+id: acme.product.grid.main
+spec:
+  object: acme.product
+  kind: grid
+  name: main
+  default: true
+  template: |
+    columns:
+      - name
+      - sku

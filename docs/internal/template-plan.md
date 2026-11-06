@@ -1,7 +1,11 @@
 # Plan: templates (packaged, versioned models)
 
-Status: **decided, not started**. Discussed with the user on 2026-11-03; name, upgrade model
-and distribution decided on 2026-11-05 (see [Decisions](#decisions)).
+Status: **phases 1 to 6 done** (format and export on `feature/template-format`, install on
+`feature/template-install`, seeds on `feature/template-seeds`, upgrade on
+`feature/template-upgrade`, indexes and signatures on `feature/template-indexes`, admin UI on
+`feature/template-admin`, each branched from the one before), awaiting review before phase 7
+(publish to the catalog), which needs the catalog itself (C0-C4). Discussed with the user on 2026-11-03; name, upgrade model and distribution
+decided on 2026-11-05 (see [Decisions](#decisions)).
 
 A template packages a model, meaning its objects, fields, relations, composite forms, views,
 translations and seed data, so it can be:
@@ -26,8 +30,9 @@ original machine (see [status.md](status.md#setting-up-on-a-new-machine)). It al
   upgrade compares the installed version, the new one and the current state, applies what only
   the new version changed, keeps what only the user changed, and reports a conflict where both
   did. See [Upgrading](#upgrading).
-- **Distribution: a central catalog, as an application of its own**, plus any number of other
-  indexes (a company's private one, a vendor's own). See [The catalog](#the-catalog).
+- **Distribution: a central catalog, as a repository of its own** (a GitHub repository since
+  2026-11-06), plus any number of other indexes (a company's private one, a vendor's own). See
+  [The catalog](#the-catalog).
 - **The format lives in metadata-driven first, behind a hard boundary** (2026-11-05). The
   format (schemas, reader, structural checks, archives, indexes) is written in
   `src/TemplateFormat/` (`App\TemplateFormat`), apart from the modules, and extracted into a
@@ -47,18 +52,23 @@ original machine (see [status.md](status.md#setting-up-on-a-new-machine)). It al
   user or organization.
 - **`requires` names the format version** (2026-11-05), since the app has no version number;
   the app version joins it when the app gets one.
+- **Field settings without the app: a static description** (phase 1). The format carries
+  `Resources/field-types.v1.json`: every field type, every setting with its kind, range, choices
+  and default, and which settings name an object or a field (and of which object). The catalog
+  can then refuse a broken template on publish. `FieldTypeCatalogMatchesTheAppTest` fails when
+  the app gains a type or a setting the description lacks.
+
+- **Catalog review: before listing** (2026-11-06). A template is checked by a person before it
+  is published; nothing is listed unreviewed.
+- **`fedale/template-format` is MIT** (2026-11-06): whoever publishes an index or a template
+  uses it. Repository: `fedale/metadata-driven-template-format` on GitHub.
+
+- **Catalog hosting: GitHub** (2026-11-06): a repository, pull requests, Actions, Pages and
+  Releases; no server, no database. See [The catalog](#the-catalog).
 
 ## Open decisions
 
-- **Field settings without the app.** The format must check a field's settings (each type has
-  its own: `maxLength`, `accept`, `target`...) without depending on the app, where they are
-  defined today (`FieldTypeInterface::settingDefinitions()`). Phase 1 decides how: the format
-  carries a static description of the field types it knows (and a test in metadata-driven
-  checks it matches every registered type), or it checks the envelope only and leaves settings
-  to the install. The first is what the catalog needs to refuse a broken template on publish.
-- **The catalog**: its domain and hosting, and whether a template is reviewed before it is listed
-  or only reported and removed after. To decide when the catalog starts. See
-  [The catalog](#the-catalog).
+None.
 
 ## Principles
 
@@ -114,8 +124,9 @@ acme-registration-1.0.0/
   objects/account.yaml
   objects/profile.yaml
   forms/registration.yaml
-  views/account.form.html
-  views/account.grid.yaml
+  views/account.form.main.yaml    # every document is YAML: a layout is a literal block
+  views/account.grid.main.yaml
+  translations/en.yaml            # the {t:name} texts, in the default language too
   translations/it.yaml
   seeds/qualifications.csv
   files/...                       # files referenced by seeds
@@ -317,48 +328,49 @@ private templates, a vendor's own) on any web server.
 
 ## The catalog
 
-A separate Symfony application, in a repository of its own (`fedale/template-catalog`), built
-on the same stack and the user's bundles where they fit (`fedale/gridview-bundle` for its lists,
-`fedale/rbac-bundle` for its roles). It depends on the format library (`fedale/template-format`,
-extracted from metadata-driven first), never on metadata-driven.
-
-**For the people who install:**
-
-- Search and browse: by name, label, tags, objects inside, author; sorted by downloads or by
-  date.
-- A page per template: its README, its objects and fields (read from the documents, so the
-  user sees what the template will create before installing), its versions with their changes,
-  what it requires, its license, its downloads.
-- The index (`/index.json`) that metadata-driven reads, and a JSON search API for **Admin →
-  Templates**.
+**A GitHub repository, no server** (decided 2026-11-06): `fedale/metadata-driven-templates`.
+Publishing is a pull request, the review is the review of the pull request, the checks and the
+publication are GitHub Actions, the index and the pages are static files on GitHub Pages, the
+archives are Release assets. It depends on the format library (`fedale/template-format`), never
+on metadata-driven. It has its own plan (`metadata-driven-templates/docs/internal/plan.md`);
+this section is its brief.
 
 **For the people who publish:**
 
-- An account, and a **vendor namespace** (`acme/`) owned by one account or organization: only
-  its members publish under it.
-- Publishing: upload an archive from the site, or `metadata:template:publish` from metadata-driven
-  with an API token. The catalog then:
-  1. checks the archive with the format library: schemas, ids, references, the safety rules of
-     the archive, the semver bump against the previous version;
-  2. refuses a version that already exists (versions never change);
-  3. stores the archive (Flysystem, S3 in production), computes its checksum and signs it;
-  4. lists it in the index.
-- Yank a version: hidden from new installs and upgrades, still downloadable by its exact
-  version for those who have it.
+- A **vendor namespace** (`acme/`) belongs to GitHub users, listed in `vendors.yaml`: the check
+  refuses a pull request publishing under a vendor its author does not own. A new vendor is a
+  pull request of its own to `vendors.yaml`; `.github/CODEOWNERS` makes a maintainer review
+  every pull request.
+- Publishing a version: a pull request adding its **source directory**,
+  `templates/<vendor>/<name>/<version>/` (the manifest, documents, CSV and files of the seeds):
+  never an archive. Versions never change: a pull request may only add version directories.
+- **Checked before listing**: an Action runs the format library on every added version (schemas,
+  ids, references, seeds, files, the safety rules), checks the path against the manifest's name
+  and version, that the version is new and higher than the listed ones, the vendor and the size
+  limit (20 MB per version); then a maintainer reviews and merges. Nothing is listed unreviewed.
+- On merge, an Action packs each new version (reproducible archives), uploads it as a Release
+  asset, rebuilds and signs `index.json` (the secret key in the repository's Secrets) and deploys
+  the site.
+- Yank a version: a pull request to `yanked.yaml`.
 
-**Trust:**
+**For the people who install:** `index.json` on GitHub Pages (`TEMPLATE_CATALOG_URL`), signed
+with the catalog's key (`TEMPLATE_CATALOG_KEY`); static pages per template (README, objects and
+fields read from the documents, versions, requires, license) and a JSON search file, built by
+the same Action.
 
-- The checks of the format library are structural: they cannot compile a form against the
-  objects, as metadata-driven does at install. A later step can run a real dry-run install in a
-  throw-away metadata-driven instance and show the result on the page.
-- A "verified" badge for vendors whose identity was checked; reports from users; removal of a
-  template, which yanks every version.
+**Stateless:** archives are reproducible and Ed25519 signatures deterministic, so the whole
+index is rebuilt from the sources at every publication.
+
+**Trust:** the checks are structural, and a person reviews every version. A later step can run a
+dry-run install in a throw-away metadata-driven instance in the Action. Reports are GitHub
+issues; removing a template yanks every version.
+
+**Limits:** GitHub warns above 50 MB per file and refuses above 100 MB; the catalog's 20 MB per
+version keeps well below, and below metadata-driven's 50 MB download limit. Large media can move
+to Git LFS later.
 
 **Not in the catalog**: paid templates, private templates (a private index covers them),
-comments and ratings (later, if wanted).
-
-The catalog gets a plan of its own (`template-catalog/docs/internal/plan.md`) when its phases
-start; this section is its brief.
+comments and ratings, download counts beyond the Releases' own.
 
 ## Exporting
 
@@ -375,26 +387,203 @@ start; this section is its brief.
 
 In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts):
 
-1. **Format and export**: the envelope, the kinds, the JSON Schemas, the field settings without
-   the app, the Deptrac boundary of `App\TemplateFormat`, the export command, ids. Test: export a
-   model built in a test, then validate it against the schemas.
-2. **Install**: read, check, plan, apply in one transaction, `--dry-run`, the tracking tables.
-   Test: the round trip, collisions, a failure halfway that leaves nothing behind.
-3. **Seeds**: the import service, `once` and `managed`, references by key, files. With the
-   `record:import` CLI.
-4. **Upgrade**: three-way delta, renames, archive, conflicts, explicit steps, semver checks.
-5. **Indexes**: the index format, `repo add`, download, checksum, signatures, unpacking.
-6. **Admin UI**: the catalog, install, upgrade with the plan and the conflicts shown before
-   applying, item by item.
-7. **Publish**: `metadata:template:publish` to the catalog.
+1. **Format and export** — done. As built:
+   - `App\TemplateFormat` (`src/TemplateFormat/`): `DocumentCodec` (envelope, YAML both ways,
+     layouts as literal blocks), the JSON Schemas of Template, Object, Form, View and
+     Translations (`Resources/schema/v1/`, checked with `opis/json-schema`), `FieldTypeCatalog`
+     (settings: check, defaults, references), `PackageChecker` (schemas, settings, unique ids
+     and names, every reference resolved inside the package), `PackageDirectory` (read and
+     write; resources stay inside the package). Its boundary: `deptrac.template-format.yaml`,
+     in `make deptrac`. Tests: `tests/Unit/TemplateFormat/`, with an example package in
+     `Fixtures/shop/`.
+   - Ids are unique **per kind** (an object and a form may share one); field ids are unique
+     across the package, so that a reference names a field by its id alone. A setting naming a
+     field holds its id too (`dependsOn`, `dependsVia`, `throughSource`, `throughTarget`).
+   - Settings, `required` and `unique` are written only when they differ from their default.
+   - Views and forms keep naming fields by name inside their templates and definitions; only
+     `object` and `via` become ids. A rename in phase 4 rewrites them, as the app does today.
+   - The `Template` module: `TemplateExporter`, `core.template_item` (the id of each exported
+     object, field, view and form, kept across exports; phase 2 records installed items there
+     too), `metadata:template:export <name> <release> <directory>` (`release`, since
+     `--version` is the console's own) and `metadata:template:validate`. Tests:
+     `tests/Integration/Module/Template/`.
+   - References outside the package (to another template, through `requires`) are refused for
+     now: they come with phase 2.
+2. **Install** — done. As built:
+   - `TemplateInstaller` (Template Application) through `MetadataManagerInterface`, in one
+     `TransactionRunner` transaction; the metadata handlers join it, and the schema sync runs
+     inside it (checked: `SynchronizeSchemaOnDefinitionChange`). Order: objects; fields, those
+     naming another field (cascades, junctions) after it; conditions, label, search, unique
+     sets; `text.*` translations (default language first: a layout may only place a defined
+     text); views; forms (definition dumped back to YAML, ids turned into names); the other
+     translations. A refused step: `InstallRefused::at(path, at, message)`, all rolled back.
+   - `--dry-run` runs everything, then throws `DryRunCompleted` inside the transaction to roll
+     it back. Safe for the caches: the metadata registry never caches inside a transaction,
+     and **fedale/rbac-bundle was fixed for it** (branch `fix_transaction_cache` there): its
+     item graph and rules were cached even when read mid-transaction, so a rollback left
+     permissions that a later install then skipped. `TransactionCacheWriteGuard` now keeps
+     them out of the cache while a transaction is open.
+   - Refused before anything is written: an invalid package, a template already installed,
+     `requires` naming another template (not supported yet), a local object (archived ones
+     too) or form with one of its names, a translation key naming no object or form of the
+     template, a `text.*` key this instance already has (found by a security review: without
+     it a template could rewrite local labels and texts).
+   - Languages the instance does not have are skipped with a warning, not refused.
+   - `core.template_installation` (name, version, source, snapshot of the documents as
+     installed, dates) and the installed items in `core.template_item`. Exporting an installed
+     template under its name gives it back, ids included (tested).
+   - Commands: `metadata:template:install <directory> [--dry-run]`, `metadata:template:list`.
+   - Tests: `TemplateInstallerTest` (round trip, dry run then real install, a refused view
+     rolling everything back, collisions, languages). The example package now has
+     `translations/en.yaml` (its `{t:identity}` text in the default language).
+   - Not done: references to another installed template (`requires`), moved to after phase 4;
+     an admin page (phase 6).
+3. **Seeds** — done (branch `feature/template-seeds`). As built, step 1:
+   - Format: `seed.json` (`object` id, `key` a unique field *name*, `mode`, `records` inline or
+     `source` CSV in `seeds/`); fields by name, as views and forms do. One seed per object.
+     `SeedRecords` reads them (CSV: header of names, RFC 4180, BOM stripped, empty cell = no
+     value; `|` separates the values of a many-to-many field or a list of files).
+     `Package::$directory` and `Package::file()` resolve CSV files and files inside the package
+     only (no `..`, absolute paths or symlinks). `PackageChecker` checks key, records, keys,
+     columns, references (a relation or link holds keys of the target's seed) and files.
+     Exactly one of `records`/`source` is checked in the checker, for a readable message.
+   - The `relations: {province: {by: code}}` of this plan's first draft is not needed: a
+     reference goes by the key of the target's seed.
+   - Install: `SeedWriter`, after everything else, seeds ordered by what they point at (a
+     cycle between two seeds is refused), self-references set in a second pass. Through
+     `RecordManagerInterface` (validation, files as `FileUpload`). The snapshot keeps each
+     seed's records as read. A dry run stores the files before rolling back: the GC removes
+     them.
+   - `once`/`managed` only matter to upgrades (phase 4).
+   - Step 2 — done. Export: `--seed=object[:key]` (`SeedExporter`): one CSV per object, every
+     record via `RecordFinderInterface::each()` (keyset paging), relations and links written as
+     keys (the target needs its own `--seed`), files copied to
+     `files/<object>/<file id>/<name>`, passwords left out, an empty key refused.
+     `Package::$files` holds data files not on disk yet (`PackageFile`: `StringFile`,
+     `StoredPackageFile` streaming from the storage); `PackageDirectory::write()` writes them;
+     `Package::has()`/`open()` read them on disk or in memory. Exported seeds have no `mode`
+     (so `once`).
+   - `record:import <object> <file> [--key] [--match=field:targetField] [--dry-run]`
+     (`RecordImporter`, Record module): upsert by a unique key, relations by id or by a unique
+     field of the target (`RecordStore::idsByValues()`), files relative to the CSV, all or
+     nothing with every refused row listed. CSV reading in `App\Shared\Csv\CsvFile` (the
+     format keeps its own copy in `SeedRecords`, to stay free of the app). Not shared with
+     `SeedWriter`: seeds reference by the keys of other seeds, an import by ids or by values
+     already in the database.
+4. **Upgrade** — done (branch `feature/template-upgrade`). As built, step 1:
+   - `ItemStates` turns a package into items compared by value: `object:<id>` (its own
+     properties), `field:<id>`, `view:<id>`, `form:<id>`, `translation:<locale>:<key>` (its key
+     naming items by id, `PackageIds`, so a rename keeps it the same item). Defaults filled in
+     through the catalog, unique sets sorted, layouts right-trimmed; compared with `===`.
+   - The three states: `Snapshot::toPackage()` of the installation (base), the new package
+     (theirs), `TemplateExporter::ownedState()` (mine: the owned items read back, ids from
+     `core.template_item`, fields the user added left out, a reference to a local item written
+     `local:<name>`). **The install now records `ownedState()` as its snapshot**, not the
+     package's text: a layout the app sanitized would otherwise look changed by the user.
+   - `UpgradePlan::compute()`: changed only in theirs, applied; only in mine, kept; in both,
+     differently, a conflict; added; removed (a conflict if mine changed it). `--strategy`
+     keep/overwrite.
+   - `TemplateUpgrader` applies, in one transaction: renames (objects, then fields), new objects
+     and fields (fields naming new fields after them), field and object changes, texts, views
+     and forms (another name, kind or object = delete and save), translations, then removals
+     (views and forms deleted, fields and objects archived). `CurrentNames` follows the names
+     as they change. Then the snapshot and version are updated.
+   - Refused up front: not installed, not newer (`version_compare`), conflicts without a
+     strategy, collisions, and what the API cannot change on an existing item: a field's type,
+     required, unique, object, an object's icon. Those need API work first (a type change needs
+     a data conversion).
+   - **The ORM keeps entities changed by a rolled-back transaction**: read again, a relabelled
+     object kept its new label after a dry run. `PersistenceReset` (Doctrine: `clear()`) runs
+     after every rollback of an install or upgrade. It detaches every entity: the admin UI
+     (phase 6) must not flush an entity loaded before it.
+   - Step 2: `VersionCheck` compares the installed version with the new one (not the
+     instance): a removal, a rename or migration steps need a major; additions and structural
+     changes a minor; a patch only changes labels (object, field), views, forms, translations.
+     The plan's "settings that don't narrow existing data" became "a minor": telling widening
+     from narrowing settings needs a rule per setting.
+   - `migrations`: `copy_values` only (same object, no files), schema-checked, its `to` field
+     checked by `PackageChecker`, its `from` by the upgrade (it may be a field this version
+     removes). Run after the field changes, before removals, through `RecordManager::update()`.
+   - Seeds: `SeedFingerprints` (sha256 of a record's values in the template's fields, dates as
+     ATOM, lists as sets) recorded per key in the snapshot at install and after each upgrade;
+     `SeedPlanner` decides per key (create, update, delete, conflict), before the transaction;
+     `SeedWriter::write()` now takes the rows to write (create or update, an empty value
+     clearing the field on update) and the keys of records already there. A delete refused by
+     a `restrict` relation refuses the upgrade.
+5. **Indexes** — done (branch `feature/template-indexes`). As built, step 1:
+   - Format: `Archive` (a ustar reader and writer of its own, not PharData: regular files and
+     directories only, no `..`/absolute paths, header checksums, entry count and size limits
+     while reading the gzip stream; reproducible archives: no dates, owners or modes, sorted
+     entries), `TemplateIndex`/`IndexEntry` (`metadata-driven/index/v1`; relative urls
+     resolved against the index's address; `latest()` skips yanked versions and other formats).
+   - `TemplateSources`: the catalog (`TEMPLATE_CATALOG_URL`, optional, no default) then
+     `core.template_source`; https only (redirects too), limits (index 5 MB,
+     `app.template.max_download_mb` 50, `app.template.max_unpacked_mb` 200), sha256 checked
+     before unpacking into a temporary directory, removed after. `PackageLocator` lets install
+     and upgrade take a directory or `vendor/name[@version]`; an archive whose template is not
+     the listed name and version is refused; an upgrade looks first in the index recorded as the
+     installation's source.
+   - Commands: `metadata:template:repo [list|add|remove]`, `metadata:template:search`,
+     `metadata:template:pack <directory> <archive> [--index] [--url]`; `install`/`upgrade` take
+     `--repo`.
+   - Tests: the HTTP client answers from `tests/Support/FakeTemplateServer` in the test env
+     (`framework.http_client.mock_response_factory`).
+   - Step 2: `Signature` (format: Ed25519, libsodium, base64) signs
+     "format\nname\nversion\nsha256", so a signature cannot move to another entry.
+     `core.template_source.public_key` (null: accepted unsigned with `repo add --unsigned`,
+     the consent asked once); `repo add --key` checks every entry; the download checks the
+     entry again. The catalog needs `TEMPLATE_CATALOG_KEY`: there is no unsigned catalog.
+     `metadata:template:keygen` (secret key file 0600, never overwritten), `pack --sign`.
+   - Found by a security review, fixed in step 2: an index could make the server request its own
+     network (archive urls, redirects). Downloads go through `NoPrivateNetworkHttpClient`
+     unless `app.template.allow_private_networks` (false; true in the test env, where the fake
+     hosts resolve nowhere and would be blocked; `testRefusesAddressesOfThePrivateNetwork`
+     checks the guard as configured).
+6. **Admin UI** — done (branch `feature/template-admin`). As built:
+   - `TemplateAdminController` (Template module UI, `/admin/templates`, `admin.metadata`): the
+     installed templates, the newest version of each template the indexes offer (install or
+     upgrade link), the indexes (add with key or consent, remove).
+   - Install: a GET runs a dry run and shows its report; the confirmation form installs.
+   - Upgrade: `TemplateUpgrader::preview()` computes the plan without writing (the preparation
+     shared with `upgrade()` in `prepare()`): the undisputed changes, the conflicts as
+     `ConflictView` (this instance's and the new version's value, as YAML), the refusals. The
+     user picks per conflict; `Resolution` (a default strategy plus per-item choices, keyed by
+     `Change::key()` or `record:<seed path>:<key>`) replaces the single strategy everywhere;
+     `--strategy` is a Resolution with a default.
+   - Templates are named only (`vendor/name[@version]`), never a server directory: a 404
+     otherwise.
+   - The dry run of an install preview clears the entity manager inside a web request: tested,
+     the page renders (the security user is not an ORM entity).
+   - Not done: uploading an archive from the browser, exporting from the admin.
+   - Found by a security review after phase 5, fixed here: the signature did not cover the
+     yanked flag. It does now; `metadata:template:yank` (re)signs. An old copy of a whole index
+     still verifies: freshness (a signed index with an expiry, TUF-style) is left to the
+     catalog.
+7. **Publish**: `metadata:template:publish` prepares a version for the catalog: the source
+   directory written into a checkout of `fedale/metadata-driven-templates`, ready for a pull
+   request.
 
 In the catalog (its own plan, from phase 5 on):
 
-- **C0** extract `src/TemplateFormat/` into `fedale/template-format`, required by both;
-- **C1** skeleton, accounts (GitHub sign-in), vendor namespaces;
-- **C2** publish and check, storage, checksum, signature, `/index.json`;
-- **C3** search, template pages, the search API;
-- **C4** yank, reports, verified vendors, the publish API for phase 7.
+- **C0** extract `src/TemplateFormat/` into `fedale/template-format`, required by both — done
+  (2026-11-06, metadata-driven branch `feature/template-format-package`). As built: the history
+  kept with `git filter-repo` (`src/TemplateFormat/` → `src/`, `tests/Unit/TemplateFormat/` →
+  `tests/`), namespace `Fedale\TemplateFormat` (tests `Fedale\TemplateFormat\Tests`), branch
+  `main` aliased `1.0.x-dev`, its own `composer qa` (php-cs-fixer, PHPStan max, PHPUnit). In
+  metadata-driven: a path repository (`../template-format`), the format's services registered by
+  name in `config/services.yaml`, `deptrac.template-format.yaml` dropped (the boundary is the
+  package now), the example template moved to `tests/Fixtures/templates/shop`
+  (`App\Tests\Support\ExampleTemplate`), the library keeping a copy for its own tests.
+  `FieldTypeCatalogMatchesTheAppTest` stays in metadata-driven: only the app knows its types.
+  Remote: `fedale/metadata-driven-template-format`;
+- **C1** the repository: layout, `vendors.yaml`, `CODEOWNERS`, the checker
+  (`bin/catalog check`) and the pull request Action, the contribution guide — done
+  (2026-11-06, `../metadata-driven-templates`, its plan in `docs/internal/plan.md`);
+- **C2** publication on merge: pack, Release assets, `index.json` rebuilt and signed, `yanked.yaml`,
+  GitHub Pages;
+- **C3** the static site: search, a page per template, the JSON search file;
+- **C4** reports and removal, verified vendors, the semver check against the previous version's
+  items (it needs the item comparison, today in metadata-driven), phase 7.
 
 Reference fixture, used in the tests and as the first published templates:
 

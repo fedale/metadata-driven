@@ -1,0 +1,10 @@
+format: metadata-driven/v1
+kind: Form
+id: acme.catalogue
+spec:
+  name: catalogue
+  definition:
+    label: Catalogue entry
+    object: acme.category
+    sections:
+      - { name: products, label: Products, object: acme.product, via: acme.product.category, mode: many }

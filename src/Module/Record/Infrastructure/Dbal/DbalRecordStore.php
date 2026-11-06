@@ -94,6 +94,54 @@ final class DbalRecordStore implements RecordStore
         return false === $row ? null : $this->table->hydrate($object, $row, $this->linksOf($object, [$id])[$id] ?? []);
     }
 
+    public function idsByValues(ObjectDefinitionDto $object, FieldDefinitionDto $field, array $values): array
+    {
+        $ids = [];
+        // In chunks: PostgreSQL takes at most 65535 parameters in one statement.
+        foreach (array_chunk(array_values(array_unique($values)), 1000) as $chunk) {
+            $sql = \sprintf(
+                'SELECT %1$s AS value, %2$s AS id FROM %3$s WHERE %1$s IN (?) AND %4$s IS NULL',
+                $this->table->asText($field),
+                $this->table->quote('id'),
+                $this->table->table($object),
+                $this->table->quote('deleted_at'),
+            );
+            foreach ($this->connection->fetchAllAssociative($sql, [$chunk], [ArrayParameterType::STRING]) as $row) {
+                if (\is_string($row['value']) && \is_string($row['id'])) {
+                    $ids[$row['value']] = $row['id'];
+                }
+            }
+        }
+
+        return $ids;
+    }
+
+    public function each(ObjectDefinitionDto $object, int $batch = 500): iterable
+    {
+        // Keyset paging on (created_at, id): records written meanwhile neither shift nor repeat a page.
+        $after = null;
+        do {
+            $sql = \sprintf(
+                'SELECT %1$s FROM %2$s WHERE %3$s IS NULL%4$s ORDER BY %5$s, %6$s LIMIT ?',
+                $this->table->selectList($object),
+                $this->table->table($object),
+                $this->table->quote('deleted_at'),
+                null === $after ? '' : \sprintf(' AND (%s, %s) > (?, ?)', $this->table->quote('created_at'), $this->table->quote('id')),
+                $this->table->quote('created_at'),
+                $this->table->quote('id'),
+            );
+            $rows = null === $after
+                ? $this->connection->fetchAllAssociative($sql, [$batch], [ParameterType::INTEGER])
+                : $this->connection->fetchAllAssociative($sql, [$after[0], $after[1], $batch], [ParameterType::STRING, Types::GUID, ParameterType::INTEGER]);
+            $links = $this->linksOf($object, array_values(array_filter(array_column($rows, 'id'), is_string(...))));
+            foreach ($rows as $row) {
+                yield $this->table->hydrate($object, $row, \is_string($row['id'] ?? null) ? ($links[$row['id']] ?? []) : []);
+            }
+            $last = end($rows);
+            $after = false === $last ? null : [$last['created_at'], $last['id']];
+        } while (\count($rows) === $batch && null !== $after);
+    }
+
     public function latest(ObjectDefinitionDto $object, int $limit): array
     {
         $sql = \sprintf(

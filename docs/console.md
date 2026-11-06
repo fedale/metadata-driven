@@ -28,6 +28,17 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:purge`](#metadatapurge) | Delete an archived object or field for good, its data with it |
 | [`metadata:list`](#metadatalist) | List the objects, or the fields of one object, and what is archived |
 | [`metadata:files:gc`](#metadatafilesgc) | Delete the stored files no record references any more |
+| [`record:import`](#recordimport) | Import the rows of a CSV file into an object, all or nothing |
+| [`metadata:template:export`](#metadatatemplateexport) | Write objects, their fields and views, composite forms and their translations as a template |
+| [`metadata:template:validate`](#metadatatemplatevalidate) | Check that a template follows the format, without installing it |
+| [`metadata:template:install`](#metadatatemplateinstall) | Install a template: its objects and their tables, fields, views, forms and translations, all or nothing |
+| [`metadata:template:list`](#metadatatemplatelist) | List the templates installed, with their versions |
+| [`metadata:template:keygen`](#metadatatemplatekeygen) | Make a key pair to sign the templates of an index with |
+| [`metadata:template:pack`](#metadatatemplatepack) | Pack a template into an archive, and list it in an index |
+| [`metadata:template:repo`](#metadatatemplaterepo) | List, add or remove the indexes templates are downloaded from |
+| [`metadata:template:search`](#metadatatemplatesearch) | Find templates in the indexes, with the version installed here |
+| [`metadata:template:yank`](#metadatatemplateyank) | Withdraw a version from an index, or list it again |
+| [`metadata:template:upgrade`](#metadatatemplateupgrade) | Upgrade an installed template to a new version: only what it changed, what this instance changed kept |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
 | `user:create` | Create a user who can sign in — see [Users and permissions](access.md#usercreate) |
 | `access:sync` | Create the permissions of every object, the admin permission and the super admin role — see [Users and permissions](access.md#permissions) |
@@ -463,6 +474,201 @@ symfony console metadata:list pet
 
 With an object, every field with its type, label, required and unique flags and resolved settings
 (defaults included), then the sets of fields unique together.
+
+## `metadata:template:export`
+
+Write objects, with their fields and views, composite forms and their translations as a
+template: a directory of YAML documents (see [Templates](templates.md)).
+
+```
+metadata:template:export <name> <release> <directory> [--object=OBJECT]... [--form=FORM]... [--label=LABEL] [--description=DESCRIPTION] [--license=LICENSE]
+```
+
+| Argument or option | Meaning |
+|---|---|
+| `name` | The template's name, `vendor/name` (`acme/shop`) |
+| `release` | Its version, `major.minor.patch` (`1.0.0`) |
+| `directory` | A new or empty directory to write it into |
+| `--object` | An object to export, with its fields and views (repeatable) |
+| `--form` | A composite form to export; its objects must be exported too (repeatable) |
+| `--label`, `--description` | The title (default: from the name) and a line about the template |
+| `--license` | An SPDX identifier, such as `MIT` (default `proprietary`) |
+| `--seed` | Export the records of an object as a seed: `object`, or `object:key` to name its key field (default: its first unique field). Repeatable |
+
+```bash
+symfony console metadata:template:export acme/shop 1.0.0 templates/shop --object=category --object=product --form=catalogue --license=MIT
+```
+
+Records in `core.template_item` the id each item received, so that the next export of the same
+template gives it the same id, renamed or not. Fails when an exported item points at an object
+that is not exported, when a form writes one, or when the name or the version is invalid.
+
+## `metadata:template:validate`
+
+Check a template's structure without a database: the schemas, the settings of every field type,
+ids, names and references (see [Templates](templates.md#validating-a-template)).
+
+```
+metadata:template:validate <directory>
+```
+
+Lists every problem with its file and where in it, and fails when there is one. Changes nothing.
+
+## `metadata:template:install`
+
+Install a template, from a directory or downloaded from an index, in one transaction (see
+[Templates](templates.md#installing-a-template)).
+
+```
+metadata:template:install <template> [--dry-run] [--repo=NAME]
+```
+
+| Argument or option | Meaning |
+|---|---|
+| `template` | The directory of the template, or its name in an index: `acme/shop` (its newest version) or `acme/shop@1.0.0` |
+| `--dry-run` | Go through the whole install, then roll it back: nothing is changed |
+| `--repo` | The index to download it from, when several offer it |
+
+```bash
+symfony console metadata:template:install templates/shop --dry-run
+symfony console metadata:template:install templates/shop
+```
+
+Prints what it created (objects, fields, views, forms, translations), and the languages it left
+out. Writes the objects, fields, views, forms and translations through the metadata API (tables,
+columns, indexes and permissions included), then `core.template_installation` and
+`core.template_item`. Fails, changing nothing, when the template is invalid, already installed,
+requires another template, or names an object or a form this instance already has; or when the
+app refuses one of its items.
+
+## `metadata:template:upgrade`
+
+Upgrade an installed template to a new version, from a directory or downloaded from an index
+(see [Templates](templates.md#upgrading-a-template)).
+
+```
+metadata:template:upgrade <template> [--strategy=keep|overwrite] [--dry-run] [--repo=NAME]
+```
+
+| Argument or option | Meaning |
+|---|---|
+| `template` | The directory of the new version, or its name: `acme/shop` (the newest version, looked for first in the index it was installed from) or `acme/shop@2.0.0` |
+| `--repo` | The index to download it from, instead |
+| `--strategy` | For an item both the new version and this instance changed: `keep` this instance's version, or `overwrite` it with the new one. Without it, such conflicts stop the upgrade |
+| `--dry-run` | Go through the whole upgrade, then roll it back: nothing is changed |
+
+Lists the changes applied (`objects/product.yaml: change field acme.product.sku`,
+`seeds/product.yaml: update record OSL-01`, `template.yaml: migration 2.0.0: copy_values ...`),
+then the conflicts kept. Renames objects and fields, creates the new ones, changes labels, settings,
+conditions, search, record labels and unique sets, saves views and forms, sets translations,
+runs the migration steps, writes the records of new and `managed` seeds and deletes the ones
+removed, deletes the views and forms the new version removed and archives its removed fields and
+objects; then records the new version in `core.template_installation`. Fails, changing nothing,
+when the template is not installed, the version not newer or its number does not fit the
+changes, on a conflict without `--strategy`, on a change the app cannot make to an existing item (a field's type, required or
+unique, an object's icon), or when the app refuses a step.
+
+## `metadata:template:pack`
+
+Check a template and pack it into a `.tar.gz` archive; with `--index`, list it in an index file
+(see [Templates](templates.md#publishing-and-downloading)).
+
+```
+metadata:template:pack <directory> <archive> [--index=FILE] [--url=URL]
+```
+
+| Argument or option | Meaning |
+|---|---|
+| `directory` | The directory of the template |
+| `archive` | The archive to write, e.g. `acme-shop-1.0.0.tar.gz` |
+| `--index` | An `index.json` to add this version to (created if missing; the same version is replaced) |
+| `--url` | Where the archive will be served; default: its file name, next to the index |
+| `--sign` | A file holding the secret key (`metadata:template:keygen`) to sign the entry with; needs `--index` |
+
+Prints the archive's sha256. Refuses an invalid template, with every problem.
+
+## `metadata:template:keygen`
+
+```
+metadata:template:keygen <file>
+```
+
+Makes an Ed25519 key pair: writes the secret key to the file (readable by its owner only; an
+existing file is never overwritten) and prints the public key, for `repo add --key`.
+
+## `metadata:template:yank`
+
+```
+metadata:template:yank <index> <name> <version> [--sign=FILE] [--undo]
+```
+
+Marks a version of an index file yanked: new installs and upgrades skip it, naming it still
+installs it. `--undo` lists it again. A signed entry needs the secret key (`--sign`): the
+signature covers the flag.
+
+## `metadata:template:repo`
+
+```
+metadata:template:repo [list]
+metadata:template:repo add <name> <url> --key=<public key>
+metadata:template:repo add <name> <url> --unsigned
+metadata:template:repo remove <name>
+```
+
+Lists the indexes templates are downloaded from, and whether they are signed (the template
+catalog first, when `TEMPLATE_CATALOG_URL` and `TEMPLATE_CATALOG_KEY` are set); adds one; or
+removes one. Adding reads its `index.json` first, which must be valid and served over https;
+with `--key`, every entry must be signed with it. Without a key, `--unsigned` is required: the
+index's checksums are then all that is checked. Stored in `core.template_source`.
+
+## `metadata:template:search`
+
+```
+metadata:template:search [term]
+```
+
+Lists the newest version of every template whose name holds the term, in every index, with its
+index and the version installed here ("upgrade available" when it is older).
+
+## `metadata:template:list`
+
+List the installed templates: name, version, date, and where each was installed from.
+
+```
+metadata:template:list
+```
+
+## `record:import`
+
+Import the rows of a CSV file into an object, all or nothing: every row goes through the same
+rules as the form (required, unique, types, patterns, conditions); when one row is refused,
+nothing is written, and every refused row is listed with its line.
+
+```
+record:import <object> <file> [--key=FIELD] [--match=FIELD:TARGET_FIELD]... [--dry-run]
+```
+
+| Argument or option | Meaning |
+|---|---|
+| `object` | The object the records belong to |
+| `file` | The CSV file: a header of field names, then one record per line (comma-separated, quotes doubled inside quotes, UTF-8) |
+| `--key` | A unique field: a row whose value a record already holds updates that record; the others create one. Without it, every row creates a record |
+| `--match` | `field:targetField`: the cells of a relation or many-to-many field hold values of `targetField`, a unique field of the target, instead of record ids (repeatable) |
+| `--dry-run` | Go through the whole import, then roll it back: nothing is changed |
+
+```bash
+symfony console record:import region regions.csv --key=code
+symfony console record:import province provinces.csv --key=code --match=region:code
+```
+
+- An empty cell is no value: a new record takes the field's default, an existing one is
+  cleared.
+- Several values in one cell (a many-to-many field, a list of files) are separated by `|`.
+- A file cell holds a path relative to the CSV file's directory; a path leaving it is refused.
+  Files are checked and stored as uploads are; a dry run stores them before rolling back,
+  leaving them to `metadata:files:gc`.
+- Refused before anything is written: a column naming no field, a row without its key, two rows
+  with the same key, a `--key` or `--match` naming no unique field.
 
 ## `metadata:files:gc`
 

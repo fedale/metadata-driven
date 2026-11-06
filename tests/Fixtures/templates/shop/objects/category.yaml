@@ -1,0 +1,17 @@
+format: metadata-driven/v1
+kind: Object
+id: acme.category
+spec:
+  name: category
+  label: Category
+  plural: Categories
+  label_field: acme.category.title
+  fields:
+    - id: acme.category.title
+      name: title
+      type: text
+      label: Title
+      required: true
+      unique: true
+      settings:
+        maxLength: 100

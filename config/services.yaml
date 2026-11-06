@@ -7,6 +7,12 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    # Templates downloaded from an index: the archive, then its files once unpacked, in MB.
+    app.template.max_download_mb: 50
+    app.template.max_unpacked_mb: 200
+    # true lets indexes and archives be on a private network (an intranet index); false refuses
+    # private, loopback and link-local addresses, redirects included.
+    app.template.allow_private_networks: false
 
 services:
     # default configuration for services in *this* file
@@ -34,13 +40,29 @@ services:
             - '../src/Module/*/Domain/Exception/'
             - '../src/Module/*/Application/Command/'
 
+    # The template format (fedale/template-format) is a plain library: the services the Template
+    # module needs from it.
+    Fedale\TemplateFormat\Archive: ~
+    Fedale\TemplateFormat\DocumentCodec: ~
+    Fedale\TemplateFormat\SchemaValidator: ~
+    Fedale\TemplateFormat\SeedRecords: ~
+    Fedale\TemplateFormat\PackageDirectory: ~
+    Fedale\TemplateFormat\PackageChecker: ~
+    Fedale\TemplateFormat\FieldTypes\FieldTypeCatalog: ~
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
 
 when@test:
+    parameters:
+        # The fake template server's hosts resolve nowhere: the guard against private networks
+        # would block them. TemplateSourcesTest checks the guard itself.
+        app.template.allow_private_networks: true
     services:
         # The Flysystem storage is injected in one service only, so the container inlines and
         # removes it; the file tests read the stored bytes from it.
         test.record_files.storage:
             alias: record_files.storage
+            public: true
+        App\Tests\Support\FakeTemplateServer:
             public: true

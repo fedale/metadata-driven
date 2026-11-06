@@ -149,6 +149,15 @@ Things that are not obvious from a single file, and that are easy to break.
   `FileCell` (Record UI) draws them. `FieldTypeInterface::isSortable()` (false
   for `file` and `many_to_many`) decides sorting, searching and virtual columns, in the default
   grid, the grid view compiler and the grid source alike.
+- **Templates**: the format is `fedale/template-format` (`../template-format`, path repository,
+  its own `composer qa`): only `symfony/yaml` and `opis/json-schema`. A change to the format is
+  made there, with its tests. It describes the field types on its own (`Resources/field-types.v1.json`):
+  **a new field type or setting must be added there too**, or
+  `FieldTypeCatalogMatchesTheAppTest` fails. The `Template` module is the only bridge to the
+  metadata; `core.template_item` keeps the id of each exported item across exports (a renamed
+  item keeps its id). The install records `ownedState()` as its snapshot, the base of the next
+  upgrade. After a rolled-back install or upgrade the entity manager is cleared
+  (`PersistenceReset`): the ORM would otherwise keep the rolled-back state of changed entities.
 - **Security forms**: the stateless CSRF token input needs `data-controller="csrf-protection"` to
   work in a real browser.
 
@@ -186,13 +195,26 @@ new-composite pages.
   (`fedale/template-catalog`). Decided on 2026-11-05: the name "template", three-way upgrades,
   the central catalog with GitHub sign-in, the format in `src/TemplateFormat/` behind a Deptrac
   boundary (extracted into `fedale/template-format` when the catalog starts), `requires` naming
-  the format version. Still open (top of the plan): how the format checks field settings
-  without the app (phase 1), the catalog's hosting and review policy. Next is phase 1 (format and
-  export). Its seeds are
-  the CSV import service below.
-- **CSV import — part of the template seeds (phase 3).** Plan: (A) a service plus `record:import` CLI
-  with `--dry-run` and `--key`, all-or-nothing with a two-pass check; (B) a web wizard; (C) async
-  with Messenger. gridview-bundle has no import feature to reuse.
+  the format version, field settings checked by a static description in the format. Still open
+  (top of the plan): the catalog's hosting and review policy. Phases 1 (format and
+  export) and 2 (install: `metadata:template:install [--dry-run]`, `metadata:template:list`)
+  are done, on `feature/template-format` and `feature/template-install` (branched from it);
+  phase 3 (seeds: format, checks, install, export with `--seed`; and `record:import`) on
+  `feature/template-seeds` (from `feature/template-install`); phase 4 (upgrade:
+  `metadata:template:upgrade`, three-way, conflicts, `--strategy`, managed seeds, `migrations`,
+  version numbers) on `feature/template-upgrade` (from `feature/template-seeds`); phase 5 (archives,
+  indexes, `repo`, `search`, `pack`, `keygen`, install and upgrade by name, Ed25519 signatures,
+  no private networks) on `feature/template-indexes` (from `feature/template-upgrade`); phase 6
+  (admin UI at `/admin/templates`, conflicts resolved item by item; `yank`, the yanked flag
+  signed) on `feature/template-admin` (from `feature/template-indexes`). Next is phase 7
+  (publish), which needs the catalog application (C0-C4) first. C0 (the format extracted into
+  `fedale/template-format`, `../template-format`) on `feature/template-format-package` (from
+  `feature/template-admin`). The catalog is a GitHub repository, `../metadata-driven-templates`
+  (pull requests reviewed before listing, Actions, Pages): C1 (the pull request check) done,
+  C2 (publication on merge) next. None of these branches is merged into main yet. Phase 2 needs
+  fedale/rbac-bundle's transaction-safe cache (merged into its main, not pushed).
+- **CSV import**: (A) done with phase 3 of the templates, `record:import` (console.md). Not
+  done: (B) a web wizard; (C) async with Messenger for very large files.
 - From the form mock, not done: per-kind add buttons ("+ Titolo di studio" …), field machine names
   next to labels.
 - Admin UI strings are still English only (user pages are translated).

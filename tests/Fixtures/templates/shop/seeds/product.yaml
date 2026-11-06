@@ -1,0 +1,7 @@
+format: metadata-driven/v1
+kind: Seed
+id: acme.seed.product
+spec:
+  object: acme.product
+  key: sku
+  source: seeds/products.csv

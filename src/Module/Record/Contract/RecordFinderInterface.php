@@ -30,6 +30,15 @@ interface RecordFinderInterface
     public function latest(string $objectName, int $limit = 50): array;
 
     /**
+     * Every live record, oldest first, read in batches: for exports of any size.
+     *
+     * @return iterable<RecordOutput>
+     *
+     * @throws ObjectDefinitionNotFound
+     */
+    public function each(string $objectName): iterable;
+
+    /**
      * The records of an object whose relation field points at a record, oldest first.
      *
      * @return list<RecordOutput>
