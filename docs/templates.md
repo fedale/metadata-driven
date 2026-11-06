@@ -146,6 +146,9 @@ It is refused, before anything is written, when:
   comes later;
 - this instance already has an object or a form with one of its names, archived ones included:
   an install never touches items it did not create;
+- a translation names something the template does not bring: the label of a local object
+  (`Names no object or form of the template.`), or a `{t:name}` text this instance already has
+  (`This instance already has the text "identity".`);
 - it requires another template (`spec.requires`): not supported yet.
 
 A step the app refuses is reported on its document, e.g.

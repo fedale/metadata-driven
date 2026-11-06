@@ -414,7 +414,9 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
      them out of the cache while a transaction is open.
    - Refused before anything is written: an invalid package, a template already installed,
      `requires` naming another template (not supported yet), a local object (archived ones
-     too) or form with one of its names.
+     too) or form with one of its names, a translation key naming no object or form of the
+     template, a `text.*` key this instance already has (found by a security review: without
+     it a template could rewrite local labels and texts).
    - Languages the instance does not have are skipped with a warning, not refused.
    - `core.template_installation` (name, version, source, snapshot of the documents as
      installed, dates) and the installed items in `core.template_item`. Exporting an installed

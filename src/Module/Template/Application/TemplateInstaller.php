@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Template\Application;
 
+use App\Module\Metadata\Contract\Dto\TextDto;
 use App\Module\Metadata\Contract\Dto\TranslationKey;
 use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\Exception\MetadataException;
@@ -108,10 +109,36 @@ final class TemplateInstaller
                 $collisions[] = \sprintf('%s: spec.name: This instance already has an object "%s"%s.', $object->path, $name, isset($archived[$name]) ? ' (archived)' : '');
             }
         }
+        $forms = [];
         foreach ($package->documentsOf(DocumentKind::Form) as $form) {
             $name = self::string($form->spec['name'] ?? null);
+            $forms[] = $name;
             if ($this->registry->hasForm($name)) {
                 $collisions[] = \sprintf('%s: spec.name: This instance already has a form "%s".', $form->path, $name);
+            }
+        }
+
+        // A translation may only name what the template brings: the labels of its own objects
+        // and forms, and texts this instance does not have yet. Otherwise a template could
+        // rewrite the labels and texts of local items.
+        $prefixes = [];
+        foreach ($package->documentsOf(DocumentKind::Object) as $object) {
+            $prefixes = [...$prefixes, ...TranslationKey::objectPrefixes($names->object($object->id))];
+        }
+        foreach ($forms as $form) {
+            $prefixes = [...$prefixes, TranslationKey::form($form), 'section.'.$form, 'description.'.$form, 'service.'.$form];
+        }
+        $localTexts = array_flip(array_map(static fn (TextDto $text): string => $text->key(), $this->translations->texts()));
+        foreach ($package->documentsOf(DocumentKind::Translations) as $document) {
+            foreach (array_keys(self::map($document->spec['entries'] ?? [])) as $key) {
+                $key = (string) $key;
+                if (TranslationKey::isText($key)) {
+                    if (isset($localTexts[$key])) {
+                        $collisions[] = \sprintf('%s: spec.entries.%s: This instance already has the text "%s".', $document->path, $key, substr($key, \strlen(TranslationKey::TEXT)));
+                    }
+                } elseif ([] === array_filter($prefixes, static fn (string $prefix): bool => $key === $prefix || str_starts_with($key, $prefix.'.'))) {
+                    $collisions[] = \sprintf('%s: spec.entries.%s: Names no object or form of the template.', $document->path, $key);
+                }
             }
         }
 

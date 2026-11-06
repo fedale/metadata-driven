@@ -109,6 +109,25 @@ final class TemplateInstallerTest extends KernelTestCase
         $this->assertRefused($invalid, 'objects/product.yaml: spec.plural: Minimum string length is 1, found 0');
     }
 
+    public function testTranslatesOnlyWhatTheTemplateBrings(): void
+    {
+        $metadata = self::getContainer()->get(MetadataManagerInterface::class);
+        $metadata->createObject('account', 'Account', 'Accounts');
+        $metadata->createField('account', 'email', 'email', 'Email');
+        $metadata->translate('it', 'field.account.email', 'Posta elettronica');
+
+        // A label of a local object: the template does not own it.
+        $foreign = self::changed(PackageCheckerTest::fixture(), 'translations/it.yaml', static fn (array $spec): array => ['entries' => ['field.account.email' => 'Indirizzo']] + $spec);
+        $this->assertRefused($foreign, 'translations/it.yaml: spec.entries.field.account.email: Names no object or form of the template.');
+
+        // A text this instance already has: the template would rewrite it wherever it is placed.
+        $metadata->translate('en', 'text.identity', 'Who we are');
+        $this->assertRefused(PackageCheckerTest::fixture(), 'translations/en.yaml: spec.entries.text.identity: This instance already has the text "identity".');
+
+        $italian = array_column(array_map(static fn ($entry): array => [$entry->key, $entry->translation], self::getContainer()->get(MetadataTranslationsInterface::class)->entries('it')), 1, 0);
+        self::assertSame('Posta elettronica', $italian['field.account.email']);
+    }
+
     public function testATemplateIsInstalledOnce(): void
     {
         self::getContainer()->get(MetadataManagerInterface::class)->createObject('placeholder', 'Placeholder', 'Placeholders');
