@@ -4,7 +4,7 @@ Internal notes for whoever (human or agent) picks the work up, on any machine. R
 starting a task; update it in the same branch whenever a decision is taken, a feature lands or the
 work queue changes. The user-facing documentation is in [../README.md](../README.md).
 
-Last updated: 2026-11-04.
+Last updated: 2026-11-06.
 
 ## Setting up on a new machine
 
@@ -195,27 +195,25 @@ new-composite pages.
   (`fedale/template-catalog`). Decided on 2026-11-05: the name "template", three-way upgrades,
   the central catalog with GitHub sign-in, the format in `src/TemplateFormat/` behind a Deptrac
   boundary (extracted into `fedale/template-format` when the catalog starts), `requires` naming
-  the format version, field settings checked by a static description in the format. Still open
-  (top of the plan): the catalog's hosting and review policy. Phases 1 (format and
-  export) and 2 (install: `metadata:template:install [--dry-run]`, `metadata:template:list`)
-  are done, on `feature/template-format` and `feature/template-install` (branched from it);
-  phase 3 (seeds: format, checks, install, export with `--seed`; and `record:import`) on
-  `feature/template-seeds` (from `feature/template-install`); phase 4 (upgrade:
+  the format version, field settings checked by a static description in the format. On
+  2026-11-06: the catalog hosted on GitHub, templates reviewed before listing; no decision is
+  open. Done and merged into main (2026-11-06, with `feature/template-format-package`, the last
+  of a chain of branches each built on the one before): phases 1 (format and export) and 2
+  (install: `metadata:template:install [--dry-run]`, `metadata:template:list`); phase 3 (seeds:
+  format, checks, install, export with `--seed`; and `record:import`); phase 4 (upgrade:
   `metadata:template:upgrade`, three-way, conflicts, `--strategy`, managed seeds, `migrations`,
-  version numbers) on `feature/template-upgrade` (from `feature/template-seeds`); phase 5 (archives,
-  indexes, `repo`, `search`, `pack`, `keygen`, install and upgrade by name, Ed25519 signatures,
-  no private networks) on `feature/template-indexes` (from `feature/template-upgrade`); phase 6
-  (admin UI at `/admin/templates`, conflicts resolved item by item; `yank`, the yanked flag
-  signed) on `feature/template-admin` (from `feature/template-indexes`). Next is phase 7
-  (publish), which needs the catalog application (C0-C4) first. C0 (the format extracted into
-  `fedale/template-format`, `../template-format`) on `feature/template-format-package` (from
-  `feature/template-admin`). The catalog is a GitHub repository, `../metadata-driven-templates`
+  version numbers); phase 5 (archives, indexes, `repo`, `search`, `pack`, `keygen`, install and
+  upgrade by name, Ed25519 signatures, no private networks); phase 6 (admin UI at
+  `/admin/templates`, conflicts resolved item by item; `yank`, the yanked flag signed); C0 (the
+  format extracted into `fedale/template-format`, `../template-format`). Phase 7 (publish) comes
+  with C4. The catalog is a GitHub repository, `../metadata-driven-templates`
   (pull requests reviewed before listing, Actions, Pages; its plan in its
   `docs/internal/plan.md`): C1 (the pull request check) and C2 (publication on merge) done and
   live: `https://fedale.github.io/metadata-driven-templates/index.json`, key
   `ta4QYEX/ZmCA9xA0yPP4sRZLeqYqBvmCXazwXiGadEc=` (`TEMPLATE_CATALOG_URL`, `TEMPLATE_CATALOG_KEY`).
-  Next: a first real template through the whole chain, or C3 (the static site). None of these branches is merged into main yet. Phase 2 needs
-  fedale/rbac-bundle's transaction-safe cache (merged into its main, not pushed).
+  No template is published yet (the catalog has no `templates/` directory). Next: a first real
+  template through the whole chain (`acme/geo-italy`, `acme/registration`), or C3 (the static
+  site). Phase 2 needs fedale/rbac-bundle's transaction-safe cache (pushed to its main).
 - **CSV import**: (A) done with phase 3 of the templates, `record:import` (console.md). Not
   done: (B) a web wizard; (C) async with Messenger for very large files.
 - From the form mock, not done: per-kind add buttons ("+ Titolo di studio" …), field machine names
