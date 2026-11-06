@@ -1,10 +1,9 @@
 # Plan: templates (packaged, versioned models)
 
-Status: **phases 1 to 4 done, phase 5 step 1 done** (format and export on
-`feature/template-format`, install on `feature/template-install`, seeds on
-`feature/template-seeds`, upgrade on `feature/template-upgrade`, indexes on
-`feature/template-indexes`, each branched from the one before), awaiting review before phase 5
-step 2 (signatures). Discussed with the user on 2026-11-03; name, upgrade model and distribution
+Status: **phases 1 to 5 done** (format and export on `feature/template-format`, install on
+`feature/template-install`, seeds on `feature/template-seeds`, upgrade on
+`feature/template-upgrade`, indexes and signatures on `feature/template-indexes`, each branched
+from the one before), awaiting review before phase 6 (admin UI). Discussed with the user on 2026-11-03; name, upgrade model and distribution
 decided on 2026-11-05 (see [Decisions](#decisions)).
 
 A template packages a model, meaning its objects, fields, relations, composite forms, views,
@@ -502,7 +501,7 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
      `SeedWriter::write()` now takes the rows to write (create or update, an empty value
      clearing the field on update) and the keys of records already there. A delete refused by
      a `restrict` relation refuses the upgrade.
-5. **Indexes** — step 1 done (branch `feature/template-indexes`). As built:
+5. **Indexes** — done (branch `feature/template-indexes`). As built, step 1:
    - Format: `Archive` (a ustar reader and writer of its own, not PharData: regular files and
      directories only, no `..`/absolute paths, header checksums, entry count and size limits
      while reading the gzip stream; reproducible archives: no dates, owners or modes, sorted
@@ -520,9 +519,17 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
      `--repo`.
    - Tests: the HTTP client answers from `tests/Support/FakeTemplateServer` in the test env
      (`framework.http_client.mock_response_factory`).
-   - Step 2, next: signatures (Ed25519 with sodium: a key pair command, `pack --sign`, the
-     catalog's public key shipped, `repo add --key`, an unsigned index accepted only once
-     confirmed).
+   - Step 2: `Signature` (format: Ed25519, libsodium, base64) signs
+     "format\nname\nversion\nsha256", so a signature cannot move to another entry.
+     `core.template_source.public_key` (null: accepted unsigned with `repo add --unsigned`,
+     the consent asked once); `repo add --key` checks every entry; the download checks the
+     entry again. The catalog needs `TEMPLATE_CATALOG_KEY`: there is no unsigned catalog.
+     `metadata:template:keygen` (secret key file 0600, never overwritten), `pack --sign`.
+   - Found by a security review, fixed in step 2: an index could make the server request its own
+     network (archive urls, redirects). Downloads go through `NoPrivateNetworkHttpClient`
+     unless `app.template.allow_private_networks` (false; true in the test env, where the fake
+     hosts resolve nowhere and would be blocked; `testRefusesAddressesOfThePrivateNetwork`
+     checks the guard as configured).
 6. **Admin UI**: the catalog, install, upgrade with the plan and the conflicts shown before
    applying, item by item.
 7. **Publish**: `metadata:template:publish` to the catalog.

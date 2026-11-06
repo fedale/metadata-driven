@@ -18,8 +18,18 @@ class TemplateSource
         private string $name,
         /** The address of its index.json, https. */
         private string $url,
+        /**
+         * The Ed25519 public key its entries are signed with, base64; null for an index the user
+         * accepted unsigned, trusting its checksums only.
+         */
+        private ?string $publicKey,
         private \DateTimeImmutable $addedAt,
     ) {
+    }
+
+    public function getPublicKey(): ?string
+    {
+        return $this->publicKey;
     }
 
     public function getId(): Uuid

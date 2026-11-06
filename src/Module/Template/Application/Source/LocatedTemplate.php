@@ -17,6 +17,8 @@ final readonly class LocatedTemplate
         /** The address of the index: an installation records it, its upgrades look there first. */
         public string $index,
         public IndexEntry $entry,
+        /** The key the index's entries are signed with; null for an index accepted unsigned. */
+        public ?string $publicKey,
     ) {
     }
 }

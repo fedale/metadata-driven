@@ -33,6 +33,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:template:validate`](#metadatatemplatevalidate) | Check that a template follows the format, without installing it |
 | [`metadata:template:install`](#metadatatemplateinstall) | Install a template: its objects and their tables, fields, views, forms and translations, all or nothing |
 | [`metadata:template:list`](#metadatatemplatelist) | List the templates installed, with their versions |
+| [`metadata:template:keygen`](#metadatatemplatekeygen) | Make a key pair to sign the templates of an index with |
 | [`metadata:template:pack`](#metadatatemplatepack) | Pack a template into an archive, and list it in an index |
 | [`metadata:template:repo`](#metadatatemplaterepo) | List, add or remove the indexes templates are downloaded from |
 | [`metadata:template:search`](#metadatatemplatesearch) | Find templates in the indexes, with the version installed here |
@@ -581,20 +582,33 @@ metadata:template:pack <directory> <archive> [--index=FILE] [--url=URL]
 | `archive` | The archive to write, e.g. `acme-shop-1.0.0.tar.gz` |
 | `--index` | An `index.json` to add this version to (created if missing; the same version is replaced) |
 | `--url` | Where the archive will be served; default: its file name, next to the index |
+| `--sign` | A file holding the secret key (`metadata:template:keygen`) to sign the entry with; needs `--index` |
 
 Prints the archive's sha256. Refuses an invalid template, with every problem.
+
+## `metadata:template:keygen`
+
+```
+metadata:template:keygen <file>
+```
+
+Makes an Ed25519 key pair: writes the secret key to the file (readable by its owner only; an
+existing file is never overwritten) and prints the public key, for `repo add --key`.
 
 ## `metadata:template:repo`
 
 ```
 metadata:template:repo [list]
-metadata:template:repo add <name> <url>
+metadata:template:repo add <name> <url> --key=<public key>
+metadata:template:repo add <name> <url> --unsigned
 metadata:template:repo remove <name>
 ```
 
-Lists the indexes templates are downloaded from (the template catalog first, when
-`TEMPLATE_CATALOG_URL` is set), adds one (its `index.json` is read first, and must be valid and
-served over https), or removes one. Stored in `core.template_source`.
+Lists the indexes templates are downloaded from, and whether they are signed (the template
+catalog first, when `TEMPLATE_CATALOG_URL` and `TEMPLATE_CATALOG_KEY` are set); adds one; or
+removes one. Adding reads its `index.json` first, which must be valid and served over https;
+with `--key`, every entry must be signed with it. Without a key, `--unsigned` is required: the
+index's checksums are then all that is checked. Stored in `core.template_source`.
 
 ## `metadata:template:search`
 

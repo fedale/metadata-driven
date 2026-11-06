@@ -9,12 +9,13 @@ use App\Module\Template\Domain\Model\TemplateSource;
 use App\Module\Template\Domain\Repository\TemplateSourceRepository;
 use App\TemplateFormat\Archive;
 use App\TemplateFormat\Format;
-use App\TemplateFormat\IndexEntry;
 use App\TemplateFormat\InvalidIndex;
 use App\TemplateFormat\InvalidPackage;
+use App\TemplateFormat\Signature;
 use App\TemplateFormat\TemplateIndex;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\HttpClient\NoPrivateNetworkHttpClient;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface as HttpException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -26,6 +27,11 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * Everything comes over https, within size limits; an archive is checked against the checksum
  * its index lists before anything is unpacked, and unpacked by Archive, which keeps every file
  * inside the target.
+ *
+ * An index with a public key (the catalog's always has one) vouches for its entries with
+ * signatures: an entry without a valid one is refused. An index without a key is used only once
+ * the user accepted it unsigned (repo add --unsigned): its checksums prove an archive is the one
+ * it lists, not who wrote it.
  */
 final class TemplateSources
 {
@@ -34,38 +40,60 @@ final class TemplateSources
     // An index is a list: a few MB is already a very large one.
     private const int MAX_INDEX_BYTES = 5_000_000;
 
+    private readonly HttpClientInterface $http;
+
     public function __construct(
         private readonly TemplateSourceRepository $sources,
-        private readonly HttpClientInterface $http,
+        HttpClientInterface $http,
         private readonly Archive $archive,
         #[Autowire('%env(default::TEMPLATE_CATALOG_URL)%')]
         private readonly ?string $catalogUrl,
+        #[Autowire('%env(default::TEMPLATE_CATALOG_KEY)%')]
+        private readonly ?string $catalogKey,
         #[Autowire(param: 'app.template.max_download_mb')]
         private readonly int $maxDownloadMb,
         #[Autowire(param: 'app.template.max_unpacked_mb')]
         private readonly int $maxUnpackedMb,
+        #[Autowire(param: 'app.template.allow_private_networks')]
+        bool $allowPrivateNetworks,
     ) {
+        // An index names the addresses of its archives, and may redirect: without this, a hostile
+        // index could make the server request its own network (a metadata service, an admin page).
+        $this->http = $allowPrivateNetworks ? $http : new NoPrivateNetworkHttpClient($http);
     }
 
     /**
-     * @return list<array{name: string, url: string}> the catalog first
+     * @return list<array{name: string, url: string, key: string|null}> the catalog first
+     *
+     * @throws TemplateSourceFailed the catalog is configured without its key
      */
     public function indexes(): array
     {
-        $indexes = null === $this->catalogUrl || '' === $this->catalogUrl ? [] : [['name' => self::CATALOG, 'url' => $this->catalogUrl]];
+        $indexes = [];
+        if (null !== $this->catalogUrl && '' !== $this->catalogUrl) {
+            // The catalog is signed, always: an unsigned catalog would be anybody's.
+            if (null === $this->catalogKey || !Signature::isPublicKey($this->catalogKey)) {
+                throw new TemplateSourceFailed('TEMPLATE_CATALOG_URL is set without TEMPLATE_CATALOG_KEY, the public key the catalog signs with.');
+            }
+            $indexes[] = ['name' => self::CATALOG, 'url' => $this->catalogUrl, 'key' => $this->catalogKey];
+        }
         foreach ($this->sources->all() as $source) {
-            $indexes[] = ['name' => $source->getName(), 'url' => $source->getUrl()];
+            $indexes[] = ['name' => $source->getName(), 'url' => $source->getUrl(), 'key' => $source->getPublicKey()];
         }
 
         return $indexes;
     }
 
     /**
-     * Adds an index, once it has been read and found valid.
+     * Adds an index, once it has been read and found valid, and, with a key, every entry found
+     * signed with it.
+     *
+     * @param string|null $publicKey the key its entries are signed with
+     * @param bool        $unsigned  without a key: the user accepts it unsigned
      *
      * @throws TemplateSourceFailed
      */
-    public function add(string $name, string $url): void
+    public function add(string $name, string $url, ?string $publicKey = null, bool $unsigned = false): void
     {
         if (1 !== preg_match(self::NAME_PATTERN, $name) || self::CATALOG === $name) {
             throw new TemplateSourceFailed(\sprintf('"%s" cannot name an index: lowercase letters, digits and hyphens, and not "%s".', $name, self::CATALOG));
@@ -73,8 +101,23 @@ final class TemplateSources
         if (null !== $this->sources->findByName($name)) {
             throw new TemplateSourceFailed(\sprintf('An index is already named "%s".', $name));
         }
-        $this->index($url);
-        $this->sources->save(new TemplateSource(Uuid::v7(), $name, $url, new \DateTimeImmutable()));
+        if (null === $publicKey && !$unsigned) {
+            throw new TemplateSourceFailed('Give the public key its entries are signed with (--key), or accept it unsigned (--unsigned), trusting its checksums only.');
+        }
+        if (null !== $publicKey && !Signature::isPublicKey($publicKey)) {
+            throw new TemplateSourceFailed('This is not an Ed25519 public key in base64.');
+        }
+        $index = $this->index($url);
+        if (null !== $publicKey) {
+            foreach ($index->names() as $template) {
+                foreach ($index->versions($template) as $entry) {
+                    if (!Signature::verify($entry, $publicKey)) {
+                        throw new TemplateSourceFailed(\sprintf('%s %s in this index is not signed with this key.', $entry->name, $entry->version));
+                    }
+                }
+            }
+        }
+        $this->sources->save(new TemplateSource(Uuid::v7(), $name, $url, $publicKey, new \DateTimeImmutable()));
     }
 
     /**
@@ -112,7 +155,7 @@ final class TemplateSources
             foreach ($index->names() as $name) {
                 $latest = $index->latest($name);
                 if (null !== $latest && ('' === $term || str_contains($name, strtolower($term)))) {
-                    $found[] = new LocatedTemplate($source['name'], $source['url'], $latest);
+                    $found[] = new LocatedTemplate($source['name'], $source['url'], $latest, $source['key']);
                 }
             }
         }
@@ -162,7 +205,7 @@ final class TemplateSources
             throw new TemplateSourceFailed(null === $version ? \sprintf('%s offers no version of %s for format %s that is not yanked.', $index['name'], $name, Format::VERSION) : \sprintf('%s offers no version %s of %s.', $index['name'], $version, $name));
         }
 
-        return new LocatedTemplate($index['name'], $index['url'], $entry);
+        return new LocatedTemplate($index['name'], $index['url'], $entry, $index['key']);
     }
 
     /**
@@ -171,8 +214,12 @@ final class TemplateSources
      *
      * @throws TemplateSourceFailed
      */
-    public function download(IndexEntry $entry): string
+    public function download(LocatedTemplate $located): string
     {
+        $entry = $located->entry;
+        if (null !== $located->publicKey && !Signature::verify($entry, $located->publicKey)) {
+            throw new TemplateSourceFailed(\sprintf('%s %s is not signed with the key of %s: it was not downloaded.', $entry->name, $entry->version, $located->source));
+        }
         if (Format::VERSION !== ($entry->requires['format'] ?? null)) {
             throw new TemplateSourceFailed(\sprintf('%s %s is of format %s; this instance reads %s.', $entry->name, $entry->version, $entry->requires['format'] ?? '?', Format::VERSION));
         }

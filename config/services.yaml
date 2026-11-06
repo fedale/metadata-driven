@@ -10,6 +10,9 @@ parameters:
     # Templates downloaded from an index: the archive, then its files once unpacked, in MB.
     app.template.max_download_mb: 50
     app.template.max_unpacked_mb: 200
+    # true lets indexes and archives be on a private network (an intranet index); false refuses
+    # private, loopback and link-local addresses, redirects included.
+    app.template.allow_private_networks: false
 
 services:
     # default configuration for services in *this* file
@@ -41,6 +44,10 @@ services:
     # please note that last definitions always *replace* previous ones
 
 when@test:
+    parameters:
+        # The fake template server's hosts resolve nowhere: the guard against private networks
+        # would block them. TemplateSourcesTest checks the guard itself.
+        app.template.allow_private_networks: true
     services:
         # The Flysystem storage is injected in one service only, so the container inlines and
         # removes it; the file tests read the stored bytes from it.

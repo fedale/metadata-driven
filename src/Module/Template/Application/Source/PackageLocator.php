@@ -41,7 +41,7 @@ final class PackageLocator
         }
         $installed = $this->installations->findByName($match['name']);
         $located = $this->sources->locate($match['name'], '' === ($match['version'] ?? '') ? null : $match['version'], $repo, $installed?->getSource());
-        $directory = $this->sources->download($located->entry);
+        $directory = $this->sources->download($located);
         try {
             $package = $this->directories->read($directory);
         } catch (InvalidPackage $e) {

@@ -4,9 +4,9 @@ A template packages a model: objects with their fields, their form and grid view
 forms, their translations, and records to start with (seeds). You write one from the objects you built, keep it in version
 control, share it, validate it without a database, and install it on another instance.
 
-**Today** a template can be exported, validated, packed, published in an index, and installed
-and upgraded from a directory or by its name, its records included. Signed indexes, templates
-requiring other templates and the template catalog come next (see [Not yet](#not-yet)).
+**Today** a template can be exported, validated, packed, published in a signed index, and
+installed and upgraded from a directory or by its name, its records included. Templates requiring
+other templates and the template catalog itself come next (see [Not yet](#not-yet)).
 
 ## Exporting a model
 
@@ -320,9 +320,11 @@ A template travels as a `.tar.gz` archive, listed in an **index**: a JSON file a
 host, which says, for every version, where its archive is and its checksum.
 
 ```bash
-# The author: pack a version, and list it in the index (created if missing)
-symfony console metadata:template:pack templates/shop acme-shop-1.0.0.tar.gz --index=index.json
-# then put index.json and the archive on a web server, side by side
+# The author, once: a key pair; the secret key stays with the author, out of any repository
+symfony console metadata:template:keygen ~/.acme-templates.key
+# Every version: pack it, list it in the index (created if missing), signed
+symfony console metadata:template:pack templates/shop acme-shop-1.0.0.tar.gz --index=index.json --sign=~/.acme-templates.key
+# then put index.json and the archive on a web server, side by side, and publish the public key
 ```
 
 ```json
@@ -337,14 +339,24 @@ symfony console metadata:template:pack templates/shop acme-shop-1.0.0.tar.gz --i
 ```
 
 ```bash
-# Who installs: add the index once, then name templates
-symfony console metadata:template:repo add acme https://templates.acme.example/index.json
+# Who installs: add the index once, with the author's public key, then name templates
+symfony console metadata:template:repo add acme https://templates.acme.example/index.json --key=<public key>
 symfony console metadata:template:search shop
 symfony console metadata:template:install acme/shop            # the newest version
 symfony console metadata:template:install acme/shop@1.0.0      # a given one
 symfony console metadata:template:upgrade acme/shop            # from the index it came from
 ```
 
+- **Signatures.** An index added with `--key` vouches for every version with an Ed25519
+  signature of its name, version and checksum: a version without a valid one is refused, at
+  `repo add` (every entry is checked) and again at each download, so an index replaced on its
+  server by someone without the secret key installs nothing. An index without signatures is
+  added only with `--unsigned`: its checksums then prove an archive is the one it lists, not who
+  wrote the index.
+- **Not the private network.** Indexes and archives on private, loopback or link-local
+  addresses are refused, redirects included: an index cannot make the server request its own
+  network. An index on an intranet needs `app.template.allow_private_networks: true` in
+  `config/services.yaml`.
 - **https only**, redirects included; an index over 5 MB, an archive over 50 MB or files over
   200 MB once unpacked are refused (`app.template.max_download_mb`,
   `app.template.max_unpacked_mb` in `config/services.yaml`).
@@ -358,16 +370,15 @@ symfony console metadata:template:upgrade acme/shop            # from the index 
 - **One index per template.** When two indexes offer the same name, say which with
   `--repo=<name>`. An installation records the address of its index, and an upgrade looks there
   first.
-- **The template catalog**, when there is one, is an index too: set `TEMPLATE_CATALOG_URL` and it
-  is looked into before the others, as `catalog`.
+- **The template catalog**, when there is one, is an index too: set `TEMPLATE_CATALOG_URL` and
+  `TEMPLATE_CATALOG_KEY` (its public key; the catalog is always signed) and it is looked into
+  before the others, as `catalog`.
 - `metadata:template:pack` writes reproducible archives: the same template gives the same
   archive and checksum, whatever the machine or the dates of its files.
 
 ## Not yet
 - **Templates requiring other templates**: a template pointing at the objects of another
   installed one.
-- **Signed indexes**: today an index proves an archive is the one it lists (the checksum), not
-  who wrote the index.
 - **The template catalog** itself: an application of its own, for authors to publish to.
 
 See the plan in [internal/template-plan.md](internal/template-plan.md).

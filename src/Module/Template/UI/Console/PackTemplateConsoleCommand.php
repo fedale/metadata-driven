@@ -11,6 +11,7 @@ use App\TemplateFormat\InvalidPackage;
 use App\TemplateFormat\PackageChecker;
 use App\TemplateFormat\PackageDirectory;
 use App\TemplateFormat\Problem;
+use App\TemplateFormat\Signature;
 use App\TemplateFormat\TemplateIndex;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -34,7 +35,13 @@ final class PackTemplateConsoleCommand
         #[Argument('The archive to write, e.g. acme-shop-1.0.0.tar.gz')] string $archive,
         #[Option('An index.json to list it in, created if missing')] ?string $index = null,
         #[Option('The address the archive will be served at; default: its file name, next to the index')] ?string $url = null,
+        #[Option('A file holding the Ed25519 secret key to sign the entry with (metadata:template:keygen)')] ?string $sign = null,
     ): int {
+        if (null !== $sign && null === $index) {
+            $io->error('--sign signs the entry of an index: give the index too (--index).');
+
+            return Command::FAILURE;
+        }
         try {
             $package = $this->directories->read($directory);
         } catch (InvalidPackage $e) {
@@ -61,7 +68,18 @@ final class PackTemplateConsoleCommand
             foreach (\is_array($package->manifest->spec['requires'] ?? null) ? $package->manifest->spec['requires'] : [] as $name => $constraint) {
                 $requires[(string) $name] = \is_scalar($constraint) ? (string) $constraint : '';
             }
-            $listed = $listed->with(new IndexEntry($package->name(), $package->version(), $url ?? basename($archive), $sha256, null, $requires));
+            $entry = new IndexEntry($package->name(), $package->version(), $url ?? basename($archive), $sha256, null, $requires);
+            if (null !== $sign) {
+                try {
+                    $signature = Signature::sign($entry, is_file($sign) ? (string) file_get_contents($sign) : '');
+                } catch (\InvalidArgumentException $e) {
+                    $io->error(\sprintf('%s: %s', $sign, $e->getMessage()));
+
+                    return Command::FAILURE;
+                }
+                $entry = new IndexEntry($entry->name, $entry->version, $entry->url, $entry->sha256, $signature, $entry->requires);
+            }
+            $listed = $listed->with($entry);
             file_put_contents($index, $listed->toJson());
             $io->text(\sprintf('Listed in %s.', $index));
         }

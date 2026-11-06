@@ -12,6 +12,7 @@
 
         <field name="name" length="50"/>
         <field name="url" length="1000"/>
+        <field name="publicKey" length="100" nullable="true"/>
         <field name="addedAt" type="datetime_immutable"/>
     </entity>
 </doctrine-mapping>
