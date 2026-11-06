@@ -34,9 +34,16 @@ final class SeedWriter
     }
 
     /**
+     * @param array<string, array<int, string|null>>|null $only the records written, by seed path and
+     *                                                          index: the id of the record each updates,
+     *                                                          null to create one; null to create every
+     *                                                          record of every seed (an install)
+     * @param array<string, array<string, string>>        $keys object id => key => record id, for the
+     *                                                          records already there (an upgrade)
+     *
      * @return int the records written
      */
-    public function write(Package $package, PackageNames $names): int
+    public function write(Package $package, PackageNames $names, ?array $only = null, array $keys = []): int
     {
         $fields = [];
         foreach ($package->documentsOf(DocumentKind::Object) as $object) {
@@ -47,15 +54,18 @@ final class SeedWriter
             }
         }
 
-        $keys = [];
         $count = 0;
         foreach ($this->inOrder($package->documentsOf(DocumentKind::Seed), $fields) as $seed) {
             $object = self::string($seed->spec['object'] ?? null);
             $key = self::string($seed->spec['key'] ?? null);
             $deferred = [];
             foreach ($this->seedRecords->of($package, $seed) as $i => $record) {
-                [$values, $later] = $this->values($package, $object, $record, $fields[$object] ?? [], $keys);
-                $id = $this->save($seed, $i, $names->object($object), null, $values);
+                if (null !== $only && !\array_key_exists($i, $only[$seed->path] ?? [])) {
+                    continue;
+                }
+                $existing = null === $only ? null : $only[$seed->path][$i];
+                [$values, $later] = $this->values($seed, $i, $package, $object, $record, $fields[$object] ?? [], $keys, null !== $existing);
+                $id = $this->save($seed, $i, $names->object($object), $existing, $values);
                 $keys[$object][trim(self::string(self::scalar($record[$key] ?? null)))] = $id;
                 if ([] !== $later) {
                     $deferred[] = [$i, $id, $later];
@@ -84,15 +94,19 @@ final class SeedWriter
      * @param array<string, mixed>                 $record
      * @param array<string, array<mixed>>          $fields the object's fields, by name
      * @param array<string, array<string, string>> $keys   object id => key => record id
+     * @param bool                                 $update the record exists: an empty value clears its field
      *
      * @return array{array<string, mixed>, array<string, array{string, list<string>}>}
      */
-    private function values(Package $package, string $object, array $record, array $fields, array $keys): array
+    private function values(Document $seed, int $i, Package $package, string $object, array $record, array $fields, array $keys, bool $update): array
     {
         $values = [];
         $later = [];
         foreach ($record as $name => $value) {
             if (null === $value || '' === $value) {
+                if ($update) {
+                    $values[$name] = null;
+                }
                 continue;
             }
             $field = $fields[$name] ?? [];
@@ -105,7 +119,12 @@ final class SeedWriter
                     $later[$name] = [$type, $references];
                     continue;
                 }
-                $ids = array_map(static fn (string $reference): string => $keys[$target][$reference], $references);
+                $ids = [];
+                foreach ($references as $reference) {
+                    // At install the checker has made sure of it; at an upgrade, the user may have
+                    // deleted the record since.
+                    $ids[] = $keys[$target][$reference] ?? throw InstallRefused::at($seed->path, self::at($seed, $i).'.'.$name, \sprintf('No record of "%s" has the key "%s".', $target, $reference));
+                }
                 $values[$name] = 'many_to_many' === $type ? $ids : $ids[0];
                 continue;
             }
@@ -168,10 +187,16 @@ final class SeedWriter
                 ? $this->records->create(new RecordInput($objectName, $values))->id
                 : $this->records->update($id, new RecordInput($objectName, $values))->id;
         } catch (RecordValidationFailed $e) {
-            $at = \is_string($seed->spec['source'] ?? null) ? \sprintf('%s:%d', $seed->spec['source'], $i + 2) : \sprintf('spec.records.%d', $i);
-
-            throw InstallRefused::at($seed->path, $at, implode(' ', array_map(static fn (string $field, array $messages): string => \sprintf('%s: %s', '' === $field ? 'record' : $field, implode(' ', $messages)), array_keys($e->errors), $e->errors)));
+            throw InstallRefused::at($seed->path, self::at($seed, $i), implode(' ', array_map(static fn (string $field, array $messages): string => \sprintf('%s: %s', '' === $field ? 'record' : $field, implode(' ', $messages)), array_keys($e->errors), $e->errors)));
         }
+    }
+
+    /**
+     * Where a record is: "spec.records.0" inline, "seeds/products.csv:2" in a CSV file.
+     */
+    private static function at(Document $seed, int $i): string
+    {
+        return \is_string($seed->spec['source'] ?? null) ? \sprintf('%s:%d', $seed->spec['source'], $i + 2) : \sprintf('spec.records.%d', $i);
     }
 
     private static function scalar(mixed $value): ?string

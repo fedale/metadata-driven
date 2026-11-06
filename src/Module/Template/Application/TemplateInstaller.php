@@ -11,6 +11,7 @@ use App\Module\Metadata\Contract\Exception\MetadataException;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Contract\MetadataTranslationsInterface;
+use App\Module\Template\Application\Upgrade\SeedFingerprints;
 use App\Module\Template\Application\Upgrade\Snapshot;
 use App\Module\Template\Domain\Exception\InstallRefused;
 use App\Module\Template\Domain\Model\ItemKind;
@@ -56,6 +57,7 @@ final class TemplateInstaller
         private readonly SeedRecords $seedRecords,
         private readonly TemplateExporter $exporter,
         private readonly PersistenceReset $persistence,
+        private readonly SeedFingerprints $fingerprints,
     ) {
     }
 
@@ -234,7 +236,7 @@ final class TemplateInstaller
 
         // The items first: the snapshot reads back what the template owns now.
         $this->items->add($items);
-        $snapshot = Snapshot::of($this->exporter->ownedState($package->name()), $package, $this->seedRecords);
+        $snapshot = Snapshot::of($this->exporter->ownedState($package->name()), $package, $this->seedRecords, $this->fingerprints->of($package));
         $this->installations->save(new TemplateInstallation(Uuid::v7(), $package->name(), $package->version(), $source, $snapshot, new \DateTimeImmutable()));
 
         return new InstallReport(

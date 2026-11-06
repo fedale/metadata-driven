@@ -10,7 +10,15 @@ use App\Module\Metadata\Contract\Exception\MetadataException;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Contract\MetadataTranslationsInterface;
+use App\Module\Record\Contract\Dto\RecordInput;
+use App\Module\Record\Contract\Exception\RecordDeleteRestricted;
+use App\Module\Record\Contract\Exception\RecordValidationFailed;
+use App\Module\Record\Contract\RecordFinderInterface;
+use App\Module\Record\Contract\RecordManagerInterface;
+use App\Module\Template\Application\PackageNames;
+use App\Module\Template\Application\SeedWriter;
 use App\Module\Template\Application\TemplateExporter;
+use App\Module\Template\Domain\Exception\InstallRefused;
 use App\Module\Template\Domain\Exception\UpgradeRefused;
 use App\Module\Template\Domain\Model\ItemKind;
 use App\Module\Template\Domain\Model\TemplateItem;
@@ -18,6 +26,7 @@ use App\Module\Template\Domain\Repository\PersistenceReset;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
 use App\Module\Template\Domain\Repository\TemplateItemRepository;
 use App\Shared\Transaction\TransactionRunner;
+use App\TemplateFormat\DocumentKind;
 use App\TemplateFormat\FieldTypes\FieldTypeCatalog;
 use App\TemplateFormat\FieldTypes\ReferenceKind;
 use App\TemplateFormat\Package;
@@ -55,6 +64,11 @@ final class TemplateUpgrader
         private readonly TransactionRunner $transactions,
         private readonly SeedRecords $seedRecords,
         private readonly PersistenceReset $persistence,
+        private readonly RecordManagerInterface $records,
+        private readonly RecordFinderInterface $finder,
+        private readonly SeedPlanner $seedPlanner,
+        private readonly SeedWriter $seedWriter,
+        private readonly SeedFingerprints $fingerprints,
     ) {
     }
 
@@ -79,14 +93,22 @@ final class TemplateUpgrader
         }
 
         $mine = $this->exporter->ownedState($theirs->name());
-        $plan = UpgradePlan::compute(
-            $this->states->of(Snapshot::toPackage($installation->getSnapshot())),
-            $this->states->of($theirs),
-            $this->states->of($mine),
-        );
+        $base = Snapshot::toPackage($installation->getSnapshot());
+        $baseStates = $this->states->of($base);
+        $theirStates = $this->states->of($theirs);
+        $steps = self::migrations($theirs, $installation->getVersion());
+        $refusals = [
+            ...VersionCheck::problems($baseStates, $theirStates, $installation->getVersion(), $theirs->version(), [] !== $steps),
+            ...$this->stepProblems($steps, $baseStates, $theirStates),
+        ];
+        if ([] !== $refusals) {
+            throw new UpgradeRefused($refusals);
+        }
+        $plan = UpgradePlan::compute($baseStates, $theirStates, $this->states->of($mine));
+        $seeds = $this->seedPlanner->plan($base, $installation->getSnapshot(), $theirs, $mine, $strategy);
         $conflicts = $plan->conflicts();
-        if ([] !== $conflicts && null === $strategy) {
-            throw UpgradeRefused::conflicts(array_map(static fn (Change $change): string => $change->describe().', changed here too', $conflicts));
+        if (([] !== $conflicts || [] !== $seeds->conflicts) && null === $strategy) {
+            throw UpgradeRefused::conflicts([...array_map(static fn (Change $change): string => $change->describe().', changed here too', $conflicts), ...$seeds->conflicts]);
         }
         $changes = $plan->toApply($strategy);
         $refusals = [...$this->unsupported($changes), ...$this->collisions($changes)];
@@ -99,13 +121,17 @@ final class TemplateUpgrader
             $installation->getVersion(),
             $theirs->version(),
             $dryRun,
-            array_map(static fn (Change $change): string => $change->describe(), $changes),
-            Strategy::Keep === $strategy ? array_map(static fn (Change $change): string => $change->describe(), $conflicts) : [],
+            [
+                ...array_map(static fn (Change $change): string => $change->describe(), $changes),
+                ...array_map(static fn (array $step): string => \sprintf('template.yaml: migration %s: copy_values %s to %s', $step['version'], $step['from'], $step['to']), $steps),
+                ...$seeds->applied,
+            ],
+            Strategy::Keep === $strategy ? [...array_map(static fn (Change $change): string => $change->describe(), $conflicts), ...$seeds->conflicts] : [],
         );
         try {
-            return $this->transactions->run(function () use ($theirs, $mine, $changes, $installation, $source, $report, $dryRun): UpgradeReport {
-                $this->apply($theirs, $mine, $changes);
-                $snapshot = Snapshot::of($this->exporter->ownedState($theirs->name()), $theirs, $this->seedRecords);
+            return $this->transactions->run(function () use ($theirs, $mine, $changes, $steps, $seeds, $installation, $source, $report, $dryRun): UpgradeReport {
+                $this->apply($theirs, $mine, $changes, $steps, $seeds);
+                $snapshot = Snapshot::of($this->exporter->ownedState($theirs->name()), $theirs, $this->seedRecords, $this->fingerprints->of($theirs));
                 // A dry run leaves the installation alone: the entity would keep the new version
                 // in memory after the rollback.
                 if ($dryRun) {
@@ -129,9 +155,10 @@ final class TemplateUpgrader
     }
 
     /**
-     * @param list<Change> $changes
+     * @param list<Change>                                           $changes
+     * @param list<array{version: string, from: string, to: string}> $steps
      */
-    private function apply(Package $theirs, Package $mine, array $changes): void
+    private function apply(Package $theirs, Package $mine, array $changes, array $steps, SeedChanges $seeds): void
     {
         $names = new CurrentNames($this->fieldTypes);
         $names->learn($mine);
@@ -189,6 +216,12 @@ final class TemplateUpgrader
         foreach ([...$byKind['object']['change'] ?? [], ...$byKind['object']['add'] ?? []] as $change) {
             $this->changeObject($change, $names);
         }
+        // The migration steps: every field they read from or write to exists now, none is
+        // archived yet.
+        foreach ($steps as $step) {
+            $this->copyValues($step, $names);
+        }
+        $this->applySeeds($theirs, $seeds, $names);
 
         // The texts before the layouts placing them; in the default language first.
         $translations = [...$byKind['translation']['add'] ?? [], ...$byKind['translation']['change'] ?? []];
@@ -233,6 +266,103 @@ final class TemplateUpgrader
 
         $this->items->remove($theirs->name(), array_values(array_filter($gone, is_string(...))));
         $this->items->add($items);
+    }
+
+    /**
+     * The records of the seeds: every record a reference may name is looked up by its key first,
+     * the records of this version written, those it removed deleted.
+     */
+    private function applySeeds(Package $theirs, SeedChanges $seeds, CurrentNames $names): void
+    {
+        if ([] === $seeds->writes && [] === $seeds->deletes) {
+            return;
+        }
+        $keys = [];
+        foreach ($theirs->documentsOf(DocumentKind::Seed) as $seed) {
+            $object = self::string($seed->spec['object'] ?? null);
+            foreach ($this->fingerprints->current($names->object($object), self::string($seed->spec['key'] ?? null)) as $value => $record) {
+                $keys[$object][$value] = $record->id;
+            }
+        }
+        try {
+            $this->seedWriter->write($theirs, new PackageNames($theirs), $seeds->writes, $keys);
+        } catch (InstallRefused $e) {
+            throw new UpgradeRefused($e->reasons);
+        }
+        foreach ($seeds->deletes as [$object, $id]) {
+            try {
+                $this->records->delete($names->object($object), $id);
+            } catch (RecordDeleteRestricted $e) {
+                throw UpgradeRefused::at('seeds', \sprintf('record %s of "%s"', $id, $names->object($object)), $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * The migration steps of every version after the one installed, in version order.
+     *
+     * @return list<array{version: string, from: string, to: string}>
+     */
+    private static function migrations(Package $theirs, string $installed): array
+    {
+        $migrations = \is_array($theirs->manifest->spec['migrations'] ?? null) ? $theirs->manifest->spec['migrations'] : [];
+        $versions = array_values(array_filter(array_map(strval(...), array_keys($migrations)), static fn (string $version): bool => version_compare($version, $installed, '>') && version_compare($version, $theirs->version(), '<=')));
+        usort($versions, static fn (string $a, string $b): int => version_compare($a, $b));
+        $steps = [];
+        foreach ($versions as $version) {
+            foreach (self::map($migrations[$version]) as $step) {
+                $step = self::map($step);
+                $steps[] = ['version' => $version, 'from' => self::string($step['from'] ?? null), 'to' => self::string($step['to'] ?? null)];
+            }
+        }
+
+        return $steps;
+    }
+
+    /**
+     * A step copies between two fields of one object, the first of the version installed or the
+     * new one, the second of the new one; files are not copied.
+     *
+     * @param list<array{version: string, from: string, to: string}> $steps
+     * @param array<string, ItemState>                               $base
+     * @param array<string, ItemState>                               $theirs
+     *
+     * @return list<string>
+     */
+    private function stepProblems(array $steps, array $base, array $theirs): array
+    {
+        $problems = [];
+        foreach ($steps as $step) {
+            $from = $theirs['field:'.$step['from']] ?? $base['field:'.$step['from']] ?? null;
+            $to = $theirs['field:'.$step['to']] ?? null;
+            $where = \sprintf('template.yaml: spec.migrations.%s: copy_values %s to %s: ', $step['version'], $step['from'], $step['to']);
+            if (null === $from || null === $to) {
+                $problems[] = $where.'both fields must be fields of the template.';
+            } elseif (self::value($from)['object'] !== self::value($to)['object']) {
+                $problems[] = $where.'both fields must be of one object.';
+            } elseif ('file' === self::value($from)['type'] || 'file' === self::value($to)['type']) {
+                $problems[] = $where.'files cannot be copied.';
+            }
+        }
+
+        return $problems;
+    }
+
+    /**
+     * @param array{version: string, from: string, to: string} $step
+     */
+    private function copyValues(array $step, CurrentNames $names): void
+    {
+        $object = $names->objectOfField($step['to']);
+        $from = $names->field($step['from']);
+        $to = $names->field($step['to']);
+        foreach ($this->finder->each($object) as $record) {
+            try {
+                $this->records->update($record->id, new RecordInput($object, [$to => $record->values[$from] ?? null]));
+            } catch (RecordValidationFailed $e) {
+                throw UpgradeRefused::at('template.yaml', \sprintf('migration %s', $step['version']), \sprintf('record %s of "%s": %s', $record->id, $object, $e->getMessage()));
+            }
+        }
     }
 
     private function changeField(Change $change, CurrentNames $names): void

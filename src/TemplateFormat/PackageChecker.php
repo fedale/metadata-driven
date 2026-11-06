@@ -55,7 +55,28 @@ final class PackageChecker
         }
         $seeds = array_values(array_filter($valid, static fn (Document $document): bool => DocumentKind::Seed === $document->kind));
 
-        return [...$problems, ...$this->checkSeeds($package, $seeds, $index)];
+        return [...$problems, ...$this->checkSeeds($package, $seeds, $index), ...$this->checkMigrations($package->manifest, $index)];
+    }
+
+    /**
+     * A migration step copies into a field of the template. Where it copies from may be a field
+     * this very version removes: the upgrade checks it against the version installed.
+     *
+     * @return list<Problem>
+     */
+    private function checkMigrations(Document $manifest, PackageIndex $index): array
+    {
+        $problems = [];
+        foreach (\is_array($manifest->spec['migrations'] ?? null) ? $manifest->spec['migrations'] : [] as $version => $steps) {
+            foreach (\is_array($steps) ? $steps : [] as $i => $step) {
+                $to = \is_array($step) && \is_string($step['to'] ?? null) ? $step['to'] : null;
+                if (null !== $to && null === $index->ownerOf($to)) {
+                    $problems[] = new Problem($manifest->path, \sprintf('spec.migrations.%s.%d.to', $version, $i), \sprintf('No field of the template has the id "%s".', $to));
+                }
+            }
+        }
+
+        return $problems;
     }
 
     /**

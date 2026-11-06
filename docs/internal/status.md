@@ -200,10 +200,10 @@ new-composite pages.
   export) and 2 (install: `metadata:template:install [--dry-run]`, `metadata:template:list`)
   are done, on `feature/template-format` and `feature/template-install` (branched from it);
   phase 3 (seeds: format, checks, install, export with `--seed`; and `record:import`) on
-  `feature/template-seeds` (from `feature/template-install`); phase 4 step 1 (upgrade of the
-  metadata: `metadata:template:upgrade`, three-way, conflicts, `--strategy`) on
-  `feature/template-upgrade` (from `feature/template-seeds`), awaiting review before step 2
-  (managed seeds, `migrations`, semver). Phase 2 needs fedale/rbac-bundle's transaction-safe cache (merged into its main,
+  `feature/template-seeds` (from `feature/template-install`); phase 4 (upgrade:
+  `metadata:template:upgrade`, three-way, conflicts, `--strategy`, managed seeds, `migrations`,
+  version numbers) on `feature/template-upgrade` (from `feature/template-seeds`), awaiting review
+  before phase 5 (indexes: download, checksum, signatures). Phase 2 needs fedale/rbac-bundle's transaction-safe cache (merged into its main,
   not pushed).
 - **CSV import**: (A) done with phase 3 of the templates, `record:import` (console.md). Not
   done: (B) a web wizard; (C) async with Messenger for very large files.

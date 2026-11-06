@@ -4,9 +4,9 @@ A template packages a model: objects with their fields, their form and grid view
 forms, their translations, and records to start with (seeds). You write one from the objects you built, keep it in version
 control, share it, validate it without a database, and install it on another instance.
 
-**Today** a template can be exported, validated, installed (records included) and upgraded to a
-new version. Upgrading seeds, templates requiring other templates and the template catalog come
-next (see [Not yet](#not-yet)).
+**Today** a template can be exported, validated, installed and upgraded to a new version, its
+records included. Templates requiring other templates and the template catalog come next (see
+[Not yet](#not-yet)).
 
 ## Exporting a model
 
@@ -148,9 +148,9 @@ BRG-02,Bergen table,table,,Tables,wood,
 - **Files from the package.** A file field holds a path inside the package
   (`files/products/oslo.png`); a field of several files, paths separated by `|`. Each file is
   checked and stored as an upload is: its content decides its type.
-- **`mode`**: `once` (the default) or `managed`. Both are written at install. Once upgrades
-  exist, a `managed` seed will be kept in line with new versions of the template, `once` records
-  will belong to the user.
+- **`mode`**: `once` (the default) or `managed`. Both are written at install. A `managed` seed
+  is kept in line with new versions of the template; the records of a `once` seed belong to the
+  user from then on (see [Upgrading the records](#upgrading-the-records)).
 
 `metadata:template:validate` checks the seeds too: the key is a unique field, every record has
 one and only one record has it, every column names a field, every reference names a record of
@@ -268,11 +268,53 @@ instance holds now.
   The app's own rules apply too: a setting fixed once a field exists (a text's `maxLength`)
   cannot change.
 
-## Not yet
+### Upgrading the records
 
-- **Upgrading seeds**: keeping `managed` records in line with a new version; the `migrations`
-  steps of the manifest (moving values from a field to another); checking that the version
-  number fits the changes (semver).
+Records are matched by their key.
+
+- A **seed new in this version** is written, as at install: a record whose key this instance
+  already has is a conflict.
+- A **`managed` seed**: a record the new version added is created, one it changed is updated
+  (an empty value then clears its field), one it removed is deleted. A record the user changed
+  since it was written (in a field of the template; a field of their own does not count), or
+  deleted, is a conflict, resolved by `--strategy` as the other items are.
+- A **`once` seed**: nothing happens; its records are the user's.
+
+The instance keeps a fingerprint of every record a seed wrote, as written: that is how it tells
+whether the user changed it.
+
+### Migration steps
+
+A change the comparison cannot infer, such as moving values from a field the new version
+removes into the field replacing it, is a step of the manifest:
+
+```yaml
+spec:
+  version: 2.0.0
+  migrations:
+    '2.0.0':
+      - { op: copy_values, from: acme.product.phone, to: acme.profile.phone }   # one object only
+```
+
+Steps run once, for every version after the one installed up to the new one, in version order:
+after the new fields exist, before the removed ones are archived. `copy_values` copies the values
+of a field into another field of the same object, record by record, through the object's rules;
+files are not copied. It is the only operation so far.
+
+### Version numbers
+
+The new version's number must fit what it changed since the version installed:
+
+| Version | May |
+|---|---|
+| Major (`2.0.0` after `1.4.2`) | change anything: remove, rename, carry migration steps |
+| Minor (`1.5.0`) | add items, change settings, conditions, search, unique sets |
+| Patch (`1.4.3`) | change labels, layouts, forms and translations only |
+
+`objects/tag.yaml: field acme.tag.colour: an addition needs a new minor version, 1.0.1 is not
+one.` Who installs a minor version expects to lose nothing.
+
+## Not yet
 - **Templates requiring other templates**: a template pointing at the objects of another
   installed one.
 - **The template catalog**: publishing and downloading templates, signed.

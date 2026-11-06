@@ -22,6 +22,23 @@
             "minItems": 1,
             "items": { "type": "string", "pattern": "^[a-z0-9_-]+/[a-z0-9_*.-]+\\.yaml$" }
         },
-        "migrations": { "type": "object", "additionalProperties": { "type": "array" } }
+        "migrations": {
+            "type": "object",
+            "description": "Steps an upgrade runs, by the version that brings them, in version order, for every version after the one installed",
+            "propertyNames": { "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
+            "additionalProperties": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["op", "from", "to"],
+                    "properties": {
+                        "op": { "const": "copy_values", "description": "Copies the values of a field into another field of the same object" },
+                        "from": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$" },
+                        "to": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$" }
+                    }
+                }
+            }
+        }
     }
 }

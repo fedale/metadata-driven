@@ -1,8 +1,8 @@
 # Plan: templates (packaged, versioned models)
 
-Status: **phases 1 to 3 done** (format and export on `feature/template-format`, install on
-`feature/template-install`, seeds on `feature/template-seeds`, each branched from the one
-before), awaiting review before phase 4. Discussed with the user on 2026-11-03; name, upgrade model and distribution
+Status: **phases 1 to 4 done** (format and export on `feature/template-format`, install on
+`feature/template-install`, seeds on `feature/template-seeds`, upgrade on
+`feature/template-upgrade`, each branched from the one before), awaiting review before phase 5. Discussed with the user on 2026-11-03; name, upgrade model and distribution
 decided on 2026-11-05 (see [Decisions](#decisions)).
 
 A template packages a model, meaning its objects, fields, relations, composite forms, views,
@@ -460,7 +460,7 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
      format keeps its own copy in `SeedRecords`, to stay free of the app). Not shared with
      `SeedWriter`: seeds reference by the keys of other seeds, an import by ids or by values
      already in the database.
-4. **Upgrade** — step 1 done (branch `feature/template-upgrade`). As built:
+4. **Upgrade** — done (branch `feature/template-upgrade`). As built, step 1:
    - `ItemStates` turns a package into items compared by value: `object:<id>` (its own
      properties), `field:<id>`, `view:<id>`, `form:<id>`, `translation:<locale>:<key>` (its key
      naming items by id, `PackageIds`, so a rename keeps it the same item). Defaults filled in
@@ -486,9 +486,20 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
      object kept its new label after a dry run. `PersistenceReset` (Doctrine: `clear()`) runs
      after every rollback of an install or upgrade. It detaches every entity: the admin UI
      (phase 6) must not flush an entity loaded before it.
-   - Step 2, next: managed seeds (records by key: created, updated, soft-deleted; once seeds
-     new in theirs written), the manifest's `migrations` (a closed list of operations), and
-     the semver check (a minor version may only add).
+   - Step 2: `VersionCheck` compares the installed version with the new one (not the
+     instance): a removal, a rename or migration steps need a major; additions and structural
+     changes a minor; a patch only changes labels (object, field), views, forms, translations.
+     The plan's "settings that don't narrow existing data" became "a minor": telling widening
+     from narrowing settings needs a rule per setting.
+   - `migrations`: `copy_values` only (same object, no files), schema-checked, its `to` field
+     checked by `PackageChecker`, its `from` by the upgrade (it may be a field this version
+     removes). Run after the field changes, before removals, through `RecordManager::update()`.
+   - Seeds: `SeedFingerprints` (sha256 of a record's values in the template's fields, dates as
+     ATOM, lists as sets) recorded per key in the snapshot at install and after each upgrade;
+     `SeedPlanner` decides per key (create, update, delete, conflict), before the transaction;
+     `SeedWriter::write()` now takes the rows to write (create or update, an empty value
+     clearing the field on update) and the keys of records already there. A delete refused by
+     a `restrict` relation refuses the upgrade.
 5. **Indexes**: the index format, `repo add`, download, checksum, signatures, unpacking.
 6. **Admin UI**: the catalog, install, upgrade with the plan and the conflicts shown before
    applying, item by item.

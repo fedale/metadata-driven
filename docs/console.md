@@ -550,13 +550,15 @@ metadata:template:upgrade <directory> [--strategy=keep|overwrite] [--dry-run]
 | `--strategy` | For an item both the new version and this instance changed: `keep` this instance's version, or `overwrite` it with the new one. Without it, such conflicts stop the upgrade |
 | `--dry-run` | Go through the whole upgrade, then roll it back: nothing is changed |
 
-Lists the changes applied (`objects/product.yaml: change field acme.product.sku`), then the
-conflicts kept. Renames objects and fields, creates the new ones, changes labels, settings,
+Lists the changes applied (`objects/product.yaml: change field acme.product.sku`,
+`seeds/product.yaml: update record OSL-01`, `template.yaml: migration 2.0.0: copy_values ...`),
+then the conflicts kept. Renames objects and fields, creates the new ones, changes labels, settings,
 conditions, search, record labels and unique sets, saves views and forms, sets translations,
-deletes the views and forms the new version removed and archives its removed fields and
+runs the migration steps, writes the records of new and `managed` seeds and deletes the ones
+removed, deletes the views and forms the new version removed and archives its removed fields and
 objects; then records the new version in `core.template_installation`. Fails, changing nothing,
-when the template is not installed or the version not newer, on a conflict without
-`--strategy`, on a change the app cannot make to an existing item (a field's type, required or
+when the template is not installed, the version not newer or its number does not fit the
+changes, on a conflict without `--strategy`, on a change the app cannot make to an existing item (a field's type, required or
 unique, an object's icon), or when the app refuses a step.
 
 ## `metadata:template:list`

@@ -47,9 +47,9 @@ final class TemplateUpgraderTest extends KernelTestCase
             'views/product.form.main.yaml' => static fn (array $spec): array => ['template' => "<fieldset><legend>{t:identity}</legend>{name} {code}</fieldset>\n"] + $spec,
             'views/product.grid.main.yaml' => null,
             'translations/it.yaml' => static fn (array $spec): array => ['entries' => ['field.product.weight' => 'Peso'] + self::map($spec['entries'])] + $spec,
-        ]));
+        ], '2.0.0'));
 
-        self::assertSame(['1.0.0', '1.1.0', false], [$report->from, $report->to, $report->dryRun]);
+        self::assertSame(['1.0.0', '2.0.0', false], [$report->from, $report->to, $report->dryRun]);
         $product = self::getContainer()->get(MetadataRegistryInterface::class)->getObject('product');
         self::assertSame('Item', $product->labelSingular);
         self::assertFalse($product->hasField('sku'));
@@ -60,7 +60,7 @@ final class TemplateUpgraderTest extends KernelTestCase
         self::assertStringContainsString('{code}', (string) $product->view(ViewKind::Form)?->template);
         self::assertNull($product->view(ViewKind::Grid));
         self::assertSame('Peso', $this->italian()['field.product.weight']);
-        self::assertSame('1.1.0', self::getContainer()->get(TemplateInstallationRepository::class)->findByName('acme/shop')?->getVersion());
+        self::assertSame('2.0.0', self::getContainer()->get(TemplateInstallationRepository::class)->findByName('acme/shop')?->getVersion());
     }
 
     public function testKeepsWhatOnlyTheInstanceChanged(): void
@@ -111,7 +111,7 @@ final class TemplateUpgraderTest extends KernelTestCase
         $this->upgrade($this->newVersion([
             'objects/product.yaml' => static fn (array $spec): array => ['fields' => array_values(array_filter(self::map($spec['fields']), static fn (mixed $field): bool => \is_array($field) && 'acme.product.seats' !== $field['id']))] + $spec,
             'forms/catalogue.yaml' => null,
-        ]));
+        ], '2.0.0'));
 
         $registry = self::getContainer()->get(MetadataRegistryInterface::class);
         self::assertFalse($registry->getObject('product')->hasField('seats'));
@@ -128,9 +128,43 @@ final class TemplateUpgraderTest extends KernelTestCase
         $this->assertRefused($this->newVersion([], '1.0.0'), 'acme/shop 1.0.0 is installed: 1.0.0 is not newer.');
         self::getContainer()->get(MetadataManagerInterface::class)->createObject('tag_group', 'Tag group', 'Tag groups');
         $this->assertRefused(
-            $this->newVersion(['objects/tag.yaml' => static fn (array $spec): array => ['name' => 'tag_group'] + $spec]),
+            $this->newVersion(['objects/tag.yaml' => static fn (array $spec): array => ['name' => 'tag_group'] + $spec], '2.0.0'),
             'objects/tag.yaml: object acme.tag: this instance already has an object "tag_group".',
         );
+    }
+
+    public function testTheVersionNumberMustFitTheChanges(): void
+    {
+        $this->assertRefused(
+            $this->newVersion(['forms/catalogue.yaml' => null], '1.1.0'),
+            'forms/catalogue.yaml: form acme.catalogue: a removal needs a new major version, 1.1.0 is not one.',
+        );
+        $this->assertRefused(
+            $this->newVersion(['objects/tag.yaml' => static fn (array $spec): array => ['fields' => [...self::map($spec['fields']), ['id' => 'acme.tag.colour', 'name' => 'colour', 'type' => 'text', 'label' => 'Colour']]] + $spec], '1.0.1'),
+            'objects/tag.yaml: field acme.tag.colour: an addition needs a new minor version, 1.0.1 is not one.',
+        );
+        // A label is a patch.
+        $this->upgrade($this->newVersion(['objects/tag.yaml' => static fn (array $spec): array => ['label' => 'Label'] + $spec], '1.0.1'));
+        self::assertSame('Label', $this->label('tag'));
+    }
+
+    public function testRunsTheMigrationStepsOfTheNewVersion(): void
+    {
+        $package = $this->newVersion([
+            'objects/product.yaml' => static fn (array $spec): array => ['fields' => [...self::map($spec['fields']), ['id' => 'acme.product.reference', 'name' => 'reference', 'type' => 'text', 'label' => 'Reference']]] + $spec,
+        ], '2.0.0');
+        $manifest = new Document($package->manifest->kind, $package->manifest->id, ['migrations' => [
+            '2.0.0' => [['op' => 'copy_values', 'from' => 'acme.product.sku', 'to' => 'acme.product.reference']],
+            // Already installed: not run again.
+            '1.0.0' => [['op' => 'copy_values', 'from' => 'acme.product.name', 'to' => 'acme.product.reference']],
+        ]] + $package->manifest->spec, $package->manifest->path);
+
+        $report = $this->upgrade(new Package($manifest, $package->documents, $package->directory));
+
+        self::assertContains('template.yaml: migration 2.0.0: copy_values acme.product.sku to acme.product.reference', $report->applied);
+        foreach (self::getContainer()->get(RecordFinderInterface::class)->each('product') as $record) {
+            self::assertSame($record->values['sku'], $record->values['reference']);
+        }
     }
 
     public function testUpgradesFromTheConsole(): void

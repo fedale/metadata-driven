@@ -21,16 +21,21 @@ use App\TemplateFormat\SeedRecords;
 final class Snapshot
 {
     /**
-     * @return array<string, array{kind: string, id: string, spec: array<string, mixed>, records?: list<array<string, mixed>>}> by path
+     * @param array<string, array<string, string>> $fingerprints seed path => key => fingerprint of the record written (SeedFingerprints)
+     *
+     * @return array<string, array{kind: string, id: string, spec: array<string, mixed>, records?: list<array<string, mixed>>, fingerprints?: array<string, string>}> by path
      */
-    public static function of(Package $owned, Package $template, SeedRecords $seedRecords): array
+    public static function of(Package $owned, Package $template, SeedRecords $seedRecords, array $fingerprints = []): array
     {
         $snapshot = [$template->manifest->path => self::document($template->manifest)];
         foreach ($owned->documents as $document) {
             $snapshot[$document->path] = self::document($document);
         }
         foreach ($template->documentsOf(DocumentKind::Seed) as $seed) {
-            $snapshot[$seed->path] = self::document($seed) + ['records' => $seedRecords->of($template, $seed)];
+            $snapshot[$seed->path] = self::document($seed) + [
+                'records' => $seedRecords->of($template, $seed),
+                'fingerprints' => $fingerprints[$seed->path] ?? [],
+            ];
         }
 
         return $snapshot;
@@ -67,6 +72,27 @@ final class Snapshot
         }
 
         return new Package($manifest ?? throw new \LogicException('An installation records its manifest.'), $documents);
+    }
+
+    /**
+     * The fingerprints of the records a seed wrote, by key; none for an install that predates
+     * them.
+     *
+     * @param array<string, mixed> $snapshot
+     *
+     * @return array<string, string>
+     */
+    public static function fingerprints(array $snapshot, string $path): array
+    {
+        $entry = $snapshot[$path] ?? null;
+        $fingerprints = [];
+        foreach (\is_array($entry) && \is_array($entry['fingerprints'] ?? null) ? $entry['fingerprints'] : [] as $key => $fingerprint) {
+            if (\is_string($fingerprint)) {
+                $fingerprints[(string) $key] = $fingerprint;
+            }
+        }
+
+        return $fingerprints;
     }
 
     /**
