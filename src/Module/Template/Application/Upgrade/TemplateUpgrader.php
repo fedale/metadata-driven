@@ -21,6 +21,7 @@ use App\Module\Template\Application\TemplateExporter;
 use App\Module\Template\Domain\Exception\InstallRefused;
 use App\Module\Template\Domain\Exception\UpgradeRefused;
 use App\Module\Template\Domain\Model\ItemKind;
+use App\Module\Template\Domain\Model\TemplateInstallation;
 use App\Module\Template\Domain\Model\TemplateItem;
 use App\Module\Template\Domain\Repository\PersistenceReset;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
@@ -73,9 +74,113 @@ final class TemplateUpgrader
     }
 
     /**
+     * @param Strategy|Resolution|null $resolution who wins the conflicts: one strategy for all, or
+     *                                             item by item; null when there must be none
+     *
      * @throws UpgradeRefused nothing was changed
      */
-    public function upgrade(Package $theirs, string $source, ?Strategy $strategy = null, bool $dryRun = false): UpgradeReport
+    public function upgrade(Package $theirs, string $source, Strategy|Resolution|null $resolution = null, bool $dryRun = false): UpgradeReport
+    {
+        $resolution = $resolution instanceof Resolution ? $resolution : new Resolution($resolution);
+        $prepared = $this->prepare($theirs, $resolution);
+        [$installation, , $mine, $plan, $seeds, $steps] = $prepared;
+
+        $unresolved = [
+            ...array_map(static fn (Change $change): string => $change->describe().', changed here too', array_values(array_filter($plan->conflicts(), static fn (Change $change): bool => null === $resolution->for($change->key())))),
+            ...array_map(static fn (array $conflict): string => $conflict['description'], array_values(array_filter($seeds->conflicts, static fn (array $conflict): bool => null === $resolution->for($conflict['key'])))),
+        ];
+        if ([] !== $unresolved) {
+            throw UpgradeRefused::conflicts($unresolved);
+        }
+        $changes = $plan->toApply($resolution);
+        $refusals = [...$this->unsupported($changes), ...$this->collisions($changes)];
+        if ([] !== $refusals) {
+            throw new UpgradeRefused($refusals);
+        }
+
+        $report = new UpgradeReport(
+            $theirs->name(),
+            $installation->getVersion(),
+            $theirs->version(),
+            $dryRun,
+            [
+                ...array_map(static fn (Change $change): string => $change->describe(), $changes),
+                ...self::stepDescriptions($steps),
+                ...$seeds->applied,
+            ],
+            [
+                ...array_map(static fn (Change $change): string => $change->describe(), array_values(array_filter($plan->conflicts(), static fn (Change $change): bool => Strategy::Keep === $resolution->for($change->key())))),
+                ...array_map(static fn (array $conflict): string => $conflict['description'], array_values(array_filter($seeds->conflicts, static fn (array $conflict): bool => Strategy::Keep === $resolution->for($conflict['key'])))),
+            ],
+        );
+        try {
+            return $this->transactions->run(function () use ($theirs, $mine, $changes, $steps, $seeds, $installation, $source, $report, $dryRun): UpgradeReport {
+                $this->apply($theirs, $mine, $changes, $steps, $seeds);
+                $snapshot = Snapshot::of($this->exporter->ownedState($theirs->name()), $theirs, $this->seedRecords, $this->fingerprints->of($theirs));
+                // A dry run leaves the installation alone: the entity would keep the new version
+                // in memory after the rollback.
+                if ($dryRun) {
+                    throw new UpgradeRolledBack($report);
+                }
+                $installation->upgradeTo($theirs->version(), $source, $snapshot);
+                $this->installations->save($installation);
+
+                return $report;
+            });
+        } catch (UpgradeRolledBack $rolledBack) {
+            $this->persistence->reset();
+
+            return $rolledBack->report;
+        } catch (\Throwable $e) {
+            // Rolled back too: the entities it changed must not outlive it.
+            $this->persistence->reset();
+
+            throw $e;
+        }
+    }
+
+    /**
+     * What an upgrade would do, without doing any of it: the changes no one disputes, the
+     * conflicts with both versions of each, and the refusals. For the admin, before it asks the
+     * user to choose.
+     */
+    public function preview(Package $theirs): UpgradePreview
+    {
+        try {
+            [$installation, , , $plan, $seeds, $steps] = $this->prepare($theirs, new Resolution());
+        } catch (UpgradeRefused $e) {
+            $installed = $this->installations->findByName($theirs->name());
+
+            return new UpgradePreview($theirs->name(), $installed?->getVersion() ?? '', $theirs->version(), [], [], $e->reasons);
+        }
+        $undisputed = $plan->toApply(new Resolution());
+
+        return new UpgradePreview(
+            $theirs->name(),
+            $installation->getVersion(),
+            $theirs->version(),
+            [...array_map(static fn (Change $change): string => $change->describe(), $undisputed), ...self::stepDescriptions($steps), ...$seeds->applied],
+            [
+                ...array_map(static fn (Change $change): ConflictView => new ConflictView(
+                    $change->key(),
+                    $change->describe(),
+                    null === $change->mine ? null : Yaml::dump($change->mine->value, 6, 2),
+                    null === $change->theirs ? null : Yaml::dump($change->theirs->value, 6, 2),
+                ), $plan->conflicts()),
+                ...array_map(static fn (array $conflict): ConflictView => new ConflictView($conflict['key'], $conflict['description']), $seeds->conflicts),
+            ],
+            [...$this->unsupported($undisputed), ...$this->collisions($undisputed)],
+        );
+    }
+
+    /**
+     * Everything an upgrade decides before it changes anything.
+     *
+     * @return array{TemplateInstallation, Package, Package, UpgradePlan, SeedChanges, list<array{version: string, from: string, to: string}>} the installation, the version installed, what the instance holds, the plan, the records, the migration steps
+     *
+     * @throws UpgradeRefused
+     */
+    private function prepare(Package $theirs, Resolution $resolution): array
     {
         $problems = $this->checker->check($theirs);
         if ([] !== $problems) {
@@ -104,54 +209,25 @@ final class TemplateUpgrader
         if ([] !== $refusals) {
             throw new UpgradeRefused($refusals);
         }
-        $plan = UpgradePlan::compute($baseStates, $theirStates, $this->states->of($mine));
-        $seeds = $this->seedPlanner->plan($base, $installation->getSnapshot(), $theirs, $mine, $strategy);
-        $conflicts = $plan->conflicts();
-        if (([] !== $conflicts || [] !== $seeds->conflicts) && null === $strategy) {
-            throw UpgradeRefused::conflicts([...array_map(static fn (Change $change): string => $change->describe().', changed here too', $conflicts), ...$seeds->conflicts]);
-        }
-        $changes = $plan->toApply($strategy);
-        $refusals = [...$this->unsupported($changes), ...$this->collisions($changes)];
-        if ([] !== $refusals) {
-            throw new UpgradeRefused($refusals);
-        }
 
-        $report = new UpgradeReport(
-            $theirs->name(),
-            $installation->getVersion(),
-            $theirs->version(),
-            $dryRun,
-            [
-                ...array_map(static fn (Change $change): string => $change->describe(), $changes),
-                ...array_map(static fn (array $step): string => \sprintf('template.yaml: migration %s: copy_values %s to %s', $step['version'], $step['from'], $step['to']), $steps),
-                ...$seeds->applied,
-            ],
-            Strategy::Keep === $strategy ? [...array_map(static fn (Change $change): string => $change->describe(), $conflicts), ...$seeds->conflicts] : [],
-        );
-        try {
-            return $this->transactions->run(function () use ($theirs, $mine, $changes, $steps, $seeds, $installation, $source, $report, $dryRun): UpgradeReport {
-                $this->apply($theirs, $mine, $changes, $steps, $seeds);
-                $snapshot = Snapshot::of($this->exporter->ownedState($theirs->name()), $theirs, $this->seedRecords, $this->fingerprints->of($theirs));
-                // A dry run leaves the installation alone: the entity would keep the new version
-                // in memory after the rollback.
-                if ($dryRun) {
-                    throw new UpgradeRolledBack($report);
-                }
-                $installation->upgradeTo($theirs->version(), $source, $snapshot);
-                $this->installations->save($installation);
+        return [
+            $installation,
+            $base,
+            $mine,
+            UpgradePlan::compute($baseStates, $theirStates, $this->states->of($mine)),
+            $this->seedPlanner->plan($base, $installation->getSnapshot(), $theirs, $mine, $resolution),
+            $steps,
+        ];
+    }
 
-                return $report;
-            });
-        } catch (UpgradeRolledBack $rolledBack) {
-            $this->persistence->reset();
-
-            return $rolledBack->report;
-        } catch (\Throwable $e) {
-            // Rolled back too: the entities it changed must not outlive it.
-            $this->persistence->reset();
-
-            throw $e;
-        }
+    /**
+     * @param list<array{version: string, from: string, to: string}> $steps
+     *
+     * @return list<string>
+     */
+    private static function stepDescriptions(array $steps): array
+    {
+        return array_map(static fn (array $step): string => \sprintf('template.yaml: migration %s: copy_values %s to %s', $step['version'], $step['from'], $step['to']), $steps);
     }
 
     /**

@@ -204,8 +204,10 @@ new-composite pages.
   `metadata:template:upgrade`, three-way, conflicts, `--strategy`, managed seeds, `migrations`,
   version numbers) on `feature/template-upgrade` (from `feature/template-seeds`); phase 5 (archives,
   indexes, `repo`, `search`, `pack`, `keygen`, install and upgrade by name, Ed25519 signatures,
-  no private networks) on `feature/template-indexes` (from `feature/template-upgrade`), awaiting
-  review before phase 6 (admin UI). None of these branches is merged into main yet. Phase 2 needs
+  no private networks) on `feature/template-indexes` (from `feature/template-upgrade`); phase 6
+  (admin UI at `/admin/templates`, conflicts resolved item by item; `yank`, the yanked flag
+  signed) on `feature/template-admin` (from `feature/template-indexes`). Next is phase 7
+  (publish), which needs the catalog application (C0-C4) first. None of these branches is merged into main yet. Phase 2 needs
   fedale/rbac-bundle's transaction-safe cache (merged into its main, not pushed).
 - **CSV import**: (A) done with phase 3 of the templates, `record:import` (console.md). Not
   done: (B) a web wizard; (C) async with Messenger for very large files.

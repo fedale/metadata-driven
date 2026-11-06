@@ -76,6 +76,33 @@ Two tabs, one per kind of text (see [Languages](i18n.md#the-admin-pages)):
 
 The language of the pages themselves is picked by each user in the top bar (**EN / IT**).
 
+## Templates — `/admin/templates`
+
+A model packaged to be installed in one go, and upgraded later (see [Templates](templates.md)).
+The page has three parts:
+
+- **Installed**: each template, its version, when it was installed and upgraded, and the index
+  it came from.
+- **Available**: the newest version of every template the indexes offer, with **Install…**, or
+  **Upgrade from …** when an older version is installed.
+- **Indexes**: where templates come from, signed or accepted unsigned, with **Remove** (what
+  was installed from an index stays); **Add an index** takes its name, the address of its
+  `index.json`, and either its public key or the box accepting it unsigned.
+
+**Install…** first runs a trial install, rolled back: the page lists what installing creates
+(objects, fields, views, forms, translations, records), or every reason it cannot. The button
+installs it for real.
+
+**Upgrade from …** lists the changes the new version brings, then each **conflict**, an item
+both the new version and this instance changed: this instance's version and the new one side by
+side, and a choice, item by item, of which stays (this instance's, by default). The button
+applies the upgrade with those choices. A change the upgrade cannot make, or a version number
+that does not fit its changes, is shown instead of the button.
+
+Templates are only named on these pages (`vendor/name@version`), never given as a directory of
+the server: installing from a directory, packing and exporting are console commands
+([`metadata:template:*`](console.md)).
+
 ## A field — `/admin/objects/<object>/fields/<field>`
 
 The field's type, column, rules and settings, and when it applies. **Label** renames it.

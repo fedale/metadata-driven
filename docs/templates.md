@@ -375,6 +375,14 @@ symfony console metadata:template:upgrade acme/shop            # from the index 
   before the others, as `catalog`.
 - `metadata:template:pack` writes reproducible archives: the same template gives the same
   archive and checksum, whatever the machine or the dates of its files.
+- **Withdrawing a version**: `metadata:template:yank index.json acme/shop 1.1.0 --sign=<key>`
+  marks it yanked (`--undo` lists it again). The signature covers the flag: without the key,
+  nobody can list a yanked version again. It does not cover the index as a whole: an old copy
+  of the index, from before the version was yanked, still verifies, until the catalog signs its
+  indexes with an expiry.
+- **In the admin**: `/admin/templates` lists the installed templates and those the indexes
+  offer, previews an install or an upgrade, and resolves an upgrade's conflicts item by item
+  (see [Admin UI](admin.md#templates--admintemplates)).
 
 ## Not yet
 - **Templates requiring other templates**: a template pointing at the objects of another

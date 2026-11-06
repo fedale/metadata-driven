@@ -27,6 +27,14 @@ final readonly class Change
         return $this->theirs ?? $this->base ?? throw new \LogicException('A change has a state.');
     }
 
+    /**
+     * What a Resolution names the item by: "field:acme.product.sku".
+     */
+    public function key(): string
+    {
+        return $this->state()->key();
+    }
+
     public function describe(): string
     {
         $state = $this->state();

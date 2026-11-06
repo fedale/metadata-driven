@@ -64,12 +64,12 @@ final readonly class UpgradePlan
     }
 
     /**
-     * The changes to apply: a conflict only when the new version is to win.
+     * The changes to apply: a conflict only when the new version is to win it.
      *
      * @return list<Change>
      */
-    public function toApply(?Strategy $strategy): array
+    public function toApply(Resolution $resolution): array
     {
-        return array_values(array_filter($this->changes, static fn (Change $change): bool => !$change->conflict || Strategy::Overwrite === $strategy));
+        return array_values(array_filter($this->changes, static fn (Change $change): bool => !$change->conflict || Strategy::Overwrite === $resolution->for($change->key())));
     }
 }

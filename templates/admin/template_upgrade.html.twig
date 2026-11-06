@@ -1,0 +1,47 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Upgrade {{ template }} · Admin{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('admin_template_index') }}">&larr; Templates</a></p>
+    <h1>Upgrade <code>{{ template }}</code>{% if preview %} from {{ preview.from }} to {{ preview.to }}{% endif %}</h1>
+
+    {% if reasons is not empty %}
+        <div class="md-flash md-flash--error" role="alert">
+            <p>It cannot be upgraded:</p>
+            <ul>{% for reason in reasons %}<li>{{ reason }}</li>{% endfor %}</ul>
+        </div>
+    {% endif %}
+
+    {% if preview and choices %}
+        <h2>Changes</h2>
+        {% if preview.changes is empty %}
+            <p class="gv-muted">Nothing but the conflicts below: this instance already has the rest.</p>
+        {% else %}
+            <ul class="md-link-list">{% for change in preview.changes %}<li>{{ change }}</li>{% endfor %}</ul>
+        {% endif %}
+
+        {{ form_start(choices, {attr: {class: 'md-form md-form--wide'}}) }}
+            {% if preview.conflicts is not empty %}
+                <h2>Conflicts</h2>
+                <p class="gv-muted">Both the new version and this instance changed these: choose, one by one, which stays.</p>
+                {% for conflict in preview.conflicts %}
+                    <fieldset>
+                        <legend>{{ conflict.description }}</legend>
+                        {% if conflict.here is not null or conflict.there is not null %}
+                            <div class="md-columns">
+                                <div><strong>Here</strong><pre>{{ conflict.here ?? '(removed here)' }}</pre></div>
+                                <div><strong>New version</strong><pre>{{ conflict.there ?? '(removed by the new version)' }}</pre></div>
+                            </div>
+                        {% endif %}
+                        {{ form_widget(choices['c' ~ loop.index0]) }}
+                    </fieldset>
+                {% endfor %}
+            {% endif %}
+            {{ form_rest(choices) }}
+            {% if reasons is empty %}
+                <button type="submit" class="gv-btn gv-btn-primary">Upgrade to {{ preview.to }}</button>
+            {% endif %}
+        {{ form_end(choices) }}
+    {% endif %}
+{% endblock %}

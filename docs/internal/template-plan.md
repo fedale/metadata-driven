@@ -1,9 +1,10 @@
 # Plan: templates (packaged, versioned models)
 
-Status: **phases 1 to 5 done** (format and export on `feature/template-format`, install on
+Status: **phases 1 to 6 done** (format and export on `feature/template-format`, install on
 `feature/template-install`, seeds on `feature/template-seeds`, upgrade on
-`feature/template-upgrade`, indexes and signatures on `feature/template-indexes`, each branched
-from the one before), awaiting review before phase 6 (admin UI). Discussed with the user on 2026-11-03; name, upgrade model and distribution
+`feature/template-upgrade`, indexes and signatures on `feature/template-indexes`, admin UI on
+`feature/template-admin`, each branched from the one before), awaiting review before phase 7
+(publish to the catalog), which needs the catalog itself (C0-C4). Discussed with the user on 2026-11-03; name, upgrade model and distribution
 decided on 2026-11-05 (see [Decisions](#decisions)).
 
 A template packages a model, meaning its objects, fields, relations, composite forms, views,
@@ -530,8 +531,26 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
      unless `app.template.allow_private_networks` (false; true in the test env, where the fake
      hosts resolve nowhere and would be blocked; `testRefusesAddressesOfThePrivateNetwork`
      checks the guard as configured).
-6. **Admin UI**: the catalog, install, upgrade with the plan and the conflicts shown before
-   applying, item by item.
+6. **Admin UI** — done (branch `feature/template-admin`). As built:
+   - `TemplateAdminController` (Template module UI, `/admin/templates`, `admin.metadata`): the
+     installed templates, the newest version of each template the indexes offer (install or
+     upgrade link), the indexes (add with key or consent, remove).
+   - Install: a GET runs a dry run and shows its report; the confirmation form installs.
+   - Upgrade: `TemplateUpgrader::preview()` computes the plan without writing (the preparation
+     shared with `upgrade()` in `prepare()`): the undisputed changes, the conflicts as
+     `ConflictView` (this instance's and the new version's value, as YAML), the refusals. The
+     user picks per conflict; `Resolution` (a default strategy plus per-item choices, keyed by
+     `Change::key()` or `record:<seed path>:<key>`) replaces the single strategy everywhere;
+     `--strategy` is a Resolution with a default.
+   - Templates are named only (`vendor/name[@version]`), never a server directory: a 404
+     otherwise.
+   - The dry run of an install preview clears the entity manager inside a web request: tested,
+     the page renders (the security user is not an ORM entity).
+   - Not done: uploading an archive from the browser, exporting from the admin.
+   - Found by a security review after phase 5, fixed here: the signature did not cover the
+     yanked flag. It does now; `metadata:template:yank` (re)signs. An old copy of a whole index
+     still verifies: freshness (a signed index with an expiry, TUF-style) is left to the
+     catalog.
 7. **Publish**: `metadata:template:publish` to the catalog.
 
 In the catalog (its own plan, from phase 5 on):

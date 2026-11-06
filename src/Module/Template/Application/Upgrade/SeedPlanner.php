@@ -34,7 +34,7 @@ final class SeedPlanner
      * @param array<string, mixed> $snapshot the installation's snapshot, for the fingerprints
      * @param Package              $mine     what the instance holds now (names as they are)
      */
-    public function plan(Package $base, array $snapshot, Package $theirs, Package $mine, ?Strategy $strategy): SeedChanges
+    public function plan(Package $base, array $snapshot, Package $theirs, Package $mine, Resolution $resolution): SeedChanges
     {
         $changes = new SeedChanges();
         $baseSeeds = self::byObject($base);
@@ -69,7 +69,7 @@ final class SeedPlanner
                     if (null === $record) {
                         $changes->write($seed, $i, null, \sprintf('create record %s', $value));
                     } else {
-                        $this->conflict($changes, $strategy, $seed, \sprintf('record %s, new in this version, already exists here', $value), fn () => $changes->write($seed, $i, $record->id, \sprintf('update record %s', $value)));
+                        $this->conflict($changes, $resolution, $seed, $value, \sprintf('record %s, new in this version, already exists here', $value), fn () => $changes->write($seed, $i, $record->id, \sprintf('update record %s', $value)));
                     }
                 }
                 continue;
@@ -92,9 +92,9 @@ final class SeedPlanner
                 $write = fn () => $changes->write($seed, $i, $record?->id, \sprintf('%s record %s', null === $record ? 'create' : 'update', $value));
                 match (true) {
                     null === $old && null === $record, null !== $old && null !== $record && !$changedHere($value) => $write(),
-                    null === $old => $this->conflict($changes, $strategy, $seed, \sprintf('record %s, new in this version, already exists here', $value), $write),
-                    null === $record => $this->conflict($changes, $strategy, $seed, \sprintf('record %s, changed in this version, was deleted here', $value), $write),
-                    default => $this->conflict($changes, $strategy, $seed, \sprintf('record %s, changed in this version, was changed here too', $value), $write),
+                    null === $old => $this->conflict($changes, $resolution, $seed, $value, \sprintf('record %s, new in this version, already exists here', $value), $write),
+                    null === $record => $this->conflict($changes, $resolution, $seed, $value, \sprintf('record %s, changed in this version, was deleted here', $value), $write),
+                    default => $this->conflict($changes, $resolution, $seed, $value, \sprintf('record %s, changed in this version, was changed here too', $value), $write),
                 };
             }
             // What is left of the version installed: the records this version removed.
@@ -105,7 +105,7 @@ final class SeedPlanner
                 }
                 $delete = fn () => $changes->delete($seed, $objectId, $record->id, \sprintf('delete record %s', $value));
                 $changedHere((string) $value)
-                    ? $this->conflict($changes, $strategy, $seed, \sprintf('record %s, removed in this version, was changed here', $value), $delete)
+                    ? $this->conflict($changes, $resolution, $seed, (string) $value, \sprintf('record %s, removed in this version, was changed here', $value), $delete)
                     : $delete();
             }
         }
@@ -113,10 +113,10 @@ final class SeedPlanner
         return $changes;
     }
 
-    private function conflict(SeedChanges $changes, ?Strategy $strategy, Document $seed, string $what, \Closure $overwrite): void
+    private function conflict(SeedChanges $changes, Resolution $resolution, Document $seed, string $key, string $what, \Closure $overwrite): void
     {
-        $changes->conflict($seed, $what);
-        if (Strategy::Overwrite === $strategy) {
+        $changes->conflict($seed, $key, $what);
+        if (Strategy::Overwrite === $resolution->for(\sprintf('record:%s:%s', $seed->path, $key))) {
             $overwrite();
         }
     }

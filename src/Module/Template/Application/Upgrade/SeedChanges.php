@@ -22,7 +22,7 @@ final class SeedChanges
     /** @var list<string> */
     public array $applied = [];
 
-    /** @var list<string> */
+    /** @var list<array{key: string, description: string}> */
     public array $conflicts = [];
 
     public function write(Document $seed, int $i, ?string $id, string $what): void
@@ -37,8 +37,8 @@ final class SeedChanges
         $this->applied[] = \sprintf('%s: %s', $seed->path, $what);
     }
 
-    public function conflict(Document $seed, string $what): void
+    public function conflict(Document $seed, string $key, string $what): void
     {
-        $this->conflicts[] = \sprintf('%s: %s', $seed->path, $what);
+        $this->conflicts[] = ['key' => \sprintf('record:%s:%s', $seed->path, $key), 'description' => \sprintf('%s: %s', $seed->path, $what)];
     }
 }
