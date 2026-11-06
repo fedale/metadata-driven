@@ -21,6 +21,9 @@ final class PackageIndex
     /** @var array<string, string> field id => the id of its object */
     private array $fieldOwners = [];
 
+    /** @var array<string, array<string, array<mixed>>> object id => field name => field */
+    private array $fields = [];
+
     /**
      * @param list<Document> $documents
      */
@@ -65,6 +68,14 @@ final class PackageIndex
     }
 
     /**
+     * @return array<string, array<mixed>> the fields of an object, by name
+     */
+    public function fieldsOf(string $objectId): array
+    {
+        return $this->fields[$objectId] ?? [];
+    }
+
+    /**
      * @return list<Problem>
      */
     private function indexFields(Document $object): array
@@ -84,6 +95,7 @@ final class PackageIndex
                 $problems[] = new Problem($object->path, \sprintf('spec.fields.%d.name', $position), 'Another field of the object has this name.');
             }
             $this->fieldOwners[$id] ??= $object->id;
+            $this->fields[$object->id][$name] ??= $field;
             $names[$name] = true;
         }
 
@@ -92,7 +104,7 @@ final class PackageIndex
 
     /**
      * What must be unique in a package beyond ids: object names, form names, a view's name per
-     * object and kind, one Translations document per language.
+     * object and kind, one Translations document per language, one Seed per object.
      *
      * @return array{string, string}|null the unique key, and where the document holds it
      */
@@ -106,6 +118,8 @@ final class PackageIndex
                 ? [\sprintf('View %s %s %s', $spec['object'], $spec['kind'], $spec['name']), 'spec.name']
                 : null,
             DocumentKind::Translations => \is_string($spec['locale'] ?? null) ? ['Translations '.$spec['locale'], 'spec.locale'] : null,
+            // One seed per object: references to its records go by its key.
+            DocumentKind::Seed => \is_string($spec['object'] ?? null) ? ['Seed '.$spec['object'], 'spec.object'] : null,
             default => null,
         };
     }

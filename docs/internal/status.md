@@ -196,9 +196,10 @@ new-composite pages.
   the format version, field settings checked by a static description in the format. Still open
   (top of the plan): the catalog's hosting and review policy. Phases 1 (format and
   export) and 2 (install: `metadata:template:install [--dry-run]`, `metadata:template:list`)
-  are done, on `feature/template-format` and `feature/template-install` (branched from it),
-  awaiting the user's review before phase 3 (seeds). Phase 2 needs the fix of
-  fedale/rbac-bundle on its branch `fix_transaction_cache` (RBAC cache and rollbacks). Its seeds are
+  are done, on `feature/template-format` and `feature/template-install` (branched from it);
+  phase 3 step 1 (seeds: format, checks, install) on `feature/template-seeds` (from
+  `feature/template-install`), awaiting review before step 2 (exporting seeds, `record:import`).
+  Phase 2 needs fedale/rbac-bundle's transaction-safe cache (merged into its main, not pushed). Its seeds are
   the CSV import service below.
 - **CSV import — part of the template seeds (phase 3).** Plan: (A) a service plus `record:import` CLI
   with `--dry-run` and `--key`, all-or-nothing with a two-pass check; (B) a web wizard; (C) async

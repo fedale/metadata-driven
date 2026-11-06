@@ -427,8 +427,26 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
      `translations/en.yaml` (its `{t:identity}` text in the default language).
    - Not done: references to another installed template (`requires`), moved to after phase 4;
      an admin page (phase 6).
-3. **Seeds**: the import service, `once` and `managed`, references by key, files. With the
-   `record:import` CLI.
+3. **Seeds** — step 1 done (branch `feature/template-seeds`). As built:
+   - Format: `seed.json` (`object` id, `key` a unique field *name*, `mode`, `records` inline or
+     `source` CSV in `seeds/`); fields by name, as views and forms do. One seed per object.
+     `SeedRecords` reads them (CSV: header of names, RFC 4180, BOM stripped, empty cell = no
+     value; `|` separates the values of a many-to-many field or a list of files).
+     `Package::$directory` and `Package::file()` resolve CSV files and files inside the package
+     only (no `..`, absolute paths or symlinks). `PackageChecker` checks key, records, keys,
+     columns, references (a relation or link holds keys of the target's seed) and files.
+     Exactly one of `records`/`source` is checked in the checker, for a readable message.
+   - The `relations: {province: {by: code}}` of this plan's first draft is not needed: a
+     reference goes by the key of the target's seed.
+   - Install: `SeedWriter`, after everything else, seeds ordered by what they point at (a
+     cycle between two seeds is refused), self-references set in a second pass. Through
+     `RecordManagerInterface` (validation, files as `FileUpload`). The snapshot keeps each
+     seed's records as read. A dry run stores the files before rolling back: the GC removes
+     them.
+   - `once`/`managed` only matter to upgrades (phase 4).
+   - Step 2, next: exporting records as seeds (CSV, files copied; `PackageDirectory::write()`
+     must then copy the data files, it writes documents only today), and `record:import`
+     (a CSV into an object, outside templates).
 4. **Upgrade**: three-way delta, renames, archive, conflicts, explicit steps, semver checks.
 5. **Indexes**: the index format, `repo add`, download, checksum, signatures, unpacking.
 6. **Admin UI**: the catalog, install, upgrade with the plan and the conflicts shown before

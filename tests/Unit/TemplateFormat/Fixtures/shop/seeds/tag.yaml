@@ -1,0 +1,9 @@
+format: metadata-driven/v1
+kind: Seed
+id: acme.seed.tag
+spec:
+  object: acme.tag
+  key: name
+  records:
+    - { name: new }
+    - { name: wood }

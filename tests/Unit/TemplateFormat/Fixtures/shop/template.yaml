@@ -13,3 +13,4 @@ spec:
     - forms/*.yaml
     - views/*.yaml
     - translations/*.yaml
+    - seeds/*.yaml

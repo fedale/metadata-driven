@@ -11,3 +11,4 @@ spec:
       type: text
       label: Name
       required: true
+      unique: true

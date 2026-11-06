@@ -1,0 +1,31 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:metadata-driven:schema:v1:seed",
+    "title": "The spec of a Seed document: records of one object, written when the template is installed",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["object", "key"],
+    "$comment": "Exactly one of records and source: PackageChecker says so in words a schema error cannot.",
+    "properties": {
+        "object": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$" },
+        "key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$",
+            "description": "The name of a unique field of the object: it names each record, for references and upgrades"
+        },
+        "mode": {
+            "enum": ["once", "managed"],
+            "description": "once (default): the records belong to the user once installed. managed: upgrades keep them in line with the template"
+        },
+        "records": {
+            "type": "array",
+            "items": { "type": "object", "propertyNames": { "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$" } },
+            "description": "The records, each a map of field names to values"
+        },
+        "source": {
+            "type": "string",
+            "pattern": "^seeds/[a-z0-9_-]+\\.csv$",
+            "description": "A CSV file of the package: a header of field names, then one record per line"
+        }
+    }
+}

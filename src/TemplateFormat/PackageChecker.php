@@ -21,6 +21,7 @@ final class PackageChecker
     public function __construct(
         private readonly SchemaValidator $schemas,
         private readonly FieldTypeCatalog $fieldTypes,
+        private readonly SeedRecords $seedRecords,
     ) {
     }
 
@@ -52,8 +53,137 @@ final class PackageChecker
                 default => [],
             }];
         }
+        $seeds = array_values(array_filter($valid, static fn (Document $document): bool => DocumentKind::Seed === $document->kind));
+
+        return [...$problems, ...$this->checkSeeds($package, $seeds, $index)];
+    }
+
+    /**
+     * Each seed: its object, its key (a unique field), its records (fields of the object, a
+     * key each, once); then what the records point at: the keys of the records of other seeds,
+     * and files of the package. Whether a value fits its field is the app's business, at install.
+     *
+     * @param list<Document> $seeds
+     *
+     * @return list<Problem>
+     */
+    private function checkSeeds(Package $package, array $seeds, PackageIndex $index): array
+    {
+        $problems = [];
+        $loaded = [];
+        foreach ($seeds as $seed) {
+            if (isset($seed->spec['records']) === isset($seed->spec['source'])) {
+                $problems[] = new Problem($seed->path, 'spec', 'A seed has its records inline (records) or in a CSV file (source): one of the two.');
+                continue;
+            }
+            $object = \is_string($seed->spec['object'] ?? null) ? $seed->spec['object'] : '';
+            if (!$index->hasObject($object)) {
+                $problems[] = new Problem($seed->path, 'spec.object', \sprintf('No object of the template has the id "%s".', $object));
+                continue;
+            }
+            $fields = $index->fieldsOf($object);
+            $key = \is_string($seed->spec['key'] ?? null) ? $seed->spec['key'] : '';
+            if (!isset($fields[$key])) {
+                $problems[] = new Problem($seed->path, 'spec.key', \sprintf('The object has no field "%s".', $key));
+                continue;
+            }
+            if (true !== ($fields[$key]['unique'] ?? false)) {
+                $problems[] = new Problem($seed->path, 'spec.key', \sprintf('"%s" is not a unique field: a key names one record.', $key));
+            }
+            try {
+                $records = $this->seedRecords->of($package, $seed);
+            } catch (InvalidPackage $e) {
+                $problems = [...$problems, ...$e->problems];
+                continue;
+            }
+
+            $keys = [];
+            foreach ($records as $i => $record) {
+                foreach (array_keys(array_diff_key($record, $fields)) as $name) {
+                    $problems[] = new Problem($seed->path, self::recordAt($seed, $i, $name), \sprintf('The object has no field "%s".', $name));
+                }
+                $value = $record[$key] ?? null;
+                $value = \is_scalar($value) ? trim((string) $value) : '';
+                if ('' === $value) {
+                    $problems[] = new Problem($seed->path, self::recordAt($seed, $i, $key), 'The key is missing: every record has one.');
+                } elseif (isset($keys[$value])) {
+                    $problems[] = new Problem($seed->path, self::recordAt($seed, $i, $key), \sprintf('Another record has the key "%s".', $value));
+                }
+                $keys[$value] = true;
+            }
+            $loaded[$object] = [$seed, $records, $keys];
+        }
+
+        foreach ($loaded as $object => [$seed, $records]) {
+            $fields = $index->fieldsOf($object);
+            foreach ($records as $i => $record) {
+                foreach ($record as $name => $value) {
+                    $field = $fields[$name] ?? null;
+                    if (null === $field || null === $value || '' === $value) {
+                        continue;
+                    }
+                    $at = self::recordAt($seed, $i, $name);
+                    $settings = \is_array($field['settings'] ?? null) ? $field['settings'] : [];
+                    $problems = [...$problems, ...match ($field['type'] ?? null) {
+                        'relation', 'many_to_many' => $this->referenceProblems($seed->path, $at, $field['type'], $value, \is_string($settings['target'] ?? null) ? $settings['target'] : '', $loaded),
+                        'file' => $this->fileProblems($package, $seed->path, $at, true === ($settings['multiple'] ?? false) ? SeedRecords::list($value) : [$value]),
+                        default => [],
+                    }];
+                }
+            }
+        }
 
         return $problems;
+    }
+
+    /**
+     * @param array<string, array{Document, list<array<string, mixed>>, array<string, true>}> $loaded the seeds, by object id
+     *
+     * @return list<Problem>
+     */
+    private function referenceProblems(string $path, string $at, string $type, mixed $value, string $target, array $loaded): array
+    {
+        if (!isset($loaded[$target])) {
+            return [new Problem($path, $at, \sprintf('Points at records of "%s", and the template has no seed for it.', $target))];
+        }
+        $problems = [];
+        // A relation holds one key, written whole; a many-to-many field a list of them.
+        $keys = 'many_to_many' === $type ? SeedRecords::list($value) : (\is_scalar($value) ? [trim((string) $value)] : []);
+        foreach ($keys as $key) {
+            if (!isset($loaded[$target][2][$key])) {
+                $problems[] = new Problem($path, $at, \sprintf('No record of the seed of "%s" has the key "%s".', $target, $key));
+            }
+        }
+
+        return $problems;
+    }
+
+    /**
+     * @param list<mixed> $paths
+     *
+     * @return list<Problem>
+     */
+    private function fileProblems(Package $package, string $path, string $at, array $paths): array
+    {
+        $problems = [];
+        foreach ($paths as $file) {
+            if (!\is_string($file) || null === $package->file($file)) {
+                $problems[] = new Problem($path, $at, \sprintf('No file "%s" in the package.', \is_scalar($file) ? (string) $file : '?'));
+            }
+        }
+
+        return $problems;
+    }
+
+    /**
+     * Where a record's value is: "spec.records.0.name" inline, "seeds/products.csv:2.name" in a
+     * CSV file (its line, the header being line 1).
+     */
+    private static function recordAt(Document $seed, int $i, string $field): string
+    {
+        return \is_string($seed->spec['source'] ?? null)
+            ? \sprintf('%s:%d.%s', $seed->spec['source'], $i + 2, $field)
+            : \sprintf('spec.records.%d.%s', $i, $field);
     }
 
     /**

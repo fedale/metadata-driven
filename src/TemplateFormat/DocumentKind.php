@@ -16,7 +16,7 @@ enum DocumentKind: string
     case View = 'View';
     /** The texts of one language. */
     case Translations = 'Translations';
-    /** Records of one object (phase 3 of the template plan). */
+    /** Records of one object, written at install. */
     case Seed = 'Seed';
 
     /**

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Module\Template;
 
+use App\Module\File\Contract\FileStorageInterface;
 use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Contract\MetadataTranslationsInterface;
+use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Template\Application\Command\ExportTemplateCommand;
 use App\Module\Template\Application\TemplateExporter;
 use App\Module\Template\Application\TemplateInstaller;
@@ -62,6 +64,73 @@ final class TemplateInstallerTest extends KernelTestCase
         self::assertArrayHasKey('objects/product.yaml', $installation->getSnapshot());
     }
 
+    public function testWritesTheRecordsOfTheSeedsReferencesByKey(): void
+    {
+        self::assertSame(6, $this->install(PackageCheckerTest::fixture())->records);
+
+        $finder = self::getContainer()->get(RecordFinderInterface::class);
+        $byKey = static function (string $object, string $key) use ($finder): array {
+            $records = [];
+            foreach ($finder->latest($object) as $record) {
+                $records[self::text($record->values[$key] ?? null)] = $record;
+            }
+
+            return $records;
+        };
+        $categories = $byKey('category', 'title');
+        $tags = $byKey('tag', 'name');
+        $products = $byKey('product', 'sku');
+        self::assertEqualsCanonicalizing(['Chairs', 'Tables'], array_keys($categories));
+
+        $chair = $products['OSL-01'];
+        self::assertSame('Oslo chair', $chair->values['name']);
+        self::assertSame($categories['Chairs']->id, $chair->values['category']);
+        self::assertEqualsCanonicalizing([$tags['new']->id, $tags['wood']->id], $chair->values['tags']);
+        self::assertSame(4, $chair->values['seats']);
+        // The photo of the package, stored as an upload is: the content decides its type.
+        $photo = self::getContainer()->get(FileStorageInterface::class)->find(self::text($chair->values['photo'] ?? null));
+        self::assertSame(['oslo.png', 'image/png', 8, 6], [$photo?->originalName, $photo?->mimeType, $photo?->width, $photo?->height]);
+
+        // An empty cell is no value: the table has no seats, and no photo.
+        self::assertNull($products['BRG-02']->values['seats']);
+        self::assertNull($products['BRG-02']->values['photo']);
+    }
+
+    public function testARecordMayPointAtOneOfItsSeedWrittenAfterIt(): void
+    {
+        $package = self::changed(PackageCheckerTest::fixture(), 'objects/category.yaml', static function (array $spec): array {
+            $fields = \is_array($spec['fields'] ?? null) ? $spec['fields'] : [];
+            $fields[] = ['id' => 'acme.category.parent', 'name' => 'parent', 'type' => 'relation', 'label' => 'Parent', 'settings' => ['target' => 'acme.category']];
+
+            return ['fields' => $fields] + $spec;
+        });
+        // Chairs comes before its parent.
+        $package = self::changed($package, 'seeds/category.yaml', static fn (array $spec): array => ['records' => [
+            ['title' => 'Chairs', 'parent' => 'Furniture'],
+            ['title' => 'Furniture'],
+            ['title' => 'Tables', 'parent' => 'Furniture'],
+        ]] + $spec);
+
+        $this->install($package);
+
+        $categories = [];
+        foreach (self::getContainer()->get(RecordFinderInterface::class)->latest('category') as $record) {
+            $categories[self::text($record->values['title'] ?? null)] = $record;
+        }
+        self::assertSame($categories['Furniture']->id, $categories['Chairs']->values['parent']);
+        self::assertSame($categories['Furniture']->id, $categories['Tables']->values['parent']);
+        self::assertNull($categories['Furniture']->values['parent']);
+    }
+
+    public function testARecordTheAppRefusesRollsTheInstallBack(): void
+    {
+        // A SKU that does not match the field's pattern.
+        $package = self::changed(PackageCheckerTest::fixture(), 'seeds/product.yaml', static fn (array $spec): array => ['records' => [['sku' => 'oslo', 'name' => 'Oslo chair', 'category' => 'Chairs']]] + array_diff_key($spec, ['source' => true]));
+
+        $this->assertRefused($package, 'seeds/product.yaml: spec.records.0: sku: ');
+        self::assertFalse(self::getContainer()->get(MetadataRegistryInterface::class)->hasObject('product'));
+    }
+
     public function testExportingAnInstalledTemplateGivesItBack(): void
     {
         $template = PackageCheckerTest::fixture();
@@ -69,8 +138,9 @@ final class TemplateInstallerTest extends KernelTestCase
 
         $exported = self::getContainer()->get(TemplateExporter::class)->export(new ExportTemplateCommand('acme/shop', '1.0.0', ['category', 'tag', 'product'], ['catalogue'], license: 'MIT'));
 
-        // The ids recorded at install are the template's: the items keep them.
-        self::assertEquals(self::byPath($template), self::byPath($exported));
+        // The ids recorded at install are the template's: the items keep them. The export does not
+        // write seeds yet (the next step of phase 3): they are left out of the comparison.
+        self::assertEquals(array_filter(self::byPath($template), static fn (Document $document): bool => DocumentKind::Seed !== $document->kind), self::byPath($exported));
     }
 
     public function testADryRunChangesNothing(): void
@@ -139,7 +209,7 @@ final class TemplateInstallerTest extends KernelTestCase
     public function testLeavesOutTheLanguagesOfNoUse(): void
     {
         $package = PackageCheckerTest::fixture();
-        $package = new Package($package->manifest, [...$package->documents, new Document(DocumentKind::Translations, 'acme.translations.fr', ['locale' => 'fr', 'entries' => ['field.product.name' => 'Nom']], 'translations/fr.yaml')]);
+        $package = new Package($package->manifest, [...$package->documents, new Document(DocumentKind::Translations, 'acme.translations.fr', ['locale' => 'fr', 'entries' => ['field.product.name' => 'Nom']], 'translations/fr.yaml')], $package->directory);
 
         self::assertSame(['fr'], $this->install($package)->skippedLocales);
     }
@@ -170,6 +240,13 @@ final class TemplateInstallerTest extends KernelTestCase
         return self::getContainer()->get(TemplateInstaller::class)->install($package, PackageCheckerTest::FIXTURE, $dryRun);
     }
 
+    private static function text(mixed $value): string
+    {
+        self::assertIsString($value);
+
+        return $value;
+    }
+
     private function assertRefused(Package $package, string $reason): void
     {
         try {
@@ -191,7 +268,7 @@ final class TemplateInstallerTest extends KernelTestCase
         );
         $manifest = $package->manifest->path === $path ? new Document($package->manifest->kind, $package->manifest->id, $change($package->manifest->spec), $path) : $package->manifest;
 
-        return new Package($manifest, $documents);
+        return new Package($manifest, $documents, $package->directory);
     }
 
     /**

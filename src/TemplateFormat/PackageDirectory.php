@@ -58,7 +58,7 @@ final class PackageDirectory
         }
         ksort($documents);
 
-        return new Package($manifest, array_values($documents));
+        return new Package($manifest, array_values($documents), $directory);
     }
 
     /**

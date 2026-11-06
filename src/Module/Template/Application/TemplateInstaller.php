@@ -24,6 +24,7 @@ use App\TemplateFormat\FieldTypes\FieldTypeCatalog;
 use App\TemplateFormat\FieldTypes\ReferenceKind;
 use App\TemplateFormat\Package;
 use App\TemplateFormat\PackageChecker;
+use App\TemplateFormat\SeedRecords;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Yaml\Yaml;
 
@@ -36,7 +37,7 @@ use Symfony\Component\Yaml\Yaml;
  * The order follows what each step needs to exist before it: objects; fields, those naming
  * another field after it (a cascade, a junction); conditions, record label, search and unique
  * sets; the {t:name} texts, before the layouts placing them; views and forms; the other
- * translations, whose keys name the items.
+ * translations, whose keys name the items; the records of the seeds (SeedWriter).
  */
 final class TemplateInstaller
 {
@@ -49,6 +50,8 @@ final class TemplateInstaller
         private readonly TemplateInstallationRepository $installations,
         private readonly TemplateItemRepository $items,
         private readonly TransactionRunner $transactions,
+        private readonly SeedWriter $seeds,
+        private readonly SeedRecords $seedRecords,
     ) {
     }
 
@@ -215,9 +218,17 @@ final class TemplateInstaller
 
         $count += $this->translate($translations, $enabled, static fn (string $key): bool => !TranslationKey::isText($key));
 
+        // The records last: their tables, fields and forms all exist by now.
+        $records = $this->seeds->write($package, $names);
+
         $snapshot = [];
         foreach ([$package->manifest, ...$package->documents] as $document) {
             $snapshot[$document->path] = ['kind' => $document->kind->value, 'id' => $document->id, 'spec' => $document->spec];
+            // A seed's records as they were installed, its CSV file read: an upgrade of a managed
+            // seed compares the new records with these.
+            if (DocumentKind::Seed === $document->kind) {
+                $snapshot[$document->path]['records'] = $this->seedRecords->of($package, $document);
+            }
         }
         $this->installations->save(new TemplateInstallation(Uuid::v7(), $package->name(), $package->version(), $source, $snapshot, new \DateTimeImmutable()));
         $this->items->add($items);
@@ -231,6 +242,7 @@ final class TemplateInstaller
             \count($package->documentsOf(DocumentKind::View)),
             $forms,
             $count,
+            $records,
             array_values(array_unique($skipped)),
         );
     }

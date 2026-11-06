@@ -1,12 +1,12 @@
 # Templates
 
 A template packages a model: objects with their fields, their form and grid views, composite
-forms, and their translations. You write one from the objects you built, keep it in version
+forms, their translations, and records to start with (seeds). You write one from the objects you built, keep it in version
 control, share it, validate it without a database, and install it on another instance.
 
-**Today** a template can be exported, validated and installed. Upgrading it from one version to
-the next, seed data, templates requiring other templates and the template catalog come next (see
-[Not yet](#not-yet)).
+**Today** a template can be exported, validated and installed, seeds included. Exporting
+records as seeds, upgrading a template from one version to the next, templates requiring other
+templates and the template catalog come next (see [Not yet](#not-yet)).
 
 ## Exporting a model
 
@@ -95,6 +95,61 @@ The JSON Schema of each kind is in `src/TemplateFormat/Resources/schema/v1/`: po
 at it for autocompletion. The settings of each field type are described in
 `src/TemplateFormat/Resources/field-types.v1.json`.
 
+## Seeds
+
+A seed holds records of one object, written when the template is installed: reference data
+(countries, categories) or examples. One `Seed` document per object, in `seeds/`:
+
+```yaml
+format: metadata-driven/v1
+kind: Seed
+id: acme.seed.category
+spec:
+  object: acme.category          # the object, by id
+  key: title                     # a unique field: it names each record
+  records:                       # inline...
+    - { title: Chairs }
+    - { title: Tables }
+```
+
+```yaml
+format: metadata-driven/v1
+kind: Seed
+id: acme.seed.product
+spec:
+  object: acme.product
+  key: sku
+  source: seeds/products.csv     # ...or in a CSV file of the package
+```
+
+```csv
+sku,name,kind,seats,category,tags,photo
+OSL-01,Oslo chair,chair,4,Chairs,new|wood,files/products/oslo.png
+BRG-02,Bergen table,table,,Tables,wood,
+```
+
+- **Fields by name.** Inline, each record maps field names to values; a CSV file has a header
+  of field names, then one record per line (quotes as spreadsheets write them; UTF-8, a byte
+  order mark is fine). An empty cell, or a field left out, is no value: the field's default
+  applies.
+- **References by key.** A relation holds the key of a record of the target's seed (`Chairs`);
+  a many-to-many field a list of keys, separated by `|` in a CSV cell. The target object must
+  have a seed in the template. A record may point at a record of its own seed written after it
+  (a category's parent): it is set once the whole seed is written.
+- **Files from the package.** A file field holds a path inside the package
+  (`files/products/oslo.png`); a field of several files, paths separated by `|`. Each file is
+  checked and stored as an upload is: its content decides its type.
+- **`mode`**: `once` (the default) or `managed`. Both are written at install. Once upgrades
+  exist, a `managed` seed will be kept in line with new versions of the template, `once` records
+  will belong to the user.
+
+`metadata:template:validate` checks the seeds too: the key is a unique field, every record has
+one and only one record has it, every column names a field, every reference names a record of
+the target's seed, every file is in the package. Whether a value fits its field (a number, a
+pattern) is checked at install, record by record, with the rules of the object; a refused
+record names its line (`seeds/product.yaml: seeds/products.csv:3: sku: ...`) and rolls back the
+whole install.
+
 ## Validating a template
 
 ```bash
@@ -154,6 +209,10 @@ It is refused, before anything is written, when:
 A step the app refuses is reported on its document, e.g.
 `views/product.form.main.yaml: spec: …`, with the app's own message.
 
+The records of the seeds come last, once every table and field exists. A dry run writes them
+too before rolling back: the files they upload are left in the storage, without a record, for
+[`metadata:files:gc`](console.md#metadatafilesgc).
+
 Translations in a language this instance does not have are left out, with a warning; the rest
 is installed. The permissions of the new objects (`record.<object>.read`, …) are created with
 them; give them to the users who need them (see [Users and permissions](access.md)).
@@ -165,10 +224,9 @@ included.
 
 ## Not yet
 
+- **Exporting records** as seeds, and importing a CSV file into an object outside templates.
 - **Upgrading** an installed template to a new version: only what changed is applied, local
   changes are kept, conflicts are reported item by item.
-- **Seeds**: records shipped with a template (reference data such as countries, sample records),
-  files included.
 - **Templates requiring other templates**: a template pointing at the objects of another
   installed one.
 - **The template catalog**: publishing and downloading templates, signed.

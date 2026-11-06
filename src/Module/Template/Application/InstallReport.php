@@ -23,6 +23,7 @@ final readonly class InstallReport
         public int $views,
         public array $forms,
         public int $translations,
+        public int $records,
         public array $skippedLocales,
     ) {
     }

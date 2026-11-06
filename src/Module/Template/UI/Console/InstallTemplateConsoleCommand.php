@@ -48,6 +48,7 @@ final class InstallTemplateConsoleCommand
             ['Views' => (string) $report->views],
             ['Forms' => [] === $report->forms ? '—' : implode(', ', $report->forms)],
             ['Translations' => (string) $report->translations],
+            ['Records' => (string) $report->records],
         );
         if ([] !== $report->skippedLocales) {
             $io->warning(\sprintf('Languages this instance does not have, left out: %s.', implode(', ', $report->skippedLocales)));

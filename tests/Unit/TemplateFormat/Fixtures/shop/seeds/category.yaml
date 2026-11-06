@@ -1,0 +1,10 @@
+format: metadata-driven/v1
+kind: Seed
+id: acme.seed.category
+spec:
+  object: acme.category
+  key: title
+  mode: managed
+  records:
+    - { title: Chairs }
+    - { title: Tables }

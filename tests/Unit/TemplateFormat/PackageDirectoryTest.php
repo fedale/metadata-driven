@@ -39,6 +39,9 @@ final class PackageDirectoryTest extends TestCase
             'objects/category.yaml',
             'objects/product.yaml',
             'objects/tag.yaml',
+            'seeds/category.yaml',
+            'seeds/product.yaml',
+            'seeds/tag.yaml',
             'translations/en.yaml',
             'translations/it.yaml',
             'views/product.form.main.yaml',
@@ -52,8 +55,10 @@ final class PackageDirectoryTest extends TestCase
         $package = PackageCheckerTest::fixture();
 
         $directories->write($package, $this->directory);
+        $read = $directories->read($this->directory);
 
-        self::assertEquals($package, $directories->read($this->directory));
+        self::assertEquals([$package->manifest, $package->documents], [$read->manifest, $read->documents]);
+        self::assertSame($this->directory, $read->directory);
     }
 
     public function testWritesIntoANewOrEmptyDirectoryOnly(): void
