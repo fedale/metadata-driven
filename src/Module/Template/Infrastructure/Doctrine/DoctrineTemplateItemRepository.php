@@ -28,4 +28,12 @@ final class DoctrineTemplateItemRepository implements TemplateItemRepository
         // One flush: Doctrine writes them in one transaction.
         $this->entityManager->flush();
     }
+
+    public function remove(string $template, array $localIds): void
+    {
+        foreach ($this->entityManager->getRepository(TemplateItem::class)->findBy(['template' => $template, 'localId' => $localIds]) as $item) {
+            $this->entityManager->remove($item);
+        }
+        $this->entityManager->flush();
+    }
 }

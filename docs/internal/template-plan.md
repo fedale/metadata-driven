@@ -460,7 +460,35 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
      format keeps its own copy in `SeedRecords`, to stay free of the app). Not shared with
      `SeedWriter`: seeds reference by the keys of other seeds, an import by ids or by values
      already in the database.
-4. **Upgrade**: three-way delta, renames, archive, conflicts, explicit steps, semver checks.
+4. **Upgrade** — step 1 done (branch `feature/template-upgrade`). As built:
+   - `ItemStates` turns a package into items compared by value: `object:<id>` (its own
+     properties), `field:<id>`, `view:<id>`, `form:<id>`, `translation:<locale>:<key>` (its key
+     naming items by id, `PackageIds`, so a rename keeps it the same item). Defaults filled in
+     through the catalog, unique sets sorted, layouts right-trimmed; compared with `===`.
+   - The three states: `Snapshot::toPackage()` of the installation (base), the new package
+     (theirs), `TemplateExporter::ownedState()` (mine: the owned items read back, ids from
+     `core.template_item`, fields the user added left out, a reference to a local item written
+     `local:<name>`). **The install now records `ownedState()` as its snapshot**, not the
+     package's text: a layout the app sanitized would otherwise look changed by the user.
+   - `UpgradePlan::compute()`: changed only in theirs, applied; only in mine, kept; in both,
+     differently, a conflict; added; removed (a conflict if mine changed it). `--strategy`
+     keep/overwrite.
+   - `TemplateUpgrader` applies, in one transaction: renames (objects, then fields), new objects
+     and fields (fields naming new fields after them), field and object changes, texts, views
+     and forms (another name, kind or object = delete and save), translations, then removals
+     (views and forms deleted, fields and objects archived). `CurrentNames` follows the names
+     as they change. Then the snapshot and version are updated.
+   - Refused up front: not installed, not newer (`version_compare`), conflicts without a
+     strategy, collisions, and what the API cannot change on an existing item: a field's type,
+     required, unique, object, an object's icon. Those need API work first (a type change needs
+     a data conversion).
+   - **The ORM keeps entities changed by a rolled-back transaction**: read again, a relabelled
+     object kept its new label after a dry run. `PersistenceReset` (Doctrine: `clear()`) runs
+     after every rollback of an install or upgrade. It detaches every entity: the admin UI
+     (phase 6) must not flush an entity loaded before it.
+   - Step 2, next: managed seeds (records by key: created, updated, soft-deleted; once seeds
+     new in theirs written), the manifest's `migrations` (a closed list of operations), and
+     the semver check (a minor version may only add).
 5. **Indexes**: the index format, `repo add`, download, checksum, signatures, unpacking.
 6. **Admin UI**: the catalog, install, upgrade with the plan and the conflicts shown before
    applying, item by item.

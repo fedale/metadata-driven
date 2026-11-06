@@ -33,6 +33,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:template:validate`](#metadatatemplatevalidate) | Check that a template follows the format, without installing it |
 | [`metadata:template:install`](#metadatatemplateinstall) | Install a template: its objects and their tables, fields, views, forms and translations, all or nothing |
 | [`metadata:template:list`](#metadatatemplatelist) | List the templates installed, with their versions |
+| [`metadata:template:upgrade`](#metadatatemplateupgrade) | Upgrade an installed template to a new version: only what it changed, what this instance changed kept |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
 | `user:create` | Create a user who can sign in — see [Users and permissions](access.md#usercreate) |
 | `access:sync` | Create the permissions of every object, the admin permission and the super admin role — see [Users and permissions](access.md#permissions) |
@@ -533,6 +534,30 @@ columns, indexes and permissions included), then `core.template_installation` an
 `core.template_item`. Fails, changing nothing, when the template is invalid, already installed,
 requires another template, or names an object or a form this instance already has; or when the
 app refuses one of its items.
+
+## `metadata:template:upgrade`
+
+Upgrade an installed template to the new version in a directory (see
+[Templates](templates.md#upgrading-a-template)).
+
+```
+metadata:template:upgrade <directory> [--strategy=keep|overwrite] [--dry-run]
+```
+
+| Argument or option | Meaning |
+|---|---|
+| `directory` | The directory of the new version |
+| `--strategy` | For an item both the new version and this instance changed: `keep` this instance's version, or `overwrite` it with the new one. Without it, such conflicts stop the upgrade |
+| `--dry-run` | Go through the whole upgrade, then roll it back: nothing is changed |
+
+Lists the changes applied (`objects/product.yaml: change field acme.product.sku`), then the
+conflicts kept. Renames objects and fields, creates the new ones, changes labels, settings,
+conditions, search, record labels and unique sets, saves views and forms, sets translations,
+deletes the views and forms the new version removed and archives its removed fields and
+objects; then records the new version in `core.template_installation`. Fails, changing nothing,
+when the template is not installed or the version not newer, on a conflict without
+`--strategy`, on a change the app cannot make to an existing item (a field's type, required or
+unique, an object's icon), or when the app refuses a step.
 
 ## `metadata:template:list`
 

@@ -4,9 +4,9 @@ A template packages a model: objects with their fields, their form and grid view
 forms, their translations, and records to start with (seeds). You write one from the objects you built, keep it in version
 control, share it, validate it without a database, and install it on another instance.
 
-**Today** a template can be exported, validated and installed, records included (seeds).
-Upgrading a template from one version to the next, templates requiring other templates and the
-template catalog come next (see [Not yet](#not-yet)).
+**Today** a template can be exported, validated, installed (records included) and upgraded to a
+new version. Upgrading seeds, templates requiring other templates and the template catalog come
+next (see [Not yet](#not-yet)).
 
 ## Exporting a model
 
@@ -231,10 +231,48 @@ were (the base of a future upgrade), and the id each object, field, view and for
 template. Exporting the same objects again under the same name gives the template back, ids
 included.
 
+## Upgrading a template
+
+```bash
+symfony console metadata:template:upgrade templates/shop-1.1.0 --dry-run
+symfony console metadata:template:upgrade templates/shop-1.1.0
+```
+
+An upgrade applies only what the new version changed, and keeps what was changed on this
+instance. It compares, item by item (an object's labels and settings, each field, each view,
+each form, each translation), three states: the version installed, the new one, and what the
+instance holds now.
+
+| The new version... | This instance... | The upgrade |
+|---|---|---|
+| changed the item | did not | applies the new version |
+| did not | changed it | keeps this instance's |
+| changed it | changed it too, differently | stops: a **conflict** |
+| added an item | — | creates it |
+| removed an item | did not change it | removes it: a view or form is deleted, a field or object archived (its data kept) |
+
+- **Renames keep the data.** Items are matched by their id, not their name: a field renamed in
+  the new version is renamed here, its column, values and every reference following.
+- **Conflicts** stop the upgrade, listed, unless you choose: `--strategy=keep` keeps this
+  instance's version of each, `--strategy=overwrite` takes the new one. A conflict resolved
+  once is not asked again: the next upgrade compares against the version installed now.
+- **What the template does not own is never touched**: a field you added to one of its objects,
+  your own objects, views and forms.
+- **All or nothing**, as an install: one transaction, a step the app refuses rolls it all back,
+  and `--dry-run` goes all the way then rolls back.
+- **Refused before anything changes**: a version that is not newer than the installed one; a
+  new object or form named like one of this instance's; and the changes the app cannot make to
+  an existing item yet: a field's type, whether it is required or unique, an object's icon, a
+  field moved to another object (`objects/product.yaml: field acme.product.seats: its type
+  changed from number to text, which an upgrade cannot do yet: change it by hand first.`).
+  The app's own rules apply too: a setting fixed once a field exists (a text's `maxLength`)
+  cannot change.
+
 ## Not yet
 
-- **Upgrading** an installed template to a new version: only what changed is applied, local
-  changes are kept, conflicts are reported item by item.
+- **Upgrading seeds**: keeping `managed` records in line with a new version; the `migrations`
+  steps of the manifest (moving values from a field to another); checking that the version
+  number fits the changes (semver).
 - **Templates requiring other templates**: a template pointing at the objects of another
   installed one.
 - **The template catalog**: publishing and downloading templates, signed.

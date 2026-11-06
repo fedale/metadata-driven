@@ -11,10 +11,12 @@ use App\Module\Metadata\Contract\Exception\MetadataException;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Contract\MetadataTranslationsInterface;
+use App\Module\Template\Application\Upgrade\Snapshot;
 use App\Module\Template\Domain\Exception\InstallRefused;
 use App\Module\Template\Domain\Model\ItemKind;
 use App\Module\Template\Domain\Model\TemplateInstallation;
 use App\Module\Template\Domain\Model\TemplateItem;
+use App\Module\Template\Domain\Repository\PersistenceReset;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
 use App\Module\Template\Domain\Repository\TemplateItemRepository;
 use App\Shared\Transaction\TransactionRunner;
@@ -52,6 +54,8 @@ final class TemplateInstaller
         private readonly TransactionRunner $transactions,
         private readonly SeedWriter $seeds,
         private readonly SeedRecords $seedRecords,
+        private readonly TemplateExporter $exporter,
+        private readonly PersistenceReset $persistence,
     ) {
     }
 
@@ -92,7 +96,14 @@ final class TemplateInstaller
                 return $report;
             });
         } catch (DryRunCompleted $completed) {
+            $this->persistence->reset();
+
             return $completed->report;
+        } catch (\Throwable $e) {
+            // Rolled back too: the entities it created must not outlive it.
+            $this->persistence->reset();
+
+            throw $e;
         }
     }
 
@@ -221,17 +232,10 @@ final class TemplateInstaller
         // The records last: their tables, fields and forms all exist by now.
         $records = $this->seeds->write($package, $names);
 
-        $snapshot = [];
-        foreach ([$package->manifest, ...$package->documents] as $document) {
-            $snapshot[$document->path] = ['kind' => $document->kind->value, 'id' => $document->id, 'spec' => $document->spec];
-            // A seed's records as they were installed, its CSV file read: an upgrade of a managed
-            // seed compares the new records with these.
-            if (DocumentKind::Seed === $document->kind) {
-                $snapshot[$document->path]['records'] = $this->seedRecords->of($package, $document);
-            }
-        }
-        $this->installations->save(new TemplateInstallation(Uuid::v7(), $package->name(), $package->version(), $source, $snapshot, new \DateTimeImmutable()));
+        // The items first: the snapshot reads back what the template owns now.
         $this->items->add($items);
+        $snapshot = Snapshot::of($this->exporter->ownedState($package->name()), $package, $this->seedRecords);
+        $this->installations->save(new TemplateInstallation(Uuid::v7(), $package->name(), $package->version(), $source, $snapshot, new \DateTimeImmutable()));
 
         return new InstallReport(
             $package->name(),

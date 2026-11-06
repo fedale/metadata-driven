@@ -155,7 +155,9 @@ Things that are not obvious from a single file, and that are easy to break.
   **a new field type or setting must be added there too**, or
   `FieldTypeCatalogMatchesTheAppTest` fails. The `Template` module is the only bridge to the
   metadata; `core.template_item` keeps the id of each exported item across exports (a renamed
-  item keeps its id).
+  item keeps its id). The install records `ownedState()` as its snapshot, the base of the next
+  upgrade. After a rolled-back install or upgrade the entity manager is cleared
+  (`PersistenceReset`): the ORM would otherwise keep the rolled-back state of changed entities.
 - **Security forms**: the stateless CSRF token input needs `data-controller="csrf-protection"` to
   work in a real browser.
 
@@ -198,8 +200,10 @@ new-composite pages.
   export) and 2 (install: `metadata:template:install [--dry-run]`, `metadata:template:list`)
   are done, on `feature/template-format` and `feature/template-install` (branched from it);
   phase 3 (seeds: format, checks, install, export with `--seed`; and `record:import`) on
-  `feature/template-seeds` (from `feature/template-install`), awaiting review before phase 4
-  (upgrade). Phase 2 needs fedale/rbac-bundle's transaction-safe cache (merged into its main,
+  `feature/template-seeds` (from `feature/template-install`); phase 4 step 1 (upgrade of the
+  metadata: `metadata:template:upgrade`, three-way, conflicts, `--strategy`) on
+  `feature/template-upgrade` (from `feature/template-seeds`), awaiting review before step 2
+  (managed seeds, `migrations`, semver). Phase 2 needs fedale/rbac-bundle's transaction-safe cache (merged into its main,
   not pushed).
 - **CSV import**: (A) done with phase 3 of the templates, `record:import` (console.md). Not
   done: (B) a web wizard; (C) async with Messenger for very large files.

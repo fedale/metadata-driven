@@ -19,4 +19,11 @@ interface TemplateItemRepository
      * @param list<TemplateItem> $items
      */
     public function add(array $items): void;
+
+    /**
+     * Forgets the items of a template that are gone (a view or a form it removed).
+     *
+     * @param list<string> $localIds
+     */
+    public function remove(string $template, array $localIds): void;
 }

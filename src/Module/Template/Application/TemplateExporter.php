@@ -123,7 +123,62 @@ final class TemplateExporter
         return $package;
     }
 
-    private function objectDocument(ObjectDefinitionDto $object, ItemReferences $refs): Document
+    /**
+     * What this instance holds of an installed template, written as the template would be: the
+     * objects, fields, views and forms it owns, under the ids recorded when it was installed, and
+     * their translations. Nothing is recorded. A field the user added to one of its objects is
+     * left out; a reference the user pointed at an item it does not own is "local:<name>", which
+     * no id of a template equals.
+     */
+    public function ownedState(string $template): Package
+    {
+        $owned = [];
+        foreach ($this->items->itemsOf($template) as $item) {
+            $owned[$item->getKind()->value][$item->getLocalId()] = $item->getItemId();
+        }
+
+        $objects = [];
+        $objectIds = [];
+        $fieldIds = [];
+        foreach ($this->metadata->allObjects() as $name => $object) {
+            if (!isset($owned[ItemKind::Object->value][$object->id])) {
+                continue;
+            }
+            $objects[$name] = $object;
+            $objectIds[$name] = $owned[ItemKind::Object->value][$object->id];
+            foreach ($object->fields as $fieldName => $field) {
+                if (isset($owned[ItemKind::Field->value][$field->id])) {
+                    $fieldIds[$name][$fieldName] = $owned[ItemKind::Field->value][$field->id];
+                }
+            }
+        }
+        $refs = new ItemReferences($objectIds, $fieldIds, strict: false);
+
+        $documents = [];
+        foreach ($objects as $name => $object) {
+            $documents[] = $this->objectDocument($object, $refs, array_keys($fieldIds[$name] ?? []));
+            foreach ($object->views as $view) {
+                if (isset($owned[ItemKind::View->value][$view->id])) {
+                    $documents[] = $this->viewDocument($object, $view, $owned[ItemKind::View->value][$view->id], $refs);
+                }
+            }
+        }
+        $forms = [];
+        foreach ($this->metadata->allForms() as $name => $form) {
+            if (isset($owned[ItemKind::Form->value][$form->id])) {
+                $forms[$name] = $form;
+                $documents[] = $this->formDocument($form, $owned[ItemKind::Form->value][$form->id], $refs);
+            }
+        }
+        $documents = [...$documents, ...$this->translationDocuments(Format::idPrefix($template), $objects, $forms)];
+
+        return new Package(new Document(DocumentKind::Template, $template, [], Format::MANIFEST), $documents);
+    }
+
+    /**
+     * @param list<string>|null $fields the fields written, by name; null for every one
+     */
+    private function objectDocument(ObjectDefinitionDto $object, ItemReferences $refs, ?array $fields = null): Document
     {
         $spec = ['name' => $object->name, 'label' => $object->labelSingular, 'plural' => $object->labelPlural];
         if (null !== $object->icon) {
@@ -144,9 +199,9 @@ final class TemplateExporter
                 $object->uniqueTogether,
             );
         }
-        $fields = $object->fields;
-        uasort($fields, static fn (FieldDefinitionDto $a, FieldDefinitionDto $b): int => $a->position <=> $b->position);
-        $spec['fields'] = array_values(array_map(fn (FieldDefinitionDto $field): array => $this->fieldSpec($object, $field, $refs), $fields));
+        $written = null === $fields ? $object->fields : array_intersect_key($object->fields, array_flip($fields));
+        uasort($written, static fn (FieldDefinitionDto $a, FieldDefinitionDto $b): int => $a->position <=> $b->position);
+        $spec['fields'] = array_values(array_map(fn (FieldDefinitionDto $field): array => $this->fieldSpec($object, $field, $refs), $written));
 
         return new Document(DocumentKind::Object, $refs->object($object->name), $spec, \sprintf('objects/%s.yaml', $object->name));
     }

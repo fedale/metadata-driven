@@ -29,6 +29,17 @@ class TemplateInstallation
     ) {
     }
 
+    /**
+     * @param array<string, mixed> $snapshot the documents as now installed: the next upgrade's base
+     */
+    public function upgradeTo(string $version, string $source, array $snapshot): void
+    {
+        $this->version = $version;
+        $this->source = $source;
+        $this->snapshot = $snapshot;
+        $this->upgradedAt = new \DateTimeImmutable();
+    }
+
     public function getId(): Uuid
     {
         return $this->id;
