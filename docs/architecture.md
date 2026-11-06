@@ -47,12 +47,12 @@ Code lives in `src/Module/<Module>/`, each module split into the same layers:
 A module only sees the `Contract` of the other modules. Two Deptrac rulesets enforce both rules
 (`make deptrac`): `deptrac.layers.yaml` and `deptrac.modules.yaml`.
 
-`src/TemplateFormat/` (`App\TemplateFormat`) is not a module: it is the template format, a library
-the `Template` module uses (documents, JSON Schemas, the field type catalog, the structural
-checks, packages as directories and as `.tar.gz` archives, indexes). It depends on nothing else in the app and on two libraries only,
-`symfony/yaml` and `opis/json-schema`; a third ruleset, `deptrac.template-format.yaml`, enforces
-it. It is meant to become a package of its own, `fedale/template-format`, shared with the
-template catalog (see [Templates](templates.md)).
+The template format is a library of its own, `fedale/template-format` (`Fedale\TemplateFormat`,
+in `../template-format`, required through a Composer path repository): documents, JSON
+Schemas, the field type catalog, the structural checks, packages as directories and as
+`.tar.gz` archives, signed indexes. The `Template` module is its only user in the app; the
+template catalog uses it too (see [Templates](templates.md)). It depends on `symfony/yaml` and
+`opis/json-schema` only, and has its own tests (`composer qa` in its repository).
 
 | Module | Responsibility | Depends on (contracts) |
 |---|---|---|
@@ -65,7 +65,7 @@ template catalog (see [Templates](templates.md)).
 | Admin | The no-code builder at `/admin`, on `MetadataManagerInterface` | Metadata, FieldType, Schema |
 | User | Users and their profiles (with their language), sign-in (Symfony Security), `user:create` | — |
 | Access | The permissions of objects and admin, checked through `fedale/rbac-bundle`; `access:sync` | Metadata |
-| Template | Templates: the export of objects, views, forms and translations (`metadata:template:export`), their validation (`metadata:template:validate`), their install and their upgrades through `MetadataManagerInterface` in one transaction (`metadata:template:install`, `metadata:template:upgrade`, `metadata:template:list`), the installations (`core.template_installation`), the ids items keep in a template (`core.template_item`), the indexes looked into (`core.template_source`), downloads over https (`symfony/http-client`) checked against their checksum and signature; the admin pages at `/admin/templates`; the records of seeds, through the record pipeline; built on `App\TemplateFormat` | Metadata, Record, FieldType, File, Access |
+| Template | Templates: the export of objects, views, forms and translations (`metadata:template:export`), their validation (`metadata:template:validate`), their install and their upgrades through `MetadataManagerInterface` in one transaction (`metadata:template:install`, `metadata:template:upgrade`, `metadata:template:list`), the installations (`core.template_installation`), the ids items keep in a template (`core.template_item`), the indexes looked into (`core.template_source`), downloads over https (`symfony/http-client`) checked against their checksum and signature; the admin pages at `/admin/templates`; the records of seeds, through the record pipeline; built on `Fedale\TemplateFormat` | Metadata, Record, FieldType, File, Access |
 | File | Stored files: their bytes in the `record_files` Flysystem storage, keyed by their SHA-256 (the same bytes are stored once), their metadata in `core.file`, the type detected from the content; their thumbnails (`imagine/imagine`, GD); the GC, `metadata:files:gc`, which finds the references in the foreign keys to `core.file` (no other module needed); `FileStorageInterface`, `ThumbnailerInterface` | — |
 | Settings | Reserved for the next phases | |
 

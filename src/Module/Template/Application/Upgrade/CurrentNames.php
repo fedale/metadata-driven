@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Module\Template\Application\Upgrade;
 
-use App\TemplateFormat\DocumentKind;
-use App\TemplateFormat\FieldTypes\FieldTypeCatalog;
-use App\TemplateFormat\FieldTypes\ReferenceKind;
-use App\TemplateFormat\Package;
+use Fedale\TemplateFormat\DocumentKind;
+use Fedale\TemplateFormat\FieldTypes\FieldTypeCatalog;
+use Fedale\TemplateFormat\FieldTypes\ReferenceKind;
+use Fedale\TemplateFormat\Package;
 
 /**
  * The names the template's items have on the instance, by id, kept up to date while an

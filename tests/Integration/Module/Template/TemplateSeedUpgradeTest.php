@@ -13,9 +13,9 @@ use App\Module\Template\Application\Upgrade\Strategy;
 use App\Module\Template\Application\Upgrade\TemplateUpgrader;
 use App\Module\Template\Application\Upgrade\UpgradeReport;
 use App\Module\Template\Domain\Exception\UpgradeRefused;
-use App\TemplateFormat\Document;
-use App\TemplateFormat\Package;
-use App\Tests\Unit\TemplateFormat\PackageCheckerTest;
+use App\Tests\Support\ExampleTemplate;
+use Fedale\TemplateFormat\Document;
+use Fedale\TemplateFormat\Package;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
@@ -29,7 +29,7 @@ final class TemplateSeedUpgradeTest extends KernelTestCase
 
     protected function setUp(): void
     {
-        self::getContainer()->get(TemplateInstaller::class)->install($this->version('1.0.0', [self::CHAIR, self::TABLE]), PackageCheckerTest::FIXTURE);
+        self::getContainer()->get(TemplateInstaller::class)->install($this->version('1.0.0', [self::CHAIR, self::TABLE]), ExampleTemplate::DIRECTORY);
     }
 
     public function testKeepsTheRecordsInLineWithTheNewVersion(): void
@@ -99,7 +99,7 @@ final class TemplateSeedUpgradeTest extends KernelTestCase
      */
     private function version(string $version, array $products, ?array $tags = null): Package
     {
-        $fixture = PackageCheckerTest::fixture();
+        $fixture = ExampleTemplate::package();
         $documents = [];
         foreach ($fixture->documents as $document) {
             $spec = match ($document->path) {
@@ -116,7 +116,7 @@ final class TemplateSeedUpgradeTest extends KernelTestCase
 
     private function upgrade(Package $package, ?Strategy $strategy = null): UpgradeReport
     {
-        return self::getContainer()->get(TemplateUpgrader::class)->upgrade($package, PackageCheckerTest::FIXTURE, $strategy);
+        return self::getContainer()->get(TemplateUpgrader::class)->upgrade($package, ExampleTemplate::DIRECTORY, $strategy);
     }
 
     private function assertConflict(Package $package, string $conflict): void

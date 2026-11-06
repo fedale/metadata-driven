@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Module\Template\UI\Console;
 
-use App\TemplateFormat\Archive;
-use App\TemplateFormat\IndexEntry;
-use App\TemplateFormat\InvalidIndex;
-use App\TemplateFormat\InvalidPackage;
-use App\TemplateFormat\PackageChecker;
-use App\TemplateFormat\PackageDirectory;
-use App\TemplateFormat\Problem;
-use App\TemplateFormat\Signature;
-use App\TemplateFormat\TemplateIndex;
+use Fedale\TemplateFormat\Archive;
+use Fedale\TemplateFormat\IndexEntry;
+use Fedale\TemplateFormat\InvalidIndex;
+use Fedale\TemplateFormat\InvalidPackage;
+use Fedale\TemplateFormat\PackageChecker;
+use Fedale\TemplateFormat\PackageDirectory;
+use Fedale\TemplateFormat\Problem;
+use Fedale\TemplateFormat\Signature;
+use Fedale\TemplateFormat\TemplateIndex;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;

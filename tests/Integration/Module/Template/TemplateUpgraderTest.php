@@ -15,23 +15,23 @@ use App\Module\Template\Application\Upgrade\TemplateUpgrader;
 use App\Module\Template\Application\Upgrade\UpgradeReport;
 use App\Module\Template\Domain\Exception\UpgradeRefused;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
-use App\TemplateFormat\Document;
-use App\TemplateFormat\DocumentKind;
-use App\TemplateFormat\Package;
-use App\Tests\Unit\TemplateFormat\PackageCheckerTest;
+use App\Tests\Support\ExampleTemplate;
+use Fedale\TemplateFormat\Document;
+use Fedale\TemplateFormat\DocumentKind;
+use Fedale\TemplateFormat\Package;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
- * Upgrades the example template (tests/Unit/TemplateFormat/Fixtures/shop) from 1.0.0 to a 1.1.0
+ * Upgrades the example template (tests/Fixtures/templates/shop) from 1.0.0 to a 1.1.0
  * built here, against the real database.
  */
 final class TemplateUpgraderTest extends KernelTestCase
 {
     protected function setUp(): void
     {
-        self::getContainer()->get(TemplateInstaller::class)->install(PackageCheckerTest::fixture(), PackageCheckerTest::FIXTURE);
+        self::getContainer()->get(TemplateInstaller::class)->install(ExampleTemplate::package(), ExampleTemplate::DIRECTORY);
     }
 
     public function testAppliesWhatTheNewVersionChanged(): void
@@ -172,9 +172,9 @@ final class TemplateUpgraderTest extends KernelTestCase
         $command = new CommandTester((new Application(self::bootKernel()))->find('metadata:template:upgrade'));
 
         // The example itself is 1.0.0, installed: not newer.
-        self::assertSame(1, $command->execute(['template' => PackageCheckerTest::FIXTURE]));
+        self::assertSame(1, $command->execute(['template' => ExampleTemplate::DIRECTORY]));
         self::assertStringContainsString('acme/shop 1.0.0 is installed: 1.0.0 is not newer.', $command->getDisplay());
-        self::assertSame(1, $command->execute(['template' => PackageCheckerTest::FIXTURE, '--strategy' => 'mine']));
+        self::assertSame(1, $command->execute(['template' => ExampleTemplate::DIRECTORY, '--strategy' => 'mine']));
         self::assertStringContainsString('--strategy is keep or overwrite.', $command->getDisplay());
     }
 
@@ -186,7 +186,7 @@ final class TemplateUpgraderTest extends KernelTestCase
      */
     private function newVersion(array $changes, string $version = '1.1.0'): Package
     {
-        $fixture = PackageCheckerTest::fixture();
+        $fixture = ExampleTemplate::package();
         $documents = [];
         foreach ($fixture->documents as $document) {
             if (DocumentKind::Seed === $document->kind || (\array_key_exists($document->path, $changes) && null === $changes[$document->path])) {
@@ -202,7 +202,7 @@ final class TemplateUpgraderTest extends KernelTestCase
 
     private function upgrade(Package $package, ?Strategy $strategy = null, bool $dryRun = false): UpgradeReport
     {
-        return self::getContainer()->get(TemplateUpgrader::class)->upgrade($package, PackageCheckerTest::FIXTURE, $strategy, $dryRun);
+        return self::getContainer()->get(TemplateUpgrader::class)->upgrade($package, ExampleTemplate::DIRECTORY, $strategy, $dryRun);
     }
 
     private function assertRefused(Package $package, string $reason): void

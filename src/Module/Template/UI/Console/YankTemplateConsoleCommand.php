@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Module\Template\UI\Console;
 
-use App\TemplateFormat\IndexEntry;
-use App\TemplateFormat\InvalidIndex;
-use App\TemplateFormat\Signature;
-use App\TemplateFormat\TemplateIndex;
+use Fedale\TemplateFormat\IndexEntry;
+use Fedale\TemplateFormat\InvalidIndex;
+use Fedale\TemplateFormat\Signature;
+use Fedale\TemplateFormat\TemplateIndex;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;

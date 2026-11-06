@@ -16,20 +16,20 @@ use App\Module\Template\Application\TemplateInstaller;
 use App\Module\Template\Domain\Exception\InstallRefused;
 use App\Module\Template\Domain\Exception\InvalidExport;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
-use App\TemplateFormat\Document;
-use App\TemplateFormat\DocumentKind;
-use App\TemplateFormat\Package;
-use App\TemplateFormat\PackageChecker;
-use App\TemplateFormat\PackageDirectory;
-use App\TemplateFormat\SeedRecords;
+use App\Tests\Support\ExampleTemplate;
 use App\Tests\Support\RemovesDirectories;
-use App\Tests\Unit\TemplateFormat\PackageCheckerTest;
+use Fedale\TemplateFormat\Document;
+use Fedale\TemplateFormat\DocumentKind;
+use Fedale\TemplateFormat\Package;
+use Fedale\TemplateFormat\PackageChecker;
+use Fedale\TemplateFormat\PackageDirectory;
+use Fedale\TemplateFormat\SeedRecords;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
- * Installs the example template (tests/Unit/TemplateFormat/Fixtures/shop) through the real
+ * Installs the example template (tests/Fixtures/templates/shop) through the real
  * metadata API, against the real database.
  */
 final class TemplateInstallerTest extends KernelTestCase
@@ -38,7 +38,7 @@ final class TemplateInstallerTest extends KernelTestCase
 
     public function testInstallsEveryItemOfTheTemplate(): void
     {
-        $report = $this->install(PackageCheckerTest::fixture());
+        $report = $this->install(ExampleTemplate::package());
 
         self::assertFalse($report->dryRun);
         self::assertSame(['category', 'product', 'tag'], $report->objects);
@@ -73,7 +73,7 @@ final class TemplateInstallerTest extends KernelTestCase
 
     public function testWritesTheRecordsOfTheSeedsReferencesByKey(): void
     {
-        self::assertSame(6, $this->install(PackageCheckerTest::fixture())->records);
+        self::assertSame(6, $this->install(ExampleTemplate::package())->records);
 
         $finder = self::getContainer()->get(RecordFinderInterface::class);
         $byKey = static function (string $object, string $key) use ($finder): array {
@@ -105,7 +105,7 @@ final class TemplateInstallerTest extends KernelTestCase
 
     public function testARecordMayPointAtOneOfItsSeedWrittenAfterIt(): void
     {
-        $package = self::changed(PackageCheckerTest::fixture(), 'objects/category.yaml', static function (array $spec): array {
+        $package = self::changed(ExampleTemplate::package(), 'objects/category.yaml', static function (array $spec): array {
             $fields = \is_array($spec['fields'] ?? null) ? $spec['fields'] : [];
             $fields[] = ['id' => 'acme.category.parent', 'name' => 'parent', 'type' => 'relation', 'label' => 'Parent', 'settings' => ['target' => 'acme.category']];
 
@@ -132,7 +132,7 @@ final class TemplateInstallerTest extends KernelTestCase
     public function testARecordTheAppRefusesRollsTheInstallBack(): void
     {
         // A SKU that does not match the field's pattern.
-        $package = self::changed(PackageCheckerTest::fixture(), 'seeds/product.yaml', static fn (array $spec): array => ['records' => [['sku' => 'oslo', 'name' => 'Oslo chair', 'category' => 'Chairs']]] + array_diff_key($spec, ['source' => true]));
+        $package = self::changed(ExampleTemplate::package(), 'seeds/product.yaml', static fn (array $spec): array => ['records' => [['sku' => 'oslo', 'name' => 'Oslo chair', 'category' => 'Chairs']]] + array_diff_key($spec, ['source' => true]));
 
         $this->assertRefused($package, 'seeds/product.yaml: spec.records.0: sku: ');
         self::assertFalse(self::getContainer()->get(MetadataRegistryInterface::class)->hasObject('product'));
@@ -140,7 +140,7 @@ final class TemplateInstallerTest extends KernelTestCase
 
     public function testExportingAnInstalledTemplateGivesItBack(): void
     {
-        $template = PackageCheckerTest::fixture();
+        $template = ExampleTemplate::package();
         $this->install($template);
 
         $exported = self::getContainer()->get(TemplateExporter::class)->export(new ExportTemplateCommand('acme/shop', '1.0.0', ['category', 'tag', 'product'], ['catalogue'], license: 'MIT'));
@@ -152,7 +152,7 @@ final class TemplateInstallerTest extends KernelTestCase
 
     public function testExportsTheRecordsAsSeedsThatReadBack(): void
     {
-        $this->install(PackageCheckerTest::fixture());
+        $this->install(ExampleTemplate::package());
         $directory = sys_get_temp_dir().'/md-seeds-'.bin2hex(random_bytes(4));
 
         try {
@@ -174,7 +174,7 @@ final class TemplateInstallerTest extends KernelTestCase
             self::assertEqualsCanonicalizing(['new', 'wood'], SeedRecords::list($chair['tags']));
             self::assertIsString($chair['photo']);
             self::assertMatchesRegularExpression('~^files/product/[0-9a-f-]{36}/oslo\.png$~', $chair['photo']);
-            self::assertFileEquals(PackageCheckerTest::FIXTURE.'/files/products/oslo.png', $directory.'/'.$chair['photo']);
+            self::assertFileEquals(ExampleTemplate::DIRECTORY.'/files/products/oslo.png', $directory.'/'.$chair['photo']);
             self::assertNull($products['BRG-02']['seats']);
         } finally {
             self::removeDirectory($directory);
@@ -183,7 +183,7 @@ final class TemplateInstallerTest extends KernelTestCase
 
     public function testExportsSeedsOnlyWithTheirReferences(): void
     {
-        $this->install(PackageCheckerTest::fixture());
+        $this->install(ExampleTemplate::package());
         $exporter = self::getContainer()->get(TemplateExporter::class);
 
         foreach ([
@@ -201,7 +201,7 @@ final class TemplateInstallerTest extends KernelTestCase
 
     public function testADryRunChangesNothing(): void
     {
-        $report = $this->install(PackageCheckerTest::fixture(), dryRun: true);
+        $report = $this->install(ExampleTemplate::package(), dryRun: true);
 
         self::assertTrue($report->dryRun);
         self::assertSame(['category', 'product', 'tag'], $report->objects);
@@ -209,14 +209,14 @@ final class TemplateInstallerTest extends KernelTestCase
         self::assertNull(self::getContainer()->get(TemplateInstallationRepository::class)->findByName('acme/shop'));
 
         // Nothing it went through is left behind: the real install follows.
-        self::assertFalse($this->install(PackageCheckerTest::fixture())->dryRun);
+        self::assertFalse($this->install(ExampleTemplate::package())->dryRun);
         self::assertTrue(self::getContainer()->get(MetadataRegistryInterface::class)->hasObject('product'));
     }
 
     public function testAStepTheAppRefusesRollsEverythingBack(): void
     {
         // A layout placing a text nobody defined: the app refuses the view.
-        $package = self::changed(PackageCheckerTest::fixture(), 'views/product.form.main.yaml', static fn (array $spec): array => ['template' => '<p>{t:missing}</p>'] + $spec);
+        $package = self::changed(ExampleTemplate::package(), 'views/product.form.main.yaml', static fn (array $spec): array => ['template' => '<p>{t:missing}</p>'] + $spec);
 
         $this->assertRefused($package, 'views/product.form.main.yaml: spec: ');
         self::assertFalse(self::getContainer()->get(MetadataRegistryInterface::class)->hasObject('category'));
@@ -226,12 +226,12 @@ final class TemplateInstallerTest extends KernelTestCase
     public function testRefusesWhatItCannotInstall(): void
     {
         self::getContainer()->get(MetadataManagerInterface::class)->createObject('tag', 'Tag', 'Tags');
-        $this->assertRefused(PackageCheckerTest::fixture(), 'objects/tag.yaml: spec.name: This instance already has an object "tag".');
+        $this->assertRefused(ExampleTemplate::package(), 'objects/tag.yaml: spec.name: This instance already has an object "tag".');
 
-        $requires = self::changed(PackageCheckerTest::fixture(), 'template.yaml', static fn (array $spec): array => ['requires' => ['format' => 'metadata-driven/v1', 'acme/geo-italy' => '^1.0']] + $spec);
+        $requires = self::changed(ExampleTemplate::package(), 'template.yaml', static fn (array $spec): array => ['requires' => ['format' => 'metadata-driven/v1', 'acme/geo-italy' => '^1.0']] + $spec);
         $this->assertRefused($requires, 'template.yaml: spec.requires.acme/geo-italy: A template requiring another one cannot be installed yet.');
 
-        $invalid = self::changed(PackageCheckerTest::fixture(), 'objects/product.yaml', static fn (array $spec): array => ['plural' => ''] + $spec);
+        $invalid = self::changed(ExampleTemplate::package(), 'objects/product.yaml', static fn (array $spec): array => ['plural' => ''] + $spec);
         $this->assertRefused($invalid, 'objects/product.yaml: spec.plural: Minimum string length is 1, found 0');
     }
 
@@ -243,12 +243,12 @@ final class TemplateInstallerTest extends KernelTestCase
         $metadata->translate('it', 'field.account.email', 'Posta elettronica');
 
         // A label of a local object: the template does not own it.
-        $foreign = self::changed(PackageCheckerTest::fixture(), 'translations/it.yaml', static fn (array $spec): array => ['entries' => ['field.account.email' => 'Indirizzo']] + $spec);
+        $foreign = self::changed(ExampleTemplate::package(), 'translations/it.yaml', static fn (array $spec): array => ['entries' => ['field.account.email' => 'Indirizzo']] + $spec);
         $this->assertRefused($foreign, 'translations/it.yaml: spec.entries.field.account.email: Names no object or form of the template.');
 
         // A text this instance already has: the template would rewrite it wherever it is placed.
         $metadata->translate('en', 'text.identity', 'Who we are');
-        $this->assertRefused(PackageCheckerTest::fixture(), 'translations/en.yaml: spec.entries.text.identity: This instance already has the text "identity".');
+        $this->assertRefused(ExampleTemplate::package(), 'translations/en.yaml: spec.entries.text.identity: This instance already has the text "identity".');
 
         $italian = array_column(array_map(static fn ($entry): array => [$entry->key, $entry->translation], self::getContainer()->get(MetadataTranslationsInterface::class)->entries('it')), 1, 0);
         self::assertSame('Posta elettronica', $italian['field.account.email']);
@@ -257,14 +257,14 @@ final class TemplateInstallerTest extends KernelTestCase
     public function testATemplateIsInstalledOnce(): void
     {
         self::getContainer()->get(MetadataManagerInterface::class)->createObject('placeholder', 'Placeholder', 'Placeholders');
-        $this->install(PackageCheckerTest::fixture());
+        $this->install(ExampleTemplate::package());
 
-        $this->assertRefused(PackageCheckerTest::fixture(), 'acme/shop is already installed, in version 1.0.0.');
+        $this->assertRefused(ExampleTemplate::package(), 'acme/shop is already installed, in version 1.0.0.');
     }
 
     public function testLeavesOutTheLanguagesOfNoUse(): void
     {
-        $package = PackageCheckerTest::fixture();
+        $package = ExampleTemplate::package();
         $package = new Package($package->manifest, [...$package->documents, new Document(DocumentKind::Translations, 'acme.translations.fr', ['locale' => 'fr', 'entries' => ['field.product.name' => 'Nom']], 'translations/fr.yaml')], $package->directory);
 
         self::assertSame(['fr'], $this->install($package)->skippedLocales);
@@ -275,11 +275,11 @@ final class TemplateInstallerTest extends KernelTestCase
         $application = new Application(self::bootKernel());
         $install = new CommandTester($application->find('metadata:template:install'));
 
-        $install->execute(['template' => PackageCheckerTest::FIXTURE, '--dry-run' => true]);
+        $install->execute(['template' => ExampleTemplate::DIRECTORY, '--dry-run' => true]);
         $install->assertCommandIsSuccessful();
         self::assertStringContainsString('Template acme/shop 1.0.0 can be installed. Dry run: nothing was changed.', $install->getDisplay());
 
-        $install->execute(['template' => PackageCheckerTest::FIXTURE]);
+        $install->execute(['template' => ExampleTemplate::DIRECTORY]);
         $install->assertCommandIsSuccessful();
         self::assertStringContainsString('Template acme/shop 1.0.0 installed.', $install->getDisplay());
 
@@ -287,13 +287,13 @@ final class TemplateInstallerTest extends KernelTestCase
         $list->execute([]);
         self::assertMatchesRegularExpression('~acme/shop\s+1\.0\.0~', $list->getDisplay());
 
-        self::assertSame(1, $install->execute(['template' => PackageCheckerTest::FIXTURE]));
+        self::assertSame(1, $install->execute(['template' => ExampleTemplate::DIRECTORY]));
         self::assertStringContainsString('acme/shop is already installed, in version 1.0.0.', $install->getDisplay());
     }
 
     private function install(Package $package, bool $dryRun = false): \App\Module\Template\Application\InstallReport
     {
-        return self::getContainer()->get(TemplateInstaller::class)->install($package, PackageCheckerTest::FIXTURE, $dryRun);
+        return self::getContainer()->get(TemplateInstaller::class)->install($package, ExampleTemplate::DIRECTORY, $dryRun);
     }
 
     private static function text(mixed $value): string

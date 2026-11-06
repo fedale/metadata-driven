@@ -9,7 +9,7 @@ use App\Module\Template\Application\Upgrade\Strategy;
 use App\Module\Template\Application\Upgrade\TemplateUpgrader;
 use App\Module\Template\Domain\Exception\TemplateSourceFailed;
 use App\Module\Template\Domain\Exception\UpgradeRefused;
-use App\TemplateFormat\InvalidPackage;
+use Fedale\TemplateFormat\InvalidPackage;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;

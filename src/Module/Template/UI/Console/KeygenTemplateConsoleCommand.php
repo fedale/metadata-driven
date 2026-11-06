@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Template\UI\Console;
 
-use App\TemplateFormat\Signature;
+use Fedale\TemplateFormat\Signature;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;

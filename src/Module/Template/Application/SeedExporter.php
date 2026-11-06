@@ -11,11 +11,11 @@ use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Template\Domain\Exception\InvalidExport;
-use App\TemplateFormat\Document;
-use App\TemplateFormat\DocumentKind;
-use App\TemplateFormat\PackageFile;
-use App\TemplateFormat\SeedRecords;
-use App\TemplateFormat\StringFile;
+use Fedale\TemplateFormat\Document;
+use Fedale\TemplateFormat\DocumentKind;
+use Fedale\TemplateFormat\PackageFile;
+use Fedale\TemplateFormat\SeedRecords;
+use Fedale\TemplateFormat\StringFile;
 
 /**
  * Writes the records of exported objects as seeds: one CSV file per object, its files copied

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Template\Application\Upgrade;
 
-use App\TemplateFormat\Document;
+use Fedale\TemplateFormat\Document;
 
 /**
  * One item of a template in one of its three states (installed, new, local), normalized by

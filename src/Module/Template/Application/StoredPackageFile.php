@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Template\Application;
 
 use App\Module\File\Contract\FileStorageInterface;
-use App\TemplateFormat\PackageFile;
+use Fedale\TemplateFormat\PackageFile;
 
 /**
  * A file a record holds, copied into an exported template when the template is written: its

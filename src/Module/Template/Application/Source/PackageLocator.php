@@ -6,8 +6,8 @@ namespace App\Module\Template\Application\Source;
 
 use App\Module\Template\Domain\Exception\TemplateSourceFailed;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
-use App\TemplateFormat\InvalidPackage;
-use App\TemplateFormat\PackageDirectory;
+use Fedale\TemplateFormat\InvalidPackage;
+use Fedale\TemplateFormat\PackageDirectory;
 
 /**
  * Opens the template a command names: a directory, or "vendor/name" ("vendor/name@1.2.0" for a

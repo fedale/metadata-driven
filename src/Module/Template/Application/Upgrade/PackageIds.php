@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Module\Template\Application\Upgrade;
 
-use App\TemplateFormat\DocumentKind;
-use App\TemplateFormat\Package;
+use Fedale\TemplateFormat\DocumentKind;
+use Fedale\TemplateFormat\Package;
 
 /**
  * The ids of a package's objects, fields and forms by their names: a translation key names

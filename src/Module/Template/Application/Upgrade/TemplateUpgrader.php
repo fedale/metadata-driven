@@ -27,12 +27,12 @@ use App\Module\Template\Domain\Repository\PersistenceReset;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
 use App\Module\Template\Domain\Repository\TemplateItemRepository;
 use App\Shared\Transaction\TransactionRunner;
-use App\TemplateFormat\DocumentKind;
-use App\TemplateFormat\FieldTypes\FieldTypeCatalog;
-use App\TemplateFormat\FieldTypes\ReferenceKind;
-use App\TemplateFormat\Package;
-use App\TemplateFormat\PackageChecker;
-use App\TemplateFormat\SeedRecords;
+use Fedale\TemplateFormat\DocumentKind;
+use Fedale\TemplateFormat\FieldTypes\FieldTypeCatalog;
+use Fedale\TemplateFormat\FieldTypes\ReferenceKind;
+use Fedale\TemplateFormat\Package;
+use Fedale\TemplateFormat\PackageChecker;
+use Fedale\TemplateFormat\SeedRecords;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Yaml\Yaml;
 

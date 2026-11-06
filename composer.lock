@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9412ab32692791a662db57804a2c72e4",
+    "content-hash": "c7f36d8b442585f35eae50d57cf7aee0",
     "packages": [
         {
             "name": "composer/semver",
@@ -1421,6 +1421,76 @@
                 "preferences",
                 "settings",
                 "symfony"
+            ],
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
+            "name": "fedale/template-format",
+            "version": "1.0.x-dev",
+            "dist": {
+                "type": "path",
+                "url": "../template-format",
+                "reference": "b9e829249001848a6de279ef85bbcc97d49a03b7"
+            },
+            "require": {
+                "ext-sodium": "*",
+                "ext-zlib": "*",
+                "opis/json-schema": "^2.6",
+                "php": ">=8.4",
+                "symfony/yaml": "^7.4 || ^8.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.95",
+                "phpstan/phpstan": "^2.3",
+                "phpunit/phpunit": "^13.4"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-main": "1.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Fedale\\TemplateFormat\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Fedale\\TemplateFormat\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "cs": [
+                    "php-cs-fixer fix --dry-run --diff"
+                ],
+                "cs-fix": [
+                    "php-cs-fixer fix"
+                ],
+                "phpstan": [
+                    "phpstan analyse --no-progress"
+                ],
+                "test": [
+                    "phpunit"
+                ],
+                "qa": [
+                    "@cs",
+                    "@phpstan",
+                    "@test"
+                ]
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "The metadata-driven template format: schemas, package reader, structural checks, archives, signed indexes",
+            "keywords": [
+                "ed25519",
+                "json-schema",
+                "metadata-driven",
+                "templates"
             ],
             "transport-options": {
                 "symlink": true,
@@ -12095,7 +12165,8 @@
     "stability-flags": {
         "fedale/gridview-bundle": 20,
         "fedale/rbac-bundle": 20,
-        "fedale/setting-bundle": 20
+        "fedale/setting-bundle": 20,
+        "fedale/template-format": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,

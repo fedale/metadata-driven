@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Module\Template\UI\Console;
 
-use App\TemplateFormat\InvalidPackage;
-use App\TemplateFormat\PackageChecker;
-use App\TemplateFormat\PackageDirectory;
-use App\TemplateFormat\Problem;
+use Fedale\TemplateFormat\InvalidPackage;
+use Fedale\TemplateFormat\PackageChecker;
+use Fedale\TemplateFormat\PackageDirectory;
+use Fedale\TemplateFormat\Problem;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;

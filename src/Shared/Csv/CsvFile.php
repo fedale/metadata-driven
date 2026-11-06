@@ -9,7 +9,7 @@ namespace App\Shared\Csv;
  * comma-separated, quotes doubled inside quotes (RFC 4180), UTF-8 with or without a byte order
  * mark. An empty cell is null: no value.
  *
- * App\TemplateFormat reads seeds with its own copy (SeedRecords): the format stays free of the app.
+ * Fedale\TemplateFormat reads seeds with its own copy (SeedRecords): the format stays free of the app.
  */
 final class CsvFile
 {

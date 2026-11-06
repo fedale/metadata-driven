@@ -57,10 +57,14 @@ original machine (see [status.md](status.md#setting-up-on-a-new-machine)). It al
   can then refuse a broken template on publish. `FieldTypeCatalogMatchesTheAppTest` fails when
   the app gains a type or a setting the description lacks.
 
+- **Catalog review: before listing** (2026-11-06). A template is checked by a person before it
+  is published; nothing is listed unreviewed.
+- **`fedale/template-format` is MIT** (2026-11-06): whoever publishes an index or a template
+  uses it. Repository: `fedale/metadata-driven-template-format` on GitHub.
+
 ## Open decisions
 
-- **The catalog**: its domain and hosting, and whether a template is reviewed before it is listed
-  or only reported and removed after. To decide when the catalog starts. See
+- **The catalog's hosting**: on GitHub, or a server of its own. To decide before C1. See
   [The catalog](#the-catalog).
 
 ## Principles
@@ -555,7 +559,17 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
 
 In the catalog (its own plan, from phase 5 on):
 
-- **C0** extract `src/TemplateFormat/` into `fedale/template-format`, required by both;
+- **C0** extract `src/TemplateFormat/` into `fedale/template-format`, required by both — done
+  (2026-11-06, metadata-driven branch `feature/template-format-package`). As built: the history
+  kept with `git filter-repo` (`src/TemplateFormat/` → `src/`, `tests/Unit/TemplateFormat/` →
+  `tests/`), namespace `Fedale\TemplateFormat` (tests `Fedale\TemplateFormat\Tests`), branch
+  `main` aliased `1.0.x-dev`, its own `composer qa` (php-cs-fixer, PHPStan max, PHPUnit). In
+  metadata-driven: a path repository (`../template-format`), the format's services registered by
+  name in `config/services.yaml`, `deptrac.template-format.yaml` dropped (the boundary is the
+  package now), the example template moved to `tests/Fixtures/templates/shop`
+  (`App\Tests\Support\ExampleTemplate`), the library keeping a copy for its own tests.
+  `FieldTypeCatalogMatchesTheAppTest` stays in metadata-driven: only the app knows its types.
+  No remote yet for `fedale/template-format`;
 - **C1** skeleton, accounts (GitHub sign-in), vendor namespaces;
 - **C2** publish and check, storage, checksum, signature, `/index.json`;
 - **C3** search, template pages, the search API;

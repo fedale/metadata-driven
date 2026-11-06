@@ -40,6 +40,16 @@ services:
             - '../src/Module/*/Domain/Exception/'
             - '../src/Module/*/Application/Command/'
 
+    # The template format (fedale/template-format) is a plain library: the services the Template
+    # module needs from it.
+    Fedale\TemplateFormat\Archive: ~
+    Fedale\TemplateFormat\DocumentCodec: ~
+    Fedale\TemplateFormat\SchemaValidator: ~
+    Fedale\TemplateFormat\SeedRecords: ~
+    Fedale\TemplateFormat\PackageDirectory: ~
+    Fedale\TemplateFormat\PackageChecker: ~
+    Fedale\TemplateFormat\FieldTypes\FieldTypeCatalog: ~
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
 

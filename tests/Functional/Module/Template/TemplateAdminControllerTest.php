@@ -9,11 +9,11 @@ use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Template\Application\Source\TemplateSources;
 use App\Module\Template\Application\TemplateInstaller;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
+use App\Tests\Support\ExampleTemplate;
 use App\Tests\Support\FakeTemplateServer;
 use App\Tests\Support\PublishesTemplates;
 use App\Tests\Support\RemovesDirectories;
 use App\Tests\Support\SignsIn;
-use App\Tests\Unit\TemplateFormat\PackageCheckerTest;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
@@ -94,7 +94,7 @@ final class TemplateAdminControllerTest extends WebTestCase
     {
         $this->publish(['1.0.0' => $this->archive('1.0.0'), '1.1.0' => $this->archive('1.1.0', tagLabel: 'Label')]);
         self::getContainer()->get(TemplateSources::class)->add('acme', self::INDEX, unsigned: true);
-        self::getContainer()->get(TemplateInstaller::class)->install(PackageCheckerTest::fixture(), self::INDEX);
+        self::getContainer()->get(TemplateInstaller::class)->install(ExampleTemplate::package(), self::INDEX);
         self::getContainer()->get(MetadataManagerInterface::class)->relabelObject('tag', 'Keyword', 'Keywords');
 
         $crawler = $this->client->request('GET', '/admin/templates/upgrade?template=acme/shop@1.1.0&repo=acme');

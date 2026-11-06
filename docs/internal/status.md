@@ -149,9 +149,9 @@ Things that are not obvious from a single file, and that are easy to break.
   `FileCell` (Record UI) draws them. `FieldTypeInterface::isSortable()` (false
   for `file` and `many_to_many`) decides sorting, searching and virtual columns, in the default
   grid, the grid view compiler and the grid source alike.
-- **Templates**: `App\TemplateFormat` (`src/TemplateFormat/`) must stay free of the app
-  (`deptrac.template-format.yaml`, run by `make deptrac`): only `symfony/yaml` and
-  `opis/json-schema`. It describes the field types on its own (`Resources/field-types.v1.json`):
+- **Templates**: the format is `fedale/template-format` (`../template-format`, path repository,
+  its own `composer qa`): only `symfony/yaml` and `opis/json-schema`. A change to the format is
+  made there, with its tests. It describes the field types on its own (`Resources/field-types.v1.json`):
   **a new field type or setting must be added there too**, or
   `FieldTypeCatalogMatchesTheAppTest` fails. The `Template` module is the only bridge to the
   metadata; `core.template_item` keeps the id of each exported item across exports (a renamed
@@ -207,7 +207,9 @@ new-composite pages.
   no private networks) on `feature/template-indexes` (from `feature/template-upgrade`); phase 6
   (admin UI at `/admin/templates`, conflicts resolved item by item; `yank`, the yanked flag
   signed) on `feature/template-admin` (from `feature/template-indexes`). Next is phase 7
-  (publish), which needs the catalog application (C0-C4) first. None of these branches is merged into main yet. Phase 2 needs
+  (publish), which needs the catalog application (C0-C4) first. C0 (the format extracted into
+  `fedale/template-format`, `../template-format`) on `feature/template-format-package` (from
+  `feature/template-admin`). None of these branches is merged into main yet. Phase 2 needs
   fedale/rbac-bundle's transaction-safe cache (merged into its main, not pushed).
 - **CSV import**: (A) done with phase 3 of the templates, `record:import` (console.md). Not
   done: (B) a web wizard; (C) async with Messenger for very large files.

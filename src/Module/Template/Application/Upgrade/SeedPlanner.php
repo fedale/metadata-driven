@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Module\Template\Application\Upgrade;
 
-use App\TemplateFormat\Document;
-use App\TemplateFormat\DocumentKind;
-use App\TemplateFormat\Package;
-use App\TemplateFormat\SeedRecords;
+use Fedale\TemplateFormat\Document;
+use Fedale\TemplateFormat\DocumentKind;
+use Fedale\TemplateFormat\Package;
+use Fedale\TemplateFormat\SeedRecords;
 
 /**
  * What an upgrade does to the records of the seeds, record by record (by key), from the

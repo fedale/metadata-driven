@@ -9,10 +9,10 @@ use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordManagerInterface;
 use App\Module\Template\Domain\Exception\InstallRefused;
-use App\TemplateFormat\Document;
-use App\TemplateFormat\DocumentKind;
-use App\TemplateFormat\Package;
-use App\TemplateFormat\SeedRecords;
+use Fedale\TemplateFormat\Document;
+use Fedale\TemplateFormat\DocumentKind;
+use Fedale\TemplateFormat\Package;
+use Fedale\TemplateFormat\SeedRecords;
 
 /**
  * Writes the records of a template's seeds, through the record pipeline: every record is

@@ -9,13 +9,13 @@ use App\Module\Template\Application\Source\TemplateSources;
 use App\Module\Template\Domain\Exception\TemplateSourceFailed;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
 use App\Module\Template\Domain\Repository\TemplateSourceRepository;
-use App\TemplateFormat\Archive;
-use App\TemplateFormat\Signature;
-use App\TemplateFormat\TemplateIndex;
+use App\Tests\Support\ExampleTemplate;
 use App\Tests\Support\FakeTemplateServer;
 use App\Tests\Support\PublishesTemplates;
 use App\Tests\Support\RemovesDirectories;
-use App\Tests\Unit\TemplateFormat\PackageCheckerTest;
+use Fedale\TemplateFormat\Archive;
+use Fedale\TemplateFormat\Signature;
+use Fedale\TemplateFormat\TemplateIndex;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -149,7 +149,7 @@ final class TemplateSourcesTest extends KernelTestCase
         self::assertSame(1, preg_match('~Public key ([A-Za-z0-9+/=]{44})~', $output, $match), $output);
         $publicKey = $match[1] ?? '';
 
-        $this->command('metadata:template:pack', ['directory' => PackageCheckerTest::FIXTURE, 'archive' => $this->directory.'/acme-shop-1.0.0.tar.gz', '--index' => $this->directory.'/index.json', '--sign' => $this->directory.'/acme.key']);
+        $this->command('metadata:template:pack', ['directory' => ExampleTemplate::DIRECTORY, 'archive' => $this->directory.'/acme-shop-1.0.0.tar.gz', '--index' => $this->directory.'/index.json', '--sign' => $this->directory.'/acme.key']);
 
         $entry = TemplateIndex::fromJson((string) file_get_contents($this->directory.'/index.json'), self::INDEX)->find('acme/shop', '1.0.0');
         self::assertNotNull($entry);
@@ -185,7 +185,7 @@ final class TemplateSourcesTest extends KernelTestCase
     {
         $keys = Signature::keyPair();
         file_put_contents($this->directory.'/acme.key', $keys['secret']);
-        $this->command('metadata:template:pack', ['directory' => PackageCheckerTest::FIXTURE, 'archive' => $this->directory.'/acme-shop-1.0.0.tar.gz', '--index' => $this->directory.'/index.json', '--sign' => $this->directory.'/acme.key']);
+        $this->command('metadata:template:pack', ['directory' => ExampleTemplate::DIRECTORY, 'archive' => $this->directory.'/acme-shop-1.0.0.tar.gz', '--index' => $this->directory.'/index.json', '--sign' => $this->directory.'/acme.key']);
 
         // The signature covers the flag: no key, no yank.
         self::assertStringContainsString('give the secret key (--sign)', $this->command('metadata:template:yank', ['index' => $this->directory.'/index.json', 'name' => 'acme/shop', 'version' => '1.0.0'], 1));
@@ -198,7 +198,7 @@ final class TemplateSourcesTest extends KernelTestCase
 
     public function testPacksATemplateIntoAnIndex(): void
     {
-        $this->command('metadata:template:pack', ['directory' => PackageCheckerTest::FIXTURE, 'archive' => $this->directory.'/acme-shop-1.0.0.tar.gz', '--index' => $this->directory.'/index.json']);
+        $this->command('metadata:template:pack', ['directory' => ExampleTemplate::DIRECTORY, 'archive' => $this->directory.'/acme-shop-1.0.0.tar.gz', '--index' => $this->directory.'/index.json']);
 
         $index = TemplateIndex::fromJson((string) file_get_contents($this->directory.'/index.json'), self::INDEX);
         $entry = $index->find('acme/shop', '1.0.0');

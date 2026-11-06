@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Module\Template\Application\Upgrade;
 
-use App\TemplateFormat\Document;
-use App\TemplateFormat\DocumentKind;
-use App\TemplateFormat\FieldTypes\FieldTypeCatalog;
-use App\TemplateFormat\Package;
+use Fedale\TemplateFormat\Document;
+use Fedale\TemplateFormat\DocumentKind;
+use Fedale\TemplateFormat\FieldTypes\FieldTypeCatalog;
+use Fedale\TemplateFormat\Package;
 
 /**
  * A template's items, one by one, in a form that compares equal when they mean the same: the

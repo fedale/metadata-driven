@@ -16,14 +16,14 @@ use App\Module\Template\Application\Command\ExportTemplateCommand;
 use App\Module\Template\Domain\Exception\InvalidExport;
 use App\Module\Template\Domain\Model\ItemKind;
 use App\Module\Template\Domain\Repository\TemplateItemRepository;
-use App\TemplateFormat\Document;
-use App\TemplateFormat\DocumentKind;
-use App\TemplateFormat\FieldTypes\FieldOwner;
-use App\TemplateFormat\FieldTypes\FieldTypeCatalog;
-use App\TemplateFormat\FieldTypes\ReferenceKind;
-use App\TemplateFormat\Format;
-use App\TemplateFormat\Package;
-use App\TemplateFormat\PackageChecker;
+use Fedale\TemplateFormat\Document;
+use Fedale\TemplateFormat\DocumentKind;
+use Fedale\TemplateFormat\FieldTypes\FieldOwner;
+use Fedale\TemplateFormat\FieldTypes\FieldTypeCatalog;
+use Fedale\TemplateFormat\FieldTypes\ReferenceKind;
+use Fedale\TemplateFormat\Format;
+use Fedale\TemplateFormat\Package;
+use Fedale\TemplateFormat\PackageChecker;
 use Symfony\Component\Yaml\Yaml;
 
 /**

@@ -6,7 +6,7 @@ namespace App\Tests\Integration\Module\Template;
 
 use App\Module\FieldType\Contract\Dto\SettingKind;
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
-use App\TemplateFormat\FieldTypes\FieldTypeCatalog;
+use Fedale\TemplateFormat\FieldTypes\FieldTypeCatalog;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
