@@ -10,10 +10,10 @@ use App\Module\Template\Domain\Exception\TemplateSourceFailed;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
 use App\Module\Template\Domain\Repository\TemplateSourceRepository;
 use App\TemplateFormat\Archive;
-use App\TemplateFormat\IndexEntry;
 use App\TemplateFormat\Signature;
 use App\TemplateFormat\TemplateIndex;
 use App\Tests\Support\FakeTemplateServer;
+use App\Tests\Support\PublishesTemplates;
 use App\Tests\Support\RemovesDirectories;
 use App\Tests\Unit\TemplateFormat\PackageCheckerTest;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -28,9 +28,8 @@ use Symfony\Component\HttpClient\Response\MockResponse;
  */
 final class TemplateSourcesTest extends KernelTestCase
 {
+    use PublishesTemplates;
     use RemovesDirectories;
-
-    private const string INDEX = 'https://templates.acme.example/index.json';
 
     private string $directory;
     private Application $application;
@@ -182,6 +181,21 @@ final class TemplateSourcesTest extends KernelTestCase
         }
     }
 
+    public function testYanksASignedVersion(): void
+    {
+        $keys = Signature::keyPair();
+        file_put_contents($this->directory.'/acme.key', $keys['secret']);
+        $this->command('metadata:template:pack', ['directory' => PackageCheckerTest::FIXTURE, 'archive' => $this->directory.'/acme-shop-1.0.0.tar.gz', '--index' => $this->directory.'/index.json', '--sign' => $this->directory.'/acme.key']);
+
+        // The signature covers the flag: no key, no yank.
+        self::assertStringContainsString('give the secret key (--sign)', $this->command('metadata:template:yank', ['index' => $this->directory.'/index.json', 'name' => 'acme/shop', 'version' => '1.0.0'], 1));
+        $this->command('metadata:template:yank', ['index' => $this->directory.'/index.json', 'name' => 'acme/shop', 'version' => '1.0.0', '--sign' => $this->directory.'/acme.key']);
+
+        $entry = TemplateIndex::fromJson((string) file_get_contents($this->directory.'/index.json'), self::INDEX)->find('acme/shop', '1.0.0');
+        self::assertTrue($entry?->yanked);
+        self::assertTrue(Signature::verify($entry, $keys['public']));
+    }
+
     public function testPacksATemplateIntoAnIndex(): void
     {
         $this->command('metadata:template:pack', ['directory' => PackageCheckerTest::FIXTURE, 'archive' => $this->directory.'/acme-shop-1.0.0.tar.gz', '--index' => $this->directory.'/index.json']);
@@ -190,47 +204,6 @@ final class TemplateSourcesTest extends KernelTestCase
         $entry = $index->find('acme/shop', '1.0.0');
         self::assertSame('https://templates.acme.example/acme-shop-1.0.0.tar.gz', $entry?->url);
         self::assertSame(hash_file('sha256', $this->directory.'/acme-shop-1.0.0.tar.gz'), $entry->sha256);
-    }
-
-    /**
-     * The example template packed as a version, written in the test's directory.
-     */
-    private function archive(string $version, ?string $tagLabel = null): string
-    {
-        $copy = $this->directory.'/shop-'.$version;
-        (new \Symfony\Component\Filesystem\Filesystem())->mirror(PackageCheckerTest::FIXTURE, $copy);
-        file_put_contents($copy.'/template.yaml', str_replace('version: 1.0.0', 'version: '.$version, (string) file_get_contents($copy.'/template.yaml')));
-        if (null !== $tagLabel) {
-            file_put_contents($copy.'/objects/tag.yaml', str_replace('label: Tag', 'label: '.$tagLabel, (string) file_get_contents($copy.'/objects/tag.yaml')));
-        }
-        $archive = $copy.'.tar.gz';
-        (new Archive())->pack($copy, $archive);
-
-        return $archive;
-    }
-
-    /**
-     * Serves the archives and an index listing them.
-     *
-     * @param array<string, string> $archives  version => archive
-     * @param list<string>          $yanked
-     * @param string|null           $secretKey the key to sign every entry with
-     */
-    private function publish(array $archives, ?string $sha256 = null, array $yanked = [], ?string $secretKey = null): void
-    {
-        $templates = [];
-        foreach ($archives as $version => $archive) {
-            $file = \sprintf('acme-shop-%s.tar.gz', $version);
-            FakeTemplateServer::serve('https://templates.acme.example/'.$file, (string) file_get_contents($archive));
-            $entry = ['url' => $file, 'sha256' => $sha256 ?? (string) hash_file('sha256', $archive), 'yanked' => \in_array($version, $yanked, true)];
-            if (null !== $secretKey) {
-                $entry['signature'] = Signature::sign(new IndexEntry('acme/shop', $version, $file, $entry['sha256']), $secretKey);
-            }
-            $templates['acme/shop'][$version] = $entry;
-        }
-        $index = (string) json_encode(['format' => TemplateIndex::FORMAT, 'templates' => $templates]);
-        file_put_contents($this->directory.'/index.json', $index);
-        FakeTemplateServer::serve(self::INDEX, $index);
     }
 
     /**

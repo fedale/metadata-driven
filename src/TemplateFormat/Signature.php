@@ -6,8 +6,13 @@ namespace App\TemplateFormat;
 
 /**
  * Ed25519 signatures of index entries (libsodium). A signature covers the format, the
- * template's name, its version and its archive's sha256: it vouches for that archive as that
- * version, and cannot be moved to another entry.
+ * template's name, its version, its archive's sha256 and whether the version is yanked: it
+ * vouches for that archive as that version, cannot be moved to another entry, and a yanked
+ * version cannot be listed again without the key.
+ *
+ * It does not vouch for the index as a whole: an old copy of the index, from before a version was
+ * yanked, still verifies. Signing the whole index with an expiry (as TUF does) is left to the
+ * catalog.
  *
  * Keys and signatures are written in base64.
  */
@@ -63,6 +68,6 @@ final class Signature
 
     private static function message(IndexEntry $entry): string
     {
-        return implode("\n", [TemplateIndex::FORMAT, $entry->name, $entry->version, $entry->sha256]);
+        return implode("\n", [TemplateIndex::FORMAT, $entry->name, $entry->version, $entry->sha256, $entry->yanked ? 'yanked' : 'listed']);
     }
 }

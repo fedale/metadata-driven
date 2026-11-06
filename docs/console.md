@@ -37,6 +37,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:template:pack`](#metadatatemplatepack) | Pack a template into an archive, and list it in an index |
 | [`metadata:template:repo`](#metadatatemplaterepo) | List, add or remove the indexes templates are downloaded from |
 | [`metadata:template:search`](#metadatatemplatesearch) | Find templates in the indexes, with the version installed here |
+| [`metadata:template:yank`](#metadatatemplateyank) | Withdraw a version from an index, or list it again |
 | [`metadata:template:upgrade`](#metadatatemplateupgrade) | Upgrade an installed template to a new version: only what it changed, what this instance changed kept |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
 | `user:create` | Create a user who can sign in — see [Users and permissions](access.md#usercreate) |
@@ -594,6 +595,16 @@ metadata:template:keygen <file>
 
 Makes an Ed25519 key pair: writes the secret key to the file (readable by its owner only; an
 existing file is never overwritten) and prints the public key, for `repo add --key`.
+
+## `metadata:template:yank`
+
+```
+metadata:template:yank <index> <name> <version> [--sign=FILE] [--undo]
+```
+
+Marks a version of an index file yanked: new installs and upgrades skip it, naming it still
+installs it. `--undo` lists it again. A signed entry needs the secret key (`--sign`): the
+signature covers the flag.
 
 ## `metadata:template:repo`
 
