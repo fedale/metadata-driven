@@ -7,7 +7,7 @@ from `fedale/gridview-bundle`, the runtime settings from `fedale/setting-bundle`
 
 | Schema | Holds | Managed by |
 |---|---|---|
-| `core` | Object, field, view and composite form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the ids of items in templates (`core.template_item`), the settings of `fedale/setting-bundle`, the RBAC tables (`auth_*`) of `fedale/rbac-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
+| `core` | Object, field, view and composite form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the templates installed (`core.template_installation`) and the ids of items in templates (`core.template_item`), the settings of `fedale/setting-bundle`, the RBAC tables (`auth_*`) of `fedale/rbac-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
 | `data` | One table per object, `c_<object>`, holding the records, and one link table per many-to-many field, `l_<object>__<field>` | The Schema module, from the metadata |
 
 Every connection sets `search_path` to `core, public` (`CoreSearchPathMiddleware`), so the tables
@@ -65,7 +65,7 @@ template catalog (see [Templates](templates.md)).
 | Admin | The no-code builder at `/admin`, on `MetadataManagerInterface` | Metadata, FieldType, Schema |
 | User | Users and their profiles (with their language), sign-in (Symfony Security), `user:create` | — |
 | Access | The permissions of objects and admin, checked through `fedale/rbac-bundle`; `access:sync` | Metadata |
-| Template | Templates: the export of objects, views, forms and translations (`metadata:template:export`), their validation (`metadata:template:validate`), the ids items keep in a template (`core.template_item`); built on `App\TemplateFormat` | Metadata |
+| Template | Templates: the export of objects, views, forms and translations (`metadata:template:export`), their validation (`metadata:template:validate`), their install through `MetadataManagerInterface` in one transaction (`metadata:template:install`, `metadata:template:list`), the installations (`core.template_installation`) and the ids items keep in a template (`core.template_item`); built on `App\TemplateFormat` | Metadata |
 | File | Stored files: their bytes in the `record_files` Flysystem storage, keyed by their SHA-256 (the same bytes are stored once), their metadata in `core.file`, the type detected from the content; their thumbnails (`imagine/imagine`, GD); the GC, `metadata:files:gc`, which finds the references in the foreign keys to `core.file` (no other module needed); `FileStorageInterface`, `ThumbnailerInterface` | — |
 | Settings | Reserved for the next phases | |
 

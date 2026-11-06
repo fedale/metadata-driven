@@ -1,7 +1,7 @@
 # Plan: templates (packaged, versioned models)
 
-Status: **phase 1 done** (format and export, branch `feature/template-format`), awaiting review
-before phase 2. Discussed with the user on 2026-11-03; name, upgrade model and distribution
+Status: **phases 1 and 2 done** (format and export on `feature/template-format`, install on
+`feature/template-install`, branched from it), awaiting review before phase 3. Discussed with the user on 2026-11-03; name, upgrade model and distribution
 decided on 2026-11-05 (see [Decisions](#decisions)).
 
 A template packages a model, meaning its objects, fields, relations, composite forms, views,
@@ -398,8 +398,33 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
      `tests/Integration/Module/Template/`.
    - References outside the package (to another template, through `requires`) are refused for
      now: they come with phase 2.
-2. **Install**: read, check, plan, apply in one transaction, `--dry-run`, the tracking tables.
-   Test: the round trip, collisions, a failure halfway that leaves nothing behind.
+2. **Install** — done. As built:
+   - `TemplateInstaller` (Template Application) through `MetadataManagerInterface`, in one
+     `TransactionRunner` transaction; the metadata handlers join it, and the schema sync runs
+     inside it (checked: `SynchronizeSchemaOnDefinitionChange`). Order: objects; fields, those
+     naming another field (cascades, junctions) after it; conditions, label, search, unique
+     sets; `text.*` translations (default language first: a layout may only place a defined
+     text); views; forms (definition dumped back to YAML, ids turned into names); the other
+     translations. A refused step: `InstallRefused::at(path, at, message)`, all rolled back.
+   - `--dry-run` runs everything, then throws `DryRunCompleted` inside the transaction to roll
+     it back. Safe for the caches: the metadata registry never caches inside a transaction,
+     and **fedale/rbac-bundle was fixed for it** (branch `fix_transaction_cache` there): its
+     item graph and rules were cached even when read mid-transaction, so a rollback left
+     permissions that a later install then skipped. `TransactionCacheWriteGuard` now keeps
+     them out of the cache while a transaction is open.
+   - Refused before anything is written: an invalid package, a template already installed,
+     `requires` naming another template (not supported yet), a local object (archived ones
+     too) or form with one of its names.
+   - Languages the instance does not have are skipped with a warning, not refused.
+   - `core.template_installation` (name, version, source, snapshot of the documents as
+     installed, dates) and the installed items in `core.template_item`. Exporting an installed
+     template under its name gives it back, ids included (tested).
+   - Commands: `metadata:template:install <directory> [--dry-run]`, `metadata:template:list`.
+   - Tests: `TemplateInstallerTest` (round trip, dry run then real install, a refused view
+     rolling everything back, collisions, languages). The example package now has
+     `translations/en.yaml` (its `{t:identity}` text in the default language).
+   - Not done: references to another installed template (`requires`), moved to after phase 4;
+     an admin page (phase 6).
 3. **Seeds**: the import service, `once` and `managed`, references by key, files. With the
    `record:import` CLI.
 4. **Upgrade**: three-way delta, renames, archive, conflicts, explicit steps, semver checks.

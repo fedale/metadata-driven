@@ -39,6 +39,7 @@ final class PackageDirectoryTest extends TestCase
             'objects/category.yaml',
             'objects/product.yaml',
             'objects/tag.yaml',
+            'translations/en.yaml',
             'translations/it.yaml',
             'views/product.form.main.yaml',
             'views/product.grid.main.yaml',

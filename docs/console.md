@@ -30,6 +30,8 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:files:gc`](#metadatafilesgc) | Delete the stored files no record references any more |
 | [`metadata:template:export`](#metadatatemplateexport) | Write objects, their fields and views, composite forms and their translations as a template |
 | [`metadata:template:validate`](#metadatatemplatevalidate) | Check that a template follows the format, without installing it |
+| [`metadata:template:install`](#metadatatemplateinstall) | Install a template: its objects and their tables, fields, views, forms and translations, all or nothing |
+| [`metadata:template:list`](#metadatatemplatelist) | List the templates installed, with their versions |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
 | `user:create` | Create a user who can sign in — see [Users and permissions](access.md#usercreate) |
 | `access:sync` | Create the permissions of every object, the admin permission and the super admin role — see [Users and permissions](access.md#permissions) |
@@ -503,6 +505,40 @@ metadata:template:validate <directory>
 ```
 
 Lists every problem with its file and where in it, and fails when there is one. Changes nothing.
+
+## `metadata:template:install`
+
+Install a template from its directory, in one transaction (see
+[Templates](templates.md#installing-a-template)).
+
+```
+metadata:template:install <directory> [--dry-run]
+```
+
+| Argument or option | Meaning |
+|---|---|
+| `directory` | The directory of the template |
+| `--dry-run` | Go through the whole install, then roll it back: nothing is changed |
+
+```bash
+symfony console metadata:template:install templates/shop --dry-run
+symfony console metadata:template:install templates/shop
+```
+
+Prints what it created (objects, fields, views, forms, translations), and the languages it left
+out. Writes the objects, fields, views, forms and translations through the metadata API (tables,
+columns, indexes and permissions included), then `core.template_installation` and
+`core.template_item`. Fails, changing nothing, when the template is invalid, already installed,
+requires another template, or names an object or a form this instance already has; or when the
+app refuses one of its items.
+
+## `metadata:template:list`
+
+List the installed templates: name, version, date, and where each was installed from.
+
+```
+metadata:template:list
+```
 
 ## `metadata:files:gc`
 

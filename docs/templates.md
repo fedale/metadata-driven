@@ -2,10 +2,10 @@
 
 A template packages a model: objects with their fields, their form and grid views, composite
 forms, and their translations. You write one from the objects you built, keep it in version
-control, share it, and validate it without a database.
+control, share it, validate it without a database, and install it on another instance.
 
-**Today** a template can be exported and validated. Installing one on another instance,
-upgrading it from one version to the next, seed data and the template catalog come next (see
+**Today** a template can be exported, validated and installed. Upgrading it from one version to
+the next, seed data, templates requiring other templates and the template catalog come next (see
 [Not yet](#not-yet)).
 
 ## Exporting a model
@@ -126,13 +126,48 @@ objects/product.yaml: spec.fields.6.settings.maxSize: Must be between 1 and 100.
 Whether a composite form fits its objects, or a grid view names fields it can show, is checked
 by the app when the template is installed.
 
+## Installing a template
+
+```bash
+symfony console metadata:template:install templates/shop --dry-run   # check, change nothing
+symfony console metadata:template:install templates/shop
+symfony console metadata:template:list                                # what is installed
+```
+
+The install goes through the same rules as the admin: every object gets its table, every field
+its column, every form and view is compiled against the objects. It runs in one transaction:
+when the app refuses one step, nothing of the template is left behind. `--dry-run` goes through
+the whole install, then rolls it back, so it finds everything a real install would.
+
+It is refused, before anything is written, when:
+
+- the template does not follow the format (the same checks as `metadata:template:validate`);
+- it is already installed (`acme/shop is already installed, in version 1.0.0.`): upgrading
+  comes later;
+- this instance already has an object or a form with one of its names, archived ones included:
+  an install never touches items it did not create;
+- it requires another template (`spec.requires`): not supported yet.
+
+A step the app refuses is reported on its document, e.g.
+`views/product.form.main.yaml: spec: …`, with the app's own message.
+
+Translations in a language this instance does not have are left out, with a warning; the rest
+is installed. The permissions of the new objects (`record.<object>.read`, …) are created with
+them; give them to the users who need them (see [Users and permissions](access.md)).
+
+The instance records what it installed: the version, where it came from, the documents as they
+were (the base of a future upgrade), and the id each object, field, view and form has in the
+template. Exporting the same objects again under the same name gives the template back, ids
+included.
+
 ## Not yet
 
-- **Installing** a template on another instance, all or nothing, with a dry run.
 - **Upgrading** an installed template to a new version: only what changed is applied, local
   changes are kept, conflicts are reported item by item.
 - **Seeds**: records shipped with a template (reference data such as countries, sample records),
   files included.
+- **Templates requiring other templates**: a template pointing at the objects of another
+  installed one.
 - **The template catalog**: publishing and downloading templates, signed.
 
 See the plan in [internal/template-plan.md](internal/template-plan.md).

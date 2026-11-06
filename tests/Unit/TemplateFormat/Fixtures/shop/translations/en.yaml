@@ -1,0 +1,7 @@
+format: metadata-driven/v1
+kind: Translations
+id: acme.translations.en
+spec:
+  locale: en
+  entries:
+    text.identity: Identity

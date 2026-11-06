@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <entity name="App\Module\Template\Domain\Model\TemplateInstallation" table="template_installation" schema="core">
+        <unique-constraints>
+            <unique-constraint name="uniq_template_installation_name" columns="name"/>
+        </unique-constraints>
+
+        <id name="id" type="uuid"/>
+
+        <field name="name" length="100"/>
+        <field name="version" length="50"/>
+        <field name="source" length="1000"/>
+        <field name="snapshot" type="json">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+        <field name="installedAt" type="datetime_immutable"/>
+        <field name="upgradedAt" type="datetime_immutable" nullable="true"/>
+    </entity>
+</doctrine-mapping>

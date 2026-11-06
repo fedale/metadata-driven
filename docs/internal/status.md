@@ -194,9 +194,11 @@ new-composite pages.
   the central catalog with GitHub sign-in, the format in `src/TemplateFormat/` behind a Deptrac
   boundary (extracted into `fedale/template-format` when the catalog starts), `requires` naming
   the format version, field settings checked by a static description in the format. Still open
-  (top of the plan): the catalog's hosting and review policy. Phase 1 (format and export,
-  `metadata:template:export` and `metadata:template:validate`) is done on
-  `feature/template-format`, awaiting the user's review before phase 2 (install). Its seeds are
+  (top of the plan): the catalog's hosting and review policy. Phases 1 (format and
+  export) and 2 (install: `metadata:template:install [--dry-run]`, `metadata:template:list`)
+  are done, on `feature/template-format` and `feature/template-install` (branched from it),
+  awaiting the user's review before phase 3 (seeds). Phase 2 needs the fix of
+  fedale/rbac-bundle on its branch `fix_transaction_cache` (RBAC cache and rollbacks). Its seeds are
   the CSV import service below.
 - **CSV import — part of the template seeds (phase 3).** Plan: (A) a service plus `record:import` CLI
   with `--dry-run` and `--key`, all-or-nothing with a two-pass check; (B) a web wizard; (C) async
