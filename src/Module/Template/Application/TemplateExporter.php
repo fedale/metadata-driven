@@ -41,6 +41,7 @@ final class TemplateExporter
         private readonly TemplateItemRepository $items,
         private readonly FieldTypeCatalog $fieldTypes,
         private readonly PackageChecker $checker,
+        private readonly SeedExporter $seedExporter,
     ) {
     }
 
@@ -109,8 +110,10 @@ final class TemplateExporter
             $documents[] = $this->formDocument($form, $ids->of(ItemKind::Form, $form->id, $prefix.'.'.$form->name), $refs);
         }
         $documents = [...$documents, ...$this->translationDocuments($prefix, $objects, $forms)];
+        [$seeds, $files] = $this->seedExporter->export($prefix, $objects, $command->seeds, $refs);
+        $documents = [...$documents, ...$seeds];
 
-        $package = new Package($this->manifest($command, $documents), $documents);
+        $package = new Package($this->manifest($command, $documents), $documents, null, $files);
         $problems = $this->checker->check($package);
         if ([] !== $problems) {
             throw InvalidExport::brokenPackage(array_map(strval(...), $problems));

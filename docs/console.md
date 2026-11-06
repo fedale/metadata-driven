@@ -28,6 +28,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:purge`](#metadatapurge) | Delete an archived object or field for good, its data with it |
 | [`metadata:list`](#metadatalist) | List the objects, or the fields of one object, and what is archived |
 | [`metadata:files:gc`](#metadatafilesgc) | Delete the stored files no record references any more |
+| [`record:import`](#recordimport) | Import the rows of a CSV file into an object, all or nothing |
 | [`metadata:template:export`](#metadatatemplateexport) | Write objects, their fields and views, composite forms and their translations as a template |
 | [`metadata:template:validate`](#metadatatemplatevalidate) | Check that a template follows the format, without installing it |
 | [`metadata:template:install`](#metadatatemplateinstall) | Install a template: its objects and their tables, fields, views, forms and translations, all or nothing |
@@ -486,6 +487,7 @@ metadata:template:export <name> <release> <directory> [--object=OBJECT]... [--fo
 | `--form` | A composite form to export; its objects must be exported too (repeatable) |
 | `--label`, `--description` | The title (default: from the name) and a line about the template |
 | `--license` | An SPDX identifier, such as `MIT` (default `proprietary`) |
+| `--seed` | Export the records of an object as a seed: `object`, or `object:key` to name its key field (default: its first unique field). Repeatable |
 
 ```bash
 symfony console metadata:template:export acme/shop 1.0.0 templates/shop --object=category --object=product --form=catalogue --license=MIT
@@ -539,6 +541,38 @@ List the installed templates: name, version, date, and where each was installed 
 ```
 metadata:template:list
 ```
+
+## `record:import`
+
+Import the rows of a CSV file into an object, all or nothing: every row goes through the same
+rules as the form (required, unique, types, patterns, conditions); when one row is refused,
+nothing is written, and every refused row is listed with its line.
+
+```
+record:import <object> <file> [--key=FIELD] [--match=FIELD:TARGET_FIELD]... [--dry-run]
+```
+
+| Argument or option | Meaning |
+|---|---|
+| `object` | The object the records belong to |
+| `file` | The CSV file: a header of field names, then one record per line (comma-separated, quotes doubled inside quotes, UTF-8) |
+| `--key` | A unique field: a row whose value a record already holds updates that record; the others create one. Without it, every row creates a record |
+| `--match` | `field:targetField`: the cells of a relation or many-to-many field hold values of `targetField`, a unique field of the target, instead of record ids (repeatable) |
+| `--dry-run` | Go through the whole import, then roll it back: nothing is changed |
+
+```bash
+symfony console record:import region regions.csv --key=code
+symfony console record:import province provinces.csv --key=code --match=region:code
+```
+
+- An empty cell is no value: a new record takes the field's default, an existing one is
+  cleared.
+- Several values in one cell (a many-to-many field, a list of files) are separated by `|`.
+- A file cell holds a path relative to the CSV file's directory; a path leaving it is refused.
+  Files are checked and stored as uploads are; a dry run stores them before rolling back,
+  leaving them to `metadata:files:gc`.
+- Refused before anything is written: a column naming no field, a row without its key, two rows
+  with the same key, a `--key` or `--match` naming no unique field.
 
 ## `metadata:files:gc`
 

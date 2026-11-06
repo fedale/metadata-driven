@@ -167,7 +167,7 @@ final class PackageChecker
     {
         $problems = [];
         foreach ($paths as $file) {
-            if (!\is_string($file) || null === $package->file($file)) {
+            if (!\is_string($file) || !$package->has($file)) {
                 $problems[] = new Problem($path, $at, \sprintf('No file "%s" in the package.', \is_scalar($file) ? (string) $file : '?'));
             }
         }

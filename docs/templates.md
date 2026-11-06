@@ -4,9 +4,9 @@ A template packages a model: objects with their fields, their form and grid view
 forms, their translations, and records to start with (seeds). You write one from the objects you built, keep it in version
 control, share it, validate it without a database, and install it on another instance.
 
-**Today** a template can be exported, validated and installed, seeds included. Exporting
-records as seeds, upgrading a template from one version to the next, templates requiring other
-templates and the template catalog come next (see [Not yet](#not-yet)).
+**Today** a template can be exported, validated and installed, records included (seeds).
+Upgrading a template from one version to the next, templates requiring other templates and the
+template catalog come next (see [Not yet](#not-yet)).
 
 ## Exporting a model
 
@@ -40,6 +40,13 @@ templates/shop/
 | `--form` | A composite form to export. The objects it writes must be exported too |
 | `--label`, `--description` | The title of the template (default: from its name) and a line about it |
 | `--license` | An SPDX identifier such as `MIT` (default `proprietary`) |
+| `--seed` | Export the records of an object as a seed: `category`, or `category:title` to name its key (default: its first unique field). Repeat it for each object |
+
+With `--seed`, the records of the object go into `seeds/<object>.csv`, each relation written as
+the key of its record and each file copied into `files/<object>/<file id>/<name>`. Every object
+its records point at needs its own `--seed`: `The records of "product" point at records of "tag"
+(tags): export its records too.` Every record needs its key, and passwords are left out (their
+hash is never read back).
 
 An export is refused when an exported item points outside it: a relation or a many-to-many field
 whose target is not exported (`Object "product" points at "category" (category.target), which is
@@ -98,7 +105,9 @@ at it for autocompletion. The settings of each field type are described in
 ## Seeds
 
 A seed holds records of one object, written when the template is installed: reference data
-(countries, categories) or examples. One `Seed` document per object, in `seeds/`:
+(countries, categories) or examples. `metadata:template:export --seed` writes them from the
+records of the instance. To load a CSV file into an object outside templates, use
+[`record:import`](console.md#recordimport). One `Seed` document per object, in `seeds/`:
 
 ```yaml
 format: metadata-driven/v1
@@ -224,7 +233,6 @@ included.
 
 ## Not yet
 
-- **Exporting records** as seeds, and importing a CSV file into an object outside templates.
 - **Upgrading** an installed template to a new version: only what changed is applied, local
   changes are kept, conflicts are reported item by item.
 - **Templates requiring other templates**: a template pointing at the objects of another

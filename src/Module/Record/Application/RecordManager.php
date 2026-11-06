@@ -185,6 +185,11 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         return $this->store->latest($this->metadata->getObject($objectName), $limit);
     }
 
+    public function each(string $objectName): iterable
+    {
+        return $this->store->each($this->metadata->getObject($objectName));
+    }
+
     /**
      * @return array<string, mixed>
      *

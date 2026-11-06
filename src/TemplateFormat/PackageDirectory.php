@@ -62,7 +62,8 @@ final class PackageDirectory
     }
 
     /**
-     * Writes a package into a directory that does not exist yet, or is empty.
+     * Writes a package into a directory that does not exist yet, or is empty: its documents, and
+     * the data files it holds in memory (an export's CSV files and record files).
      *
      * @throws \RuntimeException the directory is not empty, or cannot be written
      */
@@ -79,6 +80,28 @@ final class PackageDirectory
             }
             if (false === file_put_contents($file, $this->codec->encode($document))) {
                 throw new \RuntimeException(\sprintf('The file "%s" cannot be written.', $file));
+            }
+        }
+        foreach ($package->files as $path => $data) {
+            // Paths come from the package: none may leave the directory.
+            if ('' === $path || str_starts_with($path, '/') || \in_array('..', explode('/', $path), true)) {
+                throw new \RuntimeException(\sprintf('The file "%s" would be written outside the template.', $path));
+            }
+            $file = $directory.'/'.$path;
+            if (!is_dir(\dirname($file)) && !mkdir(\dirname($file), 0o775, true) && !is_dir(\dirname($file))) {
+                throw new \RuntimeException(\sprintf('The directory "%s" cannot be created.', \dirname($file)));
+            }
+            $source = $data->open();
+            $target = fopen($file, 'w');
+            try {
+                if (false === $target || false === stream_copy_to_stream($source, $target)) {
+                    throw new \RuntimeException(\sprintf('The file "%s" cannot be written.', $file));
+                }
+            } finally {
+                fclose($source);
+                if (\is_resource($target)) {
+                    fclose($target);
+                }
             }
         }
     }

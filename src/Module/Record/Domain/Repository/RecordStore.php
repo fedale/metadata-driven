@@ -53,6 +53,23 @@ interface RecordStore
     public function latest(ObjectDefinitionDto $object, int $limit): array;
 
     /**
+     * The live records whose field holds one of the values, compared as text: an import
+     * matching rows by key, or relation cells by a field of the target.
+     *
+     * @param list<string> $values
+     *
+     * @return array<string, string> value => record id
+     */
+    public function idsByValues(ObjectDefinitionDto $object, FieldDefinitionDto $field, array $values): array;
+
+    /**
+     * Every live record, oldest first, read $batch at a time.
+     *
+     * @return iterable<RecordOutput>
+     */
+    public function each(ObjectDefinitionDto $object, int $batch = 500): iterable;
+
+    /**
      * Makes the many-to-many $field of a record link exactly to $targetIds: the links missing are
      * added, the others removed; the links kept keep their date.
      *

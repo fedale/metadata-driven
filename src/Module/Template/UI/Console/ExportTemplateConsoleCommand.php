@@ -28,6 +28,7 @@ final class ExportTemplateConsoleCommand
     /**
      * @param list<string> $object
      * @param list<string> $form
+     * @param list<string> $seed
      */
     public function __invoke(
         SymfonyStyle $io,
@@ -39,9 +40,15 @@ final class ExportTemplateConsoleCommand
         #[Option('The title of the template; default: from its name')] ?string $label = null,
         #[Option('A line about what it is for')] ?string $description = null,
         #[Option('Its license, an SPDX identifier (e.g. MIT)')] string $license = 'proprietary',
+        #[Option('Export the records of an object as a seed: object, or object:key to name its key field (repeatable)')] array $seed = [],
     ): int {
+        $seeds = [];
+        foreach ($seed as $option) {
+            [$objectName, $key] = array_pad(explode(':', $option, 2), 2, null);
+            $seeds[$objectName] = '' === $key ? null : $key;
+        }
         try {
-            $package = $this->exporter->export(new ExportTemplateCommand($name, $release, $object, $form, $label, $description, $license));
+            $package = $this->exporter->export(new ExportTemplateCommand($name, $release, $object, $form, $label, $description, $license, $seeds));
             $this->directories->write($package, $directory);
         } catch (TemplateException|MetadataException|\RuntimeException $e) {
             $io->error($e->getMessage());

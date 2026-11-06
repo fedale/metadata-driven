@@ -33,12 +33,38 @@ final class SeedRecords
         }
 
         $source = \is_string($seed->spec['source'] ?? null) ? $seed->spec['source'] : '';
-        $file = $package->file($source);
-        if (null === $file) {
+        $handle = $package->open($source);
+        if (null === $handle) {
             throw new InvalidPackage([new Problem($seed->path, 'spec.source', \sprintf('No file "%s" in the package.', $source))]);
         }
 
-        return $this->csv($file, $seed->path);
+        return $this->csv($handle, $seed->path);
+    }
+
+    /**
+     * Writes records as a CSV file: the header, then a line per record. Values are strings, or
+     * null for an empty cell.
+     *
+     * @param list<string>                     $header  the field names
+     * @param list<array<string, string|null>> $records
+     */
+    public static function toCsv(array $header, array $records): string
+    {
+        $stream = fopen('php://temp', 'r+');
+        if (false === $stream) {
+            throw new \RuntimeException('No temporary stream can be opened.');
+        }
+        try {
+            fputcsv($stream, $header, ',', '"', '');
+            foreach ($records as $record) {
+                fputcsv($stream, array_map(static fn (string $name): string => $record[$name] ?? '', $header), ',', '"', '');
+            }
+            rewind($stream);
+
+            return (string) stream_get_contents($stream);
+        } finally {
+            fclose($stream);
+        }
     }
 
     /**
@@ -66,14 +92,12 @@ final class SeedRecords
     }
 
     /**
+     * @param resource $handle
+     *
      * @return list<array<string, mixed>>
      */
-    private function csv(string $file, string $path): array
+    private function csv($handle, string $path): array
     {
-        $handle = fopen($file, 'r');
-        if (false === $handle) {
-            throw new InvalidPackage([new Problem($path, 'spec.source', 'The CSV file cannot be read.')]);
-        }
         try {
             // No escape character: RFC 4180 doubles quotes, it does not escape them.
             $header = fgetcsv($handle, null, ',', '"', '');

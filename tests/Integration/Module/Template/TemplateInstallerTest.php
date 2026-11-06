@@ -14,10 +14,15 @@ use App\Module\Template\Application\Command\ExportTemplateCommand;
 use App\Module\Template\Application\TemplateExporter;
 use App\Module\Template\Application\TemplateInstaller;
 use App\Module\Template\Domain\Exception\InstallRefused;
+use App\Module\Template\Domain\Exception\InvalidExport;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
 use App\TemplateFormat\Document;
 use App\TemplateFormat\DocumentKind;
 use App\TemplateFormat\Package;
+use App\TemplateFormat\PackageChecker;
+use App\TemplateFormat\PackageDirectory;
+use App\TemplateFormat\SeedRecords;
+use App\Tests\Support\RemovesDirectories;
 use App\Tests\Unit\TemplateFormat\PackageCheckerTest;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -29,6 +34,8 @@ use Symfony\Component\Console\Tester\CommandTester;
  */
 final class TemplateInstallerTest extends KernelTestCase
 {
+    use RemovesDirectories;
+
     public function testInstallsEveryItemOfTheTemplate(): void
     {
         $report = $this->install(PackageCheckerTest::fixture());
@@ -141,6 +148,55 @@ final class TemplateInstallerTest extends KernelTestCase
         // The ids recorded at install are the template's: the items keep them. The export does not
         // write seeds yet (the next step of phase 3): they are left out of the comparison.
         self::assertEquals(array_filter(self::byPath($template), static fn (Document $document): bool => DocumentKind::Seed !== $document->kind), self::byPath($exported));
+    }
+
+    public function testExportsTheRecordsAsSeedsThatReadBack(): void
+    {
+        $this->install(PackageCheckerTest::fixture());
+        $directory = sys_get_temp_dir().'/md-seeds-'.bin2hex(random_bytes(4));
+
+        try {
+            $exported = self::getContainer()->get(TemplateExporter::class)->export(new ExportTemplateCommand(
+                'acme/shop', '1.1.0', ['category', 'tag', 'product'], license: 'MIT',
+                seeds: ['category' => null, 'tag' => 'name', 'product' => 'sku'],
+            ));
+            self::getContainer()->get(PackageDirectory::class)->write($exported, $directory);
+            $read = self::getContainer()->get(PackageDirectory::class)->read($directory);
+
+            self::assertSame([], array_map(strval(...), self::getContainer()->get(PackageChecker::class)->check($read)));
+            $seed = array_values(array_filter($read->documents, static fn (Document $document): bool => 'seeds/product.yaml' === $document->path))[0];
+            self::assertSame(['object' => 'acme.product', 'key' => 'sku', 'source' => 'seeds/product.csv'], $seed->spec);
+
+            $products = array_column(self::getContainer()->get(SeedRecords::class)->of($read, $seed), null, 'sku');
+            $chair = $products['OSL-01'];
+            // References by key, links separated by "|", the photo copied into the template.
+            self::assertSame(['Oslo chair', 'chair', '4', 'Chairs'], [$chair['name'], $chair['kind'], $chair['seats'], $chair['category']]);
+            self::assertEqualsCanonicalizing(['new', 'wood'], SeedRecords::list($chair['tags']));
+            self::assertIsString($chair['photo']);
+            self::assertMatchesRegularExpression('~^files/product/[0-9a-f-]{36}/oslo\.png$~', $chair['photo']);
+            self::assertFileEquals(PackageCheckerTest::FIXTURE.'/files/products/oslo.png', $directory.'/'.$chair['photo']);
+            self::assertNull($products['BRG-02']['seats']);
+        } finally {
+            self::removeDirectory($directory);
+        }
+    }
+
+    public function testExportsSeedsOnlyWithTheirReferences(): void
+    {
+        $this->install(PackageCheckerTest::fixture());
+        $exporter = self::getContainer()->get(TemplateExporter::class);
+
+        foreach ([
+            [['category' => null, 'product' => null], 'The records of "product" point at records of "tag" (tags): export its records too.'],
+            [['category' => 'title', 'tag' => null, 'product' => 'name'], 'The records of "product" need a key, a unique field naming each record: "name" is not a unique field.'],
+        ] as [$seeds, $message]) {
+            try {
+                $exporter->export(new ExportTemplateCommand('acme/shop', '1.1.0', ['category', 'tag', 'product'], seeds: $seeds));
+                self::fail($message);
+            } catch (InvalidExport $e) {
+                self::assertSame($message, $e->getMessage());
+            }
+        }
     }
 
     public function testADryRunChangesNothing(): void

@@ -33,6 +33,31 @@ final class InvalidExport extends TemplateException
         return new self(\sprintf('Form "%s" writes object "%s", which is not exported: add it to the objects.', $form, $object));
     }
 
+    public static function seedOfNoObject(string $object): self
+    {
+        return new self(\sprintf('A seed of "%s" needs the object itself: add it to the objects.', $object));
+    }
+
+    public static function noKey(string $object, string $why): self
+    {
+        return new self(\sprintf('The records of "%s" need a key, a unique field naming each record: %s.', $object, $why));
+    }
+
+    public static function recordWithoutKey(string $object, string $key, string $id): self
+    {
+        return new self(\sprintf('Record %s of "%s" has no %s: every exported record needs its key.', $id, $object, $key));
+    }
+
+    public static function seedOutsideTheExport(string $object, string $field, string $target): self
+    {
+        return new self(\sprintf('The records of "%s" point at records of "%s" (%s): export its records too.', $object, $target, $field));
+    }
+
+    public static function keyWithSeparator(string $object, string $key): self
+    {
+        return new self(\sprintf('The key "%s" of a record of "%s" holds "|", which separates the keys of a many-to-many field.', $key, $object));
+    }
+
     /**
      * @param list<string> $problems
      */

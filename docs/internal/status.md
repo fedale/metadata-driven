@@ -197,13 +197,12 @@ new-composite pages.
   (top of the plan): the catalog's hosting and review policy. Phases 1 (format and
   export) and 2 (install: `metadata:template:install [--dry-run]`, `metadata:template:list`)
   are done, on `feature/template-format` and `feature/template-install` (branched from it);
-  phase 3 step 1 (seeds: format, checks, install) on `feature/template-seeds` (from
-  `feature/template-install`), awaiting review before step 2 (exporting seeds, `record:import`).
-  Phase 2 needs fedale/rbac-bundle's transaction-safe cache (merged into its main, not pushed). Its seeds are
-  the CSV import service below.
-- **CSV import — part of the template seeds (phase 3).** Plan: (A) a service plus `record:import` CLI
-  with `--dry-run` and `--key`, all-or-nothing with a two-pass check; (B) a web wizard; (C) async
-  with Messenger. gridview-bundle has no import feature to reuse.
+  phase 3 (seeds: format, checks, install, export with `--seed`; and `record:import`) on
+  `feature/template-seeds` (from `feature/template-install`), awaiting review before phase 4
+  (upgrade). Phase 2 needs fedale/rbac-bundle's transaction-safe cache (merged into its main,
+  not pushed).
+- **CSV import**: (A) done with phase 3 of the templates, `record:import` (console.md). Not
+  done: (B) a web wizard; (C) async with Messenger for very large files.
 - From the form mock, not done: per-kind add buttons ("+ Titolo di studio" …), field machine names
   next to labels.
 - Admin UI strings are still English only (user pages are translated).

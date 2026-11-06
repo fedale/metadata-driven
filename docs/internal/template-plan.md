@@ -1,7 +1,8 @@
 # Plan: templates (packaged, versioned models)
 
-Status: **phases 1 and 2 done** (format and export on `feature/template-format`, install on
-`feature/template-install`, branched from it), awaiting review before phase 3. Discussed with the user on 2026-11-03; name, upgrade model and distribution
+Status: **phases 1 to 3 done** (format and export on `feature/template-format`, install on
+`feature/template-install`, seeds on `feature/template-seeds`, each branched from the one
+before), awaiting review before phase 4. Discussed with the user on 2026-11-03; name, upgrade model and distribution
 decided on 2026-11-05 (see [Decisions](#decisions)).
 
 A template packages a model, meaning its objects, fields, relations, composite forms, views,
@@ -427,7 +428,7 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
      `translations/en.yaml` (its `{t:identity}` text in the default language).
    - Not done: references to another installed template (`requires`), moved to after phase 4;
      an admin page (phase 6).
-3. **Seeds** — step 1 done (branch `feature/template-seeds`). As built:
+3. **Seeds** — done (branch `feature/template-seeds`). As built, step 1:
    - Format: `seed.json` (`object` id, `key` a unique field *name*, `mode`, `records` inline or
      `source` CSV in `seeds/`); fields by name, as views and forms do. One seed per object.
      `SeedRecords` reads them (CSV: header of names, RFC 4180, BOM stripped, empty cell = no
@@ -444,9 +445,21 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
      seed's records as read. A dry run stores the files before rolling back: the GC removes
      them.
    - `once`/`managed` only matter to upgrades (phase 4).
-   - Step 2, next: exporting records as seeds (CSV, files copied; `PackageDirectory::write()`
-     must then copy the data files, it writes documents only today), and `record:import`
-     (a CSV into an object, outside templates).
+   - Step 2 — done. Export: `--seed=object[:key]` (`SeedExporter`): one CSV per object, every
+     record via `RecordFinderInterface::each()` (keyset paging), relations and links written as
+     keys (the target needs its own `--seed`), files copied to
+     `files/<object>/<file id>/<name>`, passwords left out, an empty key refused.
+     `Package::$files` holds data files not on disk yet (`PackageFile`: `StringFile`,
+     `StoredPackageFile` streaming from the storage); `PackageDirectory::write()` writes them;
+     `Package::has()`/`open()` read them on disk or in memory. Exported seeds have no `mode`
+     (so `once`).
+   - `record:import <object> <file> [--key] [--match=field:targetField] [--dry-run]`
+     (`RecordImporter`, Record module): upsert by a unique key, relations by id or by a unique
+     field of the target (`RecordStore::idsByValues()`), files relative to the CSV, all or
+     nothing with every refused row listed. CSV reading in `App\Shared\Csv\CsvFile` (the
+     format keeps its own copy in `SeedRecords`, to stay free of the app). Not shared with
+     `SeedWriter`: seeds reference by the keys of other seeds, an import by ids or by values
+     already in the database.
 4. **Upgrade**: three-way delta, renames, archive, conflicts, explicit steps, semver checks.
 5. **Indexes**: the index format, `repo add`, download, checksum, signatures, unpacking.
 6. **Admin UI**: the catalog, install, upgrade with the plan and the conflicts shown before
