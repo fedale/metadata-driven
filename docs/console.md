@@ -33,6 +33,9 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:template:validate`](#metadatatemplatevalidate) | Check that a template follows the format, without installing it |
 | [`metadata:template:install`](#metadatatemplateinstall) | Install a template: its objects and their tables, fields, views, forms and translations, all or nothing |
 | [`metadata:template:list`](#metadatatemplatelist) | List the templates installed, with their versions |
+| [`metadata:template:pack`](#metadatatemplatepack) | Pack a template into an archive, and list it in an index |
+| [`metadata:template:repo`](#metadatatemplaterepo) | List, add or remove the indexes templates are downloaded from |
+| [`metadata:template:search`](#metadatatemplatesearch) | Find templates in the indexes, with the version installed here |
 | [`metadata:template:upgrade`](#metadatatemplateupgrade) | Upgrade an installed template to a new version: only what it changed, what this instance changed kept |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
 | `user:create` | Create a user who can sign in — see [Users and permissions](access.md#usercreate) |
@@ -511,17 +514,18 @@ Lists every problem with its file and where in it, and fails when there is one. 
 
 ## `metadata:template:install`
 
-Install a template from its directory, in one transaction (see
+Install a template, from a directory or downloaded from an index, in one transaction (see
 [Templates](templates.md#installing-a-template)).
 
 ```
-metadata:template:install <directory> [--dry-run]
+metadata:template:install <template> [--dry-run] [--repo=NAME]
 ```
 
 | Argument or option | Meaning |
 |---|---|
-| `directory` | The directory of the template |
+| `template` | The directory of the template, or its name in an index: `acme/shop` (its newest version) or `acme/shop@1.0.0` |
 | `--dry-run` | Go through the whole install, then roll it back: nothing is changed |
+| `--repo` | The index to download it from, when several offer it |
 
 ```bash
 symfony console metadata:template:install templates/shop --dry-run
@@ -537,16 +541,17 @@ app refuses one of its items.
 
 ## `metadata:template:upgrade`
 
-Upgrade an installed template to the new version in a directory (see
-[Templates](templates.md#upgrading-a-template)).
+Upgrade an installed template to a new version, from a directory or downloaded from an index
+(see [Templates](templates.md#upgrading-a-template)).
 
 ```
-metadata:template:upgrade <directory> [--strategy=keep|overwrite] [--dry-run]
+metadata:template:upgrade <template> [--strategy=keep|overwrite] [--dry-run] [--repo=NAME]
 ```
 
 | Argument or option | Meaning |
 |---|---|
-| `directory` | The directory of the new version |
+| `template` | The directory of the new version, or its name: `acme/shop` (the newest version, looked for first in the index it was installed from) or `acme/shop@2.0.0` |
+| `--repo` | The index to download it from, instead |
 | `--strategy` | For an item both the new version and this instance changed: `keep` this instance's version, or `overwrite` it with the new one. Without it, such conflicts stop the upgrade |
 | `--dry-run` | Go through the whole upgrade, then roll it back: nothing is changed |
 
@@ -560,6 +565,45 @@ objects; then records the new version in `core.template_installation`. Fails, ch
 when the template is not installed, the version not newer or its number does not fit the
 changes, on a conflict without `--strategy`, on a change the app cannot make to an existing item (a field's type, required or
 unique, an object's icon), or when the app refuses a step.
+
+## `metadata:template:pack`
+
+Check a template and pack it into a `.tar.gz` archive; with `--index`, list it in an index file
+(see [Templates](templates.md#publishing-and-downloading)).
+
+```
+metadata:template:pack <directory> <archive> [--index=FILE] [--url=URL]
+```
+
+| Argument or option | Meaning |
+|---|---|
+| `directory` | The directory of the template |
+| `archive` | The archive to write, e.g. `acme-shop-1.0.0.tar.gz` |
+| `--index` | An `index.json` to add this version to (created if missing; the same version is replaced) |
+| `--url` | Where the archive will be served; default: its file name, next to the index |
+
+Prints the archive's sha256. Refuses an invalid template, with every problem.
+
+## `metadata:template:repo`
+
+```
+metadata:template:repo [list]
+metadata:template:repo add <name> <url>
+metadata:template:repo remove <name>
+```
+
+Lists the indexes templates are downloaded from (the template catalog first, when
+`TEMPLATE_CATALOG_URL` is set), adds one (its `index.json` is read first, and must be valid and
+served over https), or removes one. Stored in `core.template_source`.
+
+## `metadata:template:search`
+
+```
+metadata:template:search [term]
+```
+
+Lists the newest version of every template whose name holds the term, in every index, with its
+index and the version installed here ("upgrade available" when it is older).
 
 ## `metadata:template:list`
 

@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Module\Template\UI\Console;
 
+use App\Module\Template\Application\Source\PackageLocator;
 use App\Module\Template\Application\Upgrade\Strategy;
 use App\Module\Template\Application\Upgrade\TemplateUpgrader;
+use App\Module\Template\Domain\Exception\TemplateSourceFailed;
 use App\Module\Template\Domain\Exception\UpgradeRefused;
 use App\TemplateFormat\InvalidPackage;
-use App\TemplateFormat\PackageDirectory;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
@@ -19,16 +20,17 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 final class UpgradeTemplateConsoleCommand
 {
     public function __construct(
-        private readonly PackageDirectory $directories,
+        private readonly PackageLocator $locator,
         private readonly TemplateUpgrader $upgrader,
     ) {
     }
 
     public function __invoke(
         SymfonyStyle $io,
-        #[Argument('The directory of the new version')] string $directory,
+        #[Argument('The directory of the new version, or its name in an index: vendor/name (the newest version), vendor/name@2.0.0')] string $template,
         #[Option('For an item both changed: keep (this instance\'s version) or overwrite (the new one)')] ?string $strategy = null,
         #[Option('Go through the whole upgrade, then roll it back: nothing is changed')] bool $dryRun = false,
+        #[Option('The index to download it from, by name; default: the one it was installed from')] ?string $repo = null,
     ): int {
         $chosen = null === $strategy ? null : Strategy::tryFrom($strategy);
         if (null !== $strategy && null === $chosen) {
@@ -37,7 +39,16 @@ final class UpgradeTemplateConsoleCommand
             return Command::FAILURE;
         }
         try {
-            $report = $this->upgrader->upgrade($this->directories->read($directory), realpath($directory) ?: $directory, $chosen, $dryRun);
+            $opened = $this->locator->open($template, $repo);
+            try {
+                $report = $this->upgrader->upgrade($opened->package, $opened->source, $chosen, $dryRun);
+            } finally {
+                $this->locator->close($opened);
+            }
+        } catch (TemplateSourceFailed $e) {
+            $io->error($e->getMessage());
+
+            return Command::FAILURE;
         } catch (InvalidPackage $e) {
             $io->error(\sprintf('The template is invalid: %d problem(s).', \count($e->problems)));
             $io->listing(array_map(strval(...), $e->problems));

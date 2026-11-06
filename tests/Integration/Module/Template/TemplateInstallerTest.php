@@ -275,11 +275,11 @@ final class TemplateInstallerTest extends KernelTestCase
         $application = new Application(self::bootKernel());
         $install = new CommandTester($application->find('metadata:template:install'));
 
-        $install->execute(['directory' => PackageCheckerTest::FIXTURE, '--dry-run' => true]);
+        $install->execute(['template' => PackageCheckerTest::FIXTURE, '--dry-run' => true]);
         $install->assertCommandIsSuccessful();
         self::assertStringContainsString('Template acme/shop 1.0.0 can be installed. Dry run: nothing was changed.', $install->getDisplay());
 
-        $install->execute(['directory' => PackageCheckerTest::FIXTURE]);
+        $install->execute(['template' => PackageCheckerTest::FIXTURE]);
         $install->assertCommandIsSuccessful();
         self::assertStringContainsString('Template acme/shop 1.0.0 installed.', $install->getDisplay());
 
@@ -287,7 +287,7 @@ final class TemplateInstallerTest extends KernelTestCase
         $list->execute([]);
         self::assertMatchesRegularExpression('~acme/shop\s+1\.0\.0~', $list->getDisplay());
 
-        self::assertSame(1, $install->execute(['directory' => PackageCheckerTest::FIXTURE]));
+        self::assertSame(1, $install->execute(['template' => PackageCheckerTest::FIXTURE]));
         self::assertStringContainsString('acme/shop is already installed, in version 1.0.0.', $install->getDisplay());
     }
 

@@ -11,5 +11,8 @@ framework:
 when@test:
     framework:
         test: true
+        # No network in the tests: the template indexes and archives come from a fake server.
+        http_client:
+            mock_response_factory: App\Tests\Support\FakeTemplateServer
         session:
             storage_factory_id: session.storage.factory.mock_file

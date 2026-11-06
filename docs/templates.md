@@ -4,9 +4,9 @@ A template packages a model: objects with their fields, their form and grid view
 forms, their translations, and records to start with (seeds). You write one from the objects you built, keep it in version
 control, share it, validate it without a database, and install it on another instance.
 
-**Today** a template can be exported, validated, installed and upgraded to a new version, its
-records included. Templates requiring other templates and the template catalog come next (see
-[Not yet](#not-yet)).
+**Today** a template can be exported, validated, packed, published in an index, and installed
+and upgraded from a directory or by its name, its records included. Signed indexes, templates
+requiring other templates and the template catalog come next (see [Not yet](#not-yet)).
 
 ## Exporting a model
 
@@ -314,9 +314,60 @@ The new version's number must fit what it changed since the version installed:
 `objects/tag.yaml: field acme.tag.colour: an addition needs a new minor version, 1.0.1 is not
 one.` Who installs a minor version expects to lose nothing.
 
+## Publishing and downloading
+
+A template travels as a `.tar.gz` archive, listed in an **index**: a JSON file any web server can
+host, which says, for every version, where its archive is and its checksum.
+
+```bash
+# The author: pack a version, and list it in the index (created if missing)
+symfony console metadata:template:pack templates/shop acme-shop-1.0.0.tar.gz --index=index.json
+# then put index.json and the archive on a web server, side by side
+```
+
+```json
+{
+  "format": "metadata-driven/index/v1",
+  "templates": {
+    "acme/shop": {
+      "1.0.0": { "url": "acme-shop-1.0.0.tar.gz", "sha256": "…", "requires": { "format": "metadata-driven/v1" } }
+    }
+  }
+}
+```
+
+```bash
+# Who installs: add the index once, then name templates
+symfony console metadata:template:repo add acme https://templates.acme.example/index.json
+symfony console metadata:template:search shop
+symfony console metadata:template:install acme/shop            # the newest version
+symfony console metadata:template:install acme/shop@1.0.0      # a given one
+symfony console metadata:template:upgrade acme/shop            # from the index it came from
+```
+
+- **https only**, redirects included; an index over 5 MB, an archive over 50 MB or files over
+  200 MB once unpacked are refused (`app.template.max_download_mb`,
+  `app.template.max_unpacked_mb` in `config/services.yaml`).
+- **The checksum first.** An archive whose sha256 differs from the one its index lists is refused
+  before anything is unpacked. An archive holding anything but files and directories (a link, a
+  device), or a path leaving the template (`..`, an absolute path), is refused too; and so is an
+  archive whose template is not the name and version its index says.
+- **Versions.** Without `@version`, the newest version is taken, skipping the ones the index
+  marks `"yanked": true` (withdrawn: still installable by naming them) and those of another
+  format.
+- **One index per template.** When two indexes offer the same name, say which with
+  `--repo=<name>`. An installation records the address of its index, and an upgrade looks there
+  first.
+- **The template catalog**, when there is one, is an index too: set `TEMPLATE_CATALOG_URL` and it
+  is looked into before the others, as `catalog`.
+- `metadata:template:pack` writes reproducible archives: the same template gives the same
+  archive and checksum, whatever the machine or the dates of its files.
+
 ## Not yet
 - **Templates requiring other templates**: a template pointing at the objects of another
   installed one.
-- **The template catalog**: publishing and downloading templates, signed.
+- **Signed indexes**: today an index proves an archive is the one it lists (the checksum), not
+  who wrote the index.
+- **The template catalog** itself: an application of its own, for authors to publish to.
 
 See the plan in [internal/template-plan.md](internal/template-plan.md).

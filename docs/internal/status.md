@@ -202,9 +202,11 @@ new-composite pages.
   phase 3 (seeds: format, checks, install, export with `--seed`; and `record:import`) on
   `feature/template-seeds` (from `feature/template-install`); phase 4 (upgrade:
   `metadata:template:upgrade`, three-way, conflicts, `--strategy`, managed seeds, `migrations`,
-  version numbers) on `feature/template-upgrade` (from `feature/template-seeds`), awaiting review
-  before phase 5 (indexes: download, checksum, signatures). Phase 2 needs fedale/rbac-bundle's transaction-safe cache (merged into its main,
-  not pushed).
+  version numbers) on `feature/template-upgrade` (from `feature/template-seeds`); phase 5 step 1
+  (archives, indexes, `repo`, `search`, `pack`, install and upgrade by name) on
+  `feature/template-indexes` (from `feature/template-upgrade`), awaiting review before step 2
+  (signatures). None of these branches is merged into main yet. Phase 2 needs
+  fedale/rbac-bundle's transaction-safe cache (merged into its main, not pushed).
 - **CSV import**: (A) done with phase 3 of the templates, `record:import` (console.md). Not
   done: (B) a web wizard; (C) async with Messenger for very large files.
 - From the form mock, not done: per-kind add buttons ("+ Titolo di studio" …), field machine names

@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Module\Template\UI\Console;
 
+use App\Module\Template\Application\Source\PackageLocator;
 use App\Module\Template\Application\TemplateInstaller;
 use App\Module\Template\Domain\Exception\InstallRefused;
+use App\Module\Template\Domain\Exception\TemplateSourceFailed;
 use App\TemplateFormat\InvalidPackage;
-use App\TemplateFormat\PackageDirectory;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
@@ -18,18 +19,28 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 final class InstallTemplateConsoleCommand
 {
     public function __construct(
-        private readonly PackageDirectory $directories,
+        private readonly PackageLocator $locator,
         private readonly TemplateInstaller $installer,
     ) {
     }
 
     public function __invoke(
         SymfonyStyle $io,
-        #[Argument('The directory of the template')] string $directory,
+        #[Argument('The directory of the template, or its name in an index: vendor/name, vendor/name@1.0.0')] string $template,
         #[Option('Go through the whole install, then roll it back: nothing is changed')] bool $dryRun = false,
+        #[Option('The index to download it from, by name (metadata:template:repo list)')] ?string $repo = null,
     ): int {
         try {
-            $report = $this->installer->install($this->directories->read($directory), realpath($directory) ?: $directory, $dryRun);
+            $opened = $this->locator->open($template, $repo);
+            try {
+                $report = $this->installer->install($opened->package, $opened->source, $dryRun);
+            } finally {
+                $this->locator->close($opened);
+            }
+        } catch (TemplateSourceFailed $e) {
+            $io->error($e->getMessage());
+
+            return Command::FAILURE;
         } catch (InvalidPackage $e) {
             $io->error(\sprintf('The template is invalid: %d problem(s).', \count($e->problems)));
             $io->listing(array_map(strval(...), $e->problems));

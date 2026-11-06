@@ -1,8 +1,10 @@
 # Plan: templates (packaged, versioned models)
 
-Status: **phases 1 to 4 done** (format and export on `feature/template-format`, install on
-`feature/template-install`, seeds on `feature/template-seeds`, upgrade on
-`feature/template-upgrade`, each branched from the one before), awaiting review before phase 5. Discussed with the user on 2026-11-03; name, upgrade model and distribution
+Status: **phases 1 to 4 done, phase 5 step 1 done** (format and export on
+`feature/template-format`, install on `feature/template-install`, seeds on
+`feature/template-seeds`, upgrade on `feature/template-upgrade`, indexes on
+`feature/template-indexes`, each branched from the one before), awaiting review before phase 5
+step 2 (signatures). Discussed with the user on 2026-11-03; name, upgrade model and distribution
 decided on 2026-11-05 (see [Decisions](#decisions)).
 
 A template packages a model, meaning its objects, fields, relations, composite forms, views,
@@ -500,7 +502,27 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
      `SeedWriter::write()` now takes the rows to write (create or update, an empty value
      clearing the field on update) and the keys of records already there. A delete refused by
      a `restrict` relation refuses the upgrade.
-5. **Indexes**: the index format, `repo add`, download, checksum, signatures, unpacking.
+5. **Indexes** — step 1 done (branch `feature/template-indexes`). As built:
+   - Format: `Archive` (a ustar reader and writer of its own, not PharData: regular files and
+     directories only, no `..`/absolute paths, header checksums, entry count and size limits
+     while reading the gzip stream; reproducible archives: no dates, owners or modes, sorted
+     entries), `TemplateIndex`/`IndexEntry` (`metadata-driven/index/v1`; relative urls
+     resolved against the index's address; `latest()` skips yanked versions and other formats).
+   - `TemplateSources`: the catalog (`TEMPLATE_CATALOG_URL`, optional, no default) then
+     `core.template_source`; https only (redirects too), limits (index 5 MB,
+     `app.template.max_download_mb` 50, `app.template.max_unpacked_mb` 200), sha256 checked
+     before unpacking into a temporary directory, removed after. `PackageLocator` lets install
+     and upgrade take a directory or `vendor/name[@version]`; an archive whose template is not
+     the listed name and version is refused; an upgrade looks first in the index recorded as the
+     installation's source.
+   - Commands: `metadata:template:repo [list|add|remove]`, `metadata:template:search`,
+     `metadata:template:pack <directory> <archive> [--index] [--url]`; `install`/`upgrade` take
+     `--repo`.
+   - Tests: the HTTP client answers from `tests/Support/FakeTemplateServer` in the test env
+     (`framework.http_client.mock_response_factory`).
+   - Step 2, next: signatures (Ed25519 with sodium: a key pair command, `pack --sign`, the
+     catalog's public key shipped, `repo add --key`, an unsigned index accepted only once
+     confirmed).
 6. **Admin UI**: the catalog, install, upgrade with the plan and the conflicts shown before
    applying, item by item.
 7. **Publish**: `metadata:template:publish` to the catalog.

@@ -172,9 +172,9 @@ final class TemplateUpgraderTest extends KernelTestCase
         $command = new CommandTester((new Application(self::bootKernel()))->find('metadata:template:upgrade'));
 
         // The example itself is 1.0.0, installed: not newer.
-        self::assertSame(1, $command->execute(['directory' => PackageCheckerTest::FIXTURE]));
+        self::assertSame(1, $command->execute(['template' => PackageCheckerTest::FIXTURE]));
         self::assertStringContainsString('acme/shop 1.0.0 is installed: 1.0.0 is not newer.', $command->getDisplay());
-        self::assertSame(1, $command->execute(['directory' => PackageCheckerTest::FIXTURE, '--strategy' => 'mine']));
+        self::assertSame(1, $command->execute(['template' => PackageCheckerTest::FIXTURE, '--strategy' => 'mine']));
         self::assertStringContainsString('--strategy is keep or overwrite.', $command->getDisplay());
     }
 
