@@ -579,8 +579,9 @@ In the catalog (its own plan, from phase 5 on):
 - **C1** the repository: layout, `vendors.yaml`, `CODEOWNERS`, the checker
   (`bin/catalog check`) and the pull request Action, the contribution guide — done
   (2026-11-06, `../metadata-driven-templates`, its plan in `docs/internal/plan.md`);
-- **C2** publication on merge: pack, Release assets, `index.json` rebuilt and signed, `yanked.yaml`,
-  GitHub Pages;
+- **C2** publication on merge: pack, `index.json` rebuilt and signed, `yanked.yaml`, archives
+  and index on GitHub Pages — done (2026-11-06, live at
+  `https://fedale.github.io/metadata-driven-templates/index.json`);
 - **C3** the static site: search, a page per template, the JSON search file;
 - **C4** reports and removal, verified vendors, the semver check against the previous version's
   items (it needs the item comparison, today in metadata-driven), phase 7.

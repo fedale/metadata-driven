@@ -210,8 +210,11 @@ new-composite pages.
   (publish), which needs the catalog application (C0-C4) first. C0 (the format extracted into
   `fedale/template-format`, `../template-format`) on `feature/template-format-package` (from
   `feature/template-admin`). The catalog is a GitHub repository, `../metadata-driven-templates`
-  (pull requests reviewed before listing, Actions, Pages): C1 (the pull request check) done,
-  C2 (publication on merge) next. None of these branches is merged into main yet. Phase 2 needs
+  (pull requests reviewed before listing, Actions, Pages; its plan in its
+  `docs/internal/plan.md`): C1 (the pull request check) and C2 (publication on merge) done and
+  live: `https://fedale.github.io/metadata-driven-templates/index.json`, key
+  `ta4QYEX/ZmCA9xA0yPP4sRZLeqYqBvmCXazwXiGadEc=` (`TEMPLATE_CATALOG_URL`, `TEMPLATE_CATALOG_KEY`).
+  Next: a first real template through the whole chain, or C3 (the static site). None of these branches is merged into main yet. Phase 2 needs
   fedale/rbac-bundle's transaction-safe cache (merged into its main, not pushed).
 - **CSV import**: (A) done with phase 3 of the templates, `record:import` (console.md). Not
   done: (B) a web wizard; (C) async with Messenger for very large files.
