@@ -30,8 +30,9 @@ original machine (see [status.md](status.md#setting-up-on-a-new-machine)). It al
   upgrade compares the installed version, the new one and the current state, applies what only
   the new version changed, keeps what only the user changed, and reports a conflict where both
   did. See [Upgrading](#upgrading).
-- **Distribution: a central catalog, as an application of its own**, plus any number of other
-  indexes (a company's private one, a vendor's own). See [The catalog](#the-catalog).
+- **Distribution: a central catalog, as a repository of its own** (a GitHub repository since
+  2026-11-06), plus any number of other indexes (a company's private one, a vendor's own). See
+  [The catalog](#the-catalog).
 - **The format lives in metadata-driven first, behind a hard boundary** (2026-11-05). The
   format (schemas, reader, structural checks, archives, indexes) is written in
   `src/TemplateFormat/` (`App\TemplateFormat`), apart from the modules, and extracted into a
@@ -62,10 +63,12 @@ original machine (see [status.md](status.md#setting-up-on-a-new-machine)). It al
 - **`fedale/template-format` is MIT** (2026-11-06): whoever publishes an index or a template
   uses it. Repository: `fedale/metadata-driven-template-format` on GitHub.
 
+- **Catalog hosting: GitHub** (2026-11-06): a repository, pull requests, Actions, Pages and
+  Releases; no server, no database. See [The catalog](#the-catalog).
+
 ## Open decisions
 
-- **The catalog's hosting**: on GitHub, or a server of its own. To decide before C1. See
-  [The catalog](#the-catalog).
+None.
 
 ## Principles
 
@@ -325,48 +328,49 @@ private templates, a vendor's own) on any web server.
 
 ## The catalog
 
-A separate Symfony application, in a repository of its own (`fedale/template-catalog`), built
-on the same stack and the user's bundles where they fit (`fedale/gridview-bundle` for its lists,
-`fedale/rbac-bundle` for its roles). It depends on the format library (`fedale/template-format`,
-extracted from metadata-driven first), never on metadata-driven.
-
-**For the people who install:**
-
-- Search and browse: by name, label, tags, objects inside, author; sorted by downloads or by
-  date.
-- A page per template: its README, its objects and fields (read from the documents, so the
-  user sees what the template will create before installing), its versions with their changes,
-  what it requires, its license, its downloads.
-- The index (`/index.json`) that metadata-driven reads, and a JSON search API for **Admin →
-  Templates**.
+**A GitHub repository, no server** (decided 2026-11-06): `fedale/metadata-driven-templates`.
+Publishing is a pull request, the review is the review of the pull request, the checks and the
+publication are GitHub Actions, the index and the pages are static files on GitHub Pages, the
+archives are Release assets. It depends on the format library (`fedale/template-format`), never
+on metadata-driven. It has its own plan (`metadata-driven-templates/docs/internal/plan.md`);
+this section is its brief.
 
 **For the people who publish:**
 
-- An account, and a **vendor namespace** (`acme/`) owned by one account or organization: only
-  its members publish under it.
-- Publishing: upload an archive from the site, or `metadata:template:publish` from metadata-driven
-  with an API token. The catalog then:
-  1. checks the archive with the format library: schemas, ids, references, the safety rules of
-     the archive, the semver bump against the previous version;
-  2. refuses a version that already exists (versions never change);
-  3. stores the archive (Flysystem, S3 in production), computes its checksum and signs it;
-  4. lists it in the index.
-- Yank a version: hidden from new installs and upgrades, still downloadable by its exact
-  version for those who have it.
+- A **vendor namespace** (`acme/`) belongs to GitHub users, listed in `vendors.yaml`: the check
+  refuses a pull request publishing under a vendor its author does not own. A new vendor is a
+  pull request of its own to `vendors.yaml`; `.github/CODEOWNERS` makes a maintainer review
+  every pull request.
+- Publishing a version: a pull request adding its **source directory**,
+  `templates/<vendor>/<name>/<version>/` (the manifest, documents, CSV and files of the seeds):
+  never an archive. Versions never change: a pull request may only add version directories.
+- **Checked before listing**: an Action runs the format library on every added version (schemas,
+  ids, references, seeds, files, the safety rules), checks the path against the manifest's name
+  and version, that the version is new and higher than the listed ones, the vendor and the size
+  limit (20 MB per version); then a maintainer reviews and merges. Nothing is listed unreviewed.
+- On merge, an Action packs each new version (reproducible archives), uploads it as a Release
+  asset, rebuilds and signs `index.json` (the secret key in the repository's Secrets) and deploys
+  the site.
+- Yank a version: a pull request to `yanked.yaml`.
 
-**Trust:**
+**For the people who install:** `index.json` on GitHub Pages (`TEMPLATE_CATALOG_URL`), signed
+with the catalog's key (`TEMPLATE_CATALOG_KEY`); static pages per template (README, objects and
+fields read from the documents, versions, requires, license) and a JSON search file, built by
+the same Action.
 
-- The checks of the format library are structural: they cannot compile a form against the
-  objects, as metadata-driven does at install. A later step can run a real dry-run install in a
-  throw-away metadata-driven instance and show the result on the page.
-- A "verified" badge for vendors whose identity was checked; reports from users; removal of a
-  template, which yanks every version.
+**Stateless:** archives are reproducible and Ed25519 signatures deterministic, so the whole
+index is rebuilt from the sources at every publication.
+
+**Trust:** the checks are structural, and a person reviews every version. A later step can run a
+dry-run install in a throw-away metadata-driven instance in the Action. Reports are GitHub
+issues; removing a template yanks every version.
+
+**Limits:** GitHub warns above 50 MB per file and refuses above 100 MB; the catalog's 20 MB per
+version keeps well below, and below metadata-driven's 50 MB download limit. Large media can move
+to Git LFS later.
 
 **Not in the catalog**: paid templates, private templates (a private index covers them),
-comments and ratings (later, if wanted).
-
-The catalog gets a plan of its own (`template-catalog/docs/internal/plan.md`) when its phases
-start; this section is its brief.
+comments and ratings, download counts beyond the Releases' own.
 
 ## Exporting
 
@@ -555,7 +559,9 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
      yanked flag. It does now; `metadata:template:yank` (re)signs. An old copy of a whole index
      still verifies: freshness (a signed index with an expiry, TUF-style) is left to the
      catalog.
-7. **Publish**: `metadata:template:publish` to the catalog.
+7. **Publish**: `metadata:template:publish` prepares a version for the catalog: the source
+   directory written into a checkout of `fedale/metadata-driven-templates`, ready for a pull
+   request.
 
 In the catalog (its own plan, from phase 5 on):
 
@@ -569,11 +575,15 @@ In the catalog (its own plan, from phase 5 on):
   package now), the example template moved to `tests/Fixtures/templates/shop`
   (`App\Tests\Support\ExampleTemplate`), the library keeping a copy for its own tests.
   `FieldTypeCatalogMatchesTheAppTest` stays in metadata-driven: only the app knows its types.
-  No remote yet for `fedale/template-format`;
-- **C1** skeleton, accounts (GitHub sign-in), vendor namespaces;
-- **C2** publish and check, storage, checksum, signature, `/index.json`;
-- **C3** search, template pages, the search API;
-- **C4** yank, reports, verified vendors, the publish API for phase 7.
+  Remote: `fedale/metadata-driven-template-format`;
+- **C1** the repository: layout, `vendors.yaml`, `CODEOWNERS`, the checker
+  (`bin/catalog check`) and the pull request Action, the contribution guide — done
+  (2026-11-06, `../metadata-driven-templates`, its plan in `docs/internal/plan.md`);
+- **C2** publication on merge: pack, Release assets, `index.json` rebuilt and signed, `yanked.yaml`,
+  GitHub Pages;
+- **C3** the static site: search, a page per template, the JSON search file;
+- **C4** reports and removal, verified vendors, the semver check against the previous version's
+  items (it needs the item comparison, today in metadata-driven), phase 7.
 
 Reference fixture, used in the tests and as the first published templates:
 
