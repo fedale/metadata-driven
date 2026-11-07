@@ -221,7 +221,8 @@ new-composite pages.
   (pull requests reviewed before listing, Actions, Pages; its plan in its
   `docs/internal/plan.md`): C1 (the pull request check) and C2 (publication on merge) done and
   live: `https://fedale.github.io/metadata-driven-templates/index.json`, key
-  `ta4QYEX/ZmCA9xA0yPP4sRZLeqYqBvmCXazwXiGadEc=` (`TEMPLATE_CATALOG_URL`, `TEMPLATE_CATALOG_KEY`).
+  `ta4QYEX/ZmCA9xA0yPP4sRZLeqYqBvmCXazwXiGadEc=` (`TEMPLATE_CATALOG_URL`, `TEMPLATE_CATALOG_KEY`,
+  the defaults of `.env` since 2026-11-07; empty in `.env.test`: the tests never reach it).
   The first template, `fedale/geo-italy` 1.0.0 (Italy's regions, provinces and municipalities
   from ISTAT), is ready on the catalog's branch `add_fedale_geo_italy`, not pushed: validated,
   installed on a throw-away database (8,023 records, about 12 s), `bin/catalog check` and
