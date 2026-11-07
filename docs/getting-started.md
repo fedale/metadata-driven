@@ -4,8 +4,10 @@
 
 - PHP 8.4+, with `pdo_pgsql` and `intl`
 - Composer, the [Symfony CLI](https://symfony.com/download), Docker with Compose
-- The sibling bundles in the parent directory, installed as Composer path repositories (symlinks):
-  `../gridview-bundle`, `../setting-bundle` and `../rbac-bundle`
+
+The bundles the app is built on (`fedale/gridview-bundle`, `fedale/setting-bundle`,
+`fedale/rbac-bundle`) and the template format (`fedale/template-format`) come from Packagist, in
+their released versions: `composer install` is enough.
 
 ## Run the app
 
@@ -29,6 +31,32 @@ The app answers on `http://127.0.0.1:8000` and asks you to sign in. Run every co
 `bin/console`: the Symfony CLI passes the `DATABASE_URL` of the Docker container to PHP.
 
 The home page lists the objects; each object has its grid at `/o/<object>`.
+
+## Working on the bundles
+
+To change a bundle and see it in the app at once, clone it next to this repository and link it
+with the [composer-link](https://github.com/SanderSander/composer-link) plugin, installed once
+per machine:
+
+```bash
+composer global config --no-plugins allow-plugins.sandersander/composer-link true
+composer global require sandersander/composer-link
+
+git clone git@github.com:fedale/gridview-bundle.git ../gridview-bundle
+composer link ../gridview-bundle     # vendor/fedale/gridview-bundle becomes a symlink to it
+composer linked                      # what is linked
+composer unlink ../gridview-bundle   # back to the released version
+```
+
+`composer.json` and `composer.lock` do not change: the link lives in `vendor/linked-packages.json`
+and survives `composer install` and the update of other packages. **Unlink a package before
+updating or requiring it** (`composer unlink-all`, then `composer update fedale/<bundle>`):
+updated while linked, its constraint in `composer.json` is rewritten to the linked copy's
+version (`== 1.3.9999999.9999999-dev`), which no one else can install.
+
+The app's `main` requires released versions only: once a bundle change is merged there, tag a
+release of the bundle, then `composer update fedale/<bundle>` in the app. The format's
+repository is `fedale/metadata-driven-template-format`.
 
 ## Build a model in five minutes
 
