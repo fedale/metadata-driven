@@ -29,6 +29,11 @@ use Symfony\Contracts\Service\ResetInterface;
  * cached: listeners reacting to a definition change (e.g. schema sync) must see the
  * uncommitted definitions, and a rolled back change must never reach the cache.
  * The cache is dropped once the change is committed (MetadataChanged).
+ *
+ * Every key carries the metadata revision (MetadataRevision): a change committed anywhere,
+ * on another server or from the console, renews the keys on every server, and two databases
+ * never share a snapshot. The tag only frees the stale items early, on the server of the
+ * change; elsewhere they expire.
  */
 #[AsAlias(MetadataRegistryInterface::class)]
 #[AsEventListener(event: MetadataChanged::class, method: 'invalidate')]
@@ -43,6 +48,8 @@ final class CachedMetadataRegistry implements MetadataRegistryInterface, ResetIn
     private const string CACHE_KEY = 'metadata_snapshot.v11';
     private const string FORMS_CACHE_KEY = 'metadata_forms.v5';
     private const string CACHE_TAG = 'metadata';
+    // Stale items (an older revision) are never read again: they only take room until then.
+    public const int TTL = 86400;
 
     /** @var array<string, ObjectDefinitionDto>|null */
     private ?array $snapshot = null;
@@ -56,6 +63,7 @@ final class CachedMetadataRegistry implements MetadataRegistryInterface, ResetIn
         private readonly TagAwareCacheInterface $metadataCache,
         private readonly Connection $connection,
         private readonly FieldTypeCatalogInterface $fieldTypes,
+        private readonly MetadataRevision $revision,
     ) {
     }
 
@@ -146,8 +154,8 @@ final class CachedMetadataRegistry implements MetadataRegistryInterface, ResetIn
         }
 
         /** @var array<string, ObjectDefinitionDto> $snapshot */
-        $snapshot = $this->snapshot ??= $this->metadataCache->get(self::CACHE_KEY.'.'.$this->fingerprint(), function (ItemInterface $item): array {
-            $item->tag(self::CACHE_TAG);
+        $snapshot = $this->snapshot ??= $this->metadataCache->get(self::CACHE_KEY.'.'.$this->revision->current().'.'.$this->fingerprint(), function (ItemInterface $item): array {
+            $item->tag(self::CACHE_TAG)->expiresAfter(self::TTL);
 
             return $this->loader->load();
         });
@@ -167,8 +175,8 @@ final class CachedMetadataRegistry implements MetadataRegistryInterface, ResetIn
         }
 
         /** @var array<string, FormDefinitionDto> $forms */
-        $forms = $this->forms ??= $this->metadataCache->get(self::FORMS_CACHE_KEY, function (ItemInterface $item): array {
-            $item->tag(self::CACHE_TAG);
+        $forms = $this->forms ??= $this->metadataCache->get(self::FORMS_CACHE_KEY.'.'.$this->revision->current(), function (ItemInterface $item): array {
+            $item->tag(self::CACHE_TAG)->expiresAfter(self::TTL);
 
             return $this->formLoader->load();
         });

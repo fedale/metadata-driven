@@ -6,8 +6,10 @@ doctrine:
         # either here or in the DATABASE_URL env var (see .env file)
         server_version: '17'
         # Record tables in the "data" schema are owned by the Schema module, not by
-        # Doctrine migrations: hide them from schema tools (diff, validate).
-        schema_filter: '~^(?!data(\.|$))~'
+        # Doctrine migrations: hide them from schema tools (diff, validate). So is
+        # core.metadata_state, written by triggers only (migration Version20261107060749).
+        # (The comparison names core's tables with or without their schema.)
+        schema_filter: '~^(?!data(\.|$)|(core\.)?metadata_state$)~'
 
         profiling_collect_backtrace: '%kernel.debug%'
     orm:

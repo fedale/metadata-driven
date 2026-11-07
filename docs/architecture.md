@@ -87,14 +87,32 @@ metadata:field:create pet owner relation …
   └─ CreateFieldHandler (Metadata)                 ┐
        ├─ settings validated by the field type     │
        ├─ definition saved in core.metadata_field  │ one PostgreSQL
-       └─ FieldDefinitionCreated (event)           │ transaction
+       │    └─ trigger: metadata revision + 1      │ transaction
+       └─ FieldDefinitionCreated (event)           │
             └─ SchemaSynchronizer (Schema)         │
                  └─ ALTER TABLE data.c_pet …       ┘
-  └─ MetadataChanged (after commit) → the metadata cache is dropped
+  └─ MetadataChanged (after commit) → the local metadata cache is dropped
 ```
 
 Inside a transaction the registry reads the definitions from the database, so the schema sync sees
 the uncommitted change; the cache is only refreshed once the change is committed.
+
+The cache keys of the metadata (the snapshot of the objects, the composite forms, the
+translations) carry the **metadata revision** and the **instance's id**, one row of
+`core.metadata_state` read once per request (`MetadataRevision`). Triggers on the metadata
+tables bump the revision in the transaction of every write, whatever makes it (the admin, the
+console, a template, a migration), so:
+
+- a change made on one server reaches every server at its next request, whatever cache each one
+  keeps (the filesystem by default): their keys have changed;
+- two databases never share cached metadata, even behind one cache (a shared Redis, a checkout
+  pointed at another database). A copy of a database (`pg_dump` and restore) keeps the instance's
+  id: give the copy a cache of its own, or a new id (`UPDATE core.metadata_state SET instance =
+  gen_random_uuid()`).
+
+`MetadataChanged` still drops the cache of the server that made the change, early; elsewhere the
+stale items expire after a day. `core.metadata_state` is kept out of the ORM mapping
+(`schema_filter` in `config/packages/doctrine.yaml`): the triggers own it.
 
 A field is one column of its object's table, with one exception: a `many_to_many` field has no
 column, its links live in a link table of its own. `FieldDefinitionDto::storesColumn()` tells them

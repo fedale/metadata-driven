@@ -76,6 +76,11 @@ Things that are not obvious from a single file, and that are easy to break.
   version whenever the shape of a cached DTO changes, and bump the key that holds that DTO: a
   form DTO (e.g. `ServiceFieldDto`) lives under the forms key, not the snapshot key. The snapshot key also carries a fingerprint
   of every field type's default settings, so adding a setting renews the snapshot by itself.
+  Every metadata key (snapshot, forms, translations) carries `MetadataRevision::current()`, the
+  instance's id and the revision of `core.metadata_state`, which statement-level triggers on the
+  five `core.metadata_*` tables bump. **A new metadata table needs the trigger too** (see
+  migration `Version20261107060749`), or its changes stay unseen by the other servers. The
+  revision is read before the item it keys: never reverse that order.
 - **Localized metadata**: `LocalizedMetadataRegistry` (`#[Target('localizedMetadata')]`) returns
   metadata with labels in the user's locale; only the Record and Validation modules use it. Metadata
   text is the default-locale fallback; translations live in `core.metadata_translation`.
@@ -189,6 +194,12 @@ new-composite pages.
 
 ## Open
 
+- **Metadata revision in the cache keys** (2026-11-07, branch `feature/metadata-revision`,
+  awaiting review): the cache no longer serves one database's metadata to another, nor stale
+  metadata to the other servers after a change (see the "Metadata cache" note above and
+  `architecture.md`). Next, decided the same day: the bundles and `fedale/template-format`
+  required from Packagist with tagged versions instead of `../` path repositories, local work on
+  them through the `composer-link` plugin; the user registers the packages.
 - **Work queue: templates** (packaged, versioned models), plan in
   [template-plan.md](template-plan.md): a canonical format for every item, install, three-way
   upgrade, seeds, indexes, export, and a central catalog as an application of its own
