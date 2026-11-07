@@ -6,6 +6,8 @@ namespace App\Module\Metadata\Infrastructure\Translation;
 
 use App\Module\Metadata\Contract\Event\MetadataChanged;
 use App\Module\Metadata\Domain\Repository\TranslationRepository;
+use App\Module\Metadata\Infrastructure\Cache\CachedMetadataRegistry;
+use App\Module\Metadata\Infrastructure\Cache\MetadataRevision;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -14,7 +16,8 @@ use Symfony\Contracts\Service\ResetInterface;
 
 /**
  * The texts of a language, cached with the metadata snapshot (same pool, same tag): a change
- * of translations dispatches MetadataChanged, which drops both.
+ * of translations dispatches MetadataChanged, which drops both. The key carries the metadata
+ * revision, as the snapshot's does: a translation is a metadata write (see MetadataRevision).
  *
  * As for the snapshot, inside a transaction the texts are read from the database, never cached.
  */
@@ -31,6 +34,7 @@ final class TranslationCatalog implements ResetInterface
         private readonly TranslationRepository $translations,
         private readonly TagAwareCacheInterface $metadataCache,
         private readonly Connection $connection,
+        private readonly MetadataRevision $revision,
     ) {
     }
 
@@ -44,8 +48,8 @@ final class TranslationCatalog implements ResetInterface
         }
 
         /** @var array<string, string> $texts */
-        $texts = $this->texts[$locale] ??= $this->metadataCache->get(self::CACHE_KEY.$locale, function (ItemInterface $item) use ($locale): array {
-            $item->tag(self::CACHE_TAG);
+        $texts = $this->texts[$locale] ??= $this->metadataCache->get(self::CACHE_KEY.$locale.'.'.$this->revision->current(), function (ItemInterface $item) use ($locale): array {
+            $item->tag(self::CACHE_TAG)->expiresAfter(CachedMetadataRegistry::TTL);
 
             return $this->translations->textsOf($locale);
         });
