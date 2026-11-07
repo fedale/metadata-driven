@@ -8,9 +8,11 @@ Last updated: 2026-11-07.
 
 ## Setting up on a new machine
 
-- Clone the sibling repositories next to this one, in the same parent directory: Composer loads
-  them as path repositories (`../gridview-bundle`, `../setting-bundle`, `../rbac-bundle`). All of
-  them are under `git@github.com:fedale/<repo>.git`; use SSH remotes, not HTTPS.
+- The bundles and the format come from Packagist (since 2026-11-07): `composer install` is
+  enough. To work on one, clone it next to this repository and `composer link ../<repo>`
+  (the composer-link plugin, installed globally; see getting-started.md, "Working on the
+  bundles"). All the repositories are under `git@github.com:fedale/<repo>.git` (the format's is
+  `metadata-driven-template-format`, cloned as `../template-format`); use SSH remotes.
 - Then follow [../getting-started.md](../getting-started.md) (`make up`, `make db`, `make assets`).
 - The dev database is not in git. The "registration" model built on the original machine (objects
   `account`, `profile`, `phone`, `qualification`, `region`, `province`, `municipality` loaded from
@@ -23,8 +25,9 @@ Last updated: 2026-11-07.
 - Sessions working in parallel (two agents, or an agent and the user) each use a `git worktree`
   of their own: in a shared checkout a branch switch carries the other session's uncommitted
   changes along, and both end up editing the same files. Put it next to this repository
-  (`git worktree add ../metadata-driven-<topic> -b <branch> main`: the bundles are `../` path
-  repositories), then in it: `composer install`, `php bin/console importmap:install`,
+  (`git worktree add ../metadata-driven-<topic> -b <branch> main`: `composer link ../<repo>`
+  then works there as in the main checkout), then in it: `composer install` (plus `composer
+  link ../<repo>` for a bundle the work changes), `php bin/console importmap:install`,
   `symfony console sass:build`, and `COMPOSE_PROJECT_NAME=metadata-driven` in the environment,
   so the Symfony CLI finds the running database of the main checkout. For tests of its own, a
   `.env.test.local` with `TEST_TOKEN=_<topic>` (database `app_test_<topic>`, through
@@ -154,8 +157,8 @@ Things that are not obvious from a single file, and that are easy to break.
   `FileCell` (Record UI) draws them. `FieldTypeInterface::isSortable()` (false
   for `file` and `many_to_many`) decides sorting, searching and virtual columns, in the default
   grid, the grid view compiler and the grid source alike.
-- **Templates**: the format is `fedale/template-format` (`../template-format`, path repository,
-  its own `composer qa`): only `symfony/yaml` and `opis/json-schema`. A change to the format is
+- **Templates**: the format is `fedale/template-format` (Packagist; `../template-format` linked
+  to work on it, its own `composer qa`): only `symfony/yaml` and `opis/json-schema`. A change to the format is
   made there, with its tests. It describes the field types on its own (`Resources/field-types.v1.json`):
   **a new field type or setting must be added there too**, or
   `FieldTypeCatalogMatchesTheAppTest` fails. The `Template` module is the only bridge to the
@@ -175,7 +178,8 @@ fields, cascading relations, editing field settings from the admin, role changes
 out, translations, the form graphics from the mock, the service-field `ask: always|create` option,
 gridview-bundle fixes 1–8 (`../gridview-bundle/docs/internal/METADATA-DRIVEN-feedback.md`),
 rename/archive/restore/purge of objects and fields, **Save and new** on the new-record and
-new-composite pages.
+new-composite pages, the metadata revision in the cache keys (2026-11-07: instance id and a
+revision bumped by triggers, see `architecture.md`).
 
 - **Many-to-many relations**, complete (pushed 2026-11-05), plan in
   [many-to-many-plan.md](many-to-many-plan.md): the `many_to_many` field type with a read-only
@@ -194,12 +198,14 @@ new-composite pages.
 
 ## Open
 
-- **Metadata revision in the cache keys** (2026-11-07, branch `feature/metadata-revision`,
-  awaiting review): the cache no longer serves one database's metadata to another, nor stale
-  metadata to the other servers after a change (see the "Metadata cache" note above and
-  `architecture.md`). Next, decided the same day: the bundles and `fedale/template-format`
-  required from Packagist with tagged versions instead of `../` path repositories, local work on
-  them through the `composer-link` plugin; the user registers the packages.
+- **Packagist** (2026-11-07, branch `feature/packagist`, awaiting review): the bundles and the
+  format required in released versions (`gridview-bundle` v1.3.0, `rbac-bundle` 1.1.0,
+  `setting-bundle` v1.1.0, `template-format` v1.0.0, tagged that day) instead of `../` path
+  repositories; local work through composer-link. A bundle change merged into the app needs a
+  release of the bundle first. Not done: the catalog (`../metadata-driven-templates`) still
+  loads the format from `../template-format`, its Actions clone it.
+- **Security advisories** (`composer audit`, 2026-11-07, older than the Packagist switch):
+  phpunit (< 13.4.4), symfony/html-sanitizer, symfony/mime, symfony/validator. To update.
 - **Work queue: templates** (packaged, versioned models), plan in
   [template-plan.md](template-plan.md): a canonical format for every item, install, three-way
   upgrade, seeds, indexes, export, and a central catalog as an application of its own

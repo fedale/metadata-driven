@@ -48,7 +48,7 @@ A module only sees the `Contract` of the other modules. Two Deptrac rulesets enf
 (`make deptrac`): `deptrac.layers.yaml` and `deptrac.modules.yaml`.
 
 The template format is a library of its own, `fedale/template-format` (`Fedale\TemplateFormat`,
-in `../template-format`, required through a Composer path repository): documents, JSON
+repository `fedale/metadata-driven-template-format`, required from Packagist): documents, JSON
 Schemas, the field type catalog, the structural checks, packages as directories and as
 `.tar.gz` archives, signed indexes. The `Template` module is its only user in the app; the
 template catalog uses it too (see [Templates](templates.md)). It depends on `symfony/yaml` and
