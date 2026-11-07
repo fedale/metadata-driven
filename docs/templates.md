@@ -5,8 +5,9 @@ forms, their translations, and records to start with (seeds). You write one from
 control, share it, validate it without a database, and install it on another instance.
 
 **Today** a template can be exported, validated, packed, published in a signed index, and
-installed and upgraded from a directory or by its name, its records included. Templates requiring
-other templates and the template catalog itself come next (see [Not yet](#not-yet)).
+installed and upgraded from a directory or by its name, its records included, from your own
+indexes or from the [template catalog](#the-template-catalog). Templates requiring other
+templates come next (see [Not yet](#not-yet)).
 
 ## Exporting a model
 
@@ -370,9 +371,8 @@ symfony console metadata:template:upgrade acme/shop            # from the index 
 - **One index per template.** When two indexes offer the same name, say which with
   `--repo=<name>`. An installation records the address of its index, and an upgrade looks there
   first.
-- **The template catalog**, when there is one, is an index too: set `TEMPLATE_CATALOG_URL` and
-  `TEMPLATE_CATALOG_KEY` (its public key; the catalog is always signed) and it is looked into
-  before the others, as `catalog`.
+- **The template catalog** is an index too, looked into before the others, as `catalog` (see
+  [below](#the-template-catalog)).
 - `metadata:template:pack` writes reproducible archives: the same template gives the same
   archive and checksum, whatever the machine or the dates of its files.
 - **Withdrawing a version**: `metadata:template:yank index.json acme/shop 1.1.0 --sign=<key>`
@@ -384,9 +384,32 @@ symfony console metadata:template:upgrade acme/shop            # from the index 
   offer, previews an install or an upgrade, and resolves an upgrade's conflicts item by item
   (see [Admin UI](admin.md#templates--admintemplates)).
 
+## The template catalog
+
+The central catalog is the GitHub repository
+[fedale/metadata-driven-templates](https://github.com/fedale/metadata-driven-templates): it
+holds the sources of every published version, and publishes them as a signed index on GitHub
+Pages. To use it, set in the environment (`.env.local`):
+
+```bash
+TEMPLATE_CATALOG_URL=https://fedale.github.io/metadata-driven-templates/index.json
+TEMPLATE_CATALOG_KEY=ta4QYEX/ZmCA9xA0yPP4sRZLeqYqBvmCXazwXiGadEc=
+```
+
+The key is the catalog's public key (its `catalog.pub`): the catalog is always signed, and an
+entry whose signature does not match it is refused. Then name its templates as any other:
+
+```bash
+symfony console metadata:template:search geo
+symfony console metadata:template:install fedale/geo-italy
+```
+
+To publish a template there, open a pull request adding its source directory: every pull
+request is checked automatically, then reviewed by a maintainer before anything is listed. The
+steps are in the catalog's README.
+
 ## Not yet
 - **Templates requiring other templates**: a template pointing at the objects of another
   installed one.
-- **The template catalog** itself: an application of its own, for authors to publish to.
 
 See the plan in [internal/template-plan.md](internal/template-plan.md).
