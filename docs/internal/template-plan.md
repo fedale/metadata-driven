@@ -585,11 +585,20 @@ In the catalog (its own plan, from phase 5 on):
 - **C4** reports and removal, verified vendors, the semver check against the previous version's
   items (it needs the item comparison, today in metadata-driven), phase 7.
 
-Reference fixture, used in the tests and as the first published templates:
+The first published templates:
 
-- `acme/geo-italy`: regions, provinces, municipalities, with `managed` seeds from the ISTAT CSV;
-- `acme/registration`: account, profile, phone, qualification, the `registration` form;
-  requires `acme/geo-italy`.
+- `fedale/geo-italy` (2026-11-07, catalog branch `add_fedale_geo_italy`): the 20 regions, 107
+  provinces and 7,896 municipalities, keyed by their ISTAT codes (`code` on each object), with
+  the cadastral code, the province's abbreviation and kind, the provincial capitals; `managed`
+  seeds from ISTAT's "Elenco dei comuni italiani" (CC BY 4.0, the template's license), English
+  labels and an Italian translation. Written by hand, not exported: the model of the original
+  dev database has Italian labels as its default text and other keys. Its CSV files come from
+  ISTAT's file through a short script (columns 0, 1, 4, 5, 10-14, 19 of the semicolon-separated,
+  Windows-1252 file); a new ISTAT list means a new version. The version rules (`VersionCheck`)
+  compare items, not seed records: a version that only changes records passes as a patch,
+  even when a managed seed deletes records (a merged municipality).
+- `fedale/registration`: account, profile, phone, qualification, the `registration` form;
+  requires `fedale/geo-italy`, so it waits for templates requiring templates.
 
 Docs in the same branches: a new user guide `docs/templates.md`, plus `console.md`, `admin.md`,
 `architecture.md` (the `Template` module and its Deptrac rules), `README.md`, `status.md`.

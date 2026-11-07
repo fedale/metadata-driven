@@ -4,7 +4,7 @@ Internal notes for whoever (human or agent) picks the work up, on any machine. R
 starting a task; update it in the same branch whenever a decision is taken, a feature lands or the
 work queue changes. The user-facing documentation is in [../README.md](../README.md).
 
-Last updated: 2026-11-06.
+Last updated: 2026-11-07.
 
 ## Setting up on a new machine
 
@@ -211,9 +211,12 @@ new-composite pages.
   `docs/internal/plan.md`): C1 (the pull request check) and C2 (publication on merge) done and
   live: `https://fedale.github.io/metadata-driven-templates/index.json`, key
   `ta4QYEX/ZmCA9xA0yPP4sRZLeqYqBvmCXazwXiGadEc=` (`TEMPLATE_CATALOG_URL`, `TEMPLATE_CATALOG_KEY`).
-  No template is published yet (the catalog has no `templates/` directory). Next: a first real
-  template through the whole chain (`acme/geo-italy`, `acme/registration`), or C3 (the static
-  site). Phase 2 needs fedale/rbac-bundle's transaction-safe cache (pushed to its main).
+  The first template, `fedale/geo-italy` 1.0.0 (Italy's regions, provinces and municipalities
+  from ISTAT), is ready on the catalog's branch `add_fedale_geo_italy`, not pushed: validated,
+  installed on a throw-away database (8,023 records, about 12 s), `bin/catalog check` and
+  `build` passing; see the plan, "The first published templates". `fedale/registration` waits
+  for templates requiring templates. Next: C3 (the static site), then C4 with phase 7
+  (publish). Phase 2 needs fedale/rbac-bundle's transaction-safe cache (pushed to its main).
 - **CSV import**: (A) done with phase 3 of the templates, `record:import` (console.md). Not
   done: (B) a web wizard; (C) async with Messenger for very large files.
 - From the form mock, not done: per-kind add buttons ("+ Titolo di studio" …), field machine names
