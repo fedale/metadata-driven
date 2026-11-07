@@ -389,15 +389,17 @@ symfony console metadata:template:upgrade acme/shop            # from the index 
 The central catalog is the GitHub repository
 [fedale/metadata-driven-templates](https://github.com/fedale/metadata-driven-templates): it
 holds the sources of every published version, and publishes them as a signed index on GitHub
-Pages. To use it, set in the environment (`.env.local`):
+Pages. Every instance uses it out of the box: `.env` sets
 
 ```bash
 TEMPLATE_CATALOG_URL=https://fedale.github.io/metadata-driven-templates/index.json
 TEMPLATE_CATALOG_KEY=ta4QYEX/ZmCA9xA0yPP4sRZLeqYqBvmCXazwXiGadEc=
 ```
 
-The key is the catalog's public key (its `catalog.pub`): the catalog is always signed, and an
-entry whose signature does not match it is refused. Then name its templates as any other:
+The key is the catalog's public key (its `catalog.pub`), not a secret: the catalog is always
+signed, and an entry whose signature does not match it is refused. To use another catalog, set
+both in `.env.local`; to use none, set both empty (the tests do, in `.env.test`). Then name its
+templates as any other:
 
 ```bash
 symfony console metadata:template:search geo
