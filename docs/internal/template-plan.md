@@ -593,7 +593,7 @@ In the catalog (its own plan, from phase 5 on):
   vendors, a maintainers' flag in `vendors.yaml` shown on the site, and organizations as owners,
   through public membership; (5) phase 7, `metadata:template:publish`. Progress: (1) done (2026-11-08,
   format v1.1.0); (2) on the catalog's branch `feature/semver-check`, with the format from
-  Packagist there too.
+  Packagist there too; (3) on `feature/template-removal`, branched from it.
 
 The first published templates:
 
