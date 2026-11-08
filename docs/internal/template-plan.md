@@ -612,7 +612,8 @@ The first published templates:
   seeds from ISTAT's "Elenco dei comuni italiani" (CC BY 4.0, the template's license), English
   labels and an Italian translation. Written by hand, not exported: the model of the original
   dev database has Italian labels as its default text and other keys. Its CSV files come from
-  ISTAT's file through a short script (columns 0, 1, 4, 5, 10-14, 19 of the semicolon-separated,
+  ISTAT's file through the catalog's `tools/geo-italy/build-seeds.php` (its README: a new
+  version step by step), a script (columns 0, 1, 4, 5, 10-14, 19 of the semicolon-separated,
   Windows-1252 file); a new ISTAT list means a new version. The version rules (`VersionCheck`)
   compare items, not seed records: a version that only changes records passes as a patch,
   even when a managed seed deletes records (a merged municipality).
