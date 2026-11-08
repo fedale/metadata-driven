@@ -558,9 +558,17 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
      yanked flag. It does now; `metadata:template:yank` (re)signs. An old copy of a whole index
      still verifies: freshness (a signed index with an expiry, TUF-style) is left to the
      catalog.
-7. **Publish**: `metadata:template:publish` prepares a version for the catalog: the source
-   directory written into a checkout of `fedale/metadata-driven-templates`, ready for a pull
-   request.
+7. **Publish** — done (2026-11-08, branch `feature/template-publish`). As built:
+   `metadata:template:publish <directory> [--catalog=../metadata-driven-templates] [--dry-run]`
+   (`Application\Publish\TemplatePublisher`, `PublishReport`, `PublishRefused`). Against the
+   checkout as it is, before copying: the format checks, the vendor in `vendors.yaml`, the
+   template not removed (`yanked.yaml: all`), a version higher than the directories under
+   `templates/<vendor>/<name>/`, its number checked against the highest with the format's
+   `VersionCheck` (migration steps counted as the catalog counts them), 20 MB at most (the
+   catalog's limit, repeated here), files and directories only. Then the source copied to
+   `templates/<vendor>/<name>/<version>/`, README included, and the git commands printed
+   (branch `add_<vendor>_<name>_<version>`); no git run. Ownership is left to the catalog's
+   check, which knows the author.
 
 In the catalog (its own plan, from phase 5 on):
 
@@ -593,7 +601,8 @@ In the catalog (its own plan, from phase 5 on):
   vendors, a maintainers' flag in `vendors.yaml` shown on the site, and organizations as owners,
   through public membership; (5) phase 7, `metadata:template:publish`. Progress: (1) done (2026-11-08,
   format v1.1.0); (2) on the catalog's branch `feature/semver-check`, with the format from
-  Packagist there too; (2) and (3) merged (2026-11-08); (4) on `feature/vendors`.
+  Packagist there too; (2) and (3) merged (2026-11-08); (4) on `feature/vendors`; (5) phase 7, on
+  `feature/template-publish` here.
 
 The first published templates:
 

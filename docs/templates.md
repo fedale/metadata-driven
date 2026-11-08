@@ -406,9 +406,30 @@ symfony console metadata:template:search geo
 symfony console metadata:template:install fedale/geo-italy
 ```
 
-To publish a template there, open a pull request adding its source directory: every pull
-request is checked automatically, then reviewed by a maintainer before anything is listed. The
-steps are in the catalog's README.
+### Publishing to the catalog
+
+Publishing is a pull request to the catalog adding the template's source directory: every pull
+request is checked automatically, then reviewed by a maintainer before anything is listed. Your
+vendor (`acme` in `acme/shop`) must be registered there first, in a pull request of its own (see
+the catalog's README). Then, with a checkout of the catalog up to date next to this repository:
+
+```bash
+git clone git@github.com:fedale/metadata-driven-templates.git ../metadata-driven-templates
+symfony console metadata:template:export acme/shop 1.1.0 /tmp/shop --object=… --license=MIT
+symfony console metadata:template:publish /tmp/shop --dry-run   # what the catalog would refuse
+symfony console metadata:template:publish /tmp/shop             # copied into the checkout
+```
+
+`metadata:template:publish` runs, against the checkout, what the catalog's check would refuse:
+the format, a registered vendor, a template not removed, a version higher than the published
+ones whose number fits what it changed (see [Version numbers](#version-numbers): the catalog
+applies the same rules), 20 MB at most, no links. Then it copies the directory to
+`templates/<vendor>/<name>/<version>/` in the checkout and prints the git commands to propose
+it: a branch, a commit, a push, a pull request against `main`. It never runs git itself. Who
+owns the vendor is checked by the catalog, which knows the pull request's author.
+
+A `README.md` in the template's directory is copied too: the catalog shows it on the
+template's page.
 
 ## Not yet
 - **Templates requiring other templates**: a template pointing at the objects of another
