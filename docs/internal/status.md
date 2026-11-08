@@ -230,11 +230,11 @@ revision bumped by triggers, see `architecture.md`).
   `ta4QYEX/ZmCA9xA0yPP4sRZLeqYqBvmCXazwXiGadEc=` (`TEMPLATE_CATALOG_URL`, `TEMPLATE_CATALOG_KEY`,
   the defaults of `.env` since 2026-11-07; empty in `.env.test`: the tests never reach it).
   The first template, `fedale/geo-italy` 1.0.0 (Italy's regions, provinces and municipalities
-  from ISTAT), is ready on the catalog's branch `add_fedale_geo_italy`, not pushed: validated,
-  installed on a throw-away database (8,023 records, about 12 s), `bin/catalog check` and
-  `build` passing; see the plan, "The first published templates". `fedale/registration` waits
-  for templates requiring templates. Next: C3 (the static site), then C4 with phase 7
-  (publish). Phase 2 needs fedale/rbac-bundle's transaction-safe cache (pushed to its main).
+  from ISTAT), is published (merged 2026-11-07, installed by name from the live catalog on a
+  throw-away database); see the plan, "The first published templates". `fedale/registration`
+  waits for templates requiring templates. C3 (the static site: home page with search, a page
+  per template, `search.json`) on the catalog's branch `feature/site` (2026-11-08), awaiting
+  review. Next: C4 with phase 7 (publish). Phase 2 needs fedale/rbac-bundle's transaction-safe cache (pushed to its main).
 - **CSV import**: (A) done with phase 3 of the templates, `record:import` (console.md). Not
   done: (B) a web wizard; (C) async with Messenger for very large files.
 - From the form mock, not done: per-kind add buttons ("+ Titolo di studio" …), field machine names

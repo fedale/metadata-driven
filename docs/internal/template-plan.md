@@ -1,9 +1,9 @@
 # Plan: templates (packaged, versioned models)
 
 Status: **phases 1 to 6 and C0 done, merged into main** (2026-11-06); in the catalog, **C1 and
-C2 done and live** (see [The catalog](#the-catalog) and the catalog's own plan). No template is
-published yet. Next: a first real template through the whole chain, or C3 (the static site);
-phase 7 (publish) comes with C4. Discussed with the user on 2026-11-03; name, upgrade model and distribution
+C2 done and live**, `fedale/geo-italy` 1.0.0 published (2026-11-07), **C3** (the static site)
+on the catalog's branch `feature/site` (2026-11-08) (see [The catalog](#the-catalog) and the
+catalog's own plan). Next: C4, with phase 7 (publish). Discussed with the user on 2026-11-03; name, upgrade model and distribution
 decided on 2026-11-05 (see [Decisions](#decisions)).
 
 A template packages a model, meaning its objects, fields, relations, composite forms, views,
@@ -581,7 +581,9 @@ In the catalog (its own plan, from phase 5 on):
 - **C2** publication on merge: pack, `index.json` rebuilt and signed, `yanked.yaml`, archives
   and index on GitHub Pages — done (2026-11-06, live at
   `https://fedale.github.io/metadata-driven-templates/index.json`);
-- **C3** the static site: search, a page per template, the JSON search file;
+- **C3** the static site: search, a page per template, the JSON search file — done
+  (2026-11-08, catalog branch `feature/site`): built with the index from the same packages,
+  authors' text escaped, an optional `README.md` per version rendered without raw HTML;
 - **C4** reports and removal, verified vendors, the semver check against the previous version's
   items (it needs the item comparison, today in metadata-driven), phase 7.
 
