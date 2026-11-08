@@ -38,6 +38,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:template:repo`](#metadatatemplaterepo) | List, add or remove the indexes templates are downloaded from |
 | [`metadata:template:search`](#metadatatemplatesearch) | Find templates in the indexes, with the version installed here |
 | [`metadata:template:yank`](#metadatatemplateyank) | Withdraw a version from an index, or list it again |
+| [`metadata:template:publish`](#metadatatemplatepublish) | Prepare a template version for the central catalog: copied into a checkout of it, ready for a pull request |
 | [`metadata:template:upgrade`](#metadatatemplateupgrade) | Upgrade an installed template to a new version: only what it changed, what this instance changed kept |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
 | `user:create` | Create a user who can sign in — see [Users and permissions](access.md#usercreate) |
@@ -605,6 +606,19 @@ metadata:template:yank <index> <name> <version> [--sign=FILE] [--undo]
 Marks a version of an index file yanked: new installs and upgrades skip it, naming it still
 installs it. `--undo` lists it again. A signed entry needs the secret key (`--sign`): the
 signature covers the flag.
+
+## `metadata:template:publish`
+
+```
+metadata:template:publish <directory> [--catalog=../metadata-driven-templates] [--dry-run]
+```
+
+Checks a template directory against a checkout of the template catalog as the catalog's pull
+request check would (the format, a registered vendor, a template not removed, a version higher
+than the published ones whose number fits its changes, 20 MB at most, no links), then copies it
+to `templates/<vendor>/<name>/<version>/` there and prints the git commands to propose it.
+`--dry-run` checks only. Pull the checkout first: it is compared as it is. See
+[Templates](templates.md#publishing-to-the-catalog).
 
 ## `metadata:template:repo`
 

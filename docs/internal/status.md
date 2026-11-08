@@ -238,7 +238,8 @@ revision bumped by triggers, see `architecture.md`).
   per template, `search.json`) is live (2026-11-08). C4 in five steps (template-plan.md, C4): the item comparison moved into the format
   (v1.1.0, done); the semver check in the catalog, removal (`vendor/name: all` in `yanked.yaml`)
   and reports (all merged); verified vendors and organizations as owners on the catalog's
-  branch `feature/vendors`. Phase 2 needs fedale/rbac-bundle's transaction-safe cache (pushed to its main).
+  branch `feature/vendors`; phase 7, `metadata:template:publish`, on `feature/template-publish`
+  (2026-11-08), awaiting review. Phase 2 needs fedale/rbac-bundle's transaction-safe cache (pushed to its main).
 - **CSV import**: (A) done with phase 3 of the templates, `record:import` (console.md). Not
   done: (B) a web wizard; (C) async with Messenger for very large files.
 - From the form mock, not done: per-kind add buttons ("+ Titolo di studio" …), field machine names
