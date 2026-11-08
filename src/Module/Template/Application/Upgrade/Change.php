@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Module\Template\Application\Upgrade;
 
+use Fedale\TemplateFormat\Versions\ItemState;
+
 /**
  * One item an upgrade adds, changes or removes, with its three states.
  */

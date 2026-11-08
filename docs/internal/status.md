@@ -161,7 +161,9 @@ Things that are not obvious from a single file, and that are easy to break.
   to work on it, its own `composer qa`): only `symfony/yaml` and `opis/json-schema`. A change to the format is
   made there, with its tests. It describes the field types on its own (`Resources/field-types.v1.json`):
   **a new field type or setting must be added there too**, or
-  `FieldTypeCatalogMatchesTheAppTest` fails. The `Template` module is the only bridge to the
+  `FieldTypeCatalogMatchesTheAppTest` fails. The comparison of a template's items and the
+  version rules (`Fedale\TemplateFormat\Versions`: `ItemStates`, `VersionCheck`) are in the
+  format too since v1.1.0, shared with the catalog's check. The `Template` module is the only bridge to the
   metadata; `core.template_item` keeps the id of each exported item across exports (a renamed
   item keeps its id). The install records `ownedState()` as its snapshot, the base of the next
   upgrade. After a rolled-back install or upgrade the entity manager is cleared

@@ -585,7 +585,13 @@ In the catalog (its own plan, from phase 5 on):
   (2026-11-08, catalog branch `feature/site`): built with the index from the same packages,
   authors' text escaped, an optional `README.md` per version rendered without raw HTML;
 - **C4** reports and removal, verified vendors, the semver check against the previous version's
-  items (it needs the item comparison, today in metadata-driven), phase 7.
+  items, phase 7. Decided 2026-11-08, in five steps, each reviewed: (1) the item comparison
+  (`ItemState`, `ItemStates`, `PackageIds`, `VersionCheck`) moved into the format library,
+  `Fedale\TemplateFormat\Versions`, release v1.1.0, used by the upgrade here; (2) the semver
+  check in the catalog's pull request check, the format from Packagist there; (3) removal of a
+  template, `vendor/name: all` in `yanked.yaml`, and issue templates for reports; (4) verified
+  vendors, a maintainers' flag in `vendors.yaml` shown on the site, and organizations as owners,
+  through public membership; (5) phase 7, `metadata:template:publish`.
 
 The first published templates:
 

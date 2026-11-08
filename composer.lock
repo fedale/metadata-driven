@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2b9ddc647ee2e88d03142b85ef82dd33",
+    "content-hash": "2680c928353bd5a7d108f158f3d2fda1",
     "packages": [
         {
             "name": "composer/semver",
@@ -1424,16 +1424,16 @@
         },
         {
             "name": "fedale/template-format",
-            "version": "v1.0.0",
+            "version": "v1.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/fedale/metadata-driven-template-format.git",
-                "reference": "ff678d5e5458a4e1c510c8a26a520bad2c699a27"
+                "reference": "5c3c185822ccb70241fc0c09a6b35d72f6df53b5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/fedale/metadata-driven-template-format/zipball/ff678d5e5458a4e1c510c8a26a520bad2c699a27",
-                "reference": "ff678d5e5458a4e1c510c8a26a520bad2c699a27",
+                "url": "https://api.github.com/repos/fedale/metadata-driven-template-format/zipball/5c3c185822ccb70241fc0c09a6b35d72f6df53b5",
+                "reference": "5c3c185822ccb70241fc0c09a6b35d72f6df53b5",
                 "shasum": ""
             },
             "require": {
@@ -1451,7 +1451,7 @@
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-main": "1.0.x-dev"
+                    "dev-main": "1.1.x-dev"
                 }
             },
             "autoload": {
@@ -1472,9 +1472,9 @@
             ],
             "support": {
                 "issues": "https://github.com/fedale/metadata-driven-template-format/issues",
-                "source": "https://github.com/fedale/metadata-driven-template-format/tree/v1.0.0"
+                "source": "https://github.com/fedale/metadata-driven-template-format/tree/v1.1.0"
             },
-            "time": "2026-11-06T13:53:54+00:00"
+            "time": "2026-11-08T18:07:41+00:00"
         },
         {
             "name": "imagine/imagine",
