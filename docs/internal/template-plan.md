@@ -591,7 +591,9 @@ In the catalog (its own plan, from phase 5 on):
   check in the catalog's pull request check, the format from Packagist there; (3) removal of a
   template, `vendor/name: all` in `yanked.yaml`, and issue templates for reports; (4) verified
   vendors, a maintainers' flag in `vendors.yaml` shown on the site, and organizations as owners,
-  through public membership; (5) phase 7, `metadata:template:publish`.
+  through public membership; (5) phase 7, `metadata:template:publish`. Progress: (1) done (2026-11-08,
+  format v1.1.0); (2) on the catalog's branch `feature/semver-check`, with the format from
+  Packagist there too.
 
 The first published templates:
 
