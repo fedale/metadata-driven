@@ -4,7 +4,7 @@ Internal notes for whoever (human or agent) picks the work up, on any machine. R
 starting a task; update it in the same branch whenever a decision is taken, a feature lands or the
 work queue changes. The user-facing documentation is in [../README.md](../README.md).
 
-Last updated: 2026-11-07.
+Last updated: 2026-11-08.
 
 ## Setting up on a new machine
 
@@ -192,6 +192,19 @@ revision bumped by triggers, see `architecture.md`).
   setting, then writing its rows from the record and composite forms, with permissions on the
   junction), and search on the linked labels (relations too, only when configured). Known limits
   are listed in the plan, under "Phase 4b-2, as delivered".
+- **Templates and their catalog**, complete (2026-11-08), plan in
+  [template-plan.md](template-plan.md), the catalog's own in
+  `../metadata-driven-templates/docs/internal/plan.md`: format (`fedale/template-format`, on
+  Packagist, v1.1.0), export, install, seeds, three-way upgrade, indexes and signatures, admin
+  UI, `metadata:template:publish`; the catalog `fedale/metadata-driven-templates` on GitHub
+  (pull request check with the semver rules, publication on merge to Pages, static site,
+  removal with `all`, reports, verified vendors, organizations as owners). Live index
+  `https://fedale.github.io/metadata-driven-templates/index.json`, key
+  `ta4QYEX/ZmCA9xA0yPP4sRZLeqYqBvmCXazwXiGadEc=` (`TEMPLATE_CATALOG_URL`,
+  `TEMPLATE_CATALOG_KEY`, the defaults of `.env`; empty in `.env.test`). First template:
+  `fedale/geo-italy` 1.0.0.
+- **Packagist** (2026-11-07): the bundles and the format required in released versions;
+  local work on them through composer-link (getting-started.md).
 - **The `file` field type**, complete, plan in [file-type-plan.md](file-type-plan.md): storage and
   `core.file`, the record form, download and thumbnails at `/files/{id}`, grid and export, several
   files per field (`multiple: true` with a link table), the GC (`metadata:files:gc`) and file
@@ -200,46 +213,38 @@ revision bumped by triggers, see `architecture.md`).
 
 ## Open
 
-- **Packagist** (2026-11-07, branch `feature/packagist`, awaiting review): the bundles and the
-  format required in released versions (`gridview-bundle` v1.3.0, `rbac-bundle` 1.1.0,
-  `setting-bundle` v1.1.0, `template-format` v1.0.0, tagged that day) instead of `../` path
-  repositories; local work through composer-link. A bundle change merged into the app needs a
-  release of the bundle first. Not done: the catalog (`../metadata-driven-templates`) still
-  loads the format from `../template-format`, its Actions clone it.
-- **Security advisories** (`composer audit`, 2026-11-07, older than the Packagist switch):
-  phpunit (< 13.4.4), symfony/html-sanitizer, symfony/mime, symfony/validator. To update.
-- **Work queue: templates** (packaged, versioned models), plan in
-  [template-plan.md](template-plan.md): a canonical format for every item, install, three-way
-  upgrade, seeds, indexes, export, and a central catalog as an application of its own
-  (`fedale/template-catalog`). Decided on 2026-11-05: the name "template", three-way upgrades,
-  the central catalog with GitHub sign-in, the format in `src/TemplateFormat/` behind a Deptrac
-  boundary (extracted into `fedale/template-format` when the catalog starts), `requires` naming
-  the format version, field settings checked by a static description in the format. On
-  2026-11-06: the catalog hosted on GitHub, templates reviewed before listing; no decision is
-  open. Done and merged into main (2026-11-06, with `feature/template-format-package`, the last
-  of a chain of branches each built on the one before): phases 1 (format and export) and 2
-  (install: `metadata:template:install [--dry-run]`, `metadata:template:list`); phase 3 (seeds:
-  format, checks, install, export with `--seed`; and `record:import`); phase 4 (upgrade:
-  `metadata:template:upgrade`, three-way, conflicts, `--strategy`, managed seeds, `migrations`,
-  version numbers); phase 5 (archives, indexes, `repo`, `search`, `pack`, `keygen`, install and
-  upgrade by name, Ed25519 signatures, no private networks); phase 6 (admin UI at
-  `/admin/templates`, conflicts resolved item by item; `yank`, the yanked flag signed); C0 (the
-  format extracted into `fedale/template-format`, `../template-format`). Phase 7 (publish) comes
-  with C4. The catalog is a GitHub repository, `../metadata-driven-templates`
-  (pull requests reviewed before listing, Actions, Pages; its plan in its
-  `docs/internal/plan.md`): C1 (the pull request check) and C2 (publication on merge) done and
-  live: `https://fedale.github.io/metadata-driven-templates/index.json`, key
-  `ta4QYEX/ZmCA9xA0yPP4sRZLeqYqBvmCXazwXiGadEc=` (`TEMPLATE_CATALOG_URL`, `TEMPLATE_CATALOG_KEY`,
-  the defaults of `.env` since 2026-11-07; empty in `.env.test`: the tests never reach it).
-  The first template, `fedale/geo-italy` 1.0.0 (Italy's regions, provinces and municipalities
-  from ISTAT), is published (merged 2026-11-07, installed by name from the live catalog on a
-  throw-away database); see the plan, "The first published templates". `fedale/registration`
-  waits for templates requiring templates. C3 (the static site: home page with search, a page
-  per template, `search.json`) is live (2026-11-08). C4 in five steps (template-plan.md, C4): the item comparison moved into the format
-  (v1.1.0, done); the semver check in the catalog, removal (`vendor/name: all` in `yanked.yaml`)
-  and reports (all merged); verified vendors and organizations as owners on the catalog's
-  branch `feature/vendors`; phase 7, `metadata:template:publish`, on `feature/template-publish`
-  (2026-11-08), awaiting review. Phase 2 needs fedale/rbac-bundle's transaction-safe cache (pushed to its main).
+### Next, in the order proposed (2026-11-08)
+
+1. **Templates requiring other templates**: `spec.requires` naming another template
+   (`fedale/geo-italy: ^1.0`), its objects referenced by id from the requiring one; install
+   refuses it today (`InstallRefused::unsupportedRequirements()`), export refuses a relation to
+   an object outside the export. Unblocks `fedale/registration` (account, profile, phone,
+   qualification, the `registration` form; built by hand in the original dev database) on top
+   of `fedale/geo-italy`. To plan first: install order and missing requirements (install them
+   too, or refuse), version constraints, upgrades of a required template, uninstall refused while
+   required, ids across templates.
+2. **Security advisories** (`composer audit`, 2026-11-07): phpunit (< 13.4.4),
+   symfony/html-sanitizer, symfony/mime, symfony/validator. Update them.
+3. **"An app in a package"** (an idea discussed 2026-11-07, not planned): a large template is
+   already a data application (objects, forms, views, data), but not an app. Missing, in this
+   order: (a) templates requiring templates (point 1); (b) roles and permissions shipped in the
+   template (today install creates the permissions, not roles); (c) navigation the template
+   defines (menu, home page of its objects); (d) declarative rules and automations (computed
+   fields, workflows/states, notifications), never code: templates that ship code stay out of
+   scope.
+
+Smaller ones:
+
+- The catalog's `check` job still checks out `fedale/metadata-driven-template-format` beside the
+  tools, for a pull request based on a commit older than the Packagist switch (2026-11-08):
+  drop that step once no open pull request has such a base.
+- `fedale/geo-italy`: a new version when ISTAT publishes a new list, through the catalog's
+  `tools/geo-italy/build-seeds.php` (its README).
+- The catalog's code owner is the only maintainer: their own pull requests merge with the admin
+  bypass (checks green first). A second maintainer in `.github/CODEOWNERS` would remove that.
+
+### Other open items
+
 - **CSV import**: (A) done with phase 3 of the templates, `record:import` (console.md). Not
   done: (B) a web wizard; (C) async with Messenger for very large files.
 - From the form mock, not done: per-kind add buttons ("+ Titolo di studio" …), field machine names
