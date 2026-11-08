@@ -33,6 +33,9 @@ use Fedale\TemplateFormat\FieldTypes\ReferenceKind;
 use Fedale\TemplateFormat\Package;
 use Fedale\TemplateFormat\PackageChecker;
 use Fedale\TemplateFormat\SeedRecords;
+use Fedale\TemplateFormat\Versions\ItemState;
+use Fedale\TemplateFormat\Versions\ItemStates;
+use Fedale\TemplateFormat\Versions\VersionCheck;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Yaml\Yaml;
 
