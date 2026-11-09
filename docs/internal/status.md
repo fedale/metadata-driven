@@ -4,7 +4,7 @@ Internal notes for whoever (human or agent) picks the work up, on any machine. R
 starting a task; update it in the same branch whenever a decision is taken, a feature lands or the
 work queue changes. The user-facing documentation is in [../README.md](../README.md).
 
-Last updated: 2026-11-08.
+Last updated: 2026-11-09.
 
 ## Setting up on a new machine
 
@@ -205,6 +205,9 @@ revision bumped by triggers, see `architecture.md`).
   `fedale/geo-italy` 1.0.0.
 - **Packagist** (2026-11-07): the bundles and the format required in released versions;
   local work on them through composer-link (getting-started.md).
+- **Security updates** (2026-11-09): `composer audit` clean again (Symfony 8.1.11 and the UX
+  packages 3.7, PHPUnit 13.4.6). `bump-after-update` is on: an update raises the constraints of
+  `composer.json` to the versions installed. Run `composer audit` now and then.
 - **The `file` field type**, complete, plan in [file-type-plan.md](file-type-plan.md): storage and
   `core.file`, the record form, download and thumbnails at `/files/{id}`, grid and export, several
   files per field (`multiple: true` with a link table), the GC (`metadata:files:gc`) and file
@@ -223,9 +226,7 @@ revision bumped by triggers, see `architecture.md`).
    of `fedale/geo-italy`. To plan first: install order and missing requirements (install them
    too, or refuse), version constraints, upgrades of a required template, uninstall refused while
    required, ids across templates.
-2. **Security advisories** (`composer audit`, 2026-11-07): phpunit (< 13.4.4),
-   symfony/html-sanitizer, symfony/mime, symfony/validator. Update them.
-3. **"An app in a package"** (an idea discussed 2026-11-07, not planned): a large template is
+2. **"An app in a package"** (an idea discussed 2026-11-07, not planned): a large template is
    already a data application (objects, forms, views, data), but not an app. Missing, in this
    order: (a) templates requiring templates (point 1); (b) roles and permissions shipped in the
    template (today install creates the permissions, not roles); (c) navigation the template
@@ -235,9 +236,6 @@ revision bumped by triggers, see `architecture.md`).
 
 Smaller ones:
 
-- The catalog's `check` job still checks out `fedale/metadata-driven-template-format` beside the
-  tools, for a pull request based on a commit older than the Packagist switch (2026-11-08):
-  drop that step once no open pull request has such a base.
 - `fedale/geo-italy`: a new version when ISTAT publishes a new list, through the catalog's
   `tools/geo-italy/build-seeds.php` (its README).
 - The catalog's code owner is the only maintainer: their own pull requests merge with the admin
