@@ -223,9 +223,9 @@ revision bumped by triggers, see `architecture.md`).
    refuses it today (`InstallRefused::unsupportedRequirements()`), export refuses a relation to
    an object outside the export. Unblocks `fedale/registration` (account, profile, phone,
    qualification, the `registration` form; built by hand in the original dev database) on top
-   of `fedale/geo-italy`. To plan first: install order and missing requirements (install them
-   too, or refuse), version constraints, upgrades of a required template, uninstall refused while
-   required, ids across templates.
+   of `fedale/geo-italy`. Planned as phase 8 of [template-plan.md](template-plan.md) (2026-11-09,
+   seven steps, each reviewed; decisions D1-D3 taken: missing requirements installed with the
+   template, constraints `^`/`~`/exact, references only).
 2. **"An app in a package"** (an idea discussed 2026-11-07, not planned): a large template is
    already a data application (objects, forms, views, data), but not an app. Missing, in this
    order: (a) templates requiring templates (point 1); (b) roles and permissions shipped in the
