@@ -229,7 +229,13 @@ revision bumped by triggers, see `architecture.md`).
    `PackageChecker::check($package, $required)`) on template-format's branch `feature/requires`,
    awaiting review. With it linked, `TemplateInstallerTest::testRefusesWhatItCannotInstall`
    fails as expected: the checker now refuses a missing requirement before the installer's own
-   message; step 2 replaces both.
+   message; step 2 replaces both. Step 1 is merged into template-format's `main` (2026-11-09)
+   but **not tagged**: tag `v1.2.0` only once step 2 works, so no one gets a format the app
+   cannot use yet. To work on step 2 (any machine): clone `../template-format` if missing,
+   `composer link ../template-format` here (its `main` has step 1), work and test against it;
+   at the end tag and push `v1.2.0` there, then `composer unlink-all`, `composer require
+   fedale/template-format:^1.2`, `composer link` again, and update the tests expecting the old
+   messages. Next: step 2, install (the plan's phase 8, step 2).
 2. **"An app in a package"** (an idea discussed 2026-11-07, not planned): a large template is
    already a data application (objects, forms, views, data), but not an app. Missing, in this
    order: (a) templates requiring templates (point 1); (b) roles and permissions shipped in the
