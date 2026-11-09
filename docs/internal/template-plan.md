@@ -67,7 +67,7 @@ original machine (see [status.md](status.md#setting-up-on-a-new-machine)). It al
 
 ## Open decisions
 
-None.
+None. Phase 8's D1-D3 were decided on 2026-11-09 (see the phase).
 
 ## Principles
 
@@ -569,6 +569,87 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
    `templates/<vendor>/<name>/<version>/`, README included, and the git commands printed
    (branch `add_<vendor>_<name>_<version>`); no git run. Ownership is left to the catalog's
    check, which knows the author.
+8. **Templates requiring templates** — planned and decided (2026-11-09), not started. Unblocks
+   `fedale/registration` (account, profile, phone, qualification, the `registration` form) on
+   top of `fedale/geo-italy`: its profile points at regions, provinces and municipalities.
+
+   **What it means.** `spec.requires` names other templates besides the format:
+
+   ```yaml
+   requires:
+     format: metadata-driven/v1
+     fedale/geo-italy: ^1.0
+   ```
+
+   The requiring template **references** the required one's objects and fields by their ids,
+   wherever it references its own today: a relation's or many-to-many's `target`, a setting
+   naming a field of the target (`dependsVia`, `throughTarget`), a composite form's `object` and
+   `via`, a seed's references (by the key of the required template's seed: a profile's `region:
+   "01"`). It never changes them: no field added to `fedale.region`, no relabelling (D3).
+
+   **Decisions** (2026-11-09, as proposed):
+
+   - **D1, a missing requirement.** Installing by name (from an index) installs what is
+     missing first, from the same indexes, the newest version fitting the constraint, all in
+     the same transaction and the same dry run; the report lists the whole chain. Installing
+     from a directory or an archive refuses instead, naming what to install first: there is no
+     index to take it from. A requirement installed in a version outside the constraint is
+     refused, with the version needed (upgrade it first): never upgraded on the side.
+   - **D2, constraints.** Composer's subset only: `^1.2` (>=1.2.0 <2.0.0; `^0.3` is
+     >=0.3.0 <0.4.0), `~1.2` (>=1.2.0 <1.3.0), an exact `1.2.3`. Enough for semver templates;
+     ranges and `||` later if ever needed. Yanked versions skipped as for any install.
+   - **D3, reference only.** Adding fields to a required object (an "extension") is a different
+     feature, left out: it would make two templates own one object, and every upgrade of either
+     a three-way merge across templates.
+   - **No cycles**, no requirement on oneself; a requirement's own requirements followed, depth
+     unlimited but each template once.
+   - **Ids across templates.** Ids stay vendor-prefixed (`fedale.region`), so two templates of a
+     vendor could define the same id: the checker refuses a template defining an id one of its
+     requirements defines (per kind, as within a template). Inside the app, a reference is
+     resolved through the required template's `core.template_item` rows (id → local item), never
+     by name: a renamed region keeps every reference.
+
+   **Steps**, each reviewed:
+
+   1. **Format, v1.2.0** (`fedale/template-format`): a `Constraint` class (D2, parse and match);
+      `PackageChecker::check(Package $package, list<Package> $required = [])`: an id is
+      resolved in the package, then in the required packages; ids defined twice refused; a
+      `requires` entry must be a template name with a valid constraint; the required packages
+      given must fit the constraints. `ItemStates` unchanged (a requiring template's items are
+      only its own). Field settings naming a field of the target (`dependsVia`…) checked against
+      the required object's fields.
+   2. **Install** (metadata-driven): `TemplateInstaller` takes the required templates as
+      installed (their snapshot packages from `core.template_installation`) to check the package
+      and to resolve ids (`PackageNames` extended with the required templates' ids, through their
+      `core.template_item` rows); seeds referencing a required seed's records by key (the
+      record found through the required template's recorded seed fingerprints / its key field).
+      `InstallRefused::unsupportedRequirements()` goes. `core.template_installation` records
+      what each template requires; `metadata:template:list` shows it.
+   3. **Install by name, missing requirements** (D1): `TemplateSources` resolves the chain from
+      the indexes (`IndexEntry::$requires` already carries it), downloads and checks every
+      archive, then one install of the chain, requirements first; the admin's install preview
+      shows the chain.
+   4. **Upgrade.** A requiring template: its new version's requirements must be met as installed
+      (else refused: upgrade the requirement first). A required template: refused when the new
+      version removes or renames away an item an installed template references (listed), or
+      when its number leaves a constraint an installed template has (a major past `^1.0`); the
+      app's own rules already refuse archiving an object in use.
+   5. **Export.** A relation, a many-to-many or a composite form pointing at an object of an
+      installed template is no longer refused: the export writes that template's ids and adds it
+      to `requires`, with `^<installed major.minor>`. Objects of a required template can't be
+      exported in the requiring one (they belong to it).
+   6. **Catalog.** The pull request check reads the required templates from the checkout (the
+      highest published version fitting each constraint, not yanked) and passes them to the
+      checker; a requirement on a template the catalog does not have is refused. The pages list
+      the requirements with links, and the pages of a required template list what requires it.
+      `metadata:template:publish` does the same against the checkout.
+   7. **`fedale/registration` 1.0.0**: exported from the original dev database's model once its
+      region, province and municipality are replaced by `fedale/geo-italy`'s (installed
+      there first, the hand-made objects archived after their records are moved), then published.
+      The model needs English labels and an Italian translation like geo-italy's.
+
+   **Not in this phase**: extensions (D3), uninstalling a template (there is no uninstall yet),
+   optional requirements, requirements on a version of metadata-driven itself.
 
 In the catalog (its own plan, from phase 5 on):
 
