@@ -225,7 +225,11 @@ revision bumped by triggers, see `architecture.md`).
    qualification, the `registration` form; built by hand in the original dev database) on top
    of `fedale/geo-italy`. Planned as phase 8 of [template-plan.md](template-plan.md) (2026-11-09,
    seven steps, each reviewed; decisions D1-D3 taken: missing requirements installed with the
-   template, constraints `^`/`~`/exact, references only).
+   template, constraints `^`/`~`/exact, references only). Step 1 (format v1.2.0: `Constraint`,
+   `PackageChecker::check($package, $required)`) on template-format's branch `feature/requires`,
+   awaiting review. With it linked, `TemplateInstallerTest::testRefusesWhatItCannotInstall`
+   fails as expected: the checker now refuses a missing requirement before the installer's own
+   message; step 2 replaces both.
 2. **"An app in a package"** (an idea discussed 2026-11-07, not planned): a large template is
    already a data application (objects, forms, views, data), but not an app. Missing, in this
    order: (a) templates requiring templates (point 1); (b) roles and permissions shipped in the
