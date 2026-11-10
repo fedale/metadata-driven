@@ -519,8 +519,9 @@ Lists every problem with its file and where in it, and fails when there is one. 
 ## `metadata:template:install`
 
 Install a template, from a directory or downloaded from an index, in one transaction (see
-[Templates](templates.md#installing-a-template)). The templates it requires must be installed
-first, in a version their constraints allow (see
+[Templates](templates.md#installing-a-template)). Named from an index, it comes with the
+templates it requires that are missing, installed first in the same transaction; from a
+directory, they must be installed already (see
 [Templates requiring templates](templates.md#templates-requiring-templates)).
 
 ```

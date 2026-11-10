@@ -8,7 +8,9 @@ use App\Module\Template\Domain\Exception\TemplateSourceFailed;
 use App\Module\Template\Domain\Model\TemplateSource;
 use App\Module\Template\Domain\Repository\TemplateSourceRepository;
 use Fedale\TemplateFormat\Archive;
+use Fedale\TemplateFormat\Constraint;
 use Fedale\TemplateFormat\Format;
+use Fedale\TemplateFormat\IndexEntry;
 use Fedale\TemplateFormat\InvalidIndex;
 use Fedale\TemplateFormat\InvalidPackage;
 use Fedale\TemplateFormat\Signature;
@@ -206,6 +208,58 @@ final class TemplateSources
         }
 
         return new LocatedTemplate($index['name'], $index['url'], $entry, $index['key']);
+    }
+
+    /**
+     * The newest version of a template a constraint allows, yanked ones and those of another
+     * format left out: what a template requiring it gets installed along with it. The index the
+     * requiring template came from is looked in first; when it doesn't offer the template, every
+     * index, and then only one may offer it.
+     *
+     * @param string $prefer the address of the index the requiring template came from
+     *
+     * @throws TemplateSourceFailed
+     */
+    public function locateFitting(string $name, Constraint $constraint, string $prefer): LocatedTemplate
+    {
+        $indexes = $this->indexes();
+        $preferred = array_values(array_filter($indexes, static fn (array $index): bool => $index['url'] === $prefer));
+        $found = [];
+        foreach ($preferred as $index) {
+            $read = $this->index($index['url']);
+            if ([] !== $read->versions($name)) {
+                $found[] = [$index, $read];
+            }
+        }
+        if ([] === $found) {
+            foreach ($indexes as $index) {
+                if ($index['url'] === $prefer) {
+                    continue;
+                }
+                $read = $this->index($index['url']);
+                if ([] !== $read->versions($name)) {
+                    $found[] = [$index, $read];
+                }
+            }
+        }
+        if ([] === $found) {
+            throw new TemplateSourceFailed(\sprintf('No index offers %s, which is required in version %s.', $name, $constraint));
+        }
+        if (\count($found) > 1) {
+            throw new TemplateSourceFailed(\sprintf('%s, which is required, is offered by %s: install it first, choosing one with --repo.', $name, implode(' and ', array_map(static fn (array $pair): string => $pair[0]['name'], $found))));
+        }
+
+        [$index, $read] = $found[0];
+        $fitting = array_values(array_filter(
+            $read->versions($name),
+            static fn (IndexEntry $entry): bool => !$entry->yanked && Format::VERSION === ($entry->requires['format'] ?? null) && $constraint->allows($entry->version),
+        ));
+        if ([] === $fitting) {
+            throw new TemplateSourceFailed(\sprintf('%s offers no version of %s that fits %s and is not yanked.', $index['name'], $name, $constraint));
+        }
+        usort($fitting, static fn (IndexEntry $a, IndexEntry $b): int => version_compare($b->version, $a->version));
+
+        return new LocatedTemplate($index['name'], $index['url'], $fitting[0], $index['key']);
     }
 
     /**

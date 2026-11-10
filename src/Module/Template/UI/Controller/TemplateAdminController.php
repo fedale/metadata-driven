@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Template\UI\Controller;
 
 use App\Module\Access\Contract\AccessCheckerInterface;
+use App\Module\Template\Application\InstallReport;
 use App\Module\Template\Application\Source\PackageLocator;
 use App\Module\Template\Application\Source\TemplateSources;
 use App\Module\Template\Application\TemplateInstaller;
@@ -145,14 +146,17 @@ final class TemplateAdminController extends AbstractController
         $confirm = $this->confirmForm('install', ['template' => $template, 'repo' => $repo ?? ''])->handleRequest($request);
         $real = $confirm->isSubmitted() && $confirm->isValid();
 
-        $report = null;
+        $reports = [];
         $reasons = [];
         try {
-            $opened = $this->locator->open($template, $repo);
+            // It comes with the templates it requires that are missing: the preview lists them all.
+            $chain = $this->locator->openWithRequirements($template, $repo);
             try {
-                $report = $this->installer->install($opened->package, $opened->source, dryRun: !$real);
+                $reports = $this->installer->installAll($chain, dryRun: !$real);
             } finally {
-                $this->locator->close($opened);
+                foreach ($chain as $opened) {
+                    $this->locator->close($opened);
+                }
             }
         } catch (TemplateSourceFailed $e) {
             $reasons = [$e->getMessage()];
@@ -161,15 +165,15 @@ final class TemplateAdminController extends AbstractController
         } catch (InstallRefused $e) {
             $reasons = $e->reasons;
         }
-        if ($real && null !== $report) {
-            $this->addFlash('success', \sprintf('Template %s %s installed.', $report->name, $report->version));
+        if ($real && [] !== $reports) {
+            $this->addFlash('success', \sprintf('%s %s installed.', \count($reports) > 1 ? 'Templates' : 'Template', implode(', ', array_map(static fn (InstallReport $report): string => $report->name.' '.$report->version, $reports))));
 
             return $this->redirectToRoute('admin_template_index', [], Response::HTTP_SEE_OTHER);
         }
 
         return $this->render('admin/template_install.html.twig', [
             'template' => $template,
-            'report' => $report,
+            'reports' => $reports,
             'reasons' => $reasons,
             'confirm' => $confirm->createView(),
         ], new Response(status: [] === $reasons ? Response::HTTP_OK : Response::HTTP_UNPROCESSABLE_ENTITY));

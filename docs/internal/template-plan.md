@@ -3,8 +3,9 @@
 Status: **phases 1 to 7 and C0 to C4 done, merged into main** (2026-11-08); the catalog is
 live, with `fedale/geo-italy` 1.0.0 (see [The catalog](#the-catalog) and the catalog's own
 plan). **Phase 8** (templates requiring templates): step 1 done in the format, step 2 (install)
-merged (2026-11-10, format v1.2.0). Next: phase 8, step 3. Discussed with
-the user on 2026-11-03; name, upgrade model and distribution decided on 2026-11-05 (see
+merged (2026-11-10, format v1.2.0), step 3 (by name, with the missing requirements)
+merged (2026-11-10). Next: phase 8, step 4. Discussed with the user on 2026-11-03; name,
+upgrade model and distribution decided on 2026-11-05 (see
 [Decisions](#decisions)).
 
 A template packages a model, meaning its objects, fields, relations, composite forms, views,
@@ -570,7 +571,7 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
    `templates/<vendor>/<name>/<version>/`, README included, and the git commands printed
    (branch `add_<vendor>_<name>_<version>`); no git run. Ownership is left to the catalog's
    check, which knows the author.
-8. **Templates requiring templates** — planned and decided (2026-11-09); steps 1 and 2 done
+8. **Templates requiring templates** — planned and decided (2026-11-09); steps 1 to 3 done
    (2026-11-10). Unblocks `fedale/registration` (account, profile, phone, qualification, the `registration` form) on
    top of `fedale/geo-italy`: its profile points at regions, provinces and municipalities.
 
@@ -648,6 +649,22 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
       the indexes (`IndexEntry::$requires` already carries it), downloads and checks every
       archive, then one install of the chain, requirements first; the admin's install preview
       shows the chain.
+
+      Done (2026-11-10, merged). As built: the chain is read from
+      the downloaded archives' manifests, **not** from `IndexEntry::$requires`: an entry's
+      signature covers its checksum, not the requirements it lists, so an index could
+      otherwise make a signed template pull in what its author never asked for.
+      `PackageLocator::openWithRequirements()` (requirements first, each once, cycles refused,
+      a template required twice fitting both constraints; a directory comes alone) and
+      `TemplateSources::locateFitting()` (the newest version a `Constraint` allows, not yanked,
+      of this format; the requiring template's index first, then every index, refused when two
+      offer it). `TemplateInstaller::installAll()`: one transaction, each template checked
+      inside it against those installed before it, a refusal naming its template
+      (`InstallRefused::of()`); `install()` is the one-template case. A requirement installed
+      already is left alone, its version checked by the install (never upgraded on the side).
+      Console and admin list the chain. Tests: `TemplateRequirementChainTest`, the admin's
+      `testPreviewsAndInstallsATemplateWithTheRequirementsItComesWith`, the fixtures published
+      by `PublishesPlacesAndPeople`.
    4. **Upgrade.** A requiring template: its new version's requirements must be met as installed
       (else refused: upgrade the requirement first). A required template: refused when the new
       version removes or renames away an item an installed template references (listed), or

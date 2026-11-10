@@ -274,8 +274,32 @@ It only references them: it adds no field to a required object, doesn't relabel 
 it (`Names no object or form of the template.`), and its own ids must differ from those of the
 templates it requires.
 
-Install the required template first. The install then checks the requiring one against it, as
-installed here:
+Named from an index, a template comes with the templates it requires that this instance
+doesn't have yet:
+
+```bash
+symfony console metadata:template:install fedale/registration --dry-run
+```
+
+```
+ ! [NOTE] fedale/registration requires templates this instance does not have: they are
+ !        installed first, fedale/geo-italy 1.0.0.
+ …
+ [OK] Templates fedale/geo-italy 1.0.0, fedale/registration 1.0.0 can be installed. Dry run: nothing was changed.
+```
+
+Each requirement is the newest version its constraint allows, yanked versions left out, found
+first in the index the requiring template comes from, then in the others (then only one of
+them may offer it). Its own requirements follow, as deep as they go; templates requiring each
+other are refused. They're all installed in one transaction, requirements first: when one is
+refused, none is installed, and the reason names it (`fedale/geo-italy 1.0.0: objects/…`).
+**Admin → Templates** previews the whole chain the same way.
+
+A requirement installed already is never upgraded along the way: when its version doesn't fit
+the constraint, the install is refused, and upgrading it is up to you. A template installed
+from a directory comes alone, there being no index to take its requirements from: install them
+first. Either way the install checks the requiring template against its requirements as
+installed:
 
 ```
 template.yaml: spec.requires.fedale/geo-italy: fedale/geo-italy is required: it must be installed, or given to check against.
@@ -488,9 +512,8 @@ template's page.
 
 ## Not yet
 
-- **Templates requiring templates**, the rest of it: installing the missing requirements along
-  with a template named from an index; upgrading a template that requires another one, or one
-  that others require; exporting a model whose objects point at an installed template's (still
+- **Templates requiring templates**, the rest of it: upgrading a template that requires another
+  one, or one that others require; exporting a model whose objects point at an installed template's (still
   refused, as a relation outside the export); the catalog's check of such templates.
 
 See the plan in [internal/template-plan.md](internal/template-plan.md).
