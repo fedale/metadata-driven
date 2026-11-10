@@ -139,13 +139,14 @@ final class TemplateInstaller
             throw InstallRefused::alreadyInstalled($installed->getName(), $installed->getVersion());
         }
         $requires = array_map(static fn (Package $requirement): string => $requirement->name(), $required);
-        $names = new PackageNames($package, $this->required->items($requires));
+        $requiredItems = $this->required->items($requires);
+        $names = new PackageNames($package, $requiredItems);
         $collisions = $this->collisions($package, $names);
         if ([] !== $collisions) {
             throw InstallRefused::collisions($collisions);
         }
 
-        return $this->apply($package, $names, $source, $dryRun, $required, $requires);
+        return $this->apply($package, $names, $source, $dryRun, $required, $requires, $requiredItems);
     }
 
     /**
@@ -204,7 +205,7 @@ final class TemplateInstaller
      * @param list<Package> $required the templates it requires, as installed
      * @param list<string>  $requires their names
      */
-    private function apply(Package $package, PackageNames $names, string $source, bool $dryRun, array $required, array $requires): InstallReport
+    private function apply(Package $package, PackageNames $names, string $source, bool $dryRun, array $required, array $requires, RequiredItems $requiredItems): InstallReport
     {
         $items = [];
         $objects = $package->documentsOf(DocumentKind::Object);
@@ -275,7 +276,7 @@ final class TemplateInstaller
         $count += $this->translate($translations, $enabled, static fn (string $key): bool => !TranslationKey::isText($key));
 
         // The records last: their tables, fields and forms all exist by now.
-        $records = $this->seeds->write($package, $names, null, $this->requiredRecords($package, $required, $names));
+        $records = $this->seeds->write($package, $names, null, $this->required->records($package, $required, $requiredItems));
 
         // The items first: the snapshot reads back what the template owns now.
         $this->items->add($items);
@@ -339,73 +340,6 @@ final class TemplateInstaller
         }
 
         return $ordered;
-    }
-
-    /**
-     * The records of the required templates' seeds that this template's seeds point at, found by
-     * the value of their key as they are now (the user may have deleted or changed one since:
-     * the seed writer then refuses the reference). Only the objects a seeded relation or
-     * many-to-many field targets are read.
-     *
-     * @param list<Package> $required
-     *
-     * @return array<string, array<string, string>> object id => key => record id
-     */
-    private function requiredRecords(Package $package, array $required, PackageNames $names): array
-    {
-        $seeded = [];
-        foreach ($package->documentsOf(DocumentKind::Seed) as $seed) {
-            $seeded[self::string($seed->spec['object'] ?? null)] = true;
-        }
-        $targets = [];
-        foreach ($package->documentsOf(DocumentKind::Object) as $object) {
-            if (!isset($seeded[$object->id])) {
-                continue;
-            }
-            foreach (self::map($object->spec['fields'] ?? []) as $field) {
-                $field = self::map($field);
-                $target = self::map($field['settings'] ?? [])['target'] ?? null;
-                if (\in_array($field['type'] ?? null, ['relation', 'many_to_many'], true) && \is_string($target)) {
-                    $targets[$target] = true;
-                }
-            }
-        }
-
-        $keys = [];
-        foreach ($required as $requirement) {
-            foreach ($requirement->documentsOf(DocumentKind::Seed) as $seed) {
-                $object = self::string($seed->spec['object'] ?? null);
-                if (!isset($targets[$object])) {
-                    continue;
-                }
-                foreach ($this->fingerprints->current($names->object($object), $this->keyField($requirement, $object, self::string($seed->spec['key'] ?? null), $names)) as $value => $record) {
-                    $keys[$object][$value] = $record->id;
-                }
-            }
-        }
-
-        return $keys;
-    }
-
-    /**
-     * The name a required seed's key field has now: the seed names it as it was installed, and
-     * the user may have renamed it since.
-     */
-    private function keyField(Package $requirement, string $objectId, string $key, PackageNames $names): string
-    {
-        foreach ($requirement->documentsOf(DocumentKind::Object) as $object) {
-            if ($object->id !== $objectId) {
-                continue;
-            }
-            foreach (self::map($object->spec['fields'] ?? []) as $field) {
-                $field = self::map($field);
-                if ($key === ($field['name'] ?? null) && \is_string($field['id'] ?? null)) {
-                    return $names->field($field['id']);
-                }
-            }
-        }
-
-        return $key;
     }
 
     private function configureObject(Document $object, PackageNames $names): void

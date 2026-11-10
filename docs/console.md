@@ -543,8 +543,9 @@ Prints what it created (objects, fields, views, forms, translations), and the la
 out. Writes the objects, fields, views, forms and translations through the metadata API (tables,
 columns, indexes and permissions included), then `core.template_installation` and
 `core.template_item`. Fails, changing nothing, when the template is invalid, already installed,
-requires another template, or names an object or a form this instance already has; or when the
-app refuses one of its items.
+requires a template that is missing (from a directory) or installed in a version it doesn't
+allow, or names an object or a form this instance already has; or when the app refuses one of
+its items.
 
 ## `metadata:template:upgrade`
 
@@ -571,7 +572,10 @@ removed, deletes the views and forms the new version removed and archives its re
 objects; then records the new version in `core.template_installation`. Fails, changing nothing,
 when the template is not installed, the version not newer or its number does not fit the
 changes, on a conflict without `--strategy`, on a change the app cannot make to an existing item (a field's type, required or
-unique, an object's icon), or when the app refuses a step.
+unique, an object's icon), when a template it requires is missing or installed in a version the
+new one doesn't allow, when the new version would break an installed template requiring it (a
+version past its constraint, an item it references removed), or when the app refuses a step
+(see [Templates requiring templates](templates.md#templates-requiring-templates)).
 
 ## `metadata:template:pack`
 

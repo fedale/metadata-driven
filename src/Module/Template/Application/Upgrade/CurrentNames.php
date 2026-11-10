@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Template\Application\Upgrade;
 
+use App\Module\Template\Application\RequiredItems;
 use Fedale\TemplateFormat\DocumentKind;
 use Fedale\TemplateFormat\FieldTypes\FieldTypeCatalog;
 use Fedale\TemplateFormat\FieldTypes\ReferenceKind;
@@ -49,6 +50,23 @@ final class CurrentNames
         foreach ($package->documentsOf(DocumentKind::Form) as $form) {
             if (\is_string($form->spec['name'] ?? null) && ($override || !isset($this->forms[$form->id]))) {
                 $this->forms[$form->id] = $form->spec['name'];
+            }
+        }
+    }
+
+    /**
+     * Adds the objects and fields of the templates it requires, as they are named here now: the
+     * template references them by id, never renames or adds any.
+     */
+    public function learnRequired(RequiredItems $required): void
+    {
+        $objectIds = $required->objectIds();
+        foreach ($objectIds as $name => $id) {
+            $this->objects[$id] ??= $name;
+        }
+        foreach ($required->fieldIds() as $object => $fields) {
+            foreach ($fields as $field => $id) {
+                $this->fields[$id] ??= [$objectIds[$object], $field];
             }
         }
     }
