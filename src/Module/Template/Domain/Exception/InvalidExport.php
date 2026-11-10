@@ -28,6 +28,21 @@ final class InvalidExport extends TemplateException
         return new self(\sprintf('Object "%s" points at "%s" (%s), which is not exported: add it to the objects.', $object, $target, $setting));
     }
 
+    public static function ownedByAnother(string $object, string $template): self
+    {
+        return new self(\sprintf('Object "%s" belongs to the installed template %s: export it with that one. A template requiring %s can point at it.', $object, $template, $template));
+    }
+
+    public static function notOwnedByRequirement(string $object, string $setting, string $target, string $template): self
+    {
+        return new self(\sprintf('Object "%s" points at "%s" (%s), which was added here to an object of %s: a template can point only at what the templates it requires own.', $object, $target, $setting, $template));
+    }
+
+    public static function unseededRecord(string $object, string $field, string $target, string $id): self
+    {
+        return new self(\sprintf('The records of "%s" point at record %s of "%s" (%s), which the template owning "%s" does not seed: an instance installing the export would not have it.', $object, $id, $target, $field, $target));
+    }
+
     public static function formOutsideTheExport(string $form, string $object): self
     {
         return new self(\sprintf('Form "%s" writes object "%s", which is not exported: add it to the objects.', $form, $object));

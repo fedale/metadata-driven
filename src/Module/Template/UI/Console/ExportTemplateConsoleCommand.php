@@ -7,6 +7,7 @@ namespace App\Module\Template\UI\Console;
 use App\Module\Metadata\Contract\Exception\MetadataException;
 use App\Module\Template\Application\Command\ExportTemplateCommand;
 use App\Module\Template\Application\TemplateExporter;
+use App\Module\Template\Application\Upgrade\Snapshot;
 use App\Module\Template\Contract\Exception\TemplateException;
 use Fedale\TemplateFormat\Document;
 use Fedale\TemplateFormat\PackageDirectory;
@@ -58,6 +59,11 @@ final class ExportTemplateConsoleCommand
 
         $io->success(\sprintf('Template %s %s written to %s.', $package->name(), $package->version(), $directory));
         $io->listing(array_map(static fn (Document $document): string => $document->path, [$package->manifest, ...$package->documents]));
+        $requires = Snapshot::requirementsOf(\is_array($package->manifest->spec['requires'] ?? null) ? $package->manifest->spec['requires'] : []);
+        if ([] !== $requires) {
+            // Pointing at another template's objects made it require that template: worth saying.
+            $io->note(\sprintf('It requires %s.', implode(', ', array_map(static fn (string $name, string $constraint): string => $name.' '.$constraint, array_keys($requires), $requires))));
+        }
 
         return Command::SUCCESS;
     }

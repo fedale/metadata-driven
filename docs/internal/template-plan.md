@@ -4,8 +4,8 @@ Status: **phases 1 to 7 and C0 to C4 done, merged into main** (2026-11-08); the 
 live, with `fedale/geo-italy` 1.0.0 (see [The catalog](#the-catalog) and the catalog's own
 plan). **Phase 8** (templates requiring templates): step 1 done in the format, step 2 (install)
 merged (2026-11-10, format v1.2.0), step 3 (by name, with the missing requirements)
-merged (2026-11-10), step 4 (upgrades) merged (2026-11-10). Next: phase 8,
-step 5. Discussed with the user on 2026-11-03; name,
+merged (2026-11-10), step 4 (upgrades) and step 5 (export) merged
+(2026-11-10). Next: phase 8, step 6 (the catalog). Discussed with the user on 2026-11-03; name,
 upgrade model and distribution decided on 2026-11-05 (see
 [Decisions](#decisions)).
 
@@ -572,7 +572,7 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
    `templates/<vendor>/<name>/<version>/`, README included, and the git commands printed
    (branch `add_<vendor>_<name>_<version>`); no git run. Ownership is left to the catalog's
    check, which knows the author.
-8. **Templates requiring templates** — planned and decided (2026-11-09); steps 1 to 4 done
+8. **Templates requiring templates** — planned and decided (2026-11-09); steps 1 to 5 done
    (2026-11-10). Unblocks `fedale/registration` (account, profile, phone, qualification, the `registration` form) on
    top of `fedale/geo-italy`: its profile points at regions, provinces and municipalities.
 
@@ -695,6 +695,19 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
       installed template is no longer refused: the export writes that template's ids and adds it
       to `requires`, with `^<installed major.minor>`. Objects of a required template can't be
       exported in the requiring one (they belong to it).
+
+      Done (2026-11-10, merged). As built: `RequiredTemplates::owners()` (object name → the
+      installed template owning it) decides; an exported object owned by any other installed
+      template is refused, not only by a required one (it would be owned twice in
+      `core.template_item`). References become the requirement's ids through `RequiredItems`;
+      a field reference (`dependsVia`, a form's `via`…) to a field the requirement doesn't own
+      (one added here) is refused. The constraint (`RequiredTemplates::constraints()`): the one
+      the exported template's installed version has, while it allows the version installed;
+      else `^major.minor`. Seeds (`RequiredTemplates::seededKeys()`): a record may point only at
+      a record the required template seeds (its snapshot's records, found by key as they are
+      now), else refused, a record in the bin included. The export is checked against the
+      requirements as installed; the console notes what it requires. Tests:
+      `TemplateRequiresExportTest`.
    6. **Catalog.** The pull request check reads the required templates from the checkout (the
       highest published version fitting each constraint, not yanked) and passes them to the
       checker; a requirement on a template the catalog does not have is refused. The pages list
