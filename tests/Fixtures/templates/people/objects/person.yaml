@@ -1,0 +1,30 @@
+format: metadata-driven/v1
+kind: Object
+id: acme.person
+spec:
+  name: person
+  label: Person
+  plural: People
+  label_field: acme.person.email
+  fields:
+    - id: acme.person.email
+      name: email
+      type: email
+      label: Email
+      required: true
+      unique: true
+    - id: acme.person.region
+      name: region
+      type: relation
+      label: Region
+      settings:
+        target: acme.region
+    # Its choices follow the region: dependsVia names a field of the required template.
+    - id: acme.person.province
+      name: province
+      type: relation
+      label: Province
+      settings:
+        target: acme.province
+        dependsOn: acme.person.region
+        dependsVia: acme.province.region

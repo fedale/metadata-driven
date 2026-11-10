@@ -1,0 +1,20 @@
+format: metadata-driven/v1
+kind: Object
+id: acme.region
+spec:
+  name: region
+  label: Region
+  plural: Regions
+  label_field: acme.region.name
+  fields:
+    - id: acme.region.code
+      name: code
+      type: text
+      label: Code
+      required: true
+      unique: true
+    - id: acme.region.name
+      name: name
+      type: text
+      label: Name
+      required: true

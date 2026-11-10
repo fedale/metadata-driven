@@ -1,0 +1,8 @@
+format: metadata-driven/v1
+kind: Seed
+id: acme.seed.person
+spec:
+  object: acme.person
+  key: email
+  records:
+    - { email: ada@example.com, region: '01', province: TO }

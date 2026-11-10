@@ -229,7 +229,7 @@ final class TemplateInstallerTest extends KernelTestCase
         $this->assertRefused(ExampleTemplate::package(), 'objects/tag.yaml: spec.name: This instance already has an object "tag".');
 
         $requires = self::changed(ExampleTemplate::package(), 'template.yaml', static fn (array $spec): array => ['requires' => ['format' => 'metadata-driven/v1', 'acme/geo-italy' => '^1.0']] + $spec);
-        $this->assertRefused($requires, 'template.yaml: spec.requires.acme/geo-italy: A template requiring another one cannot be installed yet.');
+        $this->assertRefused($requires, 'template.yaml: spec.requires.acme/geo-italy: acme/geo-italy is required: it must be installed');
 
         $invalid = self::changed(ExampleTemplate::package(), 'objects/product.yaml', static fn (array $spec): array => ['plural' => ''] + $spec);
         $this->assertRefused($invalid, 'objects/product.yaml: spec.plural: Minimum string length is 1, found 0');

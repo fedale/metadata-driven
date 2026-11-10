@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "342995c9da7827cd71217c76ce3b8084",
+    "content-hash": "7d25429cea24faa9a9d92bc9ff4f264a",
     "packages": [
         {
             "name": "composer/semver",
@@ -1284,16 +1284,16 @@
         },
         {
             "name": "fedale/metadata-driven-template-format",
-            "version": "v1.1.1",
+            "version": "v1.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/fedale/metadata-driven-template-format.git",
-                "reference": "004bd9223fcb33fa2ee7346212196c3e7d7e29e9"
+                "reference": "63708768b0cfe380370a0b4085d84c64301f2d21"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/fedale/metadata-driven-template-format/zipball/004bd9223fcb33fa2ee7346212196c3e7d7e29e9",
-                "reference": "004bd9223fcb33fa2ee7346212196c3e7d7e29e9",
+                "url": "https://api.github.com/repos/fedale/metadata-driven-template-format/zipball/63708768b0cfe380370a0b4085d84c64301f2d21",
+                "reference": "63708768b0cfe380370a0b4085d84c64301f2d21",
                 "shasum": ""
             },
             "require": {
@@ -1311,7 +1311,7 @@
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-main": "1.1.x-dev"
+                    "dev-main": "1.2.x-dev"
                 }
             },
             "autoload": {
@@ -1332,9 +1332,9 @@
             ],
             "support": {
                 "issues": "https://github.com/fedale/metadata-driven-template-format/issues",
-                "source": "https://github.com/fedale/metadata-driven-template-format/tree/v1.1.1"
+                "source": "https://github.com/fedale/metadata-driven-template-format/tree/v1.2.0"
             },
-            "time": "2026-11-10T09:30:27+00:00"
+            "time": "2026-11-10T09:31:19+00:00"
         },
         {
             "name": "fedale/rbac-bundle",

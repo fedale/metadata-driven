@@ -1,10 +1,11 @@
 # Plan: templates (packaged, versioned models)
 
-Status: **phases 1 to 6 and C0 done, merged into main** (2026-11-06); in the catalog, **C1 and
-C2 done and live**, `fedale/geo-italy` 1.0.0 published (2026-11-07), **C3** (the static site)
-on the catalog's branch `feature/site` (2026-11-08) (see [The catalog](#the-catalog) and the
-catalog's own plan). Next: C4, with phase 7 (publish). Discussed with the user on 2026-11-03; name, upgrade model and distribution
-decided on 2026-11-05 (see [Decisions](#decisions)).
+Status: **phases 1 to 7 and C0 to C4 done, merged into main** (2026-11-08); the catalog is
+live, with `fedale/geo-italy` 1.0.0 (see [The catalog](#the-catalog) and the catalog's own
+plan). **Phase 8** (templates requiring templates): step 1 done in the format, step 2 (install)
+merged (2026-11-10, format v1.2.0). Next: phase 8, step 3. Discussed with
+the user on 2026-11-03; name, upgrade model and distribution decided on 2026-11-05 (see
+[Decisions](#decisions)).
 
 A template packages a model, meaning its objects, fields, relations, composite forms, views,
 translations and seed data, so it can be:
@@ -569,8 +570,8 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
    `templates/<vendor>/<name>/<version>/`, README included, and the git commands printed
    (branch `add_<vendor>_<name>_<version>`); no git run. Ownership is left to the catalog's
    check, which knows the author.
-8. **Templates requiring templates** — planned and decided (2026-11-09), not started. Unblocks
-   `fedale/registration` (account, profile, phone, qualification, the `registration` form) on
+8. **Templates requiring templates** — planned and decided (2026-11-09); steps 1 and 2 done
+   (2026-11-10). Unblocks `fedale/registration` (account, profile, phone, qualification, the `registration` form) on
    top of `fedale/geo-italy`: its profile points at regions, provinces and municipalities.
 
    **What it means.** `spec.requires` names other templates besides the format:
@@ -625,6 +626,24 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
       record found through the required template's recorded seed fingerprints / its key field).
       `InstallRefused::unsupportedRequirements()` goes. `core.template_installation` records
       what each template requires; `metadata:template:list` shows it.
+
+      Done (2026-11-10, branch `feature/requires-install`, format v1.2.0). As built: `RequiredTemplates`
+      gives the checker the installed requirements (`Snapshot::toPackage()`; one not installed
+      is left out, and the checker names it) and their items as they are now
+      (`RequiredItems`: id → current name, through `core.template_item`, so a required object
+      renamed since keeps every reference). `PackageNames` resolves the required ids too;
+      `fieldsInOrder()` no longer waits for a required field (a `dependsVia` on the target's
+      field read as a cycle). Seeds: the records of the required seeds a seeded relation or
+      many-to-many targets are looked up by key (`SeedFingerprints::current()`, the key field's
+      current name found through its id); a key whose record the user deleted is refused, as at
+      an upgrade. What a template requires is read from the manifest kept in its snapshot
+      (`Snapshot::requires()`): no column, no migration. Found while building it: the snapshot
+      (`ownedState()`) wrote a reference to a required object as `local:<name>`, which the next
+      upgrade would read as a local change; it now writes the required ids. `metadata:template:
+      validate` checks against the installed requirements too. Tests: `TemplateRequiresTest`,
+      with the fixtures `acme/places` and `acme/people` (`ExampleTemplate::places()`,
+      `people()`). An upgrade of a requiring template is still refused (the upgrader's checker
+      gets no requirements): step 4.
    3. **Install by name, missing requirements** (D1): `TemplateSources` resolves the chain from
       the indexes (`IndexEntry::$requires` already carries it), downloads and checks every
       archive, then one install of the chain, requirements first; the admin's install preview

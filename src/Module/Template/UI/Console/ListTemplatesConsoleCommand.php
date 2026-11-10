@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Template\UI\Console;
 
+use App\Module\Template\Application\Upgrade\Snapshot;
 use App\Module\Template\Domain\Model\TemplateInstallation;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -27,13 +28,27 @@ final class ListTemplatesConsoleCommand
             return Command::SUCCESS;
         }
 
-        $io->table(['Name', 'Version', 'Installed', 'From'], array_map(static fn (TemplateInstallation $installation): array => [
+        $io->table(['Name', 'Version', 'Requires', 'Installed', 'From'], array_map(static fn (TemplateInstallation $installation): array => [
             $installation->getName(),
             $installation->getVersion(),
+            self::requires($installation),
             $installation->getInstalledAt()->format('Y-m-d H:i'),
             $installation->getSource(),
         ], $installations));
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * The templates it requires, as "vendor/name ^1.0", comma separated.
+     */
+    private static function requires(TemplateInstallation $installation): string
+    {
+        $requires = [];
+        foreach (Snapshot::requires($installation->getSnapshot()) as $name => $constraint) {
+            $requires[] = $name.' '.$constraint;
+        }
+
+        return implode(', ', $requires);
     }
 }

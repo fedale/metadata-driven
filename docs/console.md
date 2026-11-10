@@ -506,8 +506,9 @@ that is not exported, when a form writes one, or when the name or the version is
 
 ## `metadata:template:validate`
 
-Check a template's structure without a database: the schemas, the settings of every field type,
-ids, names and references (see [Templates](templates.md#validating-a-template)).
+Check a template's structure without touching the data: the schemas, the settings of every
+field type, ids, names and references, those to the templates it requires checked against them
+as installed (see [Templates](templates.md#validating-a-template)).
 
 ```
 metadata:template:validate <directory>
@@ -518,7 +519,9 @@ Lists every problem with its file and where in it, and fails when there is one. 
 ## `metadata:template:install`
 
 Install a template, from a directory or downloaded from an index, in one transaction (see
-[Templates](templates.md#installing-a-template)).
+[Templates](templates.md#installing-a-template)). The templates it requires must be installed
+first, in a version their constraints allow (see
+[Templates requiring templates](templates.md#templates-requiring-templates)).
 
 ```
 metadata:template:install <template> [--dry-run] [--repo=NAME]
@@ -646,7 +649,8 @@ index and the version installed here ("upgrade available" when it is older).
 
 ## `metadata:template:list`
 
-List the installed templates: name, version, date, and where each was installed from.
+List the installed templates: name, version, the templates each requires (with their
+constraints), date, and where each was installed from.
 
 ```
 metadata:template:list

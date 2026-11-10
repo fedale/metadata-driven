@@ -1,0 +1,13 @@
+format: metadata-driven/v1
+kind: Template
+id: acme/places
+spec:
+  version: 1.2.0
+  label: Places
+  description: Regions and their provinces.
+  license: MIT
+  requires:
+    format: metadata-driven/v1
+  resources:
+    - objects/*.yaml
+    - seeds/*.yaml

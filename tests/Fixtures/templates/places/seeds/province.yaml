@@ -1,0 +1,10 @@
+format: metadata-driven/v1
+kind: Seed
+id: acme.seed.province
+spec:
+  object: acme.province
+  key: code
+  mode: managed
+  records:
+    - { code: TO, name: Turin, region: '01' }
+    - { code: NA, name: Naples, region: '02' }
