@@ -40,8 +40,8 @@ services:
             - '../src/Module/*/Domain/Exception/'
             - '../src/Module/*/Application/Command/'
 
-    # The template format (fedale/template-format) is a plain library: the services the Template
-    # module needs from it.
+    # The template format (fedale/metadata-driven-template-format) is a plain library: the
+    # services the Template module needs from it.
     Fedale\TemplateFormat\Archive: ~
     Fedale\TemplateFormat\DocumentCodec: ~
     Fedale\TemplateFormat\SchemaValidator: ~

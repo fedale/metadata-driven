@@ -35,7 +35,7 @@ original machine (see [status.md](status.md#setting-up-on-a-new-machine)). It al
 - **The format lives in metadata-driven first, behind a hard boundary** (2026-11-05). The
   format (schemas, reader, structural checks, archives, indexes) is written in
   `src/TemplateFormat/` (`App\TemplateFormat`), apart from the modules, and extracted into a
-  package of its own, `fedale/template-format`, when the catalog starts (after phase 5). What
+  package of its own, `fedale/metadata-driven-template-format`, when the catalog starts (after phase 5). What
   keeps the extraction a mechanical half day:
   - a Deptrac ruleset lets `App\TemplateFormat` depend on itself and a short list of external
     libraries only (YAML, JSON Schema, archives): no `App\Module\*`, no `App\Shared`, no Doctrine,
@@ -59,7 +59,7 @@ original machine (see [status.md](status.md#setting-up-on-a-new-machine)). It al
 
 - **Catalog review: before listing** (2026-11-06). A template is checked by a person before it
   is published; nothing is listed unreviewed.
-- **`fedale/template-format` is MIT** (2026-11-06): whoever publishes an index or a template
+- **`fedale/metadata-driven-template-format` is MIT** (2026-11-06): whoever publishes an index or a template
   uses it. Repository: `fedale/metadata-driven-template-format` on GitHub.
 
 - **Catalog hosting: GitHub** (2026-11-06): a repository, pull requests, Actions, Pages and
@@ -330,7 +330,7 @@ private templates, a vendor's own) on any web server.
 **A GitHub repository, no server** (decided 2026-11-06): `fedale/metadata-driven-templates`.
 Publishing is a pull request, the review is the review of the pull request, the checks and the
 publication are GitHub Actions, the index and the pages are static files on GitHub Pages, the
-archives are Release assets. It depends on the format library (`fedale/template-format`), never
+archives are Release assets. It depends on the format library (`fedale/metadata-driven-template-format`), never
 on metadata-driven. It has its own plan (`metadata-driven-templates/docs/internal/plan.md`);
 this section is its brief.
 
@@ -611,7 +611,7 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
 
    **Steps**, each reviewed:
 
-   1. **Format, v1.2.0** (`fedale/template-format`): a `Constraint` class (D2, parse and match);
+   1. **Format, v1.2.0** (`fedale/metadata-driven-template-format`): a `Constraint` class (D2, parse and match);
       `PackageChecker::check(Package $package, list<Package> $required = [])`: an id is
       resolved in the package, then in the required packages; ids defined twice refused; a
       `requires` entry must be a template name with a valid constraint; the required packages
@@ -663,7 +663,10 @@ In the catalog (its own plan, from phase 5 on):
   package now), the example template moved to `tests/Fixtures/templates/shop`
   (`App\Tests\Support\ExampleTemplate`), the library keeping a copy for its own tests.
   `FieldTypeCatalogMatchesTheAppTest` stays in metadata-driven: only the app knows its types.
-  Remote: `fedale/metadata-driven-template-format`;
+  Remote: `fedale/metadata-driven-template-format`. Renamed on 2026-11-10 to match it: the
+  package became `fedale/metadata-driven-template-format` (from v1.1.1; the old
+  `fedale/template-format` removed from Packagist), the directory
+  `../metadata-driven-template-format`, the namespace unchanged;
 - **C1** the repository: layout, `vendors.yaml`, `CODEOWNERS`, the checker
   (`bin/catalog check`) and the pull request Action, the contribution guide — done
   (2026-11-06, `../metadata-driven-templates`, its plan in `docs/internal/plan.md`);

@@ -99,9 +99,9 @@ spec:                             # the item, as its kind describes it
   default language the metadata itself is the text), and the `{t:name}` texts the exported
   layouts use, in every language.
 
-The JSON Schema of each kind is in `vendor/fedale/template-format/src/Resources/schema/v1/`:
+The JSON Schema of each kind is in `vendor/fedale/metadata-driven-template-format/src/Resources/schema/v1/`:
 point your editor at it for autocompletion. The settings of each field type are described in
-`vendor/fedale/template-format/src/Resources/field-types.v1.json`.
+`vendor/fedale/metadata-driven-template-format/src/Resources/field-types.v1.json`.
 
 ## Seeds
 
