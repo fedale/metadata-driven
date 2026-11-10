@@ -236,10 +236,11 @@ revision bumped by triggers, see `architecture.md`).
    references only). Step 1 (format: `Constraint`, `PackageChecker::check($package,
    $required)`) released in the format's v1.2.0 (2026-11-10), required here as `^1.2`. Step 2
    (install, 2026-11-10) merged. Step 3 (install by name with the missing requirements,
-   2026-11-10) merged; no change to the format.
+   2026-11-10) merged; no change to the format. Step 4 (upgrades, 2026-11-10) merged; no change to
+   the format.
    To work on the next steps, link the format (`composer link
    ../metadata-driven-template-format`) when they change it; release it and `composer
-   unlink-all` before requiring the new version. Next: step 4, upgrades.
+   unlink-all` before requiring the new version. Next: step 5, export.
 2. **"An app in a package"** (an idea discussed 2026-11-07, not planned): a large template is
    already a data application (objects, forms, views, data), but not an app. Missing, in this
    order: (a) templates requiring templates (point 1); (b) roles and permissions shipped in the

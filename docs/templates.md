@@ -6,8 +6,9 @@ control, share it, validate it without a database, and install it on another ins
 
 **Today** a template can be exported, validated, packed, published in a signed index, and
 installed and upgraded from a directory or by its name, its records included, from your own
-indexes or from the [template catalog](#the-template-catalog). Templates requiring other
-templates come next (see [Not yet](#not-yet)).
+indexes or from the [template catalog](#the-template-catalog). A template can require other
+templates, installed and upgraded with them; exporting such a template, and the catalog's check
+of one, come next (see [Not yet](#not-yet)).
 
 ## Exporting a model
 
@@ -315,6 +316,25 @@ never by name: a region object renamed `area` since keeps every reference to it.
 pointing at a record the user has deleted since is refused, with the key it names.
 `metadata:template:list` shows what each template requires.
 
+Upgrades keep to the same rules, in both directions:
+
+- **Upgrading a template that requires others**: its new version is checked against its
+  requirements as installed, never upgraded along the way. A new version requiring
+  `fedale/geo-italy: ^1.3` while 1.2.0 is installed is refused (`fedale/geo-italy 1.2.0 does
+  not fit ^1.3.`): upgrade `fedale/geo-italy` first.
+- **Upgrading a template that others require**: the new version is checked against each
+  installed template requiring it, as this instance holds that template now. What it would
+  break refuses the upgrade, named after the template it breaks: a version past their
+  constraint, an object or field they reference removed.
+
+  ```
+  fedale/registration 1.0.0, which requires fedale/geo-italy: template.yaml: spec.requires.fedale/geo-italy: fedale/geo-italy 2.0.0 does not fit ^1.0.
+  ```
+
+  Removing or renaming an item takes a major version anyway, so a requiring template with a
+  `^` constraint waits for its own new version, the one allowing the new major. A rename keeps
+  every reference (they're resolved by id), so only removals are named beyond the constraint.
+
 ## Upgrading a template
 
 ```bash
@@ -348,7 +368,10 @@ instance holds now.
   new object or form named like one of this instance's; and the changes the app cannot make to
   an existing item yet: a field's type, whether it is required or unique, an object's icon, a
   field moved to another object (`objects/product.yaml: field acme.product.seats: its type
-  changed from number to text, which an upgrade cannot do yet: change it by hand first.`).
+  changed from number to text, which an upgrade cannot do yet: change it by hand first.`); a
+  requirement as installed that the new version doesn't allow, and a new version that would
+  break a template requiring it (see [Templates requiring
+  templates](#templates-requiring-templates)).
   The app's own rules apply too: a setting fixed once a field exists (a text's `maxLength`)
   cannot change.
 
@@ -516,8 +539,8 @@ template's page.
 
 ## Not yet
 
-- **Templates requiring templates**, the rest of it: upgrading a template that requires another
-  one, or one that others require; exporting a model whose objects point at an installed template's (still
-  refused, as a relation outside the export); the catalog's check of such templates.
+- **Templates requiring templates**, the rest of it: exporting a model whose objects point at
+  an installed template's (still refused, as a relation outside the export); the catalog's
+  check of such templates. An upgrade never brings in a missing requirement: install it first.
 
 See the plan in [internal/template-plan.md](internal/template-plan.md).

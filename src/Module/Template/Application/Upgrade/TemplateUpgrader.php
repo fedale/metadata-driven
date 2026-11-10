@@ -16,6 +16,8 @@ use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
 use App\Module\Template\Application\PackageNames;
+use App\Module\Template\Application\RequiredItems;
+use App\Module\Template\Application\RequiredTemplates;
 use App\Module\Template\Application\SeedWriter;
 use App\Module\Template\Application\TemplateExporter;
 use App\Module\Template\Domain\Exception\InstallRefused;
@@ -52,6 +54,11 @@ use Symfony\Component\Yaml\Yaml;
  *
  * Changes the app cannot make to an existing item (a field's type, whether it is required or
  * unique, an object's icon, a field moved to another object) refuse the upgrade.
+ *
+ * Templates requiring templates: the new version is checked against its requirements as
+ * installed (one missing or outside its constraint refuses it: upgrade the requirement first),
+ * and the new version of a required template against the templates requiring it (one it would
+ * break, an item they reference removed or a version past their constraint, refuses it).
  */
 final class TemplateUpgrader
 {
@@ -73,6 +80,7 @@ final class TemplateUpgrader
         private readonly SeedPlanner $seedPlanner,
         private readonly SeedWriter $seedWriter,
         private readonly SeedFingerprints $fingerprints,
+        private readonly RequiredTemplates $required,
     ) {
     }
 
@@ -86,7 +94,7 @@ final class TemplateUpgrader
     {
         $resolution = $resolution instanceof Resolution ? $resolution : new Resolution($resolution);
         $prepared = $this->prepare($theirs, $resolution);
-        [$installation, , $mine, $plan, $seeds, $steps] = $prepared;
+        [$installation, , $mine, $plan, $seeds, $steps, $required] = $prepared;
 
         $unresolved = [
             ...array_map(static fn (Change $change): string => $change->describe().', changed here too', array_values(array_filter($plan->conflicts(), static fn (Change $change): bool => null === $resolution->for($change->key())))),
@@ -117,9 +125,10 @@ final class TemplateUpgrader
             ],
         );
         try {
-            return $this->transactions->run(function () use ($theirs, $mine, $changes, $steps, $seeds, $installation, $source, $report, $dryRun): UpgradeReport {
-                $this->apply($theirs, $mine, $changes, $steps, $seeds);
-                $snapshot = Snapshot::of($this->exporter->ownedState($theirs->name()), $theirs, $this->seedRecords, $this->fingerprints->of($theirs));
+            return $this->transactions->run(function () use ($theirs, $mine, $changes, $steps, $seeds, $required, $installation, $source, $report, $dryRun): UpgradeReport {
+                $this->apply($theirs, $mine, $changes, $steps, $seeds, $required);
+                // The references to the required templates as the new version names them: ids.
+                $snapshot = Snapshot::of($this->exporter->ownedState($theirs->name(), $required['names']), $theirs, $this->seedRecords, $this->fingerprints->of($theirs));
                 // A dry run leaves the installation alone: the entity would keep the new version
                 // in memory after the rollback.
                 if ($dryRun) {
@@ -179,26 +188,26 @@ final class TemplateUpgrader
     /**
      * Everything an upgrade decides before it changes anything.
      *
-     * @return array{TemplateInstallation, Package, Package, UpgradePlan, SeedChanges, list<array{version: string, from: string, to: string}>} the installation, the version installed, what the instance holds, the plan, the records, the migration steps
+     * @return array{TemplateInstallation, Package, Package, UpgradePlan, SeedChanges, list<array{version: string, from: string, to: string}>, array{packages: list<Package>, names: list<string>, items: RequiredItems}} the installation, the version installed, what the instance holds, the plan, the records, the migration steps, the required templates
      *
      * @throws UpgradeRefused
      */
     private function prepare(Package $theirs, Resolution $resolution): array
     {
-        $problems = $this->checker->check($theirs);
+        // Its requirements as installed: never upgraded along the way, as at an install.
+        $required = $this->required->installed($theirs);
+        $problems = $this->checker->check($theirs, $required);
         if ([] !== $problems) {
             throw new UpgradeRefused(array_map(strval(...), $problems));
-        }
-        $requires = \is_array($theirs->manifest->spec['requires'] ?? null) ? $theirs->manifest->spec['requires'] : [];
-        foreach (array_keys($requires) as $required) {
-            if ('format' !== $required) {
-                throw UpgradeRefused::at('template.yaml', 'spec.requires.'.$required, 'A template requiring another one cannot be upgraded yet.');
-            }
         }
         $installation = $this->installations->findByName($theirs->name()) ?? throw UpgradeRefused::notInstalled($theirs->name());
         if (!version_compare($theirs->version(), $installation->getVersion(), '>')) {
             throw UpgradeRefused::notNewer($theirs->name(), $installation->getVersion(), $theirs->version());
         }
+        // The new version's requirements and the installed one's: a field this instance holds
+        // may still point at a template the new version no longer requires.
+        $names = array_values(array_unique([...array_map(static fn (Package $requirement): string => $requirement->name(), $required), ...$this->required->requiredBy($theirs->name())]));
+        $requirements = ['packages' => $required, 'names' => $names, 'items' => $this->required->items($names)];
 
         $mine = $this->exporter->ownedState($theirs->name());
         $base = Snapshot::toPackage($installation->getSnapshot());
@@ -208,6 +217,7 @@ final class TemplateUpgrader
         $refusals = [
             ...VersionCheck::problems($baseStates, $theirStates, $installation->getVersion(), $theirs->version(), [] !== $steps),
             ...$this->stepProblems($steps, $baseStates, $theirStates),
+            ...$this->dependentProblems($theirs),
         ];
         if ([] !== $refusals) {
             throw new UpgradeRefused($refusals);
@@ -220,7 +230,34 @@ final class TemplateUpgrader
             UpgradePlan::compute($baseStates, $theirStates, $this->states->of($mine)),
             $this->seedPlanner->plan($base, $installation->getSnapshot(), $theirs, $mine, $resolution),
             $steps,
+            $requirements,
         ];
+    }
+
+    /**
+     * What the new version would break in the installed templates requiring it: each checked,
+     * as this instance holds it now (the user may have added or dropped a reference since), the
+     * new version in place of the installed one. Only what the new version breaks is reported:
+     * a problem the check finds with the installed version too is not this upgrade's.
+     *
+     * @return list<string>
+     */
+    private function dependentProblems(Package $theirs): array
+    {
+        $problems = [];
+        foreach ($this->required->dependents($theirs->name()) as $installation) {
+            $installed = Snapshot::toPackage($installation->getSnapshot());
+            // Its items now, its manifest (what it requires) and seeds as installed.
+            $current = new Package($installed->manifest, [...$this->exporter->ownedState($installation->getName())->documents, ...$installed->documentsOf(DocumentKind::Seed)]);
+            $now = $this->required->installed($current);
+            $then = array_map(static fn (Package $requirement): Package => $requirement->name() === $theirs->name() ? $theirs : $requirement, $now);
+            $before = array_map(strval(...), $this->checker->check($current, $now));
+            foreach (array_diff(array_map(strval(...), $this->checker->check($current, $then)), $before) as $problem) {
+                $problems[] = \sprintf('%s %s, which requires %s: %s', $installation->getName(), $installation->getVersion(), $theirs->name(), $problem);
+            }
+        }
+
+        return $problems;
     }
 
     /**
@@ -234,13 +271,15 @@ final class TemplateUpgrader
     }
 
     /**
-     * @param list<Change>                                           $changes
-     * @param list<array{version: string, from: string, to: string}> $steps
+     * @param list<Change>                                                              $changes
+     * @param list<array{version: string, from: string, to: string}>                    $steps
+     * @param array{packages: list<Package>, names: list<string>, items: RequiredItems} $required
      */
-    private function apply(Package $theirs, Package $mine, array $changes, array $steps, SeedChanges $seeds): void
+    private function apply(Package $theirs, Package $mine, array $changes, array $steps, SeedChanges $seeds, array $required): void
     {
         $names = new CurrentNames($this->fieldTypes);
         $names->learn($mine);
+        $names->learnRequired($required['items']);
         $byKind = [];
         foreach ($changes as $change) {
             $byKind[$change->state()->kind][$change->action->value][] = $change;
@@ -300,7 +339,7 @@ final class TemplateUpgrader
         foreach ($steps as $step) {
             $this->copyValues($step, $names);
         }
-        $this->applySeeds($theirs, $seeds, $names);
+        $this->applySeeds($theirs, $seeds, $names, $required);
 
         // The texts before the layouts placing them; in the default language first.
         $translations = [...$byKind['translation']['add'] ?? [], ...$byKind['translation']['change'] ?? []];
@@ -349,14 +388,17 @@ final class TemplateUpgrader
 
     /**
      * The records of the seeds: every record a reference may name is looked up by its key first,
-     * the records of this version written, those it removed deleted.
+     * those of the required templates' seeds too, the records of this version written, those it
+     * removed deleted.
+     *
+     * @param array{packages: list<Package>, names: list<string>, items: RequiredItems} $required
      */
-    private function applySeeds(Package $theirs, SeedChanges $seeds, CurrentNames $names): void
+    private function applySeeds(Package $theirs, SeedChanges $seeds, CurrentNames $names, array $required): void
     {
         if ([] === $seeds->writes && [] === $seeds->deletes) {
             return;
         }
-        $keys = [];
+        $keys = $this->required->records($theirs, $required['packages'], $required['items']);
         foreach ($theirs->documentsOf(DocumentKind::Seed) as $seed) {
             $object = self::string($seed->spec['object'] ?? null);
             foreach ($this->fingerprints->current($names->object($object), self::string($seed->spec['key'] ?? null)) as $value => $record) {
@@ -364,7 +406,7 @@ final class TemplateUpgrader
             }
         }
         try {
-            $this->seedWriter->write($theirs, new PackageNames($theirs), $seeds->writes, $keys);
+            $this->seedWriter->write($theirs, new PackageNames($theirs, $required['items']), $seeds->writes, $keys);
         } catch (InstallRefused $e) {
             throw new UpgradeRefused($e->reasons);
         }

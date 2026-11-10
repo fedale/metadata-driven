@@ -4,7 +4,8 @@ Status: **phases 1 to 7 and C0 to C4 done, merged into main** (2026-11-08); the 
 live, with `fedale/geo-italy` 1.0.0 (see [The catalog](#the-catalog) and the catalog's own
 plan). **Phase 8** (templates requiring templates): step 1 done in the format, step 2 (install)
 merged (2026-11-10, format v1.2.0), step 3 (by name, with the missing requirements)
-merged (2026-11-10). Next: phase 8, step 4. Discussed with the user on 2026-11-03; name,
+merged (2026-11-10), step 4 (upgrades) merged (2026-11-10). Next: phase 8,
+step 5. Discussed with the user on 2026-11-03; name,
 upgrade model and distribution decided on 2026-11-05 (see
 [Decisions](#decisions)).
 
@@ -571,7 +572,7 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
    `templates/<vendor>/<name>/<version>/`, README included, and the git commands printed
    (branch `add_<vendor>_<name>_<version>`); no git run. Ownership is left to the catalog's
    check, which knows the author.
-8. **Templates requiring templates** — planned and decided (2026-11-09); steps 1 to 3 done
+8. **Templates requiring templates** — planned and decided (2026-11-09); steps 1 to 4 done
    (2026-11-10). Unblocks `fedale/registration` (account, profile, phone, qualification, the `registration` form) on
    top of `fedale/geo-italy`: its profile points at regions, provinces and municipalities.
 
@@ -664,12 +665,32 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
       already is left alone, its version checked by the install (never upgraded on the side).
       Console and admin list the chain. Tests: `TemplateRequirementChainTest`, the admin's
       `testPreviewsAndInstallsATemplateWithTheRequirementsItComesWith`, the fixtures published
-      by `PublishesPlacesAndPeople`.
+      by `PublishesPlacesAndPeople`. Then, after an automated security review (branch
+      `fix_requirement_chain_limits`): one install brings along at most
+      `PackageLocator::MAX_REQUIREMENTS` (20) templates, and console and admin name the index
+      each template of the chain comes from (`InstallReport::$source`), a requirement possibly
+      coming from another index than the template named.
    4. **Upgrade.** A requiring template: its new version's requirements must be met as installed
       (else refused: upgrade the requirement first). A required template: refused when the new
       version removes or renames away an item an installed template references (listed), or
       when its number leaves a constraint an installed template has (a major past `^1.0`); the
       app's own rules already refuse archiving an object in use.
+
+      Done (2026-11-10, merged). As built: the upgrader's checker gets
+      the requirements as installed (`RequiredTemplates::installed()`), the refusal of any
+      `requires` gone; `CurrentNames::learnRequired()` resolves the required ids, the seeds
+      find the required seeds' records (`RequiredTemplates::records()`, moved out of the
+      installer), and the snapshot keeps writing their ids. The required side
+      (`dependentProblems()`): each installed template requiring the one upgraded
+      (`RequiredTemplates::dependents()`) is checked by the format's checker, its items as this
+      instance holds them now with its manifest and seeds as installed, once against the
+      requirements installed and once with the new version in their place; only the problems
+      the new version adds refuse it, prefixed with the template they break. No "removed or
+      renamed away" list of its own: the checker's dangling references are that list, and a
+      rename keeps the id. As the version rules make every removal or rename a major, a
+      required template's breaking version always leaves a `^` constraint too; both are
+      reported. An upgrade never installs a missing requirement (D1 is for installs). Tests:
+      `TemplateRequiresUpgradeTest`.
    5. **Export.** A relation, a many-to-many or a composite form pointing at an object of an
       installed template is no longer refused: the export writes that template's ids and adds it
       to `requires`, with `^<installed major.minor>`. Objects of a required template can't be
