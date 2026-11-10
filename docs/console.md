@@ -501,8 +501,13 @@ symfony console metadata:template:export acme/shop 1.0.0 templates/shop --object
 ```
 
 Records in `core.template_item` the id each item received, so that the next export of the same
-template gives it the same id, renamed or not. Fails when an exported item points at an object
-that is not exported, when a form writes one, or when the name or the version is invalid.
+template gives it the same id, renamed or not. An item pointing at an object of another
+installed template makes the export require it, noted after the listing (`It requires
+fedale/geo-italy ^1.0.`; see [Templates](templates.md#exporting-a-template-that-requires-others)).
+Fails when an exported item points at an object that is neither exported nor another installed
+template's, or at a field added here to such an object; when a form writes such an object; when
+an exported object belongs to another installed template; when a seed points at a record the
+required template doesn't seed; or when the name or the version is invalid.
 
 ## `metadata:template:validate`
 

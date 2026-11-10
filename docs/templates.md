@@ -7,8 +7,8 @@ control, share it, validate it without a database, and install it on another ins
 **Today** a template can be exported, validated, packed, published in a signed index, and
 installed and upgraded from a directory or by its name, its records included, from your own
 indexes or from the [template catalog](#the-template-catalog). A template can require other
-templates, installed and upgraded with them; exporting such a template, and the catalog's check
-of one, come next (see [Not yet](#not-yet)).
+templates: exported, installed and upgraded with them; the catalog's check of one comes next
+(see [Not yet](#not-yet)).
 
 ## Exporting a model
 
@@ -54,6 +54,10 @@ An export is refused when an exported item points outside it: a relation or a ma
 whose target is not exported (`Object "product" points at "category" (category.target), which is
 not exported: add it to the objects.`), or a form writing an object that is not exported.
 Archived fields are left out.
+
+Pointing at an object of an **installed template** is the exception: the export then requires
+that template (see [Exporting a template that requires
+others](#exporting-a-template-that-requires-others)).
 
 ## The format
 
@@ -274,6 +278,33 @@ as they do within a template:
 It only references them: it adds no field to a required object, doesn't relabel or translate
 it (`Names no object or form of the template.`), and its own ids must differ from those of the
 templates it requires.
+
+#### Exporting a template that requires others
+
+You don't write `requires` by hand: export objects pointing at an installed template's, and the
+export requires it.
+
+```bash
+symfony console metadata:template:export fedale/registration 1.0.0 templates/registration --object=profile --license=MIT
+```
+
+```
+ ! [NOTE] It requires fedale/geo-italy ^1.0.
+```
+
+- The references to its items are written with their ids: a relation's `target`, a cascade's
+  `dependsVia`, a composite form's `object` and `via`.
+- The constraint goes from the version installed up to its next major (`^1.0` for 1.0.0). A new
+  version of a template that requires it already keeps the constraint it has while that still
+  allows the version installed: an export doesn't narrow what you chose.
+- Seeds point at the required records by their keys. They may only point at records the
+  required template seeds: an instance installing the export has only those (`The records of
+  "profile" point at record … of "region" (region), which the template owning "region" does
+  not seed: …`).
+- The objects of an installed template are never exported in another one: they belong to it
+  (`Object "region" belongs to the installed template fedale/geo-italy: export it with that
+  one.`). Nor can the export point at a field you added to one of them: the instance installing
+  the export wouldn't have it.
 
 Named from an index, a template comes with the templates it requires that this instance
 doesn't have yet:
@@ -539,8 +570,7 @@ template's page.
 
 ## Not yet
 
-- **Templates requiring templates**, the rest of it: exporting a model whose objects point at
-  an installed template's (still refused, as a relation outside the export); the catalog's
-  check of such templates. An upgrade never brings in a missing requirement: install it first.
+- **Templates requiring templates**, the rest of it: the catalog's check of such templates. An
+  upgrade never brings in a missing requirement: install it first.
 
 See the plan in [internal/template-plan.md](internal/template-plan.md).

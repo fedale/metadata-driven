@@ -34,14 +34,16 @@ final class SeedExporter
     }
 
     /**
-     * @param array<string, ObjectDefinitionDto> $objects the exported objects, by name
-     * @param array<string, string|null>         $seeds   object name => its key field, null for the first unique one
+     * @param array<string, ObjectDefinitionDto>   $objects  the exported objects, by name
+     * @param array<string, string|null>           $seeds    object name => its key field, null for the first unique one
+     * @param array<string, array<string, string>> $required the records of the required templates' objects a
+     *                                                       record may point at: object name => record id => key
      *
      * @return array{list<Document>, array<string, PackageFile>}
      *
      * @throws InvalidExport
      */
-    public function export(string $prefix, array $objects, array $seeds, ItemReferences $refs): array
+    public function export(string $prefix, array $objects, array $seeds, ItemReferences $refs, array $required = []): array
     {
         $keys = [];
         $records = [];
@@ -69,7 +71,7 @@ final class SeedExporter
             foreach ($records[$name] as $record) {
                 $row = [];
                 foreach ($fields as $field) {
-                    $row[$field->name] = $this->cell($object, $field, $record, $keys, $files);
+                    $row[$field->name] = $this->cell($object, $field, $record, $keys, $required, $files);
                 }
                 $rows[] = $row;
             }
@@ -122,10 +124,11 @@ final class SeedExporter
     }
 
     /**
-     * @param array<string, array<string, string>> $keys  object name => record id => key
-     * @param array<string, PackageFile>           $files the files of the template, filled here
+     * @param array<string, array<string, string>> $keys     object name => record id => key
+     * @param array<string, array<string, string>> $required the same, of the required templates' objects
+     * @param array<string, PackageFile>           $files    the files of the template, filled here
      */
-    private function cell(ObjectDefinitionDto $object, FieldDefinitionDto $field, RecordOutput $record, array $keys, array &$files): ?string
+    private function cell(ObjectDefinitionDto $object, FieldDefinitionDto $field, RecordOutput $record, array $keys, array $required, array &$files): ?string
     {
         $value = $record->values[$field->name] ?? null;
         if (null === $value || [] === $value) {
@@ -133,13 +136,18 @@ final class SeedExporter
         }
         $target = $field->target();
         if (null !== $target) {
-            if (!isset($keys[$target])) {
+            $exported = isset($keys[$target]);
+            if (!$exported && !isset($required[$target])) {
                 throw InvalidExport::seedOutsideTheExport($object->name, $field->name, $target);
             }
             $references = [];
             foreach (\is_array($value) ? $value : [$value] as $id) {
-                $reference = \is_string($id) ? ($keys[$target][$id] ?? null) : null;
-                // A link to a record in the bin: the record is not exported, nor is the link.
+                $reference = \is_string($id) ? (($exported ? $keys[$target] : $required[$target])[$id] ?? null) : null;
+                // A link to a record in the bin: the record is not exported, nor is the link. A
+                // required template's record must be one it seeds, the install finding it by key.
+                if (null === $reference && !$exported) {
+                    throw InvalidExport::unseededRecord($object->name, $field->name, $target, \is_string($id) ? $id : '?');
+                }
                 if (null === $reference) {
                     continue;
                 }

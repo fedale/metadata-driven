@@ -32,6 +32,10 @@ use Symfony\Component\Yaml\Yaml;
  * Inside the app items point at each other by name; in a template, by id. The ids recorded by a
  * previous export of the same template are kept, so that an object or a field renamed since keeps
  * its id: an upgrade then knows it was renamed, not replaced.
+ *
+ * An item pointing at an object of another installed template makes the export require that
+ * template: the reference is written with its id, and the template added to spec.requires. The
+ * objects of another template are never exported: they belong to it.
  */
 final class TemplateExporter
 {
@@ -62,16 +66,23 @@ final class TemplateExporter
             throw InvalidExport::nothingToExport();
         }
 
+        $owners = $this->required->owners();
+        // The template owning an object outside the export, when that is another one.
+        $requirement = static fn (string $object): ?string => ($owners[$object] ?? $command->name) === $command->name ? null : $owners[$object];
         $objects = [];
         foreach (array_unique($command->objects) as $name) {
             $objects[$name] = $this->metadata->getObject($name);
+            if (null !== $requirement($name)) {
+                throw InvalidExport::ownedByAnother($name, (string) $requirement($name));
+            }
         }
+        $requires = [];
         $forms = [];
         foreach (array_unique($command->forms) as $name) {
             $form = $this->metadata->getForm($name);
             foreach ($form->root->objects() as $object) {
                 if (!isset($objects[$object])) {
-                    throw InvalidExport::formOutsideTheExport($name, $object);
+                    $requires[$requirement($object) ?? throw InvalidExport::formOutsideTheExport($name, $object)] = true;
                 }
             }
             $forms[$name] = $form;
@@ -80,11 +91,15 @@ final class TemplateExporter
             foreach ($object->fields as $field) {
                 foreach ($this->fieldTypes->references($field->type, $field->settings) as $reference) {
                     if (ReferenceKind::Object === $reference->kind && !isset($objects[$reference->id])) {
-                        throw InvalidExport::outsideTheExport($object->name, $field->name.'.'.$reference->setting, $reference->id);
+                        $requires[$requirement($reference->id) ?? throw InvalidExport::outsideTheExport($object->name, $field->name.'.'.$reference->setting, $reference->id)] = true;
                     }
                 }
             }
         }
+        $requires = array_keys($requires);
+        sort($requires);
+        $requiredItems = $this->required->items($requires);
+        $this->checkRequiredFields($objects, $forms, $requiredItems, $owners);
 
         // Every id first, so that a reference can point at an object exported after its own.
         $ids = new ItemIds($command->name, $this->items->itemsOf($command->name));
@@ -97,7 +112,9 @@ final class TemplateExporter
                 $fieldIds[$name][$fieldName] = $ids->of(ItemKind::Field, $field->id, $objectIds[$name].'.'.$fieldName);
             }
         }
-        $refs = new ItemReferences($objectIds, $fieldIds);
+        // No object is in both: those of another template were refused above.
+        $refs = new ItemReferences($objectIds + $requiredItems->objectIds(), $fieldIds + $requiredItems->fieldIds());
+        $required = $this->required->packages($requires);
 
         $documents = [];
         foreach ($objects as $object) {
@@ -111,11 +128,11 @@ final class TemplateExporter
             $documents[] = $this->formDocument($form, $ids->of(ItemKind::Form, $form->id, $prefix.'.'.$form->name), $refs);
         }
         $documents = [...$documents, ...$this->translationDocuments($prefix, $objects, $forms)];
-        [$seeds, $files] = $this->seedExporter->export($prefix, $objects, $command->seeds, $refs);
+        [$seeds, $files] = $this->seedExporter->export($prefix, $objects, $command->seeds, $refs, [] === $command->seeds ? [] : $this->required->seededKeys($required, $requiredItems));
         $documents = [...$documents, ...$seeds];
 
-        $package = new Package($this->manifest($command, $documents), $documents, null, $files);
-        $problems = $this->checker->check($package);
+        $package = new Package($this->manifest($command, $documents, $this->required->constraints($command->name, $requires)), $documents, null, $files);
+        $problems = $this->checker->check($package, $required);
         if ([] !== $problems) {
             throw InvalidExport::brokenPackage(array_map(strval(...), $problems));
         }
@@ -388,9 +405,67 @@ final class TemplateExporter
     }
 
     /**
-     * @param list<Document> $documents
+     * A field naming a field of a required object (dependsVia, throughTarget…), a section of a
+     * composite form joined through one: it must be a field the required template owns, one
+     * added here would not be on the instance installing the export.
+     *
+     * @param array<string, ObjectDefinitionDto> $objects the exported objects
+     * @param array<string, FormDefinitionDto>   $forms
+     * @param array<string, string>              $owners  object name => the template owning it
+     *
+     * @throws InvalidExport
      */
-    private function manifest(ExportTemplateCommand $command, array $documents): Document
+    private function checkRequiredFields(array $objects, array $forms, RequiredItems $required, array $owners): void
+    {
+        $owned = $required->fieldIds();
+        $check = static function (string $object, string $field, string $pointing, string $setting) use ($objects, $owned, $owners): void {
+            if (!isset($objects[$object]) && !isset($owned[$object][$field])) {
+                throw InvalidExport::notOwnedByRequirement($pointing, $setting, $object.'.'.$field, $owners[$object] ?? '?');
+            }
+        };
+        foreach ($objects as $object) {
+            foreach ($object->fields as $field) {
+                foreach ($this->fieldTypes->references($field->type, $field->settings) as $reference) {
+                    if (ReferenceKind::Field === $reference->kind) {
+                        $check(match ($reference->of) {
+                            FieldOwner::Own, null => $object->name,
+                            FieldOwner::Target => self::nameSetting($field, 'target'),
+                            FieldOwner::Through => self::nameSetting($field, 'through'),
+                        }, $reference->id, $object->name, $field->name.'.'.$reference->setting);
+                    }
+                }
+            }
+        }
+        foreach ($forms as $form) {
+            $definition = Yaml::parse($form->source);
+            foreach (self::vias(\is_array($definition) ? $definition : []) as [$object, $via]) {
+                $check($object, $via, $object, 'via in form '.$form->name);
+            }
+        }
+    }
+
+    /**
+     * The sections of a composite form's definition joined through a field: their object, the field.
+     *
+     * @param array<mixed> $node
+     *
+     * @return list<array{string, string}>
+     */
+    private static function vias(array $node): array
+    {
+        $vias = \is_string($node['object'] ?? null) && \is_string($node['via'] ?? null) ? [[$node['object'], $node['via']]] : [];
+        foreach (\is_array($node['sections'] ?? null) ? $node['sections'] : [] as $section) {
+            $vias = [...$vias, ...(\is_array($section) ? self::vias($section) : [])];
+        }
+
+        return $vias;
+    }
+
+    /**
+     * @param list<Document>        $documents
+     * @param array<string, string> $requires  the templates it requires: name => constraint
+     */
+    private function manifest(ExportTemplateCommand $command, array $documents, array $requires): Document
     {
         $directories = array_values(array_unique(array_map(static fn (Document $document): string => $document->kind->directory(), $documents)));
         $spec = [
@@ -403,7 +478,7 @@ final class TemplateExporter
 
         return new Document(DocumentKind::Template, $command->name, $spec + [
             'license' => $command->license,
-            'requires' => ['format' => Format::VERSION],
+            'requires' => ['format' => Format::VERSION] + $requires,
             'resources' => array_map(static fn (string $directory): string => $directory.'/*.yaml', $directories),
         ], Format::MANIFEST);
     }
