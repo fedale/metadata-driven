@@ -37,7 +37,7 @@ final class ExportTemplateConsoleCommand
         #[Argument('Its version, major.minor.patch (e.g. 1.0.0)')] string $release,
         #[Argument('A new or empty directory to write it into')] string $directory,
         #[Option('An object to export, with its fields and views (repeatable)')] array $object = [],
-        #[Option('A composite form to export; its objects must be exported too, or be another installed template's (repeatable)')] array $form = [],
+        #[Option('A composite form to export; its objects must be exported too, or belong to another installed template (repeatable)')] array $form = [],
         #[Option('The title of the template; default: from its name')] ?string $label = null,
         #[Option('A line about what it is for')] ?string $description = null,
         #[Option('Its license, an SPDX identifier (e.g. MIT)')] string $license = 'proprietary',
