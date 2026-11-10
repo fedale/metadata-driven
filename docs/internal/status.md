@@ -17,7 +17,11 @@ Last updated: 2026-11-10.
 - Then follow [../getting-started.md](../getting-started.md) (`make up`, `make db`, `make assets`).
 - The dev database is not in git. The "registration" model built on the original machine (objects
   `account`, `profile`, `phone`, `qualification`, `region`, `province`, `municipality` loaded from
-  the ISTAT CSV, form `registration`) exists only there: a new machine starts empty.
+  the ISTAT CSV, form `registration`) exists only there: a new machine starts empty. On
+  2026-11-10 it was rebuilt on the second machine's dev database from the specification in
+  `tests/Support/CreatesRegistrationForm.php`, on top of `fedale/geo-italy` installed from the
+  catalog, and exported as `fedale/registration` 1.0.0 (see template-plan.md, phase 8, step 7).
+  Installing both templates is how a new machine gets it now.
 
 ## Working rules agreed with the user
 
@@ -238,12 +242,13 @@ revision bumped by triggers, see `architecture.md`).
    (install, 2026-11-10) merged. Step 3 (install by name with the missing requirements,
    2026-11-10) merged; no change to the format. Step 4 (upgrades, 2026-11-10) merged; no change to
    the format. Step 5 (export, 2026-11-10) merged; no change to the format. Step 6 (the catalog, 2026-11-10):
-   `metadata:template:publish` merged here; the catalog's side on its branch
-   `feature/requires-check`, committed, for the user to push and merge through a pull request
-   (format `^1.2` there).
+   `metadata:template:publish` merged here; the catalog's side merged there (pull request #12,
+   format `^1.2`).
    To work on the next steps, link the format (`composer link
    ../metadata-driven-template-format`) when they change it; release it and `composer
-   unlink-all` before requiring the new version. Next: step 7, `fedale/registration` 1.0.0.
+   unlink-all` before requiring the new version. Step 7 (`fedale/registration` 1.0.0, 2026-11-10): exported, committed on the
+   catalog's branch `add_fedale_registration`, for the user to push and merge through a pull
+   request. Phase 8 is then complete.
 2. **"An app in a package"** (an idea discussed 2026-11-07, not planned): a large template is
    already a data application (objects, forms, views, data), but not an app. Missing, in this
    order: (a) templates requiring templates (point 1); (b) roles and permissions shipped in the
