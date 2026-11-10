@@ -491,7 +491,7 @@ metadata:template:export <name> <release> <directory> [--object=OBJECT]... [--fo
 | `release` | Its version, `major.minor.patch` (`1.0.0`) |
 | `directory` | A new or empty directory to write it into |
 | `--object` | An object to export, with its fields and views (repeatable) |
-| `--form` | A composite form to export; its objects must be exported too (repeatable) |
+| `--form` | A composite form to export; its objects must be exported too, or be another installed template's (repeatable) |
 | `--label`, `--description` | The title (default: from the name) and a line about the template |
 | `--license` | An SPDX identifier, such as `MIT` (default `proprietary`) |
 | `--seed` | Export the records of an object as a seed: `object`, or `object:key` to name its key field (default: its first unique field). Repeatable |

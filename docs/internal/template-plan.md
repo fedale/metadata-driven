@@ -4,9 +4,9 @@ Status: **phases 1 to 7 and C0 to C4 done, merged into main** (2026-11-08); the 
 live, with `fedale/geo-italy` 1.0.0 (see [The catalog](#the-catalog) and the catalog's own
 plan). **Phase 8** (templates requiring templates): step 1 done in the format, step 2 (install)
 merged (2026-11-10, format v1.2.0), step 3 (by name, with the missing requirements)
-merged (2026-11-10), steps 4 (upgrades), 5 (export) and 6 (the catalog:
-publish merged here, the catalog's check on its branch `feature/requires-check`, for a pull
-request) done (2026-11-10). Next: phase 8, step 7. Discussed with the user on 2026-11-03; name,
+merged (2026-11-10), steps 4 to 7 done (2026-11-10): the catalog's check merged
+there (pull request #12), `fedale/registration` 1.0.0 on the catalog's branch
+`add_fedale_registration`, for a pull request. Discussed with the user on 2026-11-03; name,
 upgrade model and distribution decided on 2026-11-05 (see
 [Decisions](#decisions)).
 
@@ -573,7 +573,7 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
    `templates/<vendor>/<name>/<version>/`, README included, and the git commands printed
    (branch `add_<vendor>_<name>_<version>`); no git run. Ownership is left to the catalog's
    check, which knows the author.
-8. **Templates requiring templates** — planned and decided (2026-11-09); steps 1 to 6 done
+8. **Templates requiring templates** — planned and decided (2026-11-09); steps 1 to 7 done
    (2026-11-10). Unblocks `fedale/registration` (account, profile, phone, qualification, the `registration` form) on
    top of `fedale/geo-italy`: its profile points at regions, provinces and municipalities.
 
@@ -730,6 +730,18 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
       region, province and municipality are replaced by `fedale/geo-italy`'s (installed
       there first, the hand-made objects archived after their records are moved), then published.
       The model needs English labels and an Italian translation like geo-italy's.
+
+      Done (2026-11-10, the catalog's branch `add_fedale_registration`). As built: the original
+      dev database is on another machine, so the model was rebuilt here, with the user's
+      agreement, from the specification in `tests/Support/CreatesRegistrationForm.php` (English
+      labels) on top of `fedale/geo-italy` 1.0.0 installed from the catalog: the profile's
+      `city` replaced by `region` → `province` → `municipality` (cascades on geo-italy's
+      relations), `zipcode` kept (geo-italy has no postal codes), the form requiring
+      `municipality` instead of `city`. An Italian translation of every key (the phone prefixes
+      left as they are), a README for the catalog's page, license MIT. Exported with
+      `metadata:template:export` (it required `fedale/geo-italy ^1.0` by itself), installed
+      on a throw-away database next to geo-italy, published into the checkout; the catalog's
+      check and build pass.
 
    **Not in this phase**: extensions (D3), uninstalling a template (there is no uninstall yet),
    optional requirements, requirements on a version of metadata-driven itself.
