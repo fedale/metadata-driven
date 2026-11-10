@@ -104,24 +104,65 @@ final class TemplatePublishTest extends KernelTestCase
         self::assertDirectoryDoesNotExist($this->catalog.'/templates/acme');
     }
 
+    public function testPublishesATemplateRequiringOneTheCatalogHas(): void
+    {
+        self::copyOf(ExampleTemplate::PLACES, $this->catalog.'/templates/acme/places/1.2.0');
+
+        // Checked against acme/places 1.2.0: its relations and cascade name the region and province.
+        $this->command(['directory' => ExampleTemplate::PEOPLE]);
+
+        self::assertFileExists($this->catalog.'/templates/acme/people/1.0.0/objects/person.yaml');
+    }
+
+    public function testRefusesARequirementTheCatalogDoesNotHave(): void
+    {
+        $refused = 'template.yaml: spec.requires.acme/places: The catalog has no version of acme/places that fits ^1.0 and is not yanked: publish it first, in a pull request of its own.';
+
+        $output = $this->command(['directory' => ExampleTemplate::PEOPLE], 1);
+        self::assertStringContainsString($refused, $output);
+        // Said once, not as the checker says it to an installation.
+        self::assertStringNotContainsString('must be installed', $output);
+
+        self::copyOf(ExampleTemplate::PLACES, $this->catalog.'/templates/acme/places/1.2.0');
+        file_put_contents($this->catalog.'/yanked.yaml', "acme/places: [1.2.0]\n");
+        self::assertStringContainsString($refused, $this->command(['directory' => ExampleTemplate::PEOPLE], 1));
+        self::assertDirectoryDoesNotExist($this->catalog.'/templates/acme/people');
+    }
+
+    public function testRefusesTemplatesRequiringEachOther(): void
+    {
+        self::copyOf(ExampleTemplate::PEOPLE, $this->catalog.'/templates/acme/people/1.0.0');
+        $places = $this->directory.'/places-1.3.0';
+        self::copyOf(ExampleTemplate::PLACES, $places);
+        $manifest = (string) file_get_contents($places.'/template.yaml');
+        file_put_contents($places.'/template.yaml', str_replace(['version: 1.2.0', "format: metadata-driven/v1\n  resources"], ['version: 1.3.0', "format: metadata-driven/v1\n    acme/people: ^1.0\n  resources"], $manifest));
+
+        self::assertStringContainsString('These templates would require each other: acme/places requires acme/people requires acme/places.', $this->command(['directory' => $places], 1));
+    }
+
     /**
      * A copy of the example template as version $version.
      */
     private function version(string $version, string $suffix = ''): string
     {
         $target = $this->directory.'/source-'.$version.$suffix;
-        $entries = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(ExampleTemplate::DIRECTORY, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST);
-        mkdir($target);
-        foreach ($entries as $entry) {
-            if ($entry instanceof \SplFileInfo) {
-                $to = $target.'/'.substr($entry->getPathname(), \strlen(ExampleTemplate::DIRECTORY) + 1);
-                $entry->isDir() ? mkdir($to) : copy($entry->getPathname(), $to);
-            }
-        }
+        self::copyOf(ExampleTemplate::DIRECTORY, $target);
         $manifest = $target.'/template.yaml';
         file_put_contents($manifest, str_replace('version: 1.0.0', 'version: '.$version, (string) file_get_contents($manifest)));
 
         return $target;
+    }
+
+    private static function copyOf(string $from, string $to): void
+    {
+        mkdir($to, 0o777, true);
+        $entries = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($from, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST);
+        foreach ($entries as $entry) {
+            if ($entry instanceof \SplFileInfo) {
+                $target = $to.'/'.substr($entry->getPathname(), \strlen($from) + 1);
+                $entry->isDir() ? mkdir($target) : copy($entry->getPathname(), $target);
+            }
+        }
     }
 
     /**

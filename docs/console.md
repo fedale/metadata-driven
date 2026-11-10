@@ -628,7 +628,8 @@ metadata:template:publish <directory> [--catalog=../metadata-driven-templates] [
 
 Checks a template directory against a checkout of the template catalog as the catalog's pull
 request check would (the format, a registered vendor, a template not removed, a version higher
-than the published ones whose number fits its changes, 20 MB at most, no links), then copies it
+than the published ones whose number fits its changes, 20 MB at most, no links, the templates
+it requires published there in a fitting version not yanked and no cycle of them), then copies it
 to `templates/<vendor>/<name>/<version>/` there and prints the git commands to propose it.
 `--dry-run` checks only. Pull the checkout first: it is compared as it is. See
 [Templates](templates.md#publishing-to-the-catalog).

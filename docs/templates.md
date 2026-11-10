@@ -7,8 +7,8 @@ control, share it, validate it without a database, and install it on another ins
 **Today** a template can be exported, validated, packed, published in a signed index, and
 installed and upgraded from a directory or by its name, its records included, from your own
 indexes or from the [template catalog](#the-template-catalog). A template can require other
-templates: exported, installed and upgraded with them; the catalog's check of one comes next
-(see [Not yet](#not-yet)).
+templates: exported, installed, upgraded and published with them (see [Templates requiring
+templates](#templates-requiring-templates)).
 
 ## Exporting a model
 
@@ -560,7 +560,11 @@ symfony console metadata:template:publish /tmp/shop             # copied into th
 `metadata:template:publish` runs, against the checkout, what the catalog's check would refuse:
 the format, a registered vendor, a template not removed, a version higher than the published
 ones whose number fits what it changed (see [Version numbers](#version-numbers): the catalog
-applies the same rules), 20 MB at most, no links. Then it copies the directory to
+applies the same rules), 20 MB at most, no links; the templates it requires published in the
+catalog, each in a version fitting its constraint and not yanked, the template checked against
+the highest one (as an installation takes it), with no cycle of requirements. A template can't
+be published together with one it requires: publish the required one first, in a pull request
+of its own. Then it copies the directory to
 `templates/<vendor>/<name>/<version>/` in the checkout and prints the git commands to propose
 it: a branch, a commit, a push, a pull request against `main`. It never runs git itself. Who
 owns the vendor is checked by the catalog, which knows the pull request's author.
@@ -570,7 +574,8 @@ template's page.
 
 ## Not yet
 
-- **Templates requiring templates**, the rest of it: the catalog's check of such templates. An
-  upgrade never brings in a missing requirement: install it first.
+- **Templates requiring templates**: an upgrade never brings in a missing requirement (install
+  it first); extensions (adding fields to a required object), optional requirements, and
+  requirements on a version of metadata-driven itself aren't planned yet.
 
 See the plan in [internal/template-plan.md](internal/template-plan.md).
