@@ -92,7 +92,7 @@ The page has three parts:
 **Install…** first runs a trial install, rolled back: the page lists what installing creates
 (objects, fields, views, forms, translations, records), or every reason it cannot. The button
 installs it for real. A template requiring others this instance doesn't have comes with them:
-the page lists each, requirements first, and the button installs them all together (see
+the page lists each, requirements first, with the index it comes from, and the button installs them all together (see
 [Templates requiring templates](templates.md#templates-requiring-templates)).
 
 **Upgrade from …** lists the changes the new version brings, then each **conflict**, an item

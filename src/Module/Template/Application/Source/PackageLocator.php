@@ -23,6 +23,12 @@ use Fedale\TemplateFormat\PackageDirectory;
  */
 final class PackageLocator
 {
+    /**
+     * The most templates one install may bring along: every archive is capped in size, the chain
+     * must be too, or an index could make one install download without end.
+     */
+    public const int MAX_REQUIREMENTS = 20;
+
     private const string NAMED = '~^(?<name>[a-z][a-z0-9-]*/[a-z][a-z0-9-]*)(?:@(?<version>(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)))?$~';
 
     public function __construct(
@@ -126,6 +132,10 @@ final class PackageLocator
                     throw new TemplateSourceFailed(\sprintf('%s requires %s %s, and %s %s comes with another template it requires: install the one that fits both first.', $requiring->package->name(), $name, $constraint, $name, $chain[$name]->package->version()));
                 }
                 continue;
+            }
+            // Those opened, and those on the path whose requirements are being opened.
+            if (\count($chain) + \count($path) - 1 >= self::MAX_REQUIREMENTS) {
+                throw new TemplateSourceFailed(\sprintf('%s requires more than %d templates this instance does not have: install some of them first.', $path[0], self::MAX_REQUIREMENTS));
             }
             $opened = $this->download($this->sources->locateFitting($name, $constraint, $requiring->source));
             try {

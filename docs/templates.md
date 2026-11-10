@@ -283,17 +283,21 @@ symfony console metadata:template:install fedale/registration --dry-run
 
 ```
  ! [NOTE] fedale/registration requires templates this instance does not have: they are
- !        installed first, fedale/geo-italy 1.0.0.
+ !        installed first, fedale/geo-italy 1.0.0 from
+ !        https://fedale.github.io/metadata-driven-templates/index.json.
  …
  [OK] Templates fedale/geo-italy 1.0.0, fedale/registration 1.0.0 can be installed. Dry run: nothing was changed.
 ```
 
 Each requirement is the newest version its constraint allows, yanked versions left out, found
 first in the index the requiring template comes from, then in the others (then only one of
-them may offer it). Its own requirements follow, as deep as they go; templates requiring each
-other are refused. They're all installed in one transaction, requirements first: when one is
-refused, none is installed, and the reason names it (`fedale/geo-italy 1.0.0: objects/…`).
-**Admin → Templates** previews the whole chain the same way.
+them may offer it). The note says which index each one comes from: a requirement can come
+from another index than the template you named, so check you trust it before you go ahead. Its
+own requirements follow, as deep as they go, up to 20 templates for one install; templates
+requiring each other are refused. They're all installed in one transaction, requirements
+first: when one is refused, none is installed, and the reason names it (`fedale/geo-italy
+1.0.0: objects/…`). **Admin → Templates** previews the whole chain the same way, with the index
+of each.
 
 A requirement installed already is never upgraded along the way: when its version doesn't fit
 the constraint, the install is refused, and upgrading it is up to you. A template installed

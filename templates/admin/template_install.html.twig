@@ -18,7 +18,7 @@
         {% endif %}
         <p>A trial install went through: nothing was changed yet. Installing {{ reports|length > 1 ? 'them' : 'it' }} creates:</p>
         {% for report in reports %}
-            {% if reports|length > 1 %}<h2>{{ report.name }} {{ report.version }}</h2>{% endif %}
+            {% if reports|length > 1 %}<h2>{{ report.name }} {{ report.version }}</h2><p class="gv-muted">From {{ report.source }}</p>{% endif %}
             <dl class="md-facts">
                 <dt>Objects</dt><dd>{{ report.objects|join(', ') }}</dd>
                 <dt>Fields</dt><dd>{{ report.fields }}</dd>

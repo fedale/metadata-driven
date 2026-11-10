@@ -101,6 +101,8 @@ final class TemplateAdminControllerTest extends WebTestCase
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('main', 'acme/people requires templates this instance does not have: they are installed with it, first.');
         self::assertSame(['acme/places 1.3.0', 'acme/people 1.0.0'], $crawler->filter('h2')->each(static fn ($heading): string => $heading->text()));
+        // Every template of the chain says which index it comes from.
+        self::assertSelectorTextContains('main', 'From '.self::INDEX);
         self::assertFalse(self::getContainer()->get(MetadataRegistryInterface::class)->hasObject('region'));
 
         $this->client->submit($crawler->selectButton('Install acme/people 1.0.0 and what it requires')->form());

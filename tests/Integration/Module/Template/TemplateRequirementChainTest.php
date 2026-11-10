@@ -6,6 +6,7 @@ namespace App\Tests\Integration\Module\Template;
 
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Template\Application\Source\PackageLocator;
 use App\Module\Template\Application\TemplateInstaller;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
 use App\Tests\Support\ExampleTemplate;
@@ -52,7 +53,7 @@ final class TemplateRequirementChainTest extends KernelTestCase
 
         $output = $this->command('metadata:template:install', ['template' => 'acme/people']);
 
-        self::assertStringContainsString('acme/people requires templates this instance does not have: they are installed first, acme/places 1.3.0.', $output);
+        self::assertStringContainsString('acme/people requires templates this instance does not have: they are installed first, acme/places 1.3.0 from '.self::INDEX.'.', $output);
         self::assertStringContainsString('Templates acme/places 1.3.0, acme/people 1.0.0 installed.', $output);
         $installations = self::getContainer()->get(TemplateInstallationRepository::class);
         self::assertSame('1.3.0', $installations->findByName('acme/places')?->getVersion());
@@ -136,6 +137,23 @@ final class TemplateRequirementChainTest extends KernelTestCase
         $output = $this->command('metadata:template:install', ['template' => 'acme/people'], 1);
 
         self::assertStringContainsString('These templates require each other: acme/people requires acme/places requires acme/people.', $output);
+        self::assertSame([], glob(sys_get_temp_dir().'/md-template-*') ?: []);
+    }
+
+    public function testRefusesAChainLongerThanTheLimit(): void
+    {
+        $this->publishFixture('people', '1.0.0', requires: ['acme/link-1' => '^1.0']);
+        for ($i = 1; $i <= PackageLocator::MAX_REQUIREMENTS + 1; ++$i) {
+            $this->publishFixture('places', '1.0.0', requires: [\sprintf('acme/link-%d', $i + 1) => '^1.0'], name: \sprintf('acme/link-%d', $i));
+        }
+        $this->serveFixtures();
+        $this->addIndex();
+
+        $output = $this->command('metadata:template:install', ['template' => 'acme/people'], 1);
+
+        self::assertStringContainsString(\sprintf('acme/people requires more than %d templates this instance does not have: install some of them first.', PackageLocator::MAX_REQUIREMENTS), $output);
+        // Stopped before the one past the limit was downloaded, the others removed.
+        self::assertNotContains('https://templates.acme.example/acme-link-21-1.0.0.tar.gz', FakeTemplateServer::requested());
         self::assertSame([], glob(sys_get_temp_dir().'/md-template-*') ?: []);
     }
 

@@ -59,7 +59,7 @@ final class InstallTemplateConsoleCommand
 
         $last = $reports[\count($reports) - 1];
         if (\count($reports) > 1) {
-            $io->note(\sprintf('%s requires templates this instance does not have: they are installed first, %s.', $last->name, implode(', ', array_map(static fn (InstallReport $report): string => $report->name.' '.$report->version, \array_slice($reports, 0, -1)))));
+            $io->note(\sprintf('%s requires templates this instance does not have: they are installed first, %s.', $last->name, implode(', ', array_map(static fn (InstallReport $report): string => \sprintf('%s %s from %s', $report->name, $report->version, $report->source), \array_slice($reports, 0, -1)))));
         }
         foreach ($reports as $report) {
             if (\count($reports) > 1) {
