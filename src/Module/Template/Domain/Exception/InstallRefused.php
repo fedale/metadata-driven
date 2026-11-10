@@ -45,6 +45,14 @@ final class InstallRefused extends TemplateException
     }
 
     /**
+     * The same reasons, naming the template refused: one of several installed together.
+     */
+    public function of(string $template, string $version): self
+    {
+        return new self(array_map(static fn (string $reason): string => \sprintf('%s %s: %s', $template, $version, $reason), $this->reasons));
+    }
+
+    /**
      * A step the app refused while installing: everything done before it is rolled back.
      */
     public static function at(string $path, string $at, string $message): self

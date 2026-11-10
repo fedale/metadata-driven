@@ -11,21 +11,28 @@
             <p>It cannot be installed:</p>
             <ul>{% for reason in reasons %}<li>{{ reason }}</li>{% endfor %}</ul>
         </div>
-    {% elseif report %}
-        <p>A trial install went through: nothing was changed yet. Installing it creates:</p>
-        <dl class="md-facts">
-            <dt>Objects</dt><dd>{{ report.objects|join(', ') }}</dd>
-            <dt>Fields</dt><dd>{{ report.fields }}</dd>
-            <dt>Views</dt><dd>{{ report.views }}</dd>
-            <dt>Forms</dt><dd>{{ report.forms is empty ? '—' : report.forms|join(', ') }}</dd>
-            <dt>Translations</dt><dd>{{ report.translations }}</dd>
-            <dt>Records</dt><dd>{{ report.records }}</dd>
-        </dl>
-        {% if report.skippedLocales is not empty %}
-            <p class="gv-muted">Left out, this instance not having them: the languages {{ report.skippedLocales|join(', ') }}.</p>
+    {% elseif reports is not empty %}
+        {% set last = reports|last %}
+        {% if reports|length > 1 %}
+            <p>{{ last.name }} requires templates this instance does not have: they are installed with it, first.</p>
         {% endif %}
+        <p>A trial install went through: nothing was changed yet. Installing {{ reports|length > 1 ? 'them' : 'it' }} creates:</p>
+        {% for report in reports %}
+            {% if reports|length > 1 %}<h2>{{ report.name }} {{ report.version }}</h2>{% endif %}
+            <dl class="md-facts">
+                <dt>Objects</dt><dd>{{ report.objects|join(', ') }}</dd>
+                <dt>Fields</dt><dd>{{ report.fields }}</dd>
+                <dt>Views</dt><dd>{{ report.views }}</dd>
+                <dt>Forms</dt><dd>{{ report.forms is empty ? '—' : report.forms|join(', ') }}</dd>
+                <dt>Translations</dt><dd>{{ report.translations }}</dd>
+                <dt>Records</dt><dd>{{ report.records }}</dd>
+            </dl>
+            {% if report.skippedLocales is not empty %}
+                <p class="gv-muted">Left out, this instance not having them: the languages {{ report.skippedLocales|join(', ') }}.</p>
+            {% endif %}
+        {% endfor %}
         {{ form_start(confirm) }}
-            <button type="submit" class="gv-btn gv-btn-primary">Install {{ report.name }} {{ report.version }}</button>
+            <button type="submit" class="gv-btn gv-btn-primary">Install {{ last.name }} {{ last.version }}{{ reports|length > 1 ? ' and what it requires' : '' }}</button>
         {{ form_end(confirm) }}
     {% endif %}
 {% endblock %}

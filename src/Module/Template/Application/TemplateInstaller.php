@@ -11,6 +11,7 @@ use App\Module\Metadata\Contract\Exception\MetadataException;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Contract\MetadataTranslationsInterface;
+use App\Module\Template\Application\Source\OpenedPackage;
 use App\Module\Template\Application\Upgrade\SeedFingerprints;
 use App\Module\Template\Application\Upgrade\Snapshot;
 use App\Module\Template\Domain\Exception\InstallRefused;
@@ -63,17 +64,70 @@ final class TemplateInstaller
     }
 
     /**
-     * @param string $source where the package was read from, recorded with the installation
-     *
      * A template requiring others (spec.requires) is checked against them as installed: each
      * must be installed in a version its constraint allows, and its references resolve to their
-     * items. A missing one is refused, named: installing it is up to the caller.
+     * items. A missing one is refused, named: installAll() installs a template along with them.
+     *
+     * @param string $source where the package was read from, recorded with the installation
      *
      * @throws InstallRefused the template is invalid, already installed, collides with local
      *                        items, a template it requires is missing or in a version it does
      *                        not allow, or a step was refused (nothing is then left behind)
      */
     public function install(Package $package, string $source, bool $dryRun = false): InstallReport
+    {
+        return $this->installAll([new OpenedPackage($package, $source, null)], $dryRun)[0];
+    }
+
+    /**
+     * Installs templates in the order given, each after the templates it requires: a template
+     * and the requirements it comes with (PackageLocator::openWithRequirements()). All of them
+     * in one transaction, checked one after the other inside it, so that each is checked
+     * against those installed before it: a refusal of any leaves none installed, and a dry run
+     * goes through them all.
+     *
+     * @param non-empty-list<OpenedPackage> $packages
+     *
+     * @return non-empty-list<InstallReport> in the same order
+     *
+     * @throws InstallRefused naming the template refused when there are several
+     */
+    public function installAll(array $packages, bool $dryRun = false): array
+    {
+        try {
+            return $this->transactions->run(function () use ($packages, $dryRun): array {
+                $reports = [];
+                foreach ($packages as $opened) {
+                    try {
+                        $reports[] = $this->installOne($opened->package, $opened->source, $dryRun);
+                    } catch (InstallRefused $e) {
+                        throw \count($packages) > 1 ? $e->of($opened->package->name(), $opened->package->version()) : $e;
+                    }
+                }
+                if ($dryRun) {
+                    throw new DryRunCompleted($reports);
+                }
+
+                return $reports;
+            });
+        } catch (DryRunCompleted $completed) {
+            $this->persistence->reset();
+
+            return $completed->reports;
+        } catch (\Throwable $e) {
+            // Rolled back too: the entities it created must not outlive it.
+            $this->persistence->reset();
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Checks a template against this instance as it is now, then installs it.
+     *
+     * @throws InstallRefused
+     */
+    private function installOne(Package $package, string $source, bool $dryRun): InstallReport
     {
         $required = $this->required->installed($package);
         $problems = $this->checker->check($package, $required);
@@ -91,25 +145,7 @@ final class TemplateInstaller
             throw InstallRefused::collisions($collisions);
         }
 
-        try {
-            return $this->transactions->run(function () use ($package, $names, $source, $dryRun, $required, $requires): InstallReport {
-                $report = $this->apply($package, $names, $source, $dryRun, $required, $requires);
-                if ($dryRun) {
-                    throw new DryRunCompleted($report);
-                }
-
-                return $report;
-            });
-        } catch (DryRunCompleted $completed) {
-            $this->persistence->reset();
-
-            return $completed->report;
-        } catch (\Throwable $e) {
-            // Rolled back too: the entities it created must not outlive it.
-            $this->persistence->reset();
-
-            throw $e;
-        }
+        return $this->apply($package, $names, $source, $dryRun, $required, $requires);
     }
 
     /**

@@ -11,6 +11,7 @@ use App\Module\Template\Application\TemplateInstaller;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
 use App\Tests\Support\ExampleTemplate;
 use App\Tests\Support\FakeTemplateServer;
+use App\Tests\Support\PublishesPlacesAndPeople;
 use App\Tests\Support\PublishesTemplates;
 use App\Tests\Support\RemovesDirectories;
 use App\Tests\Support\SignsIn;
@@ -23,6 +24,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  */
 final class TemplateAdminControllerTest extends WebTestCase
 {
+    use PublishesPlacesAndPeople;
     use PublishesTemplates;
     use RemovesDirectories;
     use SignsIn;
@@ -88,6 +90,24 @@ final class TemplateAdminControllerTest extends WebTestCase
         $this->client->followRedirect();
         self::assertSelectorTextContains('.md-flash--success', 'Template acme/shop 1.0.0 installed.');
         self::assertSame('1.0.0', self::getContainer()->get(TemplateInstallationRepository::class)->findByName('acme/shop')?->getVersion());
+    }
+
+    public function testPreviewsAndInstallsATemplateWithTheRequirementsItComesWith(): void
+    {
+        $this->publishPlacesAndPeople();
+        self::getContainer()->get(TemplateSources::class)->add('acme', self::INDEX, unsigned: true);
+
+        $crawler = $this->client->request('GET', '/admin/templates/install?template=acme/people&repo=acme');
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('main', 'acme/people requires templates this instance does not have: they are installed with it, first.');
+        self::assertSame(['acme/places 1.3.0', 'acme/people 1.0.0'], $crawler->filter('h2')->each(static fn ($heading): string => $heading->text()));
+        self::assertFalse(self::getContainer()->get(MetadataRegistryInterface::class)->hasObject('region'));
+
+        $this->client->submit($crawler->selectButton('Install acme/people 1.0.0 and what it requires')->form());
+        self::assertResponseRedirects('/admin/templates');
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.md-flash--success', 'Templates acme/places 1.3.0, acme/people 1.0.0 installed.');
+        self::assertSame('1.3.0', self::getContainer()->get(TemplateInstallationRepository::class)->findByName('acme/places')?->getVersion());
     }
 
     public function testResolvesTheConflictsOfAnUpgradeOneByOne(): void

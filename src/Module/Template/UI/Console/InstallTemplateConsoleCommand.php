@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Template\UI\Console;
 
+use App\Module\Template\Application\InstallReport;
 use App\Module\Template\Application\Source\PackageLocator;
 use App\Module\Template\Application\TemplateInstaller;
 use App\Module\Template\Domain\Exception\InstallRefused;
@@ -31,11 +32,14 @@ final class InstallTemplateConsoleCommand
         #[Option('The index to download it from, by name (metadata:template:repo list)')] ?string $repo = null,
     ): int {
         try {
-            $opened = $this->locator->open($template, $repo);
+            // Named from an index, it comes with the templates it requires that are missing.
+            $chain = $this->locator->openWithRequirements($template, $repo);
             try {
-                $report = $this->installer->install($opened->package, $opened->source, $dryRun);
+                $reports = $this->installer->installAll($chain, $dryRun);
             } finally {
-                $this->locator->close($opened);
+                foreach ($chain as $opened) {
+                    $this->locator->close($opened);
+                }
             }
         } catch (TemplateSourceFailed $e) {
             $io->error($e->getMessage());
@@ -53,21 +57,32 @@ final class InstallTemplateConsoleCommand
             return Command::FAILURE;
         }
 
-        $io->definitionList(
-            ['Objects' => implode(', ', $report->objects)],
-            ['Fields' => (string) $report->fields],
-            ['Views' => (string) $report->views],
-            ['Forms' => [] === $report->forms ? '—' : implode(', ', $report->forms)],
-            ['Translations' => (string) $report->translations],
-            ['Records' => (string) $report->records],
-        );
-        if ([] !== $report->skippedLocales) {
-            $io->warning(\sprintf('Languages this instance does not have, left out: %s.', implode(', ', $report->skippedLocales)));
+        $last = $reports[\count($reports) - 1];
+        if (\count($reports) > 1) {
+            $io->note(\sprintf('%s requires templates this instance does not have: they are installed first, %s.', $last->name, implode(', ', array_map(static fn (InstallReport $report): string => $report->name.' '.$report->version, \array_slice($reports, 0, -1)))));
         }
-        if ($report->dryRun) {
-            $io->success(\sprintf('Template %s %s can be installed. Dry run: nothing was changed.', $report->name, $report->version));
+        foreach ($reports as $report) {
+            if (\count($reports) > 1) {
+                $io->section($report->name.' '.$report->version);
+            }
+            $io->definitionList(
+                ['Objects' => implode(', ', $report->objects)],
+                ['Fields' => (string) $report->fields],
+                ['Views' => (string) $report->views],
+                ['Forms' => [] === $report->forms ? '—' : implode(', ', $report->forms)],
+                ['Translations' => (string) $report->translations],
+                ['Records' => (string) $report->records],
+            );
+            if ([] !== $report->skippedLocales) {
+                $io->warning(\sprintf('Languages this instance does not have, left out: %s.', implode(', ', $report->skippedLocales)));
+            }
+        }
+        $installed = implode(', ', array_map(static fn (InstallReport $report): string => $report->name.' '.$report->version, $reports));
+        $noun = \count($reports) > 1 ? 'Templates' : 'Template';
+        if ($last->dryRun) {
+            $io->success(\sprintf('%s %s can be installed. Dry run: nothing was changed.', $noun, $installed));
         } else {
-            $io->success(\sprintf('Template %s %s installed.', $report->name, $report->version));
+            $io->success(\sprintf('%s %s installed.', $noun, $installed));
             $io->note('Give the users the permissions of the new objects (record.<object>.read, ...): see access.md.');
         }
 
