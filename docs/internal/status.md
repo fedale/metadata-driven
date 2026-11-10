@@ -4,15 +4,16 @@ Internal notes for whoever (human or agent) picks the work up, on any machine. R
 starting a task; update it in the same branch whenever a decision is taken, a feature lands or the
 work queue changes. The user-facing documentation is in [../README.md](../README.md).
 
-Last updated: 2026-11-09.
+Last updated: 2026-11-10.
 
 ## Setting up on a new machine
 
 - The bundles and the format come from Packagist (since 2026-11-07): `composer install` is
   enough. To work on one, clone it next to this repository and `composer link ../<repo>`
   (the composer-link plugin, installed globally; see getting-started.md, "Working on the
-  bundles"). All the repositories are under `git@github.com:fedale/<repo>.git` (the format's is
-  `metadata-driven-template-format`, cloned as `../template-format`); use SSH remotes.
+  bundles"). All the repositories are under `git@github.com:fedale/<repo>.git`, cloned under
+  the name of their repository (the format: `../metadata-driven-template-format`, the name of
+  its package too); use SSH remotes.
 - Then follow [../getting-started.md](../getting-started.md) (`make up`, `make db`, `make assets`).
 - The dev database is not in git. The "registration" model built on the original machine (objects
   `account`, `profile`, `phone`, `qualification`, `region`, `province`, `municipality` loaded from
@@ -157,9 +158,10 @@ Things that are not obvious from a single file, and that are easy to break.
   `FileCell` (Record UI) draws them. `FieldTypeInterface::isSortable()` (false
   for `file` and `many_to_many`) decides sorting, searching and virtual columns, in the default
   grid, the grid view compiler and the grid source alike.
-- **Templates**: the format is `fedale/template-format` (Packagist; `../template-format` linked
-  to work on it, its own `composer qa`): only `symfony/yaml` and `opis/json-schema`. A change to the format is
-  made there, with its tests. It describes the field types on its own (`Resources/field-types.v1.json`):
+- **Templates**: the format is `fedale/metadata-driven-template-format` (Packagist;
+  `../metadata-driven-template-format` linked to work on it, its own `composer qa`; namespace
+  `Fedale\TemplateFormat`): only `symfony/yaml` and `opis/json-schema`. A change to the format
+  is made there, with its tests. It describes the field types on its own (`Resources/field-types.v1.json`):
   **a new field type or setting must be added there too**, or
   `FieldTypeCatalogMatchesTheAppTest` fails. The comparison of a template's items and the
   version rules (`Fedale\TemplateFormat\Versions`: `ItemStates`, `VersionCheck`) are in the
@@ -194,7 +196,7 @@ revision bumped by triggers, see `architecture.md`).
   are listed in the plan, under "Phase 4b-2, as delivered".
 - **Templates and their catalog**, complete (2026-11-08), plan in
   [template-plan.md](template-plan.md), the catalog's own in
-  `../metadata-driven-templates/docs/internal/plan.md`: format (`fedale/template-format`, on
+  `../metadata-driven-templates/docs/internal/plan.md`: format (`fedale/metadata-driven-template-format`, on
   Packagist, v1.1.0), export, install, seeds, three-way upgrade, indexes and signatures, admin
   UI, `metadata:template:publish`; the catalog `fedale/metadata-driven-templates` on GitHub
   (pull request check with the semver rules, publication on merge to Pages, static site,
@@ -213,6 +215,9 @@ revision bumped by triggers, see `architecture.md`).
   files per field (`multiple: true` with a link table), the GC (`metadata:files:gc`) and file
   fields in composite forms. Production storage (2026-11-05): the local disk, in
   `RECORD_FILES_DIR` (default `var/storage/files`); see `architecture.md`.
+- **The format renamed** (2026-11-10): package, repository and directory are all
+  `metadata-driven-template-format` (Packagist from v1.1.1; the old `fedale/template-format`
+  removed from Packagist). The namespace stays `Fedale\TemplateFormat`.
 
 ## Open
 
@@ -226,16 +231,16 @@ revision bumped by triggers, see `architecture.md`).
    of `fedale/geo-italy`. Planned as phase 8 of [template-plan.md](template-plan.md) (2026-11-09,
    seven steps, each reviewed; decisions D1-D3 taken: missing requirements installed with the
    template, constraints `^`/`~`/exact, references only). Step 1 (format v1.2.0: `Constraint`,
-   `PackageChecker::check($package, $required)`) on template-format's branch `feature/requires`,
+   `PackageChecker::check($package, $required)`) on the format's branch `feature/requires`,
    awaiting review. With it linked, `TemplateInstallerTest::testRefusesWhatItCannotInstall`
    fails as expected: the checker now refuses a missing requirement before the installer's own
-   message; step 2 replaces both. Step 1 is merged into template-format's `main` (2026-11-09)
+   message; step 2 replaces both. Step 1 is merged into the format's `main` (2026-11-09)
    but **not tagged**: tag `v1.2.0` only once step 2 works, so no one gets a format the app
-   cannot use yet. To work on step 2 (any machine): clone `../template-format` if missing,
-   `composer link ../template-format` here (its `main` has step 1), work and test against it;
-   at the end tag and push `v1.2.0` there, then `composer unlink-all`, `composer require
-   fedale/template-format:^1.2`, `composer link` again, and update the tests expecting the old
-   messages. Next: step 2, install (the plan's phase 8, step 2).
+   cannot use yet. To work on step 2 (any machine): clone `../metadata-driven-template-format`
+   if missing, `composer link ../metadata-driven-template-format` here (its `main` has step 1),
+   work and test against it; at the end tag and push `v1.2.0` there, then `composer
+   unlink-all`, `composer require fedale/metadata-driven-template-format:^1.2`, `composer link`
+   again, and update the tests expecting the old messages. Next: step 2, install (the plan's phase 8, step 2).
 2. **"An app in a package"** (an idea discussed 2026-11-07, not planned): a large template is
    already a data application (objects, forms, views, data), but not an app. Missing, in this
    order: (a) templates requiring templates (point 1); (b) roles and permissions shipped in the

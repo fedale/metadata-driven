@@ -10,8 +10,8 @@ use Fedale\TemplateFormat\PackageDirectory;
 
 /**
  * The example template the install, upgrade and index tests start from (acme/shop 1.0.0): three
- * objects, a form, two views, translations and seeds with a file. fedale/template-format keeps
- * a copy of its own for its unit tests.
+ * objects, a form, two views, translations and seeds with a file.
+ * fedale/metadata-driven-template-format keeps a copy of its own for its unit tests.
  */
 final class ExampleTemplate
 {
