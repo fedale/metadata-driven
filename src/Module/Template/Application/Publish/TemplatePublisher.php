@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Module\Template\Application\Publish;
 
+use App\Module\Template\Application\Upgrade\Snapshot;
 use App\Module\Template\Domain\Exception\PublishRefused;
+use Fedale\TemplateFormat\Constraint;
 use Fedale\TemplateFormat\Format;
 use Fedale\TemplateFormat\InvalidPackage;
 use Fedale\TemplateFormat\Package;
 use Fedale\TemplateFormat\PackageChecker;
 use Fedale\TemplateFormat\PackageDirectory;
+use Fedale\TemplateFormat\Problem;
 use Fedale\TemplateFormat\Versions\ItemStates;
 use Fedale\TemplateFormat\Versions\VersionCheck;
 use Symfony\Component\Yaml\Exception\ParseException;
@@ -22,7 +25,9 @@ use Symfony\Component\Yaml\Yaml;
  *
  * Before copying, it runs what the catalog's pull request check would refuse, against the
  * checkout as it is (pull it first): the format, a registered vendor, a template not removed, a
- * version higher than the published ones whose number fits its changes, the size, no links.
+ * version higher than the published ones whose number fits its changes, the size, no links;
+ * the templates it requires published there, in a version fitting each constraint and not
+ * yanked (it is checked against the highest one, as an installation takes it), with no cycle.
  * Who owns the vendor is the check's to tell: it knows the pull request's author.
  *
  * Nothing touches git: committing, pushing and opening the pull request stay with the author.
@@ -62,7 +67,7 @@ final readonly class TemplatePublisher
         } catch (InvalidPackage $e) {
             throw new PublishRefused(array_map(strval(...), $e->problems));
         }
-        $problems = array_map(strval(...), $this->checker->check($package));
+        $problems = $this->checkAgainstRequirements($catalog, $package);
         if ([] !== $problems) {
             throw new PublishRefused($problems);
         }
@@ -95,6 +100,108 @@ final readonly class TemplatePublisher
         }
 
         return new PublishReport($package->name(), $package->version(), $directory, \count($files), $bytes, [] === $published ? null : end($published), $dryRun);
+    }
+
+    /**
+     * The format's checks against the templates the version requires, as the catalog has them.
+     * A requirement it doesn't have is said so first (the references to its items fail with
+     * it), rather than as the checker says it ("it must be installed").
+     *
+     * @return list<string>
+     *
+     * @throws PublishRefused
+     */
+    private function checkAgainstRequirements(string $catalog, Package $package): array
+    {
+        $yanked = self::yanked($catalog);
+        $required = [];
+        $missing = [];
+        $problems = [];
+        foreach (self::requires($package) as $name => $constraint) {
+            $found = $this->fitting($catalog, $yanked, $name, $constraint);
+            if ($found instanceof Package) {
+                $required[] = $found;
+            } elseif (null === $found) {
+                $missing[] = $name;
+                $problems[] = \sprintf('%s: spec.requires.%s: The catalog has no version of %s that fits %s and is not yanked: publish it first, in a pull request of its own.', Format::MANIFEST, $name, $name, $constraint);
+            }
+        }
+        $problems = [...$problems, ...array_map(strval(...), array_values(array_filter(
+            $this->checker->check($package, $required),
+            static fn (Problem $problem): bool => !(Format::MANIFEST === $problem->path && \in_array(substr($problem->at, \strlen('spec.requires.')), $missing, true)),
+        )))];
+        $cycle = $this->cycle($catalog, $yanked, $package, [$package->name()], []);
+        if (null !== $cycle) {
+            $problems[] = \sprintf('%s: spec.requires: These templates would require each other: %s. None of them could be installed.', Format::MANIFEST, $cycle);
+        }
+
+        return $problems;
+    }
+
+    /**
+     * The first cycle the version would close, following the requirements' own as published.
+     *
+     * @param array<string, list<string>|true> $yanked
+     * @param non-empty-list<string>           $path
+     * @param array<string, true>              $seen
+     */
+    private function cycle(string $catalog, array $yanked, Package $package, array $path, array $seen): ?string
+    {
+        foreach (self::requires($package) as $name => $constraint) {
+            if (\in_array($name, $path, true)) {
+                return implode(' requires ', [...$path, $name]);
+            }
+            if (isset($seen[$name])) {
+                continue;
+            }
+            $seen[$name] = true;
+            $found = $this->fitting($catalog, $yanked, $name, $constraint);
+            $cycle = $found instanceof Package ? $this->cycle($catalog, $yanked, $found, [...$path, $name], $seen) : null;
+            if (null !== $cycle) {
+                return $cycle;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The highest version of a template in the catalog its constraint allows and not yanked, as
+     * an installation takes it.
+     *
+     * @param array<string, list<string>|true> $yanked name => its yanked versions, true when removed
+     *
+     * @return Package|false|null null when none fits; false when the constraint is not one (the
+     *                            checker reports it)
+     */
+    private function fitting(string $catalog, array $yanked, string $name, string $constraint): Package|false|null
+    {
+        try {
+            $parsed = Constraint::parse($constraint);
+        } catch (\InvalidArgumentException) {
+            return false;
+        }
+        $removed = true === ($yanked[$name] ?? null);
+        $versions = array_filter(
+            self::published($catalog, $name),
+            static fn (string $version): bool => !$removed && $parsed->allows($version) && !\in_array($version, \is_array($yanked[$name] ?? null) ? $yanked[$name] : [], true),
+        );
+        if ([] === $versions) {
+            return null;
+        }
+        try {
+            return $this->directories->read($catalog.'/'.self::TEMPLATES.'/'.$name.'/'.end($versions));
+        } catch (InvalidPackage) {
+            return null;
+        }
+    }
+
+    /**
+     * @return array<string, string> the templates a version requires: name => constraint
+     */
+    private static function requires(Package $package): array
+    {
+        return Snapshot::requirementsOf(\is_array($package->manifest->spec['requires'] ?? null) ? $package->manifest->spec['requires'] : []);
     }
 
     /**
@@ -197,9 +304,23 @@ final readonly class TemplatePublisher
      */
     private static function isRemoved(string $catalog, string $name): bool
     {
-        $file = $catalog.'/'.self::YANKED;
+        return true === (self::yanked($catalog)[$name] ?? null);
+    }
 
-        return is_file($file) && 'all' === (self::yaml($file)[$name] ?? null);
+    /**
+     * @return array<string, list<string>|true> name => its yanked versions, true when removed (all)
+     *
+     * @throws PublishRefused
+     */
+    private static function yanked(string $catalog): array
+    {
+        $file = $catalog.'/'.self::YANKED;
+        $yanked = [];
+        foreach (is_file($file) ? self::yaml($file) : [] as $name => $versions) {
+            $yanked[(string) $name] = 'all' === $versions ? true : array_values(array_map(strval(...), array_filter(\is_array($versions) ? $versions : [], is_scalar(...))));
+        }
+
+        return $yanked;
     }
 
     /**

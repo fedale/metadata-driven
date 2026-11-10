@@ -4,8 +4,9 @@ Status: **phases 1 to 7 and C0 to C4 done, merged into main** (2026-11-08); the 
 live, with `fedale/geo-italy` 1.0.0 (see [The catalog](#the-catalog) and the catalog's own
 plan). **Phase 8** (templates requiring templates): step 1 done in the format, step 2 (install)
 merged (2026-11-10, format v1.2.0), step 3 (by name, with the missing requirements)
-merged (2026-11-10), step 4 (upgrades) and step 5 (export) merged
-(2026-11-10). Next: phase 8, step 6 (the catalog). Discussed with the user on 2026-11-03; name,
+merged (2026-11-10), steps 4 (upgrades), 5 (export) and 6 (the catalog:
+publish merged here, the catalog's check on its branch `feature/requires-check`, for a pull
+request) done (2026-11-10). Next: phase 8, step 7. Discussed with the user on 2026-11-03; name,
 upgrade model and distribution decided on 2026-11-05 (see
 [Decisions](#decisions)).
 
@@ -572,7 +573,7 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
    `templates/<vendor>/<name>/<version>/`, README included, and the git commands printed
    (branch `add_<vendor>_<name>_<version>`); no git run. Ownership is left to the catalog's
    check, which knows the author.
-8. **Templates requiring templates** — planned and decided (2026-11-09); steps 1 to 5 done
+8. **Templates requiring templates** — planned and decided (2026-11-09); steps 1 to 6 done
    (2026-11-10). Unblocks `fedale/registration` (account, profile, phone, qualification, the `registration` form) on
    top of `fedale/geo-italy`: its profile points at regions, provinces and municipalities.
 
@@ -713,6 +714,18 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
       checker; a requirement on a template the catalog does not have is refused. The pages list
       the requirements with links, and the pages of a required template list what requires it.
       `metadata:template:publish` does the same against the checkout.
+
+      Done (2026-11-10). As built, in the catalog (branch `feature/requires-check`, its plan's
+      phase 5): `Requirements` picks the version, a requirement it doesn't publish is one
+      problem placed first (the checker's "it must be installed" left out), cycles refused
+      following the published requirements; the base's published versions and yanked list
+      decide, so a template and one it requires can't come in the same pull request. The build
+      checks every version the same way but falls back on a yanked version (a yank must not stop
+      the publication). The pages: "Requires" with links, "Required by" from the listed
+      templates' current versions. Here: `TemplatePublisher` does the same against the checkout
+      (`yanked.yaml` read for versions too, not only `all`). Tests: the catalog's
+      `PullRequestCheckTest`, `CatalogBuilderTest`, `SiteBuilderTest`; here
+      `TemplatePublishTest`.
    7. **`fedale/registration` 1.0.0**: exported from the original dev database's model once its
       region, province and municipality are replaced by `fedale/geo-italy`'s (installed
       there first, the hand-made objects archived after their records are moved), then published.
