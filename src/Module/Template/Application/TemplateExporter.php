@@ -42,6 +42,7 @@ final class TemplateExporter
         private readonly FieldTypeCatalog $fieldTypes,
         private readonly PackageChecker $checker,
         private readonly SeedExporter $seedExporter,
+        private readonly RequiredTemplates $required,
     ) {
     }
 
@@ -128,9 +129,14 @@ final class TemplateExporter
      * objects, fields, views and forms it owns, under the ids recorded when it was installed, and
      * their translations. Nothing is recorded. A field the user added to one of its objects is
      * left out; a reference the user pointed at an item it does not own is "local:<name>", which
-     * no id of a template equals.
+     * no id of a template equals. A reference to an item of a template it requires is written with
+     * that item's id, as the template itself writes it.
+     *
+     * @param list<string>|null $requires the templates it requires; null for those its installed
+     *                                    version requires (an install passes them: its installation
+     *                                    is not recorded yet)
      */
-    public function ownedState(string $template): Package
+    public function ownedState(string $template, ?array $requires = null): Package
     {
         $owned = [];
         foreach ($this->items->itemsOf($template) as $item) {
@@ -152,7 +158,9 @@ final class TemplateExporter
                 }
             }
         }
-        $refs = new ItemReferences($objectIds, $fieldIds, strict: false);
+        // The template's own items win: the checker has made sure no id is in both.
+        $required = $this->required->items($requires ?? $this->required->requiredBy($template));
+        $refs = new ItemReferences($objectIds + $required->objectIds(), $fieldIds + $required->fieldIds(), strict: false);
 
         $documents = [];
         foreach ($objects as $name => $object) {

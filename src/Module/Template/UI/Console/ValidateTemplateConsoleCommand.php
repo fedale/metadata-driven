@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Template\UI\Console;
 
+use App\Module\Template\Application\RequiredTemplates;
 use Fedale\TemplateFormat\InvalidPackage;
 use Fedale\TemplateFormat\PackageChecker;
 use Fedale\TemplateFormat\PackageDirectory;
@@ -19,6 +20,7 @@ final class ValidateTemplateConsoleCommand
     public function __construct(
         private readonly PackageDirectory $directories,
         private readonly PackageChecker $checker,
+        private readonly RequiredTemplates $required,
     ) {
     }
 
@@ -31,7 +33,8 @@ final class ValidateTemplateConsoleCommand
         } catch (InvalidPackage $e) {
             return self::invalid($io, $e->problems);
         }
-        $problems = $this->checker->check($package);
+        // The templates it requires are checked against as installed here, as the install does.
+        $problems = $this->checker->check($package, $this->required->installed($package));
         if ([] !== $problems) {
             return self::invalid($io, $problems);
         }

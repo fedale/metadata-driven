@@ -168,7 +168,11 @@ Things that are not obvious from a single file, and that are easy to break.
   format too since v1.1.0, shared with the catalog's check. The `Template` module is the only bridge to the
   metadata; `core.template_item` keeps the id of each exported item across exports (a renamed
   item keeps its id). The install records `ownedState()` as its snapshot, the base of the next
-  upgrade. After a rolled-back install or upgrade the entity manager is cleared
+  upgrade. A template requiring others (`RequiredTemplates`): the checker gets their snapshots
+  as packages, their ids resolve through their `core.template_item` rows to the names their
+  items have now (`RequiredItems`, in `PackageNames` and in `ownedState()`, which must write
+  them as ids, never `local:<name>`); what a template requires is read from the manifest in its
+  snapshot (`Snapshot::requires()`), not stored apart. After a rolled-back install or upgrade the entity manager is cleared
   (`PersistenceReset`): the ORM would otherwise keep the rolled-back state of changed entities.
 - **Security forms**: the stateless CSRF token input needs `data-controller="csrf-protection"` to
   work in a real browser.
@@ -224,23 +228,17 @@ revision bumped by triggers, see `architecture.md`).
 ### Next, in the order proposed (2026-11-08)
 
 1. **Templates requiring other templates**: `spec.requires` naming another template
-   (`fedale/geo-italy: ^1.0`), its objects referenced by id from the requiring one; install
-   refuses it today (`InstallRefused::unsupportedRequirements()`), export refuses a relation to
-   an object outside the export. Unblocks `fedale/registration` (account, profile, phone,
-   qualification, the `registration` form; built by hand in the original dev database) on top
-   of `fedale/geo-italy`. Planned as phase 8 of [template-plan.md](template-plan.md) (2026-11-09,
-   seven steps, each reviewed; decisions D1-D3 taken: missing requirements installed with the
-   template, constraints `^`/`~`/exact, references only). Step 1 (format v1.2.0: `Constraint`,
-   `PackageChecker::check($package, $required)`) on the format's branch `feature/requires`,
-   awaiting review. With it linked, `TemplateInstallerTest::testRefusesWhatItCannotInstall`
-   fails as expected: the checker now refuses a missing requirement before the installer's own
-   message; step 2 replaces both. Step 1 is merged into the format's `main` (2026-11-09)
-   but **not tagged**: tag `v1.2.0` only once step 2 works, so no one gets a format the app
-   cannot use yet. To work on step 2 (any machine): clone `../metadata-driven-template-format`
-   if missing, `composer link ../metadata-driven-template-format` here (its `main` has step 1),
-   work and test against it; at the end tag and push `v1.2.0` there, then `composer
-   unlink-all`, `composer require fedale/metadata-driven-template-format:^1.2`, `composer link`
-   again, and update the tests expecting the old messages. Next: step 2, install (the plan's phase 8, step 2).
+   (`fedale/geo-italy: ^1.0`), its objects referenced by id from the requiring one. Unblocks
+   `fedale/registration` (account, profile, phone, qualification, the `registration` form;
+   built by hand in the original dev database) on top of `fedale/geo-italy`. Planned as phase 8
+   of [template-plan.md](template-plan.md) (2026-11-09, seven steps, each reviewed; decisions
+   D1-D3 taken: missing requirements installed with the template, constraints `^`/`~`/exact,
+   references only). Step 1 (format: `Constraint`, `PackageChecker::check($package,
+   $required)`) released in the format's v1.2.0 (2026-11-10), required here as `^1.2`. Step 2
+   (install, 2026-11-10) merged. To work on the next steps, link the format
+   (`composer link ../metadata-driven-template-format`) when they change it; release it and
+   `composer unlink-all` before requiring the new version.
+   Next: step 3, installing the missing requirements by name.
 2. **"An app in a package"** (an idea discussed 2026-11-07, not planned): a large template is
    already a data application (objects, forms, views, data), but not an app. Missing, in this
    order: (a) templates requiring templates (point 1); (b) roles and permissions shipped in the

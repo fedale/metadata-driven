@@ -1,0 +1,13 @@
+format: metadata-driven/v1
+kind: View
+id: acme.person.grid.main
+spec:
+  object: acme.person
+  kind: grid
+  name: main
+  default: true
+  template: |
+    columns:
+      - email
+      - region
+      - province

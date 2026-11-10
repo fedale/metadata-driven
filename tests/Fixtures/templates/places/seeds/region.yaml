@@ -1,0 +1,10 @@
+format: metadata-driven/v1
+kind: Seed
+id: acme.seed.region
+spec:
+  object: acme.region
+  key: code
+  mode: managed
+  records:
+    - { code: '01', name: North }
+    - { code: '02', name: South }

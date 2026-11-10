@@ -170,7 +170,9 @@ symfony console metadata:template:validate templates/shop
  [OK] Template acme/shop 1.0.0 follows the format (8 documents).
 ```
 
-It checks the structure only, without a database:
+It checks the structure only, without touching the data: the only thing it reads from this
+instance is the templates the one checked requires, as installed (see
+[Templates requiring templates](#templates-requiring-templates)).
 
 - each file's envelope and its spec against the schema of its kind;
 - every field's type, and its settings against that type: unknown settings, values out of
@@ -214,7 +216,8 @@ It is refused, before anything is written, when:
 - a translation names something the template does not bring: the label of a local object
   (`Names no object or form of the template.`), or a `{t:name}` text this instance already has
   (`This instance already has the text "identity".`);
-- it requires another template (`spec.requires`): not supported yet.
+- a template it requires is not installed, or is installed in a version its constraint doesn't
+  allow (see below).
 
 A step the app refuses is reported on its document, e.g.
 `views/product.form.main.yaml: spec: …`, with the app's own message.
@@ -231,6 +234,58 @@ The instance records what it installed: the version, where it came from, the doc
 were (the base of a future upgrade), and the id each object, field, view and form has in the
 template. Exporting the same objects again under the same name gives the template back, ids
 included.
+
+### Templates requiring templates
+
+A template may build on another one: a `registration` template pointing its profiles at the
+regions of `fedale/geo-italy`. It names the template it requires in its manifest, with a
+version constraint:
+
+```yaml
+spec:
+  requires:
+    format: metadata-driven/v1
+    fedale/geo-italy: ^1.0
+```
+
+The constraints are `^1.2` (from 1.2.0 up to, not including, 2.0.0; `^0.3` stays below 0.4.0),
+`~1.2` (from 1.2.0 up to, not including, 1.3.0) and an exact `1.2.3`.
+
+It then names the required template's objects and fields by their ids, where it would name its
+own: a relation's or a many-to-many field's `target`, a cascade's `dependsVia`, a composite
+form's `object` and `via`. Its seeds point at the records of the required seeds by their keys,
+as they do within a template:
+
+```yaml
+# objects/profile.yaml
+    - id: fedale.profile.region
+      name: region
+      type: relation
+      label: Region
+      settings:
+        target: fedale.region              # an object of fedale/geo-italy
+
+# seeds/profile.yaml
+  records:
+    - { email: ada@example.com, region: '01' }   # the ISTAT code of a region, its seed's key
+```
+
+It only references them: it adds no field to a required object, doesn't relabel or translate
+it (`Names no object or form of the template.`), and its own ids must differ from those of the
+templates it requires.
+
+Install the required template first. The install then checks the requiring one against it, as
+installed here:
+
+```
+template.yaml: spec.requires.fedale/geo-italy: fedale/geo-italy is required: it must be installed, or given to check against.
+template.yaml: spec.requires.fedale/geo-italy: fedale/geo-italy 2.0.0 does not fit ^1.0.
+```
+
+The references are resolved through the ids recorded when the required template was installed,
+never by name: a region object renamed `area` since keeps every reference to it. A seed
+pointing at a record the user has deleted since is refused, with the key it names.
+`metadata:template:list` shows what each template requires.
 
 ## Upgrading a template
 
@@ -432,7 +487,10 @@ A `README.md` in the template's directory is copied too: the catalog shows it on
 template's page.
 
 ## Not yet
-- **Templates requiring other templates**: a template pointing at the objects of another
-  installed one.
+
+- **Templates requiring templates**, the rest of it: installing the missing requirements along
+  with a template named from an index; upgrading a template that requires another one, or one
+  that others require; exporting a model whose objects point at an installed template's (still
+  refused, as a relation outside the export); the catalog's check of such templates.
 
 See the plan in [internal/template-plan.md](internal/template-plan.md).

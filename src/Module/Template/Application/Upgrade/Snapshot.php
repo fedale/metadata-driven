@@ -6,6 +6,7 @@ namespace App\Module\Template\Application\Upgrade;
 
 use Fedale\TemplateFormat\Document;
 use Fedale\TemplateFormat\DocumentKind;
+use Fedale\TemplateFormat\Format;
 use Fedale\TemplateFormat\Package;
 use Fedale\TemplateFormat\SeedRecords;
 
@@ -72,6 +73,42 @@ final class Snapshot
         }
 
         return new Package($manifest ?? throw new \LogicException('An installation records its manifest.'), $documents);
+    }
+
+    /**
+     * The templates the installed version requires, with their constraints, as its manifest
+     * says: the snapshot keeps the manifest, so what a template requires needs no record of
+     * its own.
+     *
+     * @param array<string, mixed> $snapshot
+     *
+     * @return array<string, string> template name => constraint
+     */
+    public static function requires(array $snapshot): array
+    {
+        $manifest = $snapshot[Format::MANIFEST] ?? null;
+        $spec = \is_array($manifest) && \is_array($manifest['spec'] ?? null) ? $manifest['spec'] : [];
+
+        return self::requirementsOf(\is_array($spec['requires'] ?? null) ? $spec['requires'] : []);
+    }
+
+    /**
+     * The templates a manifest's spec.requires names, the format left out.
+     *
+     * @param array<mixed> $requires
+     *
+     * @return array<string, string> template name => constraint
+     */
+    public static function requirementsOf(array $requires): array
+    {
+        $templates = [];
+        foreach ($requires as $name => $constraint) {
+            if ('format' !== (string) $name && \is_scalar($constraint)) {
+                $templates[(string) $name] = (string) $constraint;
+            }
+        }
+
+        return $templates;
     }
 
     /**

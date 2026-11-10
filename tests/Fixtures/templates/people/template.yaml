@@ -1,0 +1,15 @@
+format: metadata-driven/v1
+kind: Template
+id: acme/people
+spec:
+  version: 1.0.0
+  label: People
+  description: People, and where they live.
+  license: MIT
+  requires:
+    format: metadata-driven/v1
+    acme/places: ^1.0
+  resources:
+    - objects/*.yaml
+    - views/*.yaml
+    - seeds/*.yaml

@@ -1,0 +1,27 @@
+format: metadata-driven/v1
+kind: Object
+id: acme.province
+spec:
+  name: province
+  label: Province
+  plural: Provinces
+  label_field: acme.province.name
+  fields:
+    - id: acme.province.code
+      name: code
+      type: text
+      label: Code
+      required: true
+      unique: true
+    - id: acme.province.name
+      name: name
+      type: text
+      label: Name
+      required: true
+    - id: acme.province.region
+      name: region
+      type: relation
+      label: Region
+      required: true
+      settings:
+        target: acme.region

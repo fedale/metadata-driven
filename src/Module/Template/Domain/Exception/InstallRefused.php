@@ -37,17 +37,6 @@ final class InstallRefused extends TemplateException
     }
 
     /**
-     * @param list<string> $requirements
-     */
-    public static function unsupportedRequirements(array $requirements): self
-    {
-        return new self(array_map(
-            static fn (string $requirement): string => \sprintf('template.yaml: spec.requires.%s: A template requiring another one cannot be installed yet.', $requirement),
-            $requirements,
-        ));
-    }
-
-    /**
      * @param list<string> $collisions
      */
     public static function collisions(array $collisions): self
