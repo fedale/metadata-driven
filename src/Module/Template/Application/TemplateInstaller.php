@@ -285,6 +285,7 @@ final class TemplateInstaller
         return new InstallReport(
             $package->name(),
             $package->version(),
+            $source,
             $dryRun,
             array_map(fn (Document $object): string => $names->object($object->id), $objects),
             \count($fields),

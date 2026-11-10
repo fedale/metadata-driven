@@ -39,11 +39,12 @@ trait PublishesPlacesAndPeople
      * lists it in the index served next.
      *
      * @param array<string, string>|null $requires the templates it requires; null as the fixture says
+     * @param string|null                $name     another name for it; null for the fixture's
      */
-    private function publishFixture(string $fixture, string $version, bool $yanked = false, ?array $requires = null): void
+    private function publishFixture(string $fixture, string $version, bool $yanked = false, ?array $requires = null, ?string $name = null): void
     {
         $source = 'places' === $fixture ? ExampleTemplate::PLACES : ExampleTemplate::PEOPLE;
-        $copy = \sprintf('%s/%s-%s', $this->directory, $fixture, $version);
+        $copy = \sprintf('%s/%s-%s', $this->directory, str_replace('/', '-', $name ?? $fixture), $version);
         (new Filesystem())->mirror($source, $copy);
         $codec = new DocumentCodec();
         $manifest = (new PackageDirectory($codec))->read($copy)->manifest;
@@ -51,13 +52,14 @@ trait PublishesPlacesAndPeople
         if (null !== $requires) {
             $spec['requires'] = ['format' => 'metadata-driven/v1'] + $requires;
         }
-        file_put_contents($copy.'/template.yaml', $codec->encode(new Document($manifest->kind, $manifest->id, $spec, $manifest->path)));
+        $name ??= $manifest->id;
+        file_put_contents($copy.'/template.yaml', $codec->encode(new Document($manifest->kind, $name, $spec, $manifest->path)));
         $archive = $copy.'.tar.gz';
         (new Archive())->pack($copy, $archive);
 
-        $file = \sprintf('acme-%s-%s.tar.gz', $fixture, $version);
+        $file = \sprintf('%s-%s.tar.gz', str_replace('/', '-', $name), $version);
         FakeTemplateServer::serve('https://templates.acme.example/'.$file, (string) file_get_contents($archive));
-        $this->entries[$manifest->id][$version] = ['url' => $file, 'sha256' => (string) hash_file('sha256', $archive), 'yanked' => $yanked];
+        $this->entries[$name][$version] = ['url' => $file, 'sha256' => (string) hash_file('sha256', $archive), 'yanked' => $yanked];
     }
 
     private function serveFixtures(): void

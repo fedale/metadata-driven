@@ -17,6 +17,8 @@ final readonly class InstallReport
     public function __construct(
         public string $name,
         public string $version,
+        /** Where it came from: its directory, or the address of its index. */
+        public string $source,
         public bool $dryRun,
         public array $objects,
         public int $fields,
