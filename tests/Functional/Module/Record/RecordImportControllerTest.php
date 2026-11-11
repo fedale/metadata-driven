@@ -159,6 +159,22 @@ final class RecordImportControllerTest extends WebTestCase
         self::assertSame($finder->latest('owner')[0]->id, $finder->latest('pet')[0]->values['owner']);
     }
 
+    public function testOffersARelationOnlyToWhoMayReadItsRecords(): void
+    {
+        $metadata = self::getContainer()->get(MetadataManagerInterface::class);
+        $metadata->createObject('owner', 'Owner', 'Owners');
+        $metadata->createField('owner', 'email', 'email', 'Email', required: true, unique: true);
+        $metadata->createField('pet', 'owner', 'relation', 'Owner', settings: ['target' => 'owner']);
+        // May create pets, not read owners: the form's lookup would refuse them too.
+        self::signIn($this->client, 'clerk@example.com', ['record.pet.read', 'record.pet.create']);
+
+        $crawler = $this->upload("name,owner\nRex,ada@example.com\n");
+
+        self::assertSame(['name', ''], $this->mapping($crawler));
+        self::assertCount(0, $crawler->filter('select[name="columns[c1]"] option[value="owner"]'));
+        self::assertSelectorNotExists('select[name="columns[m_owner]"]');
+    }
+
     public function testNeedsTheCreatePermissionAndTheUpdateOneForAKey(): void
     {
         self::signIn($this->client, 'reader@example.com', ['record.pet.read']);

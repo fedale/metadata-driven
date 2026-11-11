@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Module\Record\UI\Import;
 
+use App\Module\Access\Contract\AccessCheckerInterface;
+use App\Module\Access\Contract\RecordAction;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
@@ -20,18 +22,32 @@ final class ImportColumns
         // The labels in the user's language: they are shown, and matched against the headers.
         #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
+        private readonly AccessCheckerInterface $access,
     ) {
     }
 
     /**
-     * The fields a column may fill: all but the file fields, whose files a CSV file uploaded
-     * alone does not bring (the console imports them).
+     * The fields a column may fill, by the same permissions as the record form:
+     *
+     * - no file field: a CSV file uploaded alone brings no files (the console imports them);
+     * - no many-to-many field going through a junction object: its links are junction records,
+     *   written with their own permissions and cascades (the form's rows);
+     * - a relation or many-to-many field only when the user may read the related records, as
+     *   picking one in the form needs (its lookup): matching cells against them otherwise
+     *   tells which values exist.
      *
      * @return array<string, FieldDefinitionDto> by name, in the order of the object
      */
     public function fields(ObjectDefinitionDto $object): array
     {
-        return array_filter($object->fields, static fn (FieldDefinitionDto $field): bool => 'file' !== $field->type);
+        return array_filter($object->fields, function (FieldDefinitionDto $field): bool {
+            if ('file' === $field->type || true === $field->manyToMany()?->goesThrough()) {
+                return false;
+            }
+            $target = $field->target();
+
+            return null === $target || $this->access->canRecords($target, RecordAction::Read);
+        });
     }
 
     /**

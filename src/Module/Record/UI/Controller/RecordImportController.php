@@ -254,6 +254,12 @@ final class RecordImportController extends AbstractController
 
     private function run(ImportDraft $draft, bool $dryRun): ImportReport
     {
+        // The fields were offered with the permissions of the columns step: they may have
+        // changed since.
+        $refused = array_diff(array_filter($draft->mapping), array_keys($this->columns->fields($this->metadata->getObject($draft->object))));
+        if ([] !== $refused) {
+            throw $this->createAccessDeniedException(\sprintf('No permission to import the fields %s of "%s".', implode(', ', $refused), $draft->object));
+        }
         // Only the relations the file fills: a match on a field left out means nothing.
         $matches = array_intersect_key($draft->matches, array_flip(array_filter($draft->mapping)));
 

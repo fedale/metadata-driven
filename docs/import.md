@@ -43,8 +43,14 @@ whoever may create the records of the object (`record.<object>.create`).
 **Cancel the import** drops the file. The wizard keeps the file uploaded between its steps, in
 your session only; a file left halfway is deleted after a day.
 
-File fields are not offered: a CSV file uploaded alone brings no files. Import them from the
-console, the files next to the CSV file.
+Some fields are not offered, by the same rules as the record form:
+
+- file fields: a CSV file uploaded alone brings no files. Import them from the console, the
+  files next to the CSV file;
+- many-to-many fields going through a junction object: their links are records of the
+  junction, with permissions of their own;
+- relation and many-to-many fields whose related records you may not read: the form would not
+  let you pick them either.
 
 The reasons of a refused row are in English, as the other error messages of the application
 (see [Languages](i18n.md#not-yet)).
