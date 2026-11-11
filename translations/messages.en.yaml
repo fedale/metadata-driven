@@ -58,6 +58,51 @@ flash:
     deleted: '%object% deleted.'
     saved: '%form% saved.'
     cascade_denied: 'Deleting this record also deletes %objects%, which you may not delete.'
+import:
+    button: Import
+    title: 'Import %objects%'
+    steps: Steps of the import
+    step:
+        upload: File
+        columns: Columns
+        check: Check
+    intro: 'A CSV file, as a spreadsheet saves it: a header naming the columns, then one record per line. Nothing is written until the last step, and then all the rows or none.'
+    file: CSV file
+    file_help: 'UTF-8 (in Excel: "CSV UTF-8"), up to %rows% rows. A larger file is imported from the console, with record:import.'
+    separator: Separator
+    separator_detect: Detect it
+    separator_comma: Comma (,)
+    separator_semicolon: Semicolon (;)
+    no_rows: The file has a header but no rows.
+    too_many_rows: 'The file has %rows% rows, the wizard imports up to %max%: import it from the console, with record:import.'
+    continue: Continue
+    cancel: Cancel the import
+    columns_intro: '%file%, %rows%. Choose the field each column fills; the columns left on "Ignore" are not imported.'
+    rows: '{1}1 row|]1,Inf[%count% rows'
+    column: Column
+    column_unnamed: 'Column %index% (no name)'
+    first_values: First values
+    field: Field
+    ignore: Ignore
+    field_twice: 'The column "%column%" fills this field already.'
+    nothing_mapped: Choose the field of one column at least.
+    key: Key
+    key_help: 'A unique field: a row whose value a record holds updates that record, the others create one. Without a key, every row creates a record.'
+    no_key: 'None: every row creates a record'
+    key_not_mapped: The key must be one of the fields the columns fill.
+    key_needs_update: Updating records needs the permission to change them; import without a key.
+    relations: Relations
+    relations_help: 'For each relation a column fills: whether its cells hold the ids of the records, or the values of a unique field of theirs (a code, a name).'
+    match_ids: Record ids
+    match_by: 'Values of %field%'
+    refused: '{1}Nothing would be imported: 1 problem.|]1,Inf[Nothing would be imported: %count% problems.'
+    would: '%created% record(s) will be created, %updated% updated.'
+    preview: The first rows
+    line: Line
+    with_key: 'The rows whose %field% a record holds update that record.'
+    run: Import
+    back_to_columns: Back to the columns
+    done: '%created% record(s) created, %updated% updated.'
 # The admin pages. A text holding HTML (a <code>, a link) is shown with |raw: its parameters
 # are escaped by the template.
 admin:

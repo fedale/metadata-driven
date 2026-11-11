@@ -1,0 +1,22 @@
+{% extends 'base.html.twig' %}
+
+{% set heading = 'import.title'|trans({'%objects%': object.labelPlural|lower}) %}
+
+{% block title %}{{ heading }}{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('record_index', {object: object.name}) }}">&larr; {{ object.labelPlural }}</a></p>
+    <h1>{{ heading }}</h1>
+    {{ include('record/import/_steps.html.twig', {current: 'upload'}) }}
+
+    <p class="gv-muted">{{ 'import.intro'|trans }}</p>
+
+    {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+        {{ form_errors(form) }}
+        {{ form_rest(form) }}
+        <div class="md-page__actions">
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'import.continue'|trans }}</button>
+            <a class="gv-btn" href="{{ path('record_index', {object: object.name}) }}">{{ 'form.cancel'|trans }}</a>
+        </div>
+    {{ form_end(form) }}
+{% endblock %}

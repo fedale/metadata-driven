@@ -1,0 +1,8 @@
+{# The steps of the import wizard, the current one marked. #}
+<ol class="md-steps" aria-label="{{ 'import.steps'|trans }}">
+    {% for step in ['upload', 'columns', 'check'] %}
+        <li class="md-steps__item{{ step == current ? ' md-steps__item--current' }}"{% if step == current %} aria-current="step"{% endif %}>
+            <span class="md-steps__number">{{ loop.index }}</span> {{ ('import.step.' ~ step)|trans }}
+        </li>
+    {% endfor %}
+</ol>

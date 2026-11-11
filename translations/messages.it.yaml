@@ -57,6 +57,51 @@ flash:
     deleted: '%object%: eliminato.'
     saved: '%form%: salvato.'
     cascade_denied: 'Eliminare questo elemento elimina anche %objects%, che non puoi eliminare.'
+import:
+    button: Importa
+    title: 'Importa %objects%'
+    steps: Passi dell'importazione
+    step:
+        upload: File
+        columns: Colonne
+        check: Verifica
+    intro: 'Un file CSV, come lo salva un foglio di calcolo: un''intestazione con i nomi delle colonne, poi un record per riga. Non si scrive niente fino all''ultimo passo, e allora tutte le righe o nessuna.'
+    file: File CSV
+    file_help: 'UTF-8 (in Excel: "CSV UTF-8"), fino a %rows% righe. Un file più grande si importa dalla console, con record:import.'
+    separator: Separatore
+    separator_detect: Riconoscilo
+    separator_comma: Virgola (,)
+    separator_semicolon: Punto e virgola (;)
+    no_rows: Il file ha un'intestazione ma nessuna riga.
+    too_many_rows: 'Il file ha %rows% righe, il wizard ne importa fino a %max%: importalo dalla console, con record:import.'
+    continue: Continua
+    cancel: Annulla l'importazione
+    columns_intro: '%file%, %rows%. Scegli il campo che ogni colonna riempie; le colonne lasciate su "Ignora" non si importano.'
+    rows: '{1}1 riga|]1,Inf[%count% righe'
+    column: Colonna
+    column_unnamed: 'Colonna %index% (senza nome)'
+    first_values: Primi valori
+    field: Campo
+    ignore: Ignora
+    field_twice: 'La colonna "%column%" riempie già questo campo.'
+    nothing_mapped: Scegli il campo di almeno una colonna.
+    key: Chiave
+    key_help: 'Un campo univoco: una riga il cui valore è già in un record aggiorna quel record, le altre ne creano uno. Senza chiave, ogni riga crea un record.'
+    no_key: 'Nessuna: ogni riga crea un record'
+    key_not_mapped: La chiave deve essere uno dei campi riempiti dalle colonne.
+    key_needs_update: Aggiornare i record richiede il permesso di modificarli; importa senza chiave.
+    relations: Relazioni
+    relations_help: 'Per ogni relazione riempita da una colonna: se le sue celle contengono gli id dei record, o i valori di un loro campo univoco (un codice, un nome).'
+    match_ids: Id dei record
+    match_by: 'Valori di %field%'
+    refused: '{1}Non si importerebbe niente: 1 problema.|]1,Inf[Non si importerebbe niente: %count% problemi.'
+    would: 'Record che verranno creati: %created%, aggiornati: %updated%.'
+    preview: Le prime righe
+    line: Riga
+    with_key: 'Le righe il cui %field% è già in un record aggiornano quel record.'
+    run: Importa
+    back_to_columns: Torna alle colonne
+    done: 'Importazione completata. Record creati: %created%, aggiornati: %updated%.'
 admin:
     title: Amministrazione
     actions: Azioni

@@ -1,0 +1,53 @@
+{% extends 'base.html.twig' %}
+
+{% set heading = 'import.title'|trans({'%objects%': object.labelPlural|lower}) %}
+
+{% block title %}{{ heading }}{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('record_index', {object: object.name}) }}">&larr; {{ object.labelPlural }}</a></p>
+    <h1>{{ heading }}</h1>
+    {{ include('record/import/_steps.html.twig', {current: 'check'}) }}
+
+    {% if reasons is not empty %}
+        <div class="md-flash md-flash--error" role="alert">
+            <p>{{ 'import.refused'|trans({'%count%': reasons|length}) }}</p>
+            <ul class="md-import__reasons">{% for reason in reasons %}<li>{{ reason }}</li>{% endfor %}</ul>
+        </div>
+    {% elseif report %}
+        <p class="md-flash md-flash--success">{{ 'import.would'|trans({'%created%': report.created, '%updated%': report.updated}) }}</p>
+    {% endif %}
+
+    <h2>{{ 'import.preview'|trans }}</h2>
+    <table class="md-table">
+        <thead>
+            <tr>
+                <th scope="col">{{ 'import.line'|trans }}</th>
+                {% for field in mapped %}<th scope="col">{{ object.fields[field].label }}</th>{% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in preview %}
+                <tr>
+                    <td class="gv-muted">{{ row.line }}</td>
+                    {% for field in mapped %}<td>{{ row.values[field] }}</td>{% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if draft.key %}
+        <p class="gv-muted">{{ 'import.with_key'|trans({'%field%': object.fields[draft.key].label}) }}</p>
+    {% endif %}
+
+    <div class="md-page__actions">
+        {% if reasons is empty and report %}
+            {{ form_start(run_form) }}
+                <button type="submit" class="gv-btn gv-btn-primary">{{ 'import.run'|trans }}</button>
+            {{ form_end(run_form) }}
+        {% endif %}
+        <a class="gv-btn" href="{{ path('record_import_columns', {object: object.name, draft: draft.id}) }}">{{ 'import.back_to_columns'|trans }}</a>
+        {{ form_start(cancel_form) }}
+            <button type="submit" class="gv-btn">{{ 'import.cancel'|trans }}</button>
+        {{ form_end(cancel_form) }}
+    </div>
+{% endblock %}

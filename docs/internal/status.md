@@ -256,8 +256,10 @@ Smaller ones:
 
 ### Other open items
 
-- **CSV import**: (A) done with phase 3 of the templates, `record:import` (console.md). Not
-  done: (B) a web wizard; (C) async with Messenger for very large files.
+- **CSV import**: (A) done with phase 3 of the templates, `record:import` (console.md); (B) the
+  web wizard, on branch `csv_import_wizard` (2026-11-11, plan in
+  [csv-import-wizard-plan.md](csv-import-wizard-plan.md), guide docs/import.md). Not done:
+  (C) async with Messenger for very large files.
 - From the form mock, done 2026-11-11 (branch `admin_translations`): the "+" of a section of
   rows names the row's object in the singular (`object_singular()`, Record UI Twig), and an
   administrator can show the machine names next to the labels (the header's toggle, the

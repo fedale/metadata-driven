@@ -20,6 +20,7 @@
              data-gridview-ui-settings-grid-value="{{ gridview.id }}">
             {% if can_create %}
                 <a class="gv-btn gv-btn-primary" href="{{ path('record_new', {object: object.name}) }}">{{ 'record.new'|trans({'%object%': object.labelSingular|lower}) }}</a>
+                <a class="gv-btn" href="{{ path('record_import', {object: object.name}) }}">{{ 'import.button'|trans }}</a>
             {% endif %}
             {% if can('admin.metadata') %}
                 <button type="button" class="gv-btn" data-action="gridview-ui-settings#open">
