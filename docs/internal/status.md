@@ -229,26 +229,15 @@ revision bumped by triggers, see `architecture.md`).
 
 ## Open
 
-### Next, in the order proposed (2026-11-08)
+### Next, in the order proposed (2026-11-08; the smaller items first, the user decided on 2026-11-11)
 
-1. **Templates requiring other templates**: `spec.requires` naming another template
-   (`fedale/geo-italy: ^1.0`), its objects referenced by id from the requiring one. Unblocks
-   `fedale/registration` (account, profile, phone, qualification, the `registration` form;
-   built by hand in the original dev database) on top of `fedale/geo-italy`. Planned as phase 8
-   of [template-plan.md](template-plan.md) (2026-11-09, seven steps, each reviewed; decisions
-   D1-D3 taken: missing requirements installed with the template, constraints `^`/`~`/exact,
-   references only). Step 1 (format: `Constraint`, `PackageChecker::check($package,
-   $required)`) released in the format's v1.2.0 (2026-11-10), required here as `^1.2`. Step 2
-   (install, 2026-11-10) merged. Step 3 (install by name with the missing requirements,
-   2026-11-10) merged; no change to the format. Step 4 (upgrades, 2026-11-10) merged; no change to
-   the format. Step 5 (export, 2026-11-10) merged; no change to the format. Step 6 (the catalog, 2026-11-10):
-   `metadata:template:publish` merged here; the catalog's side merged there (pull request #12,
-   format `^1.2`).
-   To work on the next steps, link the format (`composer link
-   ../metadata-driven-template-format`) when they change it; release it and `composer
-   unlink-all` before requiring the new version. Step 7 (`fedale/registration` 1.0.0, 2026-11-10): exported, committed on the
-   catalog's branch `add_fedale_registration`, for the user to push and merge through a pull
-   request. Phase 8 is then complete.
+1. **Templates requiring other templates** — done (phase 8 of
+   [template-plan.md](template-plan.md), 2026-11-09 to 2026-11-10): `spec.requires` naming other
+   templates, installed with them (by name), upgraded, exported and published with them; the
+   format's v1.2.0, the catalog's check (its pull request #12). `fedale/registration` 1.0.0, on
+   top of `fedale/geo-italy`, is live in the catalog. To change the format again, link it
+   (`composer link ../metadata-driven-template-format`); release it and `composer unlink-all`
+   before requiring the new version.
 2. **"An app in a package"** (an idea discussed 2026-11-07, not planned): a large template is
    already a data application (objects, forms, views, data), but not an app. Missing, in this
    order: (a) templates requiring templates (point 1); (b) roles and permissions shipped in the
