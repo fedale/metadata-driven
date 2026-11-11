@@ -25,7 +25,8 @@ use App\Shared\Transaction\TransactionRunner;
  * - A key (a unique field) makes it an upsert: a row whose key a record holds updates it.
  * - A relation or many-to-many cell holds record ids, or, matched by a unique field of the
  *   target, values of that field. Several ids or values are separated by "|".
- * - A file cell holds a path relative to the CSV file's directory, inside it.
+ * - A file cell holds a path relative to a directory (the CSV file's), inside it. Rows read
+ *   elsewhere (the web wizard) come without one: a file column is refused.
  */
 final class RecordImporter
 {
@@ -40,6 +41,8 @@ final class RecordImporter
     }
 
     /**
+     * Imports a CSV file, its header naming the fields; its file cells name files next to it.
+     *
      * @param array<string, string> $matches relation field => the unique field of its target its cells hold
      *
      * @throws ImportRefused     nothing was written
@@ -47,15 +50,32 @@ final class RecordImporter
      */
     public function import(string $objectName, string $file, ?string $key = null, array $matches = [], bool $dryRun = false): ImportReport
     {
-        $object = $this->metadata->getObject($objectName);
+        $this->metadata->getObject($objectName);
         try {
             $rows = CsvFile::read($file);
         } catch (\UnexpectedValueException $e) {
             throw new ImportRefused([$e->getMessage()]);
         }
+
+        return $this->importRows($objectName, $rows, $key, $matches, $dryRun, \dirname($file));
+    }
+
+    /**
+     * Imports rows already read, their values named by field.
+     *
+     * @param list<array{line: int, values: array<string, string|null>}> $rows           each with its line in the file, for the reasons
+     * @param array<string, string>                                      $matches        relation field => the unique field of its target its cells hold
+     * @param string|null                                                $filesDirectory where the paths of file cells lead; null: no file column
+     *
+     * @throws ImportRefused     nothing was written
+     * @throws MetadataException the object does not exist
+     */
+    public function importRows(string $objectName, array $rows, ?string $key = null, array $matches = [], bool $dryRun = false, ?string $filesDirectory = null): ImportReport
+    {
+        $object = $this->metadata->getObject($objectName);
         $header = array_map(strval(...), array_keys($rows[0]['values'] ?? []));
         $keyField = null === $key ? null : $this->uniqueField($object, $key, '--key');
-        $reasons = [...$this->headerProblems($object, $header), ...$this->duplicateKeys($rows, $keyField)];
+        $reasons = [...$this->headerProblems($object, $header, null !== $filesDirectory), ...$this->duplicateKeys($rows, $keyField)];
         $targets = [];
         foreach ($matches as $fieldName => $targetFieldName) {
             $field = $object->fields[$fieldName] ?? null;
@@ -77,13 +97,13 @@ final class RecordImporter
         $references = $this->references($object, $rows, $targets);
 
         try {
-            return $this->transactions->run(function () use ($object, $rows, $keyField, $existing, $references, $file, $dryRun): ImportReport {
+            return $this->transactions->run(function () use ($object, $rows, $keyField, $existing, $references, $filesDirectory, $dryRun): ImportReport {
                 $created = 0;
                 $updated = 0;
                 $reasons = [];
                 foreach ($rows as ['line' => $line, 'values' => $values]) {
                     $id = null === $keyField ? null : ($existing[trim((string) $values[$keyField->name])] ?? null);
-                    [$input, $problems] = $this->input($object, $values, $references, \dirname($file), null === $id);
+                    [$input, $problems] = $this->input($object, $values, $references, (string) $filesDirectory, null === $id);
                     if ([] !== $problems) {
                         $reasons = [...$reasons, ...array_map(static fn (string $problem): string => \sprintf('Line %d: %s', $line, $problem), $problems)];
                         continue;
@@ -206,15 +226,18 @@ final class RecordImporter
 
     /**
      * @param list<string> $header
+     * @param bool         $files  the file cells may name files (the rows come with a directory)
      *
      * @return list<string>
      */
-    private function headerProblems(ObjectDefinitionDto $object, array $header): array
+    private function headerProblems(ObjectDefinitionDto $object, array $header, bool $files): array
     {
         $problems = [];
         foreach ($header as $name) {
             if (!isset($object->fields[$name])) {
                 $problems[] = \sprintf('Column "%s": "%s" has no such field.', $name, $object->name);
+            } elseif (!$files && 'file' === $object->fields[$name]->type) {
+                $problems[] = \sprintf('Column "%s": a file field is imported from the console only (record:import), with its files next to the CSV file.', $name);
             }
         }
 
