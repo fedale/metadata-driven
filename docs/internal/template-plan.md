@@ -5,8 +5,7 @@ live, with `fedale/geo-italy` 1.0.0 (see [The catalog](#the-catalog) and the cat
 plan). **Phase 8** (templates requiring templates): step 1 done in the format, step 2 (install)
 merged (2026-11-10, format v1.2.0), step 3 (by name, with the missing requirements)
 merged (2026-11-10), steps 4 to 7 done (2026-11-10): the catalog's check merged
-there (pull request #12), `fedale/registration` 1.0.0 on the catalog's branch
-`add_fedale_registration`, for a pull request. Discussed with the user on 2026-11-03; name,
+there (pull request #12), `fedale/registration` 1.0.0 published. Phase 8 is complete. Discussed with the user on 2026-11-03; name,
 upgrade model and distribution decided on 2026-11-05 (see
 [Decisions](#decisions)).
 
@@ -731,7 +730,7 @@ In metadata-driven (the format in `src/TemplateFormat/` until the catalog starts
       there first, the hand-made objects archived after their records are moved), then published.
       The model needs English labels and an Italian translation like geo-italy's.
 
-      Done (2026-11-10, the catalog's branch `add_fedale_registration`). As built: the original
+      Done (2026-11-10, published in the catalog). As built: the original
       dev database is on another machine, so the model was rebuilt here, with the user's
       agreement, from the specification in `tests/Support/CreatesRegistrationForm.php` (English
       labels) on top of `fedale/geo-italy` 1.0.0 installed from the catalog: the profile's
