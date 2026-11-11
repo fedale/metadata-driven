@@ -1,17 +1,17 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}New field · {{ object.labelPlural }}{% endblock %}
+{% block title %}{{ 'admin.field.new'|trans }} · {{ object.labelPlural }}{% endblock %}
 
 {% block body %}
     <p><a href="{{ path('admin_object_show', {object: object.name}) }}">&larr; {{ object.labelPlural }}</a></p>
-    <h1>New field: choose its type</h1>
+    <h1>{{ 'admin.field.choose_type'|trans }}</h1>
 
     <ul class="md-type-list">
         {% for type in types %}
             <li>
                 <a class="md-type-list__card" href="{{ path('admin_field_new', {object: object.name, type: type.name}) }}">
-                    <strong>{{ type.label }}</strong>
-                    <span class="gv-muted">{{ type.description }}</span>
+                    <strong>{{ field_type_label(type) }}</strong>
+                    <span class="gv-muted">{{ field_type_description(type) }}</span>
                 </a>
             </li>
         {% endfor %}

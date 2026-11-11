@@ -1,0 +1,171 @@
+# The texts of the field types in Italian. The English ones are those the field types declare
+# (FieldTypeInterface::label(), description(), settingDefinitions()): there is no
+# field_types.en.yaml, and a key missing here shows the English text.
+# Keys: <type>.label, <type>.description, <type>.settings.<setting>.label / .help /
+# .choices.<value>. FieldTypeCatalogsTest checks they match the field types.
+boolean:
+    label: Sì / No
+    description: Una casella di spunta o un interruttore.
+    settings:
+        default:
+            label: Spuntato di default
+            help: I nuovi record partono con la casella spuntata.
+        display:
+            label: Aspetto
+            choices:
+                checkbox: Casella di spunta
+                switch: Interruttore
+date:
+    label: Data
+    description: Una data, con l'ora se serve.
+    settings:
+        includeTime:
+            label: Includi l'ora
+email:
+    label: Email
+    description: Un indirizzo email, validato.
+file:
+    label: File
+    description: Un documento o un'immagine, caricato con il record.
+    settings:
+        accept:
+            label: Tipi accettati
+            help: 'Tipi MIME separati da virgole, ad esempio application/pdf, image/*. Il tipo si legge dal contenuto del file, non dal nome. Vuoto: qualsiasi tipo.'
+        maxSize:
+            label: Dimensione massima (MB)
+            help: Da 1 a 100 MB. Valgono anche i limiti di upload del server.
+        image:
+            label: Solo immagini
+            help: Accetta solo immagini (JPEG, PNG, GIF, WebP...), verificate come immagini vere.
+        multiple:
+            label: Più file
+            help: Il campo contiene una lista di file, nell'ordine scelto, invece di un solo file. Non può cambiare una volta creato il campo.
+        max:
+            label: Numero massimo di file
+            help: 'Con più file: quanti ne può contenere il campo, da 1 a 100. Vuoto: nessun limite.'
+many_to_many:
+    label: Molti-a-molti
+    description: Collega un numero qualsiasi di record di un altro oggetto (molti-a-molti).
+    settings:
+        target:
+            label: Oggetto collegato
+        onDelete:
+            label: Quando un record collegato viene eliminato
+            choices:
+                unlink: Rimuovi il collegamento
+                restrict: Rifiuta l'eliminazione
+        inverseName:
+            label: Nome inverso
+            help: Nome tecnico della lista di questi record sull'oggetto collegato, ad esempio "contacts".
+        inverseLabel:
+            label: Etichetta inversa
+            help: Titolo di quella lista, ad esempio "Contatti".
+        max:
+            label: Massimo
+            help: 'Quanti record si possono collegare. Vuoto: nessun limite.'
+        through:
+            label: Tramite (oggetto di collegamento)
+            help: 'Vuoto: una tabella di collegamento sua. Altrimenti l''oggetto i cui record sono i collegamenti, ad esempio "user_tag".'
+        throughSource:
+            label: Campo del collegamento verso questo oggetto
+            help: 'Con "Tramite": il suo campo relazione che punta a questi record, ad esempio "user".'
+        throughTarget:
+            label: Campo del collegamento verso l'oggetto collegato
+            help: 'Con "Tramite": il suo campo relazione che punta ai record collegati, ad esempio "tag".'
+number:
+    label: Numero
+    description: Un intero, o un numero decimale con un numero fisso di decimali.
+    settings:
+        decimals:
+            label: Decimali
+            help: 0 per un intero. I decimali in più vengono rifiutati, mai arrotondati.
+        min:
+            label: Minimo
+            help: 'Il valore più piccolo ammesso. Vuoto: nessun minimo.'
+        max:
+            label: Massimo
+            help: 'Il valore più grande ammesso. Vuoto: nessun massimo.'
+password:
+    label: Password
+    description: Un segreto salvato come hash, con regole di robustezza e una conferma facoltativa.
+    settings:
+        minLength:
+            label: Lunghezza minima
+        requireMixedCase:
+            label: Lettere maiuscole e minuscole
+        requireDigit:
+            label: Almeno una cifra
+        requireSymbol:
+            label: Almeno un simbolo
+            help: Qualsiasi carattere che non sia una lettera né una cifra.
+        confirm:
+            label: Chiedi due volte
+            help: Il modulo chiede la password una seconda volta e controlla che coincidano; la seconda non viene salvata.
+        strengthMeter:
+            label: Indicatore di robustezza
+            help: 'Mostra quanto è robusta la password mentre la si digita. Solo un suggerimento: sono le regole sopra a decidere cosa si accetta.'
+        revealToggle:
+            label: Pulsante mostra/nascondi
+            help: Un occhio nel campo mostra la password in chiaro, e la nasconde di nuovo.
+relation:
+    label: Relazione
+    description: Un collegamento a un record di un altro oggetto (molti-a-uno).
+    settings:
+        target:
+            label: Oggetto collegato
+        onDelete:
+            label: Quando il record collegato viene eliminato
+            choices:
+                set_null: Svuota questo campo
+                restrict: Rifiuta l'eliminazione
+                cascade: Elimina anche questo record
+        inverseName:
+            label: Nome inverso
+            help: Nome tecnico della lista di questi record sull'oggetto collegato, ad esempio "pets".
+        inverseLabel:
+            label: Etichetta inversa
+            help: Titolo di quella lista, ad esempio "Animali".
+        dependsOn:
+            label: Dipende da
+            help: 'Per una cascata: il campo relazione di questo oggetto da scegliere prima, ad esempio "province". Vuoto: nessuno.'
+        dependsVia:
+            label: Tramite
+            help: 'Con "Dipende da": il campo relazione dell''oggetto collegato che punta allo stesso oggetto, ad esempio "province" su un comune.'
+select:
+    label: Scelta
+    description: Un valore tra una lista fissa di opzioni.
+    settings:
+        options:
+            label: Opzioni
+            help: Il valore salvato e l'etichetta mostrata.
+        default:
+            label: Valore predefinito
+            help: 'Il valore di un''opzione, scelto per i nuovi record. Vuoto: nessuno.'
+        display:
+            label: Aspetto
+            help: I pulsanti vanno bene per poche opzioni brevi.
+            choices:
+                dropdown: Menu a tendina
+                radio: Pulsanti affiancati
+tel:
+    label: Telefono
+    description: 'Un numero di telefono: cifre, un "+" iniziale facoltativo, spazi, punti, trattini e parentesi.'
+text:
+    label: Testo
+    description: Testo breve o lungo.
+    settings:
+        maxLength:
+            label: Lunghezza massima
+            help: Fino a 255 caratteri è un testo breve; oltre, un testo lungo.
+        multiline:
+            label: Su più righe
+            help: Un'area di testo, che mantiene a capo e rientri.
+        pattern:
+            label: Pattern
+            help: 'Un''espressione regolare (PCRE) a cui deve corrispondere l''intero valore, ad esempio \d{5} per un CAP. Vuoto: qualsiasi testo.'
+        patternMessage:
+            label: Messaggio del pattern
+            help: 'Mostrato quando il valore non corrisponde. Predefinito: "This value is not valid."'
+url:
+    label: Link
+    description: Un indirizzo web (http o https), mostrato come link.

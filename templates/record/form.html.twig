@@ -11,7 +11,7 @@
 {% block title %}{{ heading }}{% endblock %}
 
 {% block body %}
-    {{ form_start(form, {attr: {class: 'md-sheet', novalidate: 'novalidate'}}) }}
+    {{ form_start(form, {attr: {class: 'md-sheet', novalidate: 'novalidate', 'data-controller': can('admin.metadata') ? 'machine-names' : false}}) }}
         {{ include('record/_sheet_header.html.twig', {crumb: object.labelPlural, crumb_url: back, title: heading, back: back, can_save: can_save, can_save_new: can_save_new}) }}
 
         <div class="md-sheet__parts md-sheet__parts--single">

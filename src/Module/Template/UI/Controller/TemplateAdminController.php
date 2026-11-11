@@ -32,6 +32,7 @@ use Symfony\Component\Form\FormView;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Templates in the admin: the ones installed, the ones the indexes offer, and the indexes.
@@ -54,6 +55,7 @@ final class TemplateAdminController extends AbstractController
         private readonly TemplateInstallationRepository $installations,
         private readonly FormFactoryInterface $forms,
         private readonly AccessCheckerInterface $access,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -66,7 +68,7 @@ final class TemplateAdminController extends AbstractController
             try {
                 $key = self::text($add, 'key');
                 $this->sources->add(self::text($add, 'name'), self::text($add, 'url'), '' === $key ? null : $key, true === $add->get('unsigned')->getData());
-                $this->addFlash('success', \sprintf('Index "%s" added.', self::text($add, 'name')));
+                $this->addFlash('success', $this->translator->trans('admin.template_admin.index_added', ['%name%' => self::text($add, 'name')]));
 
                 return $this->redirectToRoute('admin_template_index', [], Response::HTTP_SEE_OTHER);
             } catch (TemplateSourceFailed $e) {
@@ -129,7 +131,7 @@ final class TemplateAdminController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             try {
                 $this->sources->remove($name);
-                $this->addFlash('success', \sprintf('Index "%s" removed; what was installed from it stays.', $name));
+                $this->addFlash('success', $this->translator->trans('admin.template_admin.index_removed', ['%name%' => $name]));
             } catch (TemplateSourceFailed $e) {
                 $this->addFlash('error', $e->getMessage());
             }
@@ -166,7 +168,9 @@ final class TemplateAdminController extends AbstractController
             $reasons = $e->reasons;
         }
         if ($real && [] !== $reports) {
-            $this->addFlash('success', \sprintf('%s %s installed.', \count($reports) > 1 ? 'Templates' : 'Template', implode(', ', array_map(static fn (InstallReport $report): string => $report->name.' '.$report->version, $reports))));
+            $this->addFlash('success', $this->translator->trans(\count($reports) > 1 ? 'admin.template_admin.installed_many' : 'admin.template_admin.installed_one', [
+                '%templates%' => implode(', ', array_map(static fn (InstallReport $report): string => $report->name.' '.$report->version, $reports)),
+            ]));
 
             return $this->redirectToRoute('admin_template_index', [], Response::HTTP_SEE_OTHER);
         }
@@ -195,7 +199,7 @@ final class TemplateAdminController extends AbstractController
                 $choices = $this->resolutionForm($template, $repo, $preview->conflicts)->handleRequest($request);
                 if ($choices->isSubmitted() && $choices->isValid() && [] === $preview->refusals) {
                     $report = $this->upgrader->upgrade($opened->package, $opened->source, $this->resolution($choices, $preview->conflicts));
-                    $this->addFlash('success', \sprintf('%s upgraded from %s to %s.', $report->name, $report->from, $report->to));
+                    $this->addFlash('success', $this->translator->trans('admin.template_admin.upgrade_done', ['%name%' => $report->name, '%from%' => $report->from, '%to%' => $report->to]));
 
                     return $this->redirectToRoute('admin_template_index', [], Response::HTTP_SEE_OTHER);
                 }
@@ -251,7 +255,7 @@ final class TemplateAdminController extends AbstractController
         foreach ($conflicts as $i => $conflict) {
             $builder->add('c'.$i, ChoiceType::class, [
                 'label' => $conflict->description,
-                'choices' => ['Keep this instance\'s version' => Strategy::Keep->value, 'Take the new version' => Strategy::Overwrite->value],
+                'choices' => ['admin.template_admin.keep' => Strategy::Keep->value, 'admin.template_admin.take' => Strategy::Overwrite->value],
                 'expanded' => true,
                 'data' => Strategy::Keep->value,
             ]);
@@ -299,10 +303,10 @@ final class TemplateAdminController extends AbstractController
     private function indexForm(): FormInterface
     {
         return $this->forms->createNamedBuilder('index')
-            ->add('name', TextType::class, ['label' => 'Name', 'help' => 'How commands and this page name it: lowercase letters, digits and hyphens.'])
-            ->add('url', UrlType::class, ['label' => 'Index address', 'help' => 'The https address of its index.json.', 'default_protocol' => null])
-            ->add('key', TextType::class, ['label' => 'Public key', 'required' => false, 'help' => 'The Ed25519 key (base64) its versions are signed with: every version is checked against it.'])
-            ->add('unsigned', CheckboxType::class, ['label' => 'Accept it unsigned, trusting its checksums only', 'required' => false])
+            ->add('name', TextType::class, ['label' => 'admin.name', 'help' => 'admin.template_admin.index_name_help'])
+            ->add('url', UrlType::class, ['label' => 'admin.template_admin.index_url', 'help' => 'admin.template_admin.index_url_help', 'default_protocol' => null])
+            ->add('key', TextType::class, ['label' => 'admin.template_admin.index_key', 'required' => false, 'help' => 'admin.template_admin.index_key_help'])
+            ->add('unsigned', CheckboxType::class, ['label' => 'admin.template_admin.index_unsigned', 'required' => false])
             ->getForm();
     }
 

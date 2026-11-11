@@ -43,6 +43,7 @@ form:
     through_links: 'Si aggiungono e si tolgono come record di %object%.'
     repeat: 'Ripeti %label%'
     required_note: Campo obbligatorio
+    machine_names: Nomi tecnici
     index:
         label: Parti del modulo
         required: '%done%/%total% obbligatori'
@@ -56,3 +57,263 @@ flash:
     deleted: '%object%: eliminato.'
     saved: '%form%: salvato.'
     cascade_denied: 'Eliminare questo elemento elimina anche %objects%, che non puoi eliminare.'
+admin:
+    title: Amministrazione
+    actions: Azioni
+    save: Salva
+    create: Crea
+    delete: Elimina
+    rename: Rinomina
+    restore: Ripristina
+    remove: Rimuovi
+    edit: Modifica
+    open: Apri
+    apply: Applica
+    records: Dati
+    object_heading: Oggetto
+    objects: Oggetti
+    form_heading: Modulo
+    forms: Moduli
+    fields: Campi
+    views: Viste
+    translations: Traduzioni
+    templates: Template
+    template_heading: Template
+    machine_name: Nome tecnico
+    name: Nome
+    label: Etichetta
+    type: Tipo
+    column: Colonna
+    rules: Regole
+    settings: Impostazioni
+    table: Tabella
+    archive: Archivia
+    rule:
+        required: obbligatorio
+        optional: facoltativo
+        unique: univoco
+    name_help: 'Lettere minuscole, cifre e trattini bassi singoli, a partire da una lettera.'
+    form_expired: 'Il modulo è scaduto: riprova.'
+    rewritten: 'Riscritte per usare il nuovo nome: %definitions% (una definizione YAML riscritta perde i commenti).'
+    index:
+        new_object: Nuovo oggetto
+        empty: 'Ancora nessun oggetto. Crea il primo: ha subito una tabella tutta sua.'
+        archived: Archiviati
+        archived_help: 'Fuori dall''applicazione; tabelle e record restano, e i loro nomi restano occupati. Ripristinane uno da qui; <code>metadata:purge</code> lo elimina per sempre.'
+    object:
+        new: Nuovo oggetto
+        name_help: 'Lettere minuscole, cifre e trattini bassi singoli, a partire da una lettera. La tabella è data.c_<nome>.'
+        singular_label: Etichetta al singolare
+        plural_label: Etichetta al plurale
+        created: 'Oggetto "%name%" creato, con la sua tabella.'
+        add_field: Aggiungi un campo
+        no_fields: 'Ancora nessun campo. La tabella ha solo le colonne di sistema (id, created_at, updated_at, created_by, deleted_at).'
+        archived_fields: Campi archiviati
+        archived_fields_help: 'Fuori da moduli e griglie; colonne e valori restano. <code>metadata:purge %object% --field=&lt;nome&gt;</code> ne elimina uno per sempre.'
+        add_view: Aggiungi una vista
+        no_views: 'Ancora nessuna vista. Il modulo del record mostra i campi uno dopo l''altro; la griglia ha una colonna per campo.'
+        used_for: Usata per
+        default: Predefinita
+        is_default: 'sì'
+        pointed_at_by: Puntato da
+        many_to_many: molti-a-molti
+        on_delete: 'all''eliminazione: %rule%'
+        on_delete_rule:
+            set_null: svuota
+            restrict: impedisci
+            cascade: elimina a cascata
+            unlink: scollega
+        labels: Etichette
+        save_labels: Salva le etichette
+        labels_saved: Etichette salvate.
+        record_label: Etichetta dei record
+        record_label_help: Come si chiamano i record nelle relazioni e nelle ricerche.
+        named_by: I record prendono il nome da
+        named_by_default: 'Predefinito: il primo campo di testo'
+        save_record_label: Salva l'etichetta dei record
+        record_label_saved: Etichetta dei record salvata.
+        search: Ricerca
+        search_handler: Gestore della ricerca
+        search_handler_default: 'Predefinito: ogni parola, in qualsiasi campo'
+        searched_fields: Campi in cui cercare
+        searched_fields_help: 'Nessuno selezionato: ogni campo di testo. Nei record collegati si cerca solo se selezionati.'
+        searched_by_label: '%field% (per etichetta di %object%)'
+        save_search: Salva la ricerca
+        search_saved: 'Ricerca salvata; gli indici di ricerca si adeguano.'
+        unique_together: Univoci insieme
+        unique_together_help: 'Gruppi di campi i cui valori non possono essere tutti uguali in due record, ad esempio un utente e un tag su un oggetto di collegamento. I record eliminati non contano; un record con uno dei campi vuoto non entra mai in conflitto.'
+        unique_fields_help: 'Almeno due: due record non possono avere gli stessi valori in tutti.'
+        make_unique: Rendi univoci insieme
+        unique_added: 'I campi sono univoci insieme; il loro indice univoco è stato creato.'
+        unique_removed: 'I campi non sono più univoci insieme; il loro indice è stato eliminato.'
+        table_matches: La tabella corrisponde ai metadati.
+        table_missing: 'Alla tabella mancano queste modifiche:'
+        table_skipped: 'Differenze lasciate di proposito (distruttive; le applica solo <code>schema:sync --allow-destructive</code>):'
+        table_up_to_date: La tabella era già aggiornata.
+        table_synced: '{1}1 modifica applicata alla tabella.|]1,Inf[%count% modifiche applicate alla tabella.'
+        rename_help: 'Lettere minuscole, cifre e trattini bassi singoli. La tabella, le relazioni che puntano qui, i moduli composti, le traduzioni e i permessi si adeguano; i link alle vecchie pagine smettono di funzionare.'
+        archive_help: 'Toglie l''oggetto dall''applicazione: pagine, griglie e moduli. La tabella e i record restano, e si può ripristinare dall''elenco degli oggetti. Rifiutato finché una relazione o un modulo composto lo usa.'
+        archive_confirm: 'Archiviare %objects%? I loro record restano.'
+        archive_button: 'Archivia %objects%'
+        renamed: 'L''oggetto "%old%" ora si chiama "%new%", con la sua tabella.'
+        archived: 'Oggetto "%name%" archiviato: fuori dall''applicazione, tabella e record restano.'
+        restored: 'L''oggetto "%name%" è tornato, con i suoi record.'
+    field:
+        new: Nuovo campo
+        choose_type: 'Nuovo campo: scegli il tipo'
+        field_types: Tipi di campo
+        new_typed: 'Nuovo campo: %type%'
+        new_typed_on: 'Nuovo campo (%type%) su %objects%'
+        name_help: 'Lettere minuscole, cifre e trattini bassi singoli, a partire da una lettera. È anche il nome della colonna.'
+        required: Obbligatorio
+        unique: Univoco
+        unique_help: Garantito da un indice univoco.
+        created: 'Campo "%name%" creato, con la sua colonna.'
+        saved: Campo salvato.
+        fixed_help: 'Il tipo e le regole non cambiano più una volta creata la colonna, e nemmeno le impostazioni che le danno forma; l''etichetta, le altre impostazioni, la condizione e il nome tecnico possono cambiare.'
+        fixed_setting: 'Fissa: dà forma alla colonna.'
+        choose_object: Scegli un oggetto
+        save_settings: Salva le impostazioni
+        settings_saved: Impostazioni salvate.
+        applies: Si applica
+        applies_when: 'quando %field% è %values%'
+        applies_or: ' o '
+        applies_always: sempre
+        condition: Condizione
+        condition_help: 'Mostra il campo solo mentre un altro campo ha certi valori. Nascosto, non è obbligatorio, e il suo valore si svuota quando il record viene salvato.'
+        shown_when: Mostrato quando
+        always: Sempre
+        is_one_of: è uno tra
+        values_help: 'Separati da virgole. %values%'
+        no_deciding_field: L'oggetto non ha campi di scelta o sì/no su cui decidere.
+        save_condition: Salva la condizione
+        condition_saved: Condizione salvata.
+        always_applies: Il campo si applica sempre.
+        rename_help: 'Lettere minuscole, cifre e trattini bassi singoli. La colonna, le viste, i moduli composti, le condizioni, le cascate e le traduzioni si adeguano.'
+        archive_help: 'Toglie il campo da moduli, griglie e validazione. La colonna e i valori restano, e si può ripristinare dalla pagina dell''oggetto. Rifiutato finché una vista, un modulo composto, una condizione o una cascata lo usa.'
+        archive_confirm: 'Archiviare il campo %field%? I suoi valori restano.'
+        archive_button: 'Archivia %field%'
+        renamed: 'Il campo "%old%" ora si chiama "%new%", con la sua colonna.'
+        archived: 'Campo "%name%" archiviato: fuori da moduli e griglie, colonna e valori restano.'
+        restored: 'Il campo "%name%" è tornato, con i suoi valori.'
+    view:
+        new: Nuova vista
+        title: 'Vista %name%'
+        kind:
+            form: modulo
+            grid: griglia
+        used_for_form: Il modulo del record
+        used_for_grid: La griglia dei record
+        preview: Anteprima
+        preview_grid: '%objects% con questa vista'
+        preview_form: 'Nuovo: %object%, con questa vista'
+        layout: Layout (HTML)
+        grid_definition: Definizione della griglia (YAML)
+        layout_or_grid: Layout (HTML) o definizione della griglia (YAML)
+        form_help: 'Metti un token {campo} dove va ciascun campo; i campi non indicati seguono il layout. Un token {t:nome} mostra un testo di Amministrazione > Traduzioni nella lingua dell''utente. Script, stili e attributi di evento vengono rimossi; gli attributi class restano.'
+        grid_help: 'Le colonne in ordine: il nome di un campo, o una mappa con field, label, renderer (truncate, badge, date), options, hidden, sortable, filter; una colonna virtuale ha un name e un template di token {campo}. Una label può contenere token {t:nome} (Amministrazione > Traduzioni). Facoltativi: sort e page_size.'
+        both_help: 'Modulo: %form% Griglia: %grid%'
+        fields_help: '%help% Campi: %tokens%.'
+        default_view: Vista predefinita
+        default_help: 'Usata quando la pagina non indica una vista. La prima vista di un tipo è la predefinita; per cambiarla, segna un''altra vista.'
+        delete_confirm: 'Eliminare la vista %name%?'
+        created: 'Vista "%name%" creata.'
+        saved: Vista salvata.
+        deleted: 'Vista "%name%" eliminata.'
+    composite:
+        intro: 'Un modulo scrive in una volta un record e i record collegati: un profilo, i suoi telefoni, i titoli di studio di un account...'
+        new: Nuovo modulo
+        empty: Ancora nessun modulo.
+        open_form: Apri il modulo
+        name_help: 'Lettere minuscole, cifre e trattini bassi singoli, a partire da una lettera. Il modulo si apre su /f/<nome>/new.'
+        definition: Definizione (YAML)
+        delete_confirm: 'Eliminare il modulo %name%? I suoi record restano.'
+        languages: Lingue
+        languages_help: 'Le etichette qui sono i testi della lingua predefinita; traducile in <a href="%translations%">Traduzioni</a>. Un layout mostra un testo suo con un token <code>{t:nome}</code>, ad esempio <code>&lt;legend&gt;{t:sign_in}&lt;/legend&gt;</code>: crea prima il testo, in <a href="%texts%">Testi</a>.'
+        objects_relations: Oggetti e relazioni
+        objects_relations_help: 'Una sezione indica un <code>object</code> e il campo relazione (<code>via</code>) con cui punta all''oggetto della sezione madre.'
+        exists: 'Esiste già un modulo di nome "%name%".'
+        created: 'Modulo "%name%" creato.'
+        saved: Modulo salvato.
+        deleted: 'Modulo "%name%" eliminato; i suoi record restano.'
+    translation:
+        metadata: Metadati
+        texts: Testi
+        metadata_into: 'Metadati in %language%'
+        language: Lingua
+        intro: 'Le etichette dei metadati (oggetti, campi, opzioni, moduli) sono scritte in %original%, la lingua predefinita. Qui ricevono il loro testo in %language%, mostrato agli utenti che leggono l''applicazione in %language%; una chiave lasciata vuota mostra il testo in %original%, in grigio dentro il campo. Il testo in %original% si cambia dove è definito: segui il suo link. I tuoi testi, messi nei layout con <code>{t:nome}</code>, sono in <a href="%texts%">Testi</a>.'
+        nothing: Ancora niente da tradurre.
+        key: Chiave
+        original: '%language% (originale)'
+        change_original: 'Cambia il testo in %language%'
+        texts_intro: 'Testi tuoi, non legati ai metadati, per i layout: un token <code>{t:nome}</code> in una vista di modulo, in un modulo composto o nell''intestazione di una griglia mostra il testo con quel nome nella lingua dell''utente. Ogni testo si scrive qui in tutte le lingue; quello in %original% è obbligatorio e compare dove manca un altro. Svuotalo per rimuovere il testo, quando nessun token lo usa più.'
+        no_texts: Ancora nessun testo.
+        required_language: '%language% (obbligatorio)'
+        optional_language: '%language% (facoltativo)'
+        not_placed: Non ancora usato
+        placed_in: 'In %uses%'
+        new_text: Nuovo testo
+        text_name_help: 'Lettere minuscole, cifre e trattini bassi singoli. Un layout lo mette con {t:<nome>}.'
+        text_created: Testo creato.
+        nothing_changed: Nessuna modifica.
+        saved: '{1}1 testo salvato.|]1,Inf[%count% testi salvati.'
+        give_name: 'Dai al testo un nome e il suo testo in %locale%.'
+        text_exists: 'Esiste già un testo di nome "%name%".'
+    template_admin:
+        intro: 'Un template porta oggetti, le loro viste e i loro moduli, le traduzioni e i record. Si installa in un colpo solo, e si aggiorna in seguito: si applica solo ciò che la nuova versione ha cambiato, e ciò che è stato cambiato qui resta.'
+        installed: Installato
+        none_installed: Nessun template installato.
+        version: Versione
+        upgraded: Aggiornato
+        from: Da
+        available: Disponibili
+        no_offer: Gli indici non offrono template.
+        no_offer_no_index: 'Gli indici non offrono template: aggiungi un indice qui sotto.'
+        newest_version: Versione più recente
+        index: Indice
+        install_link: Installa…
+        upgrade_link: 'Aggiorna dalla %version%…'
+        indexes: Indici
+        address: Indirizzo
+        signed: Firmato
+        signed_yes: 'Sì'
+        signed_no: 'No: accettato senza firma'
+        remove_confirm: 'Rimuovere l''indice "%name%"? Ciò che è stato installato da lì resta.'
+        add_index: Aggiungi un indice
+        add_the_index: Aggiungi l'indice
+        index_name_help: 'Come lo chiamano i comandi e questa pagina: lettere minuscole, cifre e trattini.'
+        index_url: Indirizzo dell'indice
+        index_url_help: L'indirizzo https del suo index.json.
+        index_key: Chiave pubblica
+        index_key_help: 'La chiave Ed25519 (base64) con cui sono firmate le sue versioni: ogni versione viene verificata con essa.'
+        index_unsigned: Accettalo senza firma, fidandoti solo dei checksum
+        index_added: 'Indice "%name%" aggiunto.'
+        index_removed: 'Indice "%name%" rimosso; ciò che è stato installato da lì resta.'
+        install_title: 'Installa %template%'
+        install_heading: 'Installa <code>%template%</code>'
+        cannot_install: 'Non si può installare:'
+        requires_missing: '%name% richiede template che questa istanza non ha: vengono installati prima, insieme a lui.'
+        trial_one: 'Un''installazione di prova è andata a buon fine: non è ancora cambiato niente. Installarlo crea:'
+        trial_many: 'Un''installazione di prova è andata a buon fine: non è ancora cambiato niente. Installarli crea:'
+        from_source: 'Da %source%'
+        skipped_locales: 'Lasciate fuori, perché questa istanza non le ha: le lingue %locales%.'
+        install_button: 'Installa %name% %version%'
+        install_button_many: 'Installa %name% %version% e ciò che richiede'
+        installed_one: 'Template %templates% installato.'
+        installed_many: 'Template %templates% installati.'
+        upgrade_title: 'Aggiorna %template%'
+        upgrade_heading: 'Aggiorna <code>%template%</code>'
+        upgrade_heading_versions: 'Aggiorna <code>%template%</code> dalla %from% alla %to%'
+        cannot_upgrade: 'Non si può aggiornare:'
+        changes: Modifiche
+        only_conflicts: 'Solo i conflitti qui sotto: questa istanza ha già il resto.'
+        conflicts: Conflitti
+        conflicts_help: 'Sia la nuova versione sia questa istanza li hanno cambiati: scegli, uno per uno, quale resta.'
+        here: Qui
+        new_version: Nuova versione
+        removed_here: (rimosso qui)
+        removed_there: (rimosso dalla nuova versione)
+        keep: Tieni la versione di questa istanza
+        take: Prendi la nuova versione
+        upgrade_button: 'Aggiorna alla %version%'
+        upgrade_done: '%name% aggiornato dalla %from% alla %to%.'

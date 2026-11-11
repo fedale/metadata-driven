@@ -1,24 +1,24 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Templates · Admin{% endblock %}
+{% block title %}{{ 'admin.templates'|trans }} · {{ 'admin.title'|trans }}{% endblock %}
 
 {% block body %}
-    <p><a href="{{ path('admin_index') }}">&larr; Objects</a></p>
-    <h1>Templates</h1>
-    <p class="gv-muted">A template brings objects, their views and forms, their translations and their records. It is installed in one go, and upgraded later: only what its new version changed is applied, what was changed here is kept.</p>
+    <p><a href="{{ path('admin_index') }}">&larr; {{ 'admin.objects'|trans }}</a></p>
+    <h1>{{ 'admin.templates'|trans }}</h1>
+    <p class="gv-muted">{{ 'admin.template_admin.intro'|trans }}</p>
 
-    <h2>Installed</h2>
+    <h2>{{ 'admin.template_admin.installed'|trans }}</h2>
     {% if installed is empty %}
-        <p class="gv-muted">No template is installed.</p>
+        <p class="gv-muted">{{ 'admin.template_admin.none_installed'|trans }}</p>
     {% else %}
         <table class="md-table">
             <thead>
                 <tr>
-                    <th scope="col">Template</th>
-                    <th scope="col">Version</th>
-                    <th scope="col">Installed</th>
-                    <th scope="col">Upgraded</th>
-                    <th scope="col">From</th>
+                    <th scope="col">{{ 'admin.template_heading'|trans }}</th>
+                    <th scope="col">{{ 'admin.template_admin.version'|trans }}</th>
+                    <th scope="col">{{ 'admin.template_admin.installed'|trans }}</th>
+                    <th scope="col">{{ 'admin.template_admin.upgraded'|trans }}</th>
+                    <th scope="col">{{ 'admin.template_admin.from'|trans }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -35,19 +35,19 @@
         </table>
     {% endif %}
 
-    <h2>Available</h2>
+    <h2>{{ 'admin.template_admin.available'|trans }}</h2>
     {% if unreachable %}
         <p class="md-flash md-flash--error" role="alert">{{ unreachable }}</p>
     {% elseif available is empty %}
-        <p class="gv-muted">The indexes offer no template{% if indexes is empty %}: add an index below{% endif %}.</p>
+        <p class="gv-muted">{{ (indexes is empty ? 'admin.template_admin.no_offer_no_index' : 'admin.template_admin.no_offer')|trans }}</p>
     {% else %}
         <table class="md-table">
             <thead>
                 <tr>
-                    <th scope="col">Template</th>
-                    <th scope="col">Newest version</th>
-                    <th scope="col">Index</th>
-                    <th scope="col"><span class="md-visually-hidden">Actions</span></th>
+                    <th scope="col">{{ 'admin.template_heading'|trans }}</th>
+                    <th scope="col">{{ 'admin.template_admin.newest_version'|trans }}</th>
+                    <th scope="col">{{ 'admin.template_admin.index'|trans }}</th>
+                    <th scope="col"><span class="md-visually-hidden">{{ 'admin.actions'|trans }}</span></th>
                 </tr>
             </thead>
             <tbody>
@@ -60,11 +60,11 @@
                         <td>{{ located.source }}</td>
                         <td>
                             {% if offer.action == 'install' %}
-                                <a href="{{ path('admin_template_install', {template: named, repo: located.source}) }}">Install…</a>
+                                <a href="{{ path('admin_template_install', {template: named, repo: located.source}) }}">{{ 'admin.template_admin.install_link'|trans }}</a>
                             {% elseif offer.action == 'upgrade' %}
-                                <a href="{{ path('admin_template_upgrade', {template: named, repo: located.source}) }}">Upgrade from {{ offer.installed }}…</a>
+                                <a href="{{ path('admin_template_upgrade', {template: named, repo: located.source}) }}">{{ 'admin.template_admin.upgrade_link'|trans({'%version%': offer.installed}) }}</a>
                             {% else %}
-                                <span class="gv-muted">Installed</span>
+                                <span class="gv-muted">{{ 'admin.template_admin.installed'|trans }}</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -73,15 +73,15 @@
         </table>
     {% endif %}
 
-    <h2>Indexes</h2>
+    <h2>{{ 'admin.template_admin.indexes'|trans }}</h2>
     {% if indexes is not empty %}
         <table class="md-table">
             <thead>
                 <tr>
-                    <th scope="col">Name</th>
-                    <th scope="col">Address</th>
-                    <th scope="col">Signed</th>
-                    <th scope="col"><span class="md-visually-hidden">Actions</span></th>
+                    <th scope="col">{{ 'admin.name'|trans }}</th>
+                    <th scope="col">{{ 'admin.template_admin.address'|trans }}</th>
+                    <th scope="col">{{ 'admin.template_admin.signed'|trans }}</th>
+                    <th scope="col"><span class="md-visually-hidden">{{ 'admin.actions'|trans }}</span></th>
                 </tr>
             </thead>
             <tbody>
@@ -89,11 +89,11 @@
                     <tr>
                         <td>{{ index.name }}</td>
                         <td class="md-file__name">{{ index.url }}</td>
-                        <td>{{ index.key is null ? 'No: accepted unsigned' : 'Yes' }}</td>
+                        <td>{{ (index.key is null ? 'admin.template_admin.signed_no' : 'admin.template_admin.signed_yes')|trans }}</td>
                         <td>
                             {% if remove_forms[index.name] %}
-                                {{ form_start(remove_forms[index.name], {action: path('admin_template_index_remove', {name: index.name}), attr: {'data-turbo-confirm': 'Remove the index "' ~ index.name ~ '"? What was installed from it stays.'}}) }}
-                                    <button type="submit" class="gv-btn">Remove</button>
+                                {{ form_start(remove_forms[index.name], {action: path('admin_template_index_remove', {name: index.name}), attr: {'data-turbo-confirm': 'admin.template_admin.remove_confirm'|trans({'%name%': index.name})}}) }}
+                                    <button type="submit" class="gv-btn">{{ 'admin.remove'|trans }}</button>
                                 {{ form_end(remove_forms[index.name]) }}
                             {% endif %}
                         </td>
@@ -103,10 +103,10 @@
         </table>
     {% endif %}
 
-    <h3>Add an index</h3>
+    <h3>{{ 'admin.template_admin.add_index'|trans }}</h3>
     {{ form_start(add_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
         {{ form_errors(add_form) }}
         {{ form_rest(add_form) }}
-        <button type="submit" class="gv-btn gv-btn-primary">Add the index</button>
+        <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.template_admin.add_the_index'|trans }}</button>
     {{ form_end(add_form) }}
 {% endblock %}

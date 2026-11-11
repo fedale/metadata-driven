@@ -1,38 +1,39 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Install {{ template }} · Admin{% endblock %}
+{% block title %}{{ 'admin.template_admin.install_title'|trans({'%template%': template}) }} · {{ 'admin.title'|trans }}{% endblock %}
 
 {% block body %}
-    <p><a href="{{ path('admin_template_index') }}">&larr; Templates</a></p>
-    <h1>Install <code>{{ template }}</code></h1>
+    <p><a href="{{ path('admin_template_index') }}">&larr; {{ 'admin.templates'|trans }}</a></p>
+    <h1>{{ 'admin.template_admin.install_heading'|trans({'%template%': template|e})|raw }}</h1>
 
     {% if reasons is not empty %}
         <div class="md-flash md-flash--error" role="alert">
-            <p>It cannot be installed:</p>
+            <p>{{ 'admin.template_admin.cannot_install'|trans }}</p>
             <ul>{% for reason in reasons %}<li>{{ reason }}</li>{% endfor %}</ul>
         </div>
     {% elseif reports is not empty %}
         {% set last = reports|last %}
-        {% if reports|length > 1 %}
-            <p>{{ last.name }} requires templates this instance does not have: they are installed with it, first.</p>
+        {% set many = reports|length > 1 %}
+        {% if many %}
+            <p>{{ 'admin.template_admin.requires_missing'|trans({'%name%': last.name}) }}</p>
         {% endif %}
-        <p>A trial install went through: nothing was changed yet. Installing {{ reports|length > 1 ? 'them' : 'it' }} creates:</p>
+        <p>{{ (many ? 'admin.template_admin.trial_many' : 'admin.template_admin.trial_one')|trans }}</p>
         {% for report in reports %}
-            {% if reports|length > 1 %}<h2>{{ report.name }} {{ report.version }}</h2><p class="gv-muted">From {{ report.source }}</p>{% endif %}
+            {% if many %}<h2>{{ report.name }} {{ report.version }}</h2><p class="gv-muted">{{ 'admin.template_admin.from_source'|trans({'%source%': report.source}) }}</p>{% endif %}
             <dl class="md-facts">
-                <dt>Objects</dt><dd>{{ report.objects|join(', ') }}</dd>
-                <dt>Fields</dt><dd>{{ report.fields }}</dd>
-                <dt>Views</dt><dd>{{ report.views }}</dd>
-                <dt>Forms</dt><dd>{{ report.forms is empty ? '—' : report.forms|join(', ') }}</dd>
-                <dt>Translations</dt><dd>{{ report.translations }}</dd>
-                <dt>Records</dt><dd>{{ report.records }}</dd>
+                <dt>{{ 'admin.objects'|trans }}</dt><dd>{{ report.objects|join(', ') }}</dd>
+                <dt>{{ 'admin.fields'|trans }}</dt><dd>{{ report.fields }}</dd>
+                <dt>{{ 'admin.views'|trans }}</dt><dd>{{ report.views }}</dd>
+                <dt>{{ 'admin.forms'|trans }}</dt><dd>{{ report.forms is empty ? '—' : report.forms|join(', ') }}</dd>
+                <dt>{{ 'admin.translations'|trans }}</dt><dd>{{ report.translations }}</dd>
+                <dt>{{ 'admin.records'|trans }}</dt><dd>{{ report.records }}</dd>
             </dl>
             {% if report.skippedLocales is not empty %}
-                <p class="gv-muted">Left out, this instance not having them: the languages {{ report.skippedLocales|join(', ') }}.</p>
+                <p class="gv-muted">{{ 'admin.template_admin.skipped_locales'|trans({'%locales%': report.skippedLocales|join(', ')}) }}</p>
             {% endif %}
         {% endfor %}
         {{ form_start(confirm) }}
-            <button type="submit" class="gv-btn gv-btn-primary">Install {{ last.name }} {{ last.version }}{{ reports|length > 1 ? ' and what it requires' : '' }}</button>
+            <button type="submit" class="gv-btn gv-btn-primary">{{ (many ? 'admin.template_admin.install_button_many' : 'admin.template_admin.install_button')|trans({'%name%': last.name, '%version%': last.version}) }}</button>
         {{ form_end(confirm) }}
     {% endif %}
 {% endblock %}

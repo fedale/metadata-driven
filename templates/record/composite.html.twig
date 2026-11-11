@@ -18,7 +18,7 @@
 {% block title %}{{ definition.label }}{% endblock %}
 
 {% block body %}
-    {{ form_start(form, {attr: {class: 'md-sheet', novalidate: 'novalidate', id: 'composite-form'}}) }}
+    {{ form_start(form, {attr: {class: 'md-sheet', novalidate: 'novalidate', id: 'composite-form', 'data-controller': can('admin.metadata') ? 'machine-names' : false}}) }}
         {{ include('record/_sheet_header.html.twig', {
             crumb: object.labelPlural, crumb_url: can_list ? back : null, title: definition.label,
             back: back, can_save: can_save, can_save_new: can_save_new,

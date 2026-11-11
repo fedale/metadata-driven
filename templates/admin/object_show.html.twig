@@ -1,31 +1,31 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}{{ object.labelPlural }} · Admin{% endblock %}
+{% block title %}{{ object.labelPlural }} · {{ 'admin.title'|trans }}{% endblock %}
 
 {% block body %}
-    <p><a href="{{ path('admin_index') }}">&larr; Objects</a></p>
+    <p><a href="{{ path('admin_index') }}">&larr; {{ 'admin.objects'|trans }}</a></p>
     <div class="md-page__header">
         <h1>{{ object.labelPlural }} <span class="gv-muted">· <code>{{ object.name }}</code></span></h1>
-        <a class="gv-btn" href="{{ path('record_index', {object: object.name}) }}">Records</a>
+        <a class="gv-btn" href="{{ path('record_index', {object: object.name}) }}">{{ 'admin.records'|trans }}</a>
     </div>
 
     <section class="md-admin__section">
         <div class="md-page__header">
-            <h2>Fields</h2>
-            <a class="gv-btn gv-btn-primary" href="{{ path('admin_field_type', {object: object.name}) }}">Add a field</a>
+            <h2>{{ 'admin.fields'|trans }}</h2>
+            <a class="gv-btn gv-btn-primary" href="{{ path('admin_field_type', {object: object.name}) }}">{{ 'admin.object.add_field'|trans }}</a>
         </div>
         {% if object.fields is empty %}
-            <p class="gv-muted">No fields yet. The table only has its system columns (id, created_at, updated_at, created_by, deleted_at).</p>
+            <p class="gv-muted">{{ 'admin.object.no_fields'|trans }}</p>
         {% else %}
             <table class="md-table">
                 <thead>
                     <tr>
-                        <th scope="col">Label</th>
-                        <th scope="col">Column</th>
-                        <th scope="col">Type</th>
-                        <th scope="col">Rules</th>
-                        <th scope="col">Settings</th>
-                        <th scope="col"><span class="md-visually-hidden">Actions</span></th>
+                        <th scope="col">{{ 'admin.label'|trans }}</th>
+                        <th scope="col">{{ 'admin.column'|trans }}</th>
+                        <th scope="col">{{ 'admin.type'|trans }}</th>
+                        <th scope="col">{{ 'admin.rules'|trans }}</th>
+                        <th scope="col">{{ 'admin.settings'|trans }}</th>
+                        <th scope="col"><span class="md-visually-hidden">{{ 'admin.actions'|trans }}</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -33,28 +33,28 @@
                         <tr>
                             <td>{{ field.label }}</td>
                             <td><code>{{ field.columnName }}</code></td>
-                            <td>{{ types[field.type] is defined ? types[field.type].label : field.type }}</td>
+                            <td>{{ types[field.type] is defined ? field_type_label(types[field.type]) : field.type }}</td>
                             <td>
-                                {%- if field.isRequired %}required{% endif -%}
+                                {%- if field.isRequired %}{{ 'admin.rule.required'|trans }}{% endif -%}
                                 {%- if field.isRequired and field.isUnique %}, {% endif -%}
-                                {%- if field.isUnique %}unique{% endif -%}
+                                {%- if field.isUnique %}{{ 'admin.rule.unique'|trans }}{% endif -%}
                             </td>
                             <td><code class="md-settings">{{ field.settings ? field.settings|json_encode : '' }}</code></td>
-                            <td><a href="{{ path('admin_field_edit', {object: object.name, field: name}) }}">Edit</a></td>
+                            <td><a href="{{ path('admin_field_edit', {object: object.name, field: name}) }}">{{ 'admin.edit'|trans }}</a></td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         {% endif %}
         {% if archived_fields is not empty %}
-            <h3>Archived fields</h3>
-            <p class="gv-muted">Out of the forms and grids; their columns and values are kept. <code>metadata:purge {{ object.name }} --field=&lt;name&gt;</code> deletes one for good.</p>
+            <h3>{{ 'admin.object.archived_fields'|trans }}</h3>
+            <p class="gv-muted">{{ 'admin.object.archived_fields_help'|trans({'%object%': object.name|e})|raw }}</p>
             <ul class="md-archived">
                 {% for name, entry in archived_fields %}
                     <li>
                         <span>{{ entry.field.label }} <code>{{ name }}</code></span>
                         {{ form_start(entry.restore_form) }}
-                            <button type="submit" class="gv-btn">Restore</button>
+                            <button type="submit" class="gv-btn">{{ 'admin.restore'|trans }}</button>
                         {{ form_end(entry.restore_form) }}
                     </li>
                 {% endfor %}
@@ -64,28 +64,28 @@
 
     <section class="md-admin__section">
         <div class="md-page__header">
-            <h2>Views</h2>
-            <a class="gv-btn gv-btn-primary" href="{{ path('admin_view_new', {object: object.name}) }}">Add a view</a>
+            <h2>{{ 'admin.views'|trans }}</h2>
+            <a class="gv-btn gv-btn-primary" href="{{ path('admin_view_new', {object: object.name}) }}">{{ 'admin.object.add_view'|trans }}</a>
         </div>
         {% if object.views is empty %}
-            <p class="gv-muted">No views yet. The record form shows the fields one after another; the grid has a column per field.</p>
+            <p class="gv-muted">{{ 'admin.object.no_views'|trans }}</p>
         {% else %}
             <table class="md-table">
                 <thead>
                     <tr>
-                        <th scope="col">Name</th>
-                        <th scope="col">Used for</th>
-                        <th scope="col">Default</th>
-                        <th scope="col"><span class="md-visually-hidden">Actions</span></th>
+                        <th scope="col">{{ 'admin.name'|trans }}</th>
+                        <th scope="col">{{ 'admin.object.used_for'|trans }}</th>
+                        <th scope="col">{{ 'admin.object.default'|trans }}</th>
+                        <th scope="col"><span class="md-visually-hidden">{{ 'admin.actions'|trans }}</span></th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for view in object.views %}
                         <tr>
                             <td><code>{{ view.name }}</code></td>
-                            <td>{{ view.kind.value }}</td>
-                            <td>{{ view.isDefault ? 'yes' : '' }}</td>
-                            <td><a href="{{ path('admin_view_edit', {object: object.name, kind: view.kind.value, view: view.name}) }}">Edit</a></td>
+                            <td>{{ ('admin.view.kind.' ~ view.kind.value)|trans }}</td>
+                            <td>{{ view.isDefault ? 'admin.object.is_default'|trans : '' }}</td>
+                            <td><a href="{{ path('admin_view_edit', {object: object.name, kind: view.kind.value, view: view.name}) }}">{{ 'admin.edit'|trans }}</a></td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -95,13 +95,13 @@
 
     {% if incoming is not empty %}
         <section class="md-admin__section">
-            <h2>Pointed at by</h2>
+            <h2>{{ 'admin.object.pointed_at_by'|trans }}</h2>
             <ul>
                 {% for reference in incoming %}
                     <li>
                         <a href="{{ path('admin_object_show', {object: reference.object.name}) }}">{{ reference.object.labelPlural }}</a>
-                        · {{ reference.field.label }} (<code>{{ reference.object.name }}.{{ reference.field.name }}</code>{% if not reference.field.storesColumn %}, many-to-many{% endif %})
-                        · on delete: {{ reference.settings.onDelete.value|replace({'_': ' '}) }}
+                        · {{ reference.field.label }} (<code>{{ reference.object.name }}.{{ reference.field.name }}</code>{% if not reference.field.storesColumn %}, {{ 'admin.object.many_to_many'|trans }}{% endif %})
+                        · {{ 'admin.object.on_delete'|trans({'%rule%': ('admin.object.on_delete_rule.' ~ reference.settings.onDelete.value)|trans}) }}
                     </li>
                 {% endfor %}
             </ul>
@@ -110,41 +110,41 @@
 
     <div class="md-admin__columns">
         <section class="md-admin__section">
-            <h2>Labels</h2>
+            <h2>{{ 'admin.object.labels'|trans }}</h2>
             {{ form_start(labels_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
                 {{ form_rest(labels_form) }}
-                <button type="submit" class="gv-btn gv-btn-primary">Save labels</button>
+                <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.object.save_labels'|trans }}</button>
             {{ form_end(labels_form) }}
         </section>
 
         <section class="md-admin__section">
-            <h2>Record label</h2>
-            <p class="gv-muted">How records are named in relations and lookups.</p>
+            <h2>{{ 'admin.object.record_label'|trans }}</h2>
+            <p class="gv-muted">{{ 'admin.object.record_label_help'|trans }}</p>
             {{ form_start(label_field_form, {attr: {class: 'md-form'}}) }}
                 {{ form_rest(label_field_form) }}
-                <button type="submit" class="gv-btn gv-btn-primary">Save record label</button>
+                <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.object.save_record_label'|trans }}</button>
             {{ form_end(label_field_form) }}
         </section>
     </div>
 
     <section class="md-admin__section">
-        <h2>Search</h2>
+        <h2>{{ 'admin.object.search'|trans }}</h2>
         {{ form_start(search_form, {attr: {class: 'md-form'}}) }}
             {{ form_rest(search_form) }}
-            <button type="submit" class="gv-btn gv-btn-primary">Save search</button>
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.object.save_search'|trans }}</button>
         {{ form_end(search_form) }}
     </section>
 
     <section class="md-admin__section">
-        <h2>Unique together</h2>
-        <p class="gv-muted">Sets of fields no two records may share all the values of, e.g. a user and a tag on a junction object. Deleted records do not count; a record with one of the fields empty never clashes.</p>
+        <h2>{{ 'admin.object.unique_together'|trans }}</h2>
+        <p class="gv-muted">{{ 'admin.object.unique_together_help'|trans }}</p>
         {% if unique_together is not empty %}
             <ul class="md-archived">
                 {% for entry in unique_together %}
                     <li>
                         <span>{{ entry.labels|join(', ') }}</span>
                         {{ form_start(entry.remove_form) }}
-                            <button type="submit" class="gv-btn">Remove</button>
+                            <button type="submit" class="gv-btn">{{ 'admin.remove'|trans }}</button>
                         {{ form_end(entry.remove_form) }}
                     </li>
                 {% endfor %}
@@ -152,44 +152,44 @@
         {% endif %}
         {{ form_start(unique_form, {attr: {class: 'md-form'}}) }}
             {{ form_rest(unique_form) }}
-            <button type="submit" class="gv-btn gv-btn-primary">Make unique together</button>
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.object.make_unique'|trans }}</button>
         {{ form_end(unique_form) }}
     </section>
 
     <section class="md-admin__section">
-        <h2>Table <code>data.{{ object.tableName }}</code></h2>
+        <h2>{{ 'admin.table'|trans }} <code>data.{{ object.tableName }}</code></h2>
         {% if plan.isEmpty and plan.skipped is empty %}
-            <p class="md-flash md-flash--success">The table matches the metadata.</p>
+            <p class="md-flash md-flash--success">{{ 'admin.object.table_matches'|trans }}</p>
         {% else %}
             {% if not plan.isEmpty %}
-                <p>The table is missing these changes:</p>
+                <p>{{ 'admin.object.table_missing'|trans }}</p>
                 <ul class="md-sql">
                     {% for statement in plan.statements %}<li><code>{{ statement }}</code></li>{% endfor %}
                 </ul>
                 {{ form_start(sync_form) }}
-                    <button type="submit" class="gv-btn gv-btn-primary">Apply</button>
+                    <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.apply'|trans }}</button>
                 {{ form_end(sync_form) }}
             {% endif %}
             {% if plan.skipped is not empty %}
-                <p>Differences kept on purpose (destructive; only <code>schema:sync --allow-destructive</code> applies them):</p>
+                <p>{{ 'admin.object.table_skipped'|trans|raw }}</p>
                 <ul>{% for skipped in plan.skipped %}<li>{{ skipped }}</li>{% endfor %}</ul>
             {% endif %}
         {% endif %}
     </section>
 
     <section class="md-admin__section">
-        <h2>Machine name</h2>
+        <h2>{{ 'admin.machine_name'|trans }}</h2>
         {{ form_start(rename_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
             {{ form_rest(rename_form) }}
-            <button type="submit" class="gv-btn gv-btn-primary">Rename</button>
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.rename'|trans }}</button>
         {{ form_end(rename_form) }}
     </section>
 
     <section class="md-admin__section md-admin__section--danger">
-        <h2>Archive</h2>
-        <p class="gv-muted">Takes the object out of the application: its pages, grids and forms. The table and the records are kept, and it can be restored from the list of objects. Refused while a relation or a composite form uses it.</p>
-        {{ form_start(archive_form, {attr: {class: 'md-delete-form', 'data-turbo-confirm': 'Archive ' ~ object.labelPlural ~ '? Their records are kept.'}}) }}
-            <button type="submit" class="gv-btn gv-btn-danger">Archive {{ object.labelPlural|lower }}</button>
+        <h2>{{ 'admin.archive'|trans }}</h2>
+        <p class="gv-muted">{{ 'admin.object.archive_help'|trans }}</p>
+        {{ form_start(archive_form, {attr: {class: 'md-delete-form', 'data-turbo-confirm': 'admin.object.archive_confirm'|trans({'%objects%': object.labelPlural})}}) }}
+            <button type="submit" class="gv-btn gv-btn-danger">{{ 'admin.object.archive_button'|trans({'%objects%': object.labelPlural|lower}) }}</button>
         {{ form_end(archive_form) }}
     </section>
 {% endblock %}

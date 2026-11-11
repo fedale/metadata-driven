@@ -1,31 +1,29 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Texts · Translations · Admin{% endblock %}
+{% block title %}{{ 'admin.translation.texts'|trans }} · {{ 'admin.translations'|trans }} · {{ 'admin.title'|trans }}{% endblock %}
 
 {% block body %}
-    <p><a href="{{ path('admin_index') }}">&larr; Objects</a></p>
+    <p><a href="{{ path('admin_index') }}">&larr; {{ 'admin.objects'|trans }}</a></p>
     <div class="md-page__header">
-        <h1>Translations <span class="gv-muted">· Texts</span></h1>
+        <h1>{{ 'admin.translations'|trans }} <span class="gv-muted">· {{ 'admin.translation.texts'|trans }}</span></h1>
         {{ include('admin/_languages_nav.html.twig', {current: 'texts'}) }}
     </div>
     <p class="gv-muted">
-        Texts of your own, not tied to the metadata, for the layouts: a <code>{t:name}</code> token in a form view, a composite form or a grid
-        heading shows the text of that name in the language of the user. Each text is written here in every language;
-        the {{ default_locale|locale_name('en')|capitalize }} one is required and shows wherever another is missing.
-        Empty it to remove the text, once no token places it.
+        {{ 'admin.translation.texts_intro'|trans({'%original%': default_locale|locale_name(app.request.locale)|capitalize|e})|raw }}
     </p>
 
     {% if texts is empty %}
-        <p class="gv-muted">No texts yet.</p>
+        <p class="gv-muted">{{ 'admin.translation.no_texts'|trans }}</p>
     {% else %}
         {{ form_start(form, {attr: {class: 'md-form md-form--wide', novalidate: 'novalidate'}}) }}
             {{ form_errors(form) }}
             <table class="md-table md-texts">
                 <thead>
                     <tr>
-                        <th scope="col">Name</th>
+                        <th scope="col">{{ 'admin.name'|trans }}</th>
                         {% for locale in locales %}
-                            <th scope="col">{{ locale|locale_name('en')|capitalize }}{{ locale == default_locale ? ' (required)' }}</th>
+                            {% set language = locale|locale_name(app.request.locale)|capitalize %}
+                            <th scope="col">{{ locale == default_locale ? 'admin.translation.required_language'|trans({'%language%': language}) : language }}</th>
                         {% endfor %}
                     </tr>
                 </thead>
@@ -34,7 +32,7 @@
                         <tr>
                             <td>
                                 <code>{t:{{ text.name }}}</code>
-                                <div class="gv-muted md-texts__used">{{ text.usedBy is empty ? 'Not placed yet' : 'In ' ~ text.usedBy|join(', ') }}</div>
+                                <div class="gv-muted md-texts__used">{{ text.usedBy is empty ? 'admin.translation.not_placed'|trans : 'admin.translation.placed_in'|trans({'%uses%': text.usedBy|join(', ')}) }}</div>
                             </td>
                             {% for locale in locales %}
                                 {% set input = form['x' ~ index ~ '_' ~ locale] %}
@@ -44,16 +42,16 @@
                     {% endfor %}
                 </tbody>
             </table>
-            <button type="submit" class="gv-btn gv-btn-primary">Save</button>
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.save'|trans }}</button>
         {{ form_end(form) }}
     {% endif %}
 
     <section class="md-admin__section">
-        <h2>New text</h2>
+        <h2>{{ 'admin.translation.new_text'|trans }}</h2>
         {{ form_start(new_text, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
             {{ form_errors(new_text) }}
             {{ form_rest(new_text) }}
-            <button type="submit" class="gv-btn">Create</button>
+            <button type="submit" class="gv-btn">{{ 'admin.create'|trans }}</button>
         {{ form_end(new_text) }}
     </section>
 {% endblock %}

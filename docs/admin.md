@@ -40,7 +40,9 @@ does not define, a column defined differently) are listed, and only
 
 The settings part of the form is generated from the settings each field type declares
 (`FieldTypeInterface::settingDefinitions()`): a new field type shows up in the admin with its
-settings without any change to the admin.
+settings without any change to the admin. Its name, description and settings are shown as the
+field type declares them, in English, until `translations/field_types.<locale>.yaml` translates
+them (see [Languages](i18n.md#the-texts-of-the-application)).
 
 Errors appear next to the input they concern: an invalid or taken name, a missing label, a
 setting the field type refuses (duplicated option, decimals out of range, unknown related object).

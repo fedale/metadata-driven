@@ -53,6 +53,8 @@ Open `/o/book/new`: the form follows the layout.
   errors. The row is the same as in the plain form, so the field types work in a layout the same
   way: the autocomplete of a relation, the date picker, the choices of a select.
 - Each field may appear **once**.
+- To read the machine names off a form, open it as an administrator and press **Machine
+  names** in its header: each label shows its name next to it.
 - The fields the layout does not place are shown **after** it, in their usual order. A layout
   can name only the fields that matter, and the rest still shows up.
 - A token goes in the text of the HTML, never inside a tag: `<div class="{title}">` is refused.

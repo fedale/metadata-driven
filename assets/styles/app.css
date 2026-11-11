@@ -257,6 +257,10 @@ a:hover { color: var(--gv-color-link-hover); }
 .md-sheet__actions { display: flex; gap: .5rem; flex-shrink: 0; }
 /* "Save" comes before "Save and new" in the markup, so Enter in a field saves plainly; shown last. */
 .md-sheet__actions .gv-btn-primary { order: 1; }
+/* The machine names next to the labels, for an administrator: shown by the header's toggle. */
+.md-sheet__machine-names[aria-pressed="true"] { background: var(--gv-color-bg-hover); }
+.md-machine-name { display: none; margin-inline-start: .4rem; font: 400 .75rem var(--md-font-mono); color: var(--gv-color-text-muted); }
+.md-machine-names--on .md-machine-name { display: inline; }
 
 .md-sheet__body { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: 2rem; align-items: start; }
 .md-sheet__parts { display: grid; gap: 1.25rem; min-width: 0; }

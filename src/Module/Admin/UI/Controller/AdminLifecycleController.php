@@ -14,6 +14,7 @@ use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Renaming, archiving and restoring objects and fields. Each action answers with a redirect
@@ -28,6 +29,7 @@ final class AdminLifecycleController extends AbstractController
         private readonly MetadataManagerInterface $manager,
         private readonly LifecycleForms $forms,
         private readonly AccessCheckerInterface $access,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -37,7 +39,7 @@ final class AdminLifecycleController extends AbstractController
         $this->denyUnlessAdministrator();
         $form = $this->forms->rename('', $object, '')->handleRequest($request);
         $name = $this->submittedName($form);
-        if (null !== $name && $this->run(fn (): array => $this->manager->renameObject($object, $name), \sprintf('Object "%s" is now "%s", with its table.', $object, $name))) {
+        if (null !== $name && $this->run(fn (): array => $this->manager->renameObject($object, $name), $this->translator->trans('admin.object.renamed', ['%old%' => $object, '%new%' => $name]))) {
             return $this->redirectToRoute('admin_object_show', ['object' => $name], Response::HTTP_SEE_OTHER);
         }
 
@@ -48,7 +50,7 @@ final class AdminLifecycleController extends AbstractController
     public function archiveObject(string $object, Request $request): Response
     {
         $this->denyUnlessAdministrator();
-        if ($this->submitted('archive', $request) && $this->run(fn () => $this->manager->archiveObject($object), \sprintf('Object "%s" is archived: out of the application, its table and records kept.', $object))) {
+        if ($this->submitted('archive', $request) && $this->run(fn () => $this->manager->archiveObject($object), $this->translator->trans('admin.object.archived', ['%name%' => $object]))) {
             return $this->redirectToRoute('admin_index', [], Response::HTTP_SEE_OTHER);
         }
 
@@ -59,7 +61,7 @@ final class AdminLifecycleController extends AbstractController
     public function restoreObject(string $object, Request $request): Response
     {
         $this->denyUnlessAdministrator();
-        if ($this->submitted('restore', $request) && $this->run(fn () => $this->manager->restoreObject($object), \sprintf('Object "%s" is back, with its records.', $object))) {
+        if ($this->submitted('restore', $request) && $this->run(fn () => $this->manager->restoreObject($object), $this->translator->trans('admin.object.restored', ['%name%' => $object]))) {
             return $this->redirectToRoute('admin_object_show', ['object' => $object], Response::HTTP_SEE_OTHER);
         }
 
@@ -72,7 +74,7 @@ final class AdminLifecycleController extends AbstractController
         $this->denyUnlessAdministrator();
         $form = $this->forms->rename('', $field, '')->handleRequest($request);
         $name = $this->submittedName($form);
-        if (null !== $name && $this->run(fn (): array => $this->manager->renameField($object, $field, $name), \sprintf('Field "%s" is now "%s", with its column.', $field, $name))) {
+        if (null !== $name && $this->run(fn (): array => $this->manager->renameField($object, $field, $name), $this->translator->trans('admin.field.renamed', ['%old%' => $field, '%new%' => $name]))) {
             return $this->redirectToRoute('admin_field_edit', ['object' => $object, 'field' => $name], Response::HTTP_SEE_OTHER);
         }
 
@@ -83,7 +85,7 @@ final class AdminLifecycleController extends AbstractController
     public function archiveField(string $object, string $field, Request $request): Response
     {
         $this->denyUnlessAdministrator();
-        if ($this->submitted('archive', $request) && $this->run(fn () => $this->manager->archiveField($object, $field), \sprintf('Field "%s" is archived: out of the forms and grids, its column and values kept.', $field))) {
+        if ($this->submitted('archive', $request) && $this->run(fn () => $this->manager->archiveField($object, $field), $this->translator->trans('admin.field.archived', ['%name%' => $field]))) {
             return $this->redirectToRoute('admin_object_show', ['object' => $object], Response::HTTP_SEE_OTHER);
         }
 
@@ -95,7 +97,7 @@ final class AdminLifecycleController extends AbstractController
     {
         $this->denyUnlessAdministrator();
         if ($this->submitted('restore', $request)) {
-            $this->run(fn () => $this->manager->restoreField($object, $field), \sprintf('Field "%s" is back, with its values.', $field));
+            $this->run(fn () => $this->manager->restoreField($object, $field), $this->translator->trans('admin.field.restored', ['%name%' => $field]));
         }
 
         return $this->redirectToRoute('admin_object_show', ['object' => $object], Response::HTTP_SEE_OTHER);
@@ -107,7 +109,7 @@ final class AdminLifecycleController extends AbstractController
     private function submittedName(FormInterface $form): ?string
     {
         if (!$form->isSubmitted() || !$form->isValid()) {
-            $this->addFlash('error', 'The form expired: try again.');
+            $this->addFlash('error', $this->translator->trans('admin.form_expired'));
 
             return null;
         }
@@ -122,7 +124,7 @@ final class AdminLifecycleController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             return true;
         }
-        $this->addFlash('error', 'The form expired: try again.');
+        $this->addFlash('error', $this->translator->trans('admin.form_expired'));
 
         return false;
     }
@@ -147,7 +149,7 @@ final class AdminLifecycleController extends AbstractController
             return false;
         }
         if (\is_array($rewritten) && [] !== $rewritten) {
-            $success .= ' Rewritten to name the new one: '.implode(', ', array_filter($rewritten, is_string(...))).' (a YAML definition rewritten loses its comments).';
+            $success .= ' '.$this->translator->trans('admin.rewritten', ['%definitions%' => implode(', ', array_filter($rewritten, is_string(...)))]);
         }
         $this->addFlash('success', $success);
 

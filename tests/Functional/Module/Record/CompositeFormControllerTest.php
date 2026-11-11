@@ -234,6 +234,45 @@ final class CompositeFormControllerTest extends WebTestCase
         self::assertSame([], self::getContainer()->get(RecordFinderInterface::class)->latest('account'));
     }
 
+    public function testAddButtonsNameTheObjectOfARow(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        $crawler = $this->client->request('GET', '/f/registration/new');
+
+        self::assertSame(['+ Phone', '+ Qualification'], $crawler->filter('.gv-collection__add')->each(static fn ($button): string => trim($button->text())));
+        // A row is one record: named the same way.
+        $prototype = (string) $crawler->filter('[data-gridview-collection-prototype-name-value="__qualifications__"]')->attr('data-gridview-collection-prototype-value');
+        self::assertStringContainsString('<span class="md-row__title">Qualification</span>', $prototype);
+    }
+
+    public function testAnAdministratorMayShowTheMachineNames(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        $crawler = $this->client->request('GET', '/f/registration/new');
+
+        self::assertSame('machine-names', $crawler->filter('form#composite-form')->attr('data-controller'));
+        self::assertSame('false', $crawler->filter('.md-sheet__machine-names')->attr('aria-pressed'));
+        // The names the controller shows: those of the rows, service fields included.
+        self::assertCount(1, $crawler->filter('[data-gv-field="email"]'));
+        self::assertCount(1, $crawler->filter('[data-md-name="terms"]'));
+        self::assertCount(0, $crawler->filter('[data-gv-field="terms"]'));
+    }
+
+    public function testOtherUsersSeeNoMachineNames(): void
+    {
+        $permissions = [];
+        foreach (['account', 'profile', 'phone', 'qualification'] as $object) {
+            $permissions[] = \sprintf('record.%s.read', $object);
+            $permissions[] = \sprintf('record.%s.create', $object);
+        }
+        self::signIn($this->client, 'clerk@example.com', $permissions);
+        $crawler = $this->client->request('GET', '/f/registration/new');
+
+        self::assertResponseIsSuccessful();
+        self::assertNull($crawler->filter('form#composite-form')->attr('data-controller'));
+        self::assertSelectorNotExists('.md-sheet__machine-names');
+    }
+
     public function testNeedsThePermissionsOfEveryObject(): void
     {
         // May create accounts and profiles, but not phones nor qualifications.

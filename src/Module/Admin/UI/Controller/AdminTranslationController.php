@@ -22,6 +22,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Intl\Languages;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * The languages of the metadata, in two pages that each do one thing:
@@ -33,13 +34,12 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/admin', name: 'admin_')]
 final class AdminTranslationController extends AbstractController
 {
-    private const string TEXT_NAME_HELP = 'Lowercase letters, digits and single underscores. A layout places it with {t:<name>}.';
-
     public function __construct(
         private readonly MetadataTranslationsInterface $translations,
         private readonly MetadataManagerInterface $manager,
         private readonly FormFactoryInterface $forms,
         private readonly AccessCheckerInterface $access,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -141,7 +141,7 @@ final class AdminTranslationController extends AbstractController
 
         $newText = $this->newTextForm($locales)->handleRequest($request);
         if ($newText->isSubmitted() && $newText->isValid() && $this->createText($newText, $texts, $locales)) {
-            $this->addFlash('success', 'Text created.');
+            $this->addFlash('success', $this->translator->trans('admin.translation.text_created'));
 
             return $this->redirectToRoute('admin_text_index', [], Response::HTTP_SEE_OTHER);
         }
@@ -220,9 +220,14 @@ final class AdminTranslationController extends AbstractController
     private function newTextForm(array $locales): FormInterface
     {
         $builder = $this->forms->createNamedBuilder('new_text', FormType::class, null, ['action' => $this->generateUrl('admin_text_index')])
-            ->add('name', TextType::class, ['label' => 'Name', 'help' => self::TEXT_NAME_HELP]);
+            ->add('name', TextType::class, ['label' => 'admin.name', 'help' => 'admin.translation.text_name_help']);
         foreach ($locales as $position => $locale) {
-            $builder->add($locale, TextType::class, ['label' => ucfirst(Languages::getName($locale, 'en')).(0 === $position ? '' : ' (optional)'), 'required' => 0 === $position]);
+            // The name of the language in the language of the page.
+            $language = ucfirst(Languages::getName($locale, $this->translator->getLocale()));
+            $builder->add($locale, TextType::class, [
+                'label' => 0 === $position ? $language : $this->translator->trans('admin.translation.optional_language', ['%language%' => $language]),
+                'required' => 0 === $position,
+            ]);
         }
 
         return $builder->getForm();
@@ -237,13 +242,13 @@ final class AdminTranslationController extends AbstractController
     {
         $name = self::value($form->get('name')) ?? '';
         if ('' === $name || null === self::value($form->get($locales[0]))) {
-            $form->addError(new FormError(\sprintf('Give the text a name and its %s text.', $locales[0])));
+            $form->addError(new FormError($this->translator->trans('admin.translation.give_name', ['%locale%' => $locales[0]])));
 
             return false;
         }
         foreach ($texts as $text) {
             if ($text->name === $name) {
-                $form->get('name')->addError(new FormError(\sprintf('A text named "%s" already exists.', $name)));
+                $form->get('name')->addError(new FormError($this->translator->trans('admin.translation.text_exists', ['%name%' => $name])));
 
                 return false;
             }
@@ -296,7 +301,9 @@ final class AdminTranslationController extends AbstractController
 
     private function flashSaved(int $saved): void
     {
-        $this->addFlash('success', 0 === $saved ? 'Nothing changed.' : \sprintf('%d %s saved.', $saved, 1 === $saved ? 'text' : 'texts'));
+        $this->addFlash('success', 0 === $saved
+            ? $this->translator->trans('admin.translation.nothing_changed')
+            : $this->translator->trans('admin.translation.saved', ['%count%' => $saved]));
     }
 
     private static function child(int $index, string $locale): string

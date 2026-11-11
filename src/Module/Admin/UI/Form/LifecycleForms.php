@@ -21,12 +21,14 @@ final class LifecycleForms
     }
 
     /**
+     * @param string $help a translation key, as the label is
+     *
      * @return FormInterface<mixed>
      */
     public function rename(string $action, string $currentName, string $help): FormInterface
     {
         return $this->forms->createNamedBuilder('rename', FormType::class, ['name' => $currentName], ['action' => $action])
-            ->add('name', TextType::class, ['label' => 'Machine name', 'help' => $help])
+            ->add('name', TextType::class, ['label' => 'admin.machine_name', 'help' => $help])
             ->getForm();
     }
 

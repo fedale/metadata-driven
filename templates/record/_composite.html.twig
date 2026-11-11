@@ -69,7 +69,8 @@
             </div>
             {% if editable %}
                 <button type="button" class="gv-btn gv-collection__add" data-gridview-collection-target="add" data-action="gridview-collection#add">
-                    + {{ 'form.add'|trans({'%label%': section.label}) }}
+                    {# Named after the object of a row, in the singular: "+ Qualification". #}
+                    + {{ 'form.add'|trans({'%label%': object_singular(section.object)}) }}
                 </button>
             {% endif %}
         </div>
@@ -96,7 +97,8 @@
     {% else %}
         <fieldset class="gv-collection__row md-row" data-gridview-collection-target="row">
             <div class="gv-collection__header md-row__header">
-                <span class="md-row__title">{{ section.label }}</span>
+                {# One record: its object in the singular, numbered by the stylesheet ("01 Qualification"). #}
+                <span class="md-row__title">{{ object_singular(section.object) }}</span>
                 {% if editable %}
                     <button type="button" class="gv-btn gv-collection__remove md-row__remove" data-action="gridview-collection#remove">{{ 'form.remove'|trans }}</button>
                 {% endif %}

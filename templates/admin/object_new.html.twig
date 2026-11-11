@@ -1,14 +1,14 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}New object{% endblock %}
+{% block title %}{{ 'admin.object.new'|trans }}{% endblock %}
 
 {% block body %}
-    <p><a href="{{ path('admin_index') }}">&larr; Objects</a></p>
-    <h1>New object</h1>
+    <p><a href="{{ path('admin_index') }}">&larr; {{ 'admin.objects'|trans }}</a></p>
+    <h1>{{ 'admin.object.new'|trans }}</h1>
 
     {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
         {{ form_errors(form) }}
         {{ form_rest(form) }}
-        <button type="submit" class="gv-btn gv-btn-primary">Create</button>
+        <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.create'|trans }}</button>
     {{ form_end(form) }}
 {% endblock %}

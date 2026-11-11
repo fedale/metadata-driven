@@ -4,7 +4,7 @@ Internal notes for whoever (human or agent) picks the work up, on any machine. R
 starting a task; update it in the same branch whenever a decision is taken, a feature lands or the
 work queue changes. The user-facing documentation is in [../README.md](../README.md).
 
-Last updated: 2026-11-10.
+Last updated: 2026-11-11.
 
 ## Setting up on a new machine
 
@@ -167,7 +167,8 @@ Things that are not obvious from a single file, and that are easy to break.
   `Fedale\TemplateFormat`): only `symfony/yaml` and `opis/json-schema`. A change to the format
   is made there, with its tests. It describes the field types on its own (`Resources/field-types.v1.json`):
   **a new field type or setting must be added there too**, or
-  `FieldTypeCatalogMatchesTheAppTest` fails. The comparison of a template's items and the
+  `FieldTypeCatalogMatchesTheAppTest` fails; and to `translations/field_types.it.yaml`, or
+  `FieldTypeCatalogsTest` fails. The comparison of a template's items and the
   version rules (`Fedale\TemplateFormat\Versions`: `ItemStates`, `VersionCheck`) are in the
   format too since v1.1.0, shared with the catalog's check. The `Template` module is the only bridge to the
   metadata; `core.template_item` keeps the id of each exported item across exports (a renamed
@@ -257,11 +258,23 @@ Smaller ones:
 
 - **CSV import**: (A) done with phase 3 of the templates, `record:import` (console.md). Not
   done: (B) a web wizard; (C) async with Messenger for very large files.
-- From the form mock, not done: per-kind add buttons ("+ Titolo di studio" …), field machine names
-  next to labels.
-- Admin UI strings are still English only (user pages are translated).
+- From the form mock, done 2026-11-11 (branch `admin_translations`): the "+" of a section of
+  rows names the row's object in the singular (`object_singular()`, Record UI Twig), and an
+  administrator can show the machine names next to the labels (the header's toggle, the
+  `machine-names` Stimulus controller, reading `data-gv-field` / `data-md-name` of the rows).
+- Admin UI in Italian (2026-11-11, branch `admin_translations`): the pages, form labels and
+  flash messages are translated (`admin.*` keys in `translations/messages.*.yaml`), and so are
+  the field types' names, descriptions and settings (`translations/field_types.it.yaml`, read
+  by `Admin\UI\FieldTypeTexts` with the declared English text as fallback). Still English:
+  the error messages of the metadata and the templates (`MetadataException`, `InstallRefused`,
+  upgrade changes and conflicts); see i18n.md, "Not yet".
 - Remaining roadmap ideas (phase 9+): audit/timeline, REST API, YAML export/import of metadata
   (now part of the template plan), multi-tenancy, roles/users admin UI, field-level permissions.
 - Relation filters in grids keep `multiple: true` by choice.
-- gridview-bundle has pre-existing failures (`DoctrineChildRowResolverTest` x4,
-  `ThemeRegistryTest`) and coding-standard issues that are not ours.
+- gridview-bundle: its failing tests are fixed on its branch `fix_failing_tests` (2026-11-11:
+  `DoctrineChildRowResolverTest` x4 mocked an ObjectRepository where ORM 3 wants an
+  EntityRepository, `ThemeRegistryTest` missed the `modal.dialog.*` keys, and two number tests
+  took the machine's locale). Still open there: `composer cs` (45 files) and `composer phpstan`
+  (stale baseline entries, `JsonDataProvider` calling `getDefaultPageSize()`, which
+  `PaginationInterface` lacks). Its `composer.lock` is not versioned: `composer update` after a
+  change of its `composer.json` (fedale/setting-bundle was missing).
