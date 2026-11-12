@@ -273,7 +273,13 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
 - Admin UI in Italian: still English are the error messages of the metadata and the templates
   (`MetadataException`, `InstallRefused`, upgrade changes and conflicts); see i18n.md, "Not yet".
 - Remaining roadmap ideas (phase 9+): audit/timeline, REST API, YAML export/import of metadata
-  (now part of the template plan), multi-tenancy, roles/users admin UI, field-level permissions.
+  (now part of the template plan), roles/users admin UI, field-level permissions.
+- **Multi-tenancy**: proposed in [multi-tenancy-plan.md](multi-tenancy-plan.md) (2026-11-12),
+  the user chose Twenty CRM's model: shared tables with a `tenant_id`, records in a schema per
+  tenant, global users with memberships; `fedale/rbac-bundle` gets no `tenant_id` for now (its
+  tables go in a schema per tenant). Decisions taken on 2026-11-12: tenant by host, a name
+  collision refuses a template upgrade, a tenant's admins change its model, the operator creates
+  tenants and memberships from the console. Next: phase 1.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`
