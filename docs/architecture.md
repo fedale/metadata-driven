@@ -24,7 +24,8 @@ code is written.
 ### Tenants
 
 The installation serves **tenants**, each with its own model, records, roles and files, created
-and managed with the [`tenant:*` commands](console.md#tenants) (see also
+and managed with the [`tenant:*` commands](console.md#tenants); the [Tenants](multi-tenancy.md)
+guide says how to use and deploy them. Under the hood (see also
 [the plan](internal/multi-tenancy-plan.md)):
 
 - `core.tenant` registers them: a slug, a name, a `number` (for `fedale/setting-bundle`, whose

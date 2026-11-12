@@ -284,12 +284,14 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   committed on `multi_tenancy_phase1` and `multi_tenancy_phase2`, phase 3 (global users,
   memberships, row-level security failing closed) on `multi_tenancy_phase3`, phase 4 (the
   `tenant:*` lifecycle commands) on `multi_tenancy_phase4`, phase 5 (the files in a directory
-  per tenant, row-level security on `core.file`) on `multi_tenancy_phase5`; phase 6 (shared
-  template indexes, field-name collisions refused before an upgrade) is on
-  `multi_tenancy_phase6`, branched from them, waiting for review. The branches add migrations
-  (`Version20261112120000` to `Version20261112190000`): run the migrations (`make db`,
-  `make db-test`) after checking one out, and `tenant:files:move` once after phase 5. Next:
-  phase 7, the documentation (a `docs/multi-tenancy.md` guide).
+  per tenant, row-level security on `core.file`) on `multi_tenancy_phase5`, phase 6 (shared
+  template indexes, field-name collisions refused before an upgrade) on `multi_tenancy_phase6`;
+  phase 7 (the guide, docs/multi-tenancy.md) is on `multi_tenancy_phase7`, waiting for review.
+  Each branch starts from the one before; none is merged into `main` yet (merge the last one,
+  `--no-ff` as usual, once reviewed). The branches add migrations (`Version20261112120000`
+  to `Version20261112190000`): run the migrations (`make db`, `make db-test`) after checking
+  one out, and `tenant:files:move` once. Left: `fedale/rbac-bundle` with a `tenant_id` (on
+  standby; its cache is off meanwhile).
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

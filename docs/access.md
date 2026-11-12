@@ -29,7 +29,7 @@ its cost changes; at least 12 characters. An unknown and a deactivated user get 
 
 ### Users and tenants
 
-Users are global: one email, one password, one profile, whichever [tenants](architecture.md#tenants)
+Users are global: one email, one password, one profile, whichever [tenants](multi-tenancy.md)
 they work in. A **membership** (`core.tenant_membership`) lets a user sign in to a tenant:
 
 - Signing in to a tenant you're no member of fails with the same error as a wrong password.

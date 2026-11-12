@@ -1,8 +1,10 @@
 # Plan: multi-tenancy
 
-Status: **agreed**; phases 1 to 5 done (branches `multi_tenancy_phase1` to `multi_tenancy_phase5`,
-committed); phase 6 implemented on branch `multi_tenancy_phase6` (2026-11-12), waiting for the
-user's review. Discussed with the user on 2026-11-12, who chose the model (shared
+Status: **implemented**; phases 1 to 6 done (branches `multi_tenancy_phase1` to
+`multi_tenancy_phase6`, committed), phase 7 (the guide) on branch `multi_tenancy_phase7`
+(2026-11-12), waiting for the user's review. Each branch starts from the one before; none is
+merged into `main` yet. Left: `fedale/rbac-bundle` with a `tenant_id` (on standby), and what
+"Not in scope" lists. Discussed with the user on 2026-11-12, who chose the model (shared
 definitions with a `tenant_id`, records in a schema per tenant), global users, and the decisions
 below.
 
@@ -350,10 +352,12 @@ One branch each, reviewed before the next, as usual.
      shared index.
    - Upgrades across tenants: `tenant:run --all -- metadata:template:upgrade …` (phase 4),
      documented in templates.md.
-7. **Documentation**: a `docs/multi-tenancy.md` guide; architecture.md (the shared schema, the
-   data schemas, the switch, row-level security), console.md (`tenant:*`, `--tenant`),
-   getting-started.md (`*.localhost`), templates.md (installing and upgrading per tenant);
-   status.md.
+7. **Documentation** (implemented, waiting for review): [`docs/multi-tenancy.md`](../multi-tenancy.md),
+   the guide for whoever runs an installation (hosts and settings, the `tenant:*` commands,
+   users in several tenants, templates, files, production: wildcard DNS and TLS,
+   `trusted_hosts`, a database role that is no superuser; upgrading an installation from
+   before tenants), linked from docs/README.md, getting-started.md, architecture.md and
+   access.md. The other pages were updated with each phase.
 
 Later, once `fedale/rbac-bundle` has tenants: its tables move into `core` and `t_<id>` goes
 away.
