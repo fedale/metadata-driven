@@ -396,7 +396,10 @@ instance holds now.
 - **All or nothing**, as an install: one transaction, a step the app refuses rolls it all back,
   and `--dry-run` goes all the way then rolls back.
 - **Refused before anything changes**: a version that is not newer than the installed one; a
-  new object or form named like one of this instance's; and the changes the app cannot make to
+  new object or form named like one of this instance's; a new field named like one you added to
+  the same object (`objects/product.yaml: field acme.product.weight: object "product" already
+  has a field "weight" of this instance: rename it first.`: your field stays yours, rename it
+  and upgrade again); and the changes the app cannot make to
   an existing item yet: a field's type, whether it is required or unique, an object's icon, a
   field moved to another object (`objects/product.yaml: field acme.product.seats: its type
   changed from number to text, which an upgrade cannot do yet: change it by hand first.`); a
@@ -451,6 +454,22 @@ The new version's number must fit what it changed since the version installed:
 
 `objects/tag.yaml: field acme.tag.colour: an addition needs a new minor version, 1.0.1 is not
 one.` Who installs a minor version expects to lose nothing.
+
+## Templates and tenants
+
+Every tenant installs and upgrades its templates on its own: an install creates the definitions
+in the tenant's rows and the record tables in its data schema, and the other tenants see none of
+it. Tenants may stay on different versions, each keeping its own changes.
+
+```bash
+symfony console metadata:template:install fedale/registration --tenant=acme
+symfony console tenant:create globex --template=fedale/registration     # at creation
+symfony console tenant:run --all -- metadata:template:upgrade fedale/registration --strategy=keep
+```
+
+[`tenant:run`](console.md#tenantrun) upgrades every tenant in a process of its own and carries on
+past one that stops (a conflict, a field in the way): its output under the tenant's slug says
+what to resolve there, with `--tenant=<slug>`.
 
 ## Publishing and downloading
 
@@ -510,6 +529,11 @@ symfony console metadata:template:upgrade acme/shop            # from the index 
   first.
 - **The template catalog** is an index too, looked into before the others, as `catalog` (see
   [below](#the-template-catalog)).
+- **Per tenant, or for every tenant.** `metadata:template:repo` manages the indexes of the
+  command's [tenant](architecture.md#tenants) (`--tenant=<slug>`). The operator offers an index
+  to every tenant with `tenant:template:repo add …` (same arguments): each tenant then lists it
+  next to its own, marked "every tenant", and may not remove it. No two indexes a tenant sees
+  share a name.
 - `metadata:template:pack` writes reproducible archives: the same template gives the same
   archive and checksum, whatever the machine or the dates of its files.
 - **Withdrawing a version**: `metadata:template:yank index.json acme/shop 1.1.0 --sign=<key>`

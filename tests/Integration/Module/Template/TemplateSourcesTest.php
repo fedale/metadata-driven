@@ -9,6 +9,7 @@ use App\Module\Template\Application\Source\TemplateSources;
 use App\Module\Template\Domain\Exception\TemplateSourceFailed;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
 use App\Module\Template\Domain\Repository\TemplateSourceRepository;
+use App\Shared\Tenant\CurrentTenant;
 use App\Tests\Support\ExampleTemplate;
 use App\Tests\Support\FakeTemplateServer;
 use App\Tests\Support\PublishesTemplates;
@@ -162,6 +163,7 @@ final class TemplateSourcesTest extends KernelTestCase
         // As configured outside the tests: private networks refused.
         $sources = new TemplateSources(
             self::getContainer()->get(TemplateSourceRepository::class),
+            self::getContainer()->get(CurrentTenant::class),
             new MockHttpClient(new MockResponse('{}')),
             new Archive(),
             null,

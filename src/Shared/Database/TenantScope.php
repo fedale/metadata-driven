@@ -43,8 +43,19 @@ final class TenantScope
         'template_source',
     ];
 
+    /**
+     * Tables of TABLES whose rows may have no tenant: offered to every tenant, read by all of
+     * them, written by the landlord only (template_source: the indexes the operator offers).
+     */
+    public const array SHARED = ['template_source'];
+
     public static function isScoped(string $table): bool
     {
         return \in_array($table, self::TABLES, true);
+    }
+
+    public static function isShared(string $table): bool
+    {
+        return \in_array($table, self::SHARED, true);
     }
 }

@@ -133,6 +133,34 @@ final class TemplateUpgraderTest extends KernelTestCase
         );
     }
 
+    /**
+     * A field added here, then by the new version under the same name: the upgrade stops before
+     * changing anything, naming the field in the way, and goes through once it is renamed.
+     */
+    public function testRefusesANewFieldNamedLikeOneAddedHere(): void
+    {
+        $manager = self::getContainer()->get(MetadataManagerInterface::class);
+        $manager->createField('product', 'weight', 'text', 'Weight (ours)');
+        $newVersion = $this->newVersion([
+            'objects/product.yaml' => static function (array $spec): array {
+                $spec['fields'] = [...self::map($spec['fields']), ['id' => 'acme.product.weight', 'name' => 'weight', 'type' => 'number', 'label' => 'Weight']];
+
+                return $spec;
+            },
+        ]);
+
+        $reason = 'objects/product.yaml: field acme.product.weight: object "product" already has a field "weight" of this instance: rename it first.';
+        self::assertContains($reason, self::getContainer()->get(TemplateUpgrader::class)->preview($newVersion)->refusals, 'The admin\'s preview shows it.');
+        $this->assertRefused($newVersion, $reason);
+        self::assertSame('Weight (ours)', self::getContainer()->get(MetadataRegistryInterface::class)->getObject('product')->field('weight')->label);
+
+        $manager->renameField('product', 'weight', 'weight_note');
+        $this->upgrade($newVersion);
+        $product = self::getContainer()->get(MetadataRegistryInterface::class)->getObject('product');
+        self::assertSame('number', $product->field('weight')->type);
+        self::assertSame('Weight (ours)', $product->field('weight_note')->label);
+    }
+
     public function testTheVersionNumberMustFitTheChanges(): void
     {
         $this->assertRefused(

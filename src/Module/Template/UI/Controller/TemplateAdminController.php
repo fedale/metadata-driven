@@ -114,10 +114,11 @@ final class TemplateAdminController extends AbstractController
             'available' => $offers,
             'unreachable' => $unreachable,
             'indexes' => $indexes,
-            // The catalog is configured, not added: it cannot be removed here.
+            // The indexes offered to every tenant (the catalog, configured; the operator's,
+            // tenant:template:repo) cannot be removed here.
             'remove_forms' => array_combine(
                 array_column($indexes, 'name'),
-                array_map(fn (array $index): ?FormView => TemplateSources::CATALOG === $index['name'] ? null : $this->confirmForm('remove_index', [])->createView(), $indexes),
+                array_map(fn (array $index): ?FormView => $index['shared'] ? null : $this->confirmForm('remove_index', [])->createView(), $indexes),
             ),
             'add_form' => $add->createView(),
         ], new Response(status: $add->isSubmitted() && !$add->isValid() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));

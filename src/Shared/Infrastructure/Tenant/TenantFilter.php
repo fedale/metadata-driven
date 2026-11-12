@@ -27,6 +27,11 @@ final class TenantFilter extends SQLFilter
             return '';
         }
 
-        return \sprintf('%s.%s = %s', $targetTableAlias, TenantScope::COLUMN, TenantScope::CURRENT);
+        $condition = \sprintf('%s.%s = %s', $targetTableAlias, TenantScope::COLUMN, TenantScope::CURRENT);
+
+        // The rows offered to every tenant too, read-only for them (TenantScope::SHARED).
+        return TenantScope::isShared($targetEntity->getTableName())
+            ? \sprintf('(%s OR %s.%s IS NULL)', $condition, $targetTableAlias, TenantScope::COLUMN)
+            : $condition;
     }
 }

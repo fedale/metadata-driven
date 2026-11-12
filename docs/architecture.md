@@ -63,6 +63,9 @@ and managed with the [`tenant:*` commands](console.md#tenants) (see also
   `BYPASSRLS`**: connect the application as an ordinary role in production. The Docker database
   of development connects as a superuser, so there the filters work alone; the tests check the
   policies under a role of their own.
+- **Rows offered to every tenant**: `template_source` (`TenantScope::SHARED`) may have no
+  tenant, an index the operator offers to all (`tenant:template:repo`, as the landlord). The
+  `tenant` filter and the policies let every tenant read such a row, and none write it.
 - `CurrentTenant` gives the tenant's id and data schema to the code that names record tables
   (the Schema and Record modules).
 - **Users are global**, with their profile; a membership (`core.tenant_membership`, the

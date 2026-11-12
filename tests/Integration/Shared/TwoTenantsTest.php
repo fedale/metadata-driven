@@ -85,7 +85,11 @@ final class TwoTenantsTest extends KernelTestCase
 
         $this->connection->beginTransaction();
         try {
-            $this->insertSource('initech');
+            // Not template_source: its rows may have no tenant (shared indexes).
+            $this->connection->executeStatement(
+                "INSERT INTO core.metadata_translation (id, locale, message_key, text, updated_at) VALUES (?, 'it', 'object.pet.singular', 'Animale', now())",
+                [Uuid::v7()->toRfc4122()],
+            );
             self::fail('A row was written in no tenant.');
         } catch (NotNullConstraintViolationException) {
             $this->addToAssertionCount(1);

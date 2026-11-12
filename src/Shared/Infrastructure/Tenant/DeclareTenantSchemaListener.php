@@ -78,7 +78,12 @@ final class DeclareTenantSchemaListener
 
     private function declare(Table $table, string $name): void
     {
-        $table->addColumn(TenantScope::COLUMN, 'guid', ['notnull' => true]);
+        $table->addColumn(TenantScope::COLUMN, 'guid', ['notnull' => !TenantScope::isShared($name)]);
+        if (TenantScope::isShared($name)) {
+            // Migration Version20261112190000: the names of the rows offered to every tenant. The
+            // predicate as PostgreSQL reports it, parentheses included, or the diff sees a change.
+            $table->addUniqueIndex(['name'], \sprintf('uniq_%s_shared_name', $name), ['where' => '('.TenantScope::COLUMN.' IS NULL)']);
+        }
 
         foreach ($table->getIndexes() as $index) {
             $indexName = $index->getName();

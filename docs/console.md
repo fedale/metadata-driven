@@ -43,6 +43,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
 | [`tenant:create`](#tenantcreate), [`tenant:list`](#tenantlist), [`tenant:suspend`, `tenant:resume`](#tenantsuspend-tenantresume), [`tenant:delete`](#tenantdelete), [`tenant:run`](#tenantrun) | Create, list, suspend, resume and delete tenants; run a command for several of them |
 | [`tenant:files:move`](#tenantfilesmove) | Move the files stored before tenants had directories into their tenant's directory, once |
+| `tenant:template:repo` | List, add or remove the template indexes offered to every tenant — see [Templates](templates.md#publishing-and-downloading) |
 | `user:create` | Create a user who can sign in, a member of the command's tenant — see [Users and permissions](access.md#usercreate) |
 | `tenant:member:add`, `tenant:member:remove`, `tenant:member:list` | Let a user sign in to a tenant, or no longer; list a tenant's members — see [Users and tenants](access.md#users-and-tenants) |
 | `access:sync` | Create the permissions of every object, the admin permission and the super admin role — see [Users and permissions](access.md#permissions) |

@@ -73,7 +73,11 @@ final class TenantScopeTest extends KernelTestCase
         $this->connection->beginTransaction();
         try {
             $this->connection->executeStatement("SELECT set_config('app.tenant_id', '', false)");
-            $this->insertSource('acme', 'https://templates.example.com/index.json');
+            // Not template_source: its rows may have no tenant (shared indexes).
+            $this->connection->executeStatement(
+                "INSERT INTO core.metadata_translation (id, locale, message_key, text, updated_at) VALUES (?, 'it', 'object.pet.singular', 'Animale', now())",
+                [Uuid::v7()->toRfc4122()],
+            );
             self::fail('A row was written without a tenant.');
         } catch (NotNullConstraintViolationException) {
             $this->addToAssertionCount(1);

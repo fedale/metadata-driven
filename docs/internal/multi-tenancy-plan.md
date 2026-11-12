@@ -1,7 +1,7 @@
 # Plan: multi-tenancy
 
-Status: **agreed**; phases 1 to 4 done (branches `multi_tenancy_phase1` to `multi_tenancy_phase4`,
-committed); phase 5 implemented on branch `multi_tenancy_phase5` (2026-11-12), waiting for the
+Status: **agreed**; phases 1 to 5 done (branches `multi_tenancy_phase1` to `multi_tenancy_phase5`,
+committed); phase 6 implemented on branch `multi_tenancy_phase6` (2026-11-12), waiting for the
 user's review. Discussed with the user on 2026-11-12, who chose the model (shared
 definitions with a `tenant_id`, records in a schema per tenant), global users, and the decisions
 below.
@@ -334,9 +334,22 @@ One branch each, reviewed before the next, as usual.
    thumbnails left; a file system change, so a command rather than a migration.
    `tenant:delete` deletes the tenant's directory after its transaction, not inside a caller's
    (the tests', so that path is not covered by them).
-6. **Templates across tenants**: global and per-tenant indexes, the name-collision check of
-   decision 2 (if the upgrade doesn't refuse it already, a test proves it either way),
-   `tenant:run` over upgrades with their report.
+6. **Templates across tenants** (implemented, waiting for review).
+   - Name collisions (decision 2): an upgrade adding a field named like one the instance added
+     to the same object was refused already, but only while applying (the step failing, the
+     transaction rolled back), with the app's message, and the admin's preview missed it.
+     `collisions()` now checks fields as it did objects and forms: refused before anything
+     changes, shown by the preview, with a message saying to rename the instance's field.
+   - Shared indexes: `template_source.tenant_id` may be NULL (`Version20261112190000`, a partial
+     unique index on the shared names), `TenantScope::SHARED`; the `tenant` filter and four
+     policies (read: own or shared; write: own, or the landlord's) let tenants read and not
+     write them. `tenant:template:repo` (the same actions as `metadata:template:repo`, in
+     `TemplateRepoActions`) adds them as the landlord. `TemplateSources::remove()` refuses a
+     shared index in a tenant's session; `isNameTaken()` keeps names unique across what a
+     tenant sees, and across every tenant for the landlord. The admin offers no removal of a
+     shared index.
+   - Upgrades across tenants: `tenant:run --all -- metadata:template:upgrade …` (phase 4),
+     documented in templates.md.
 7. **Documentation**: a `docs/multi-tenancy.md` guide; architecture.md (the shared schema, the
    data schemas, the switch, row-level security), console.md (`tenant:*`, `--tenant`),
    getting-started.md (`*.localhost`), templates.md (installing and upgrading per tenant);
