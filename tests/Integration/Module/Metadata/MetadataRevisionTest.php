@@ -7,6 +7,7 @@ namespace App\Tests\Integration\Module\Metadata;
 use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Infrastructure\Cache\MetadataRevision;
+use App\Shared\Database\TenantScope;
 use App\Tests\Support\CreatesPetObject;
 use App\Tests\Support\CreatesRegistrationForm;
 use Doctrine\DBAL\Connection;
@@ -60,7 +61,9 @@ final class MetadataRevisionTest extends KernelTestCase
 
     private function revision(): int
     {
-        $revision = self::getContainer()->get(Connection::class)->fetchOne('SELECT revision FROM core.metadata_state');
+        $revision = self::getContainer()->get(Connection::class)->fetchOne(
+            'SELECT revision FROM core.metadata_state WHERE tenant_id = '.TenantScope::CURRENT,
+        );
         self::assertIsInt($revision);
 
         return $revision;

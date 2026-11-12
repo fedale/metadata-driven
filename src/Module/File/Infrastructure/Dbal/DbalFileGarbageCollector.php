@@ -7,6 +7,7 @@ namespace App\Module\File\Infrastructure\Dbal;
 use App\Module\File\Application\Dto\CollectedFile;
 use App\Module\File\Application\Dto\GarbageReport;
 use App\Module\File\Application\FileGarbageCollectorInterface;
+use App\Shared\Database\TenantScope;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
@@ -69,7 +70,7 @@ final class DbalFileGarbageCollector implements FileGarbageCollectorInterface
     }
 
     /**
-     * The rows referenced by nothing, deleted unless on a dry run. The DELETE repeats the
+     * The current tenant's rows referenced by nothing, deleted unless on a dry run. The DELETE repeats the
      * condition, so a row referenced since it was read stays (and the RESTRICT foreign keys
      * would refuse it anyway).
      *
@@ -80,7 +81,7 @@ final class DbalFileGarbageCollector implements FileGarbageCollectorInterface
         $unreferenced = $this->unreferencedCondition();
         /** @var list<array{id: string, original_name: string, size: int|string, created_at: string}> $rows */
         $rows = $this->connection->fetchAllAssociative(
-            \sprintf('SELECT f.id, f.original_name, f.size, f.created_at FROM core.file f WHERE f.created_at < :before AND %s ORDER BY f.created_at, f.id', $unreferenced),
+            \sprintf('SELECT f.id, f.original_name, f.size, f.created_at FROM core.file f WHERE f.tenant_id = %s AND f.created_at < :before AND %s ORDER BY f.created_at, f.id', TenantScope::CURRENT, $unreferenced),
             ['before' => $storedBefore],
             ['before' => Types::DATETIME_IMMUTABLE],
         );
@@ -88,7 +89,7 @@ final class DbalFileGarbageCollector implements FileGarbageCollectorInterface
             $deleted = [];
             foreach (array_chunk(array_column($rows, 'id'), self::CHUNK) as $ids) {
                 $deleted = [...$deleted, ...$this->connection->fetchFirstColumn(
-                    \sprintf('DELETE FROM core.file f WHERE f.id IN (:ids) AND %s RETURNING f.id', $unreferenced),
+                    \sprintf('DELETE FROM core.file f WHERE f.tenant_id = %s AND f.id IN (:ids) AND %s RETURNING f.id', TenantScope::CURRENT, $unreferenced),
                     ['ids' => $ids],
                     ['ids' => ArrayParameterType::STRING],
                 )];
@@ -162,6 +163,10 @@ final class DbalFileGarbageCollector implements FileGarbageCollectorInterface
      * @param list<string> $ignoredIds rows to count as gone
      *
      * @return array<string, true> the hashes some row uses
+     *
+     * Rows of every tenant count, not only the current one's: the storage is shared by the
+     * tenants (one key per content, whoever stored it) until each gets a prefix of its own
+     * (phase 5 of docs/internal/multi-tenancy-plan.md). So does deleteContent().
      */
     private function heldHashes(array $hashes, array $ignoredIds): array
     {

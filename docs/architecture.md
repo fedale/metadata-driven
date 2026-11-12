@@ -19,6 +19,26 @@ CLI replaces the URL with the one from the Docker container.
 Records are read and written with DBAL, never as ORM entities: their tables do not exist when the
 code is written.
 
+### Tenants
+
+The installation is ready to serve several **tenants**, each with its own model, records and
+files (see [the plan](internal/multi-tenancy-plan.md); today it serves one):
+
+- `core.tenant` registers them: a slug, a name, and `data_schema`, the schema holding the
+  tenant's records. The first tenant's is `data`.
+- The core tables whose rows belong to a tenant (the definitions, the schema change log, the
+  files, the templates: `TenantScope::TABLES`) carry a `tenant_id`. Unique names are unique per
+  tenant: two tenants may both have an `account` object.
+- The current tenant is a setting of the PostgreSQL session, `app.tenant_id`.
+  `DefaultTenantMiddleware` selects the only tenant on every new connection. A trigger fills
+  in `tenant_id` from it on insert (no model maps the column), the ORM's `tenant` filter adds
+  it to every read, and the DBAL queries on these tables add it themselves. Without a tenant
+  an insert fails on `NOT NULL`.
+- `CurrentTenant` gives the tenant's id and data schema to the code that names record tables
+  (the Schema and Record modules).
+- `DeclareTenantColumnsListener` declares the unmapped column to the schema tools, so
+  `migrations:diff` stays empty.
+
 The bytes of stored files are in neither schema: they are in the `record_files` storage of
 `league/flysystem-bundle` (`config/packages/flysystem.yaml`), on the local disk, and in memory in
 the tests. The directory is the `RECORD_FILES_DIR` environment variable, `var/storage/files` of
@@ -98,17 +118,19 @@ Inside a transaction the registry reads the definitions from the database, so th
 the uncommitted change; the cache is only refreshed once the change is committed.
 
 The cache keys of the metadata (the snapshot of the objects, the composite forms, the
-translations) carry the **metadata revision** and the **instance's id**, one row of
-`core.metadata_state` read once per request (`MetadataRevision`). Triggers on the metadata
-tables bump the revision in the transaction of every write, whatever makes it (the admin, the
-console, a template, a migration), so:
+translations) carry the **metadata revision** and the **instance's id**, the current tenant's
+row of `core.metadata_state`, read once per request (`MetadataRevision`). Triggers on the
+metadata tables bump the revision of the tenant whose rows changed, in the transaction of every
+write, whatever makes it (the admin, the console, a template, a migration), so:
 
 - a change made on one server reaches every server at its next request, whatever cache each one
   keeps (the filesystem by default): their keys have changed;
 - two databases never share cached metadata, even behind one cache (a shared Redis, a checkout
   pointed at another database). A copy of a database (`pg_dump` and restore) keeps the instance's
   id: give the copy a cache of its own, or a new id (`UPDATE core.metadata_state SET instance =
-  gen_random_uuid()`).
+  gen_random_uuid()`);
+- two tenants never share cached metadata either: each has an instance id of its own, and a
+  change to one tenant's metadata leaves the other tenants' keys alone.
 
 `MetadataChanged` still drops the cache of the server that made the change, early; elsewhere the
 stale items expire after a day. `core.metadata_state` is kept out of the ORM mapping

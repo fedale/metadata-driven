@@ -279,7 +279,10 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   tenant, global users with memberships; `fedale/rbac-bundle` gets no `tenant_id` for now (its
   tables go in a schema per tenant). Decisions taken on 2026-11-12: tenant by host, a name
   collision refuses a template upgrade, a tenant's admins change its model, the operator creates
-  tenants and memberships from the console. Next: phase 1.
+  tenants and memberships from the console. Phase 1 (a `tenant_id` on the shared tables, one
+  tenant still) is on branch `multi_tenancy_phase1`, waiting for review; it adds migration
+  `Version20261112120000`, so run the migrations (`make db`, `make db-test`) after checking it
+  out.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

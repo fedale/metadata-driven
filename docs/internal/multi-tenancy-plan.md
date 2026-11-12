@@ -1,8 +1,9 @@
 # Plan: multi-tenancy
 
-Status: **agreed**, not started. Discussed with the user on 2026-11-12, who chose the model
-(shared definitions with a `tenant_id`, records in a schema per tenant), global users, and the
-decisions below.
+Status: **agreed**; phase 1 implemented on branch `multi_tenancy_phase1` (2026-11-12), waiting
+for the user's review. Discussed with the user on 2026-11-12, who chose the model (shared
+definitions with a `tenant_id`, records in a schema per tenant), global users, and the decisions
+below.
 
 One installation of the app serving many **tenants** (a customer, a company), each building an
 application of its own: its objects, fields, views, forms, permissions, records and files,
@@ -35,7 +36,7 @@ core                         shared
   tenant                     the registry
   tenant_membership          (tenant_id, user_id): who may enter which tenant
   app_user                   global identities: email, password
-  app_user_profile           + tenant_id: language and preferences in one tenant
+  app_user_profile           + tenant_id (phase 3): language and preferences in one tenant
   metadata_*, schema_change_log, metadata_state      + tenant_id
   file, template_installation, template_item          + tenant_id
   template_source            + nullable tenant_id: NULL = offered to every tenant
@@ -61,7 +62,11 @@ change of the bundle (composite keys, its queries, its cache) and is **on standb
 
 Until then its four tables live in a schema per tenant, `t_<id>`. The bundle names them
 unqualified, and the app never names them, so the `search_path` of the tenant switch
-(`t_<id>, core, public`) sends the bundle to the current tenant's tables with no change to it.
+(`core, t_<id>, public`) sends the bundle to the current tenant's tables with no change to it:
+they are no longer in `core`, so the lookup goes on to `t_<id>`. `core` stays first because
+`doctrine_migration_versions` must stay unqualified and in the first schema of the path (see
+`config/packages/doctrine_migrations.yaml`: DBAL lists the tables of the current schema
+unqualified, so a qualified name is never found).
 `auth_assignment.user_id` is a string with no foreign key, so it holds the id of a global user:
 the same person may be an admin in one tenant and a plain user in another.
 
@@ -85,16 +90,21 @@ When the bundle gets its `tenant_id`, the tables move into `core` and `t_<id>` d
 
 ### The current tenant
 
-- `TenantContext` (`src/Shared/Tenant/`): the tenant of this request or command, its id and the
-  name of its data schema (replacing `DataSchema::NAME`). It implements `ResetInterface`.
-- Switching tenant does three things on the connection:
-  - `SET app.tenant_id = '<id>'`, which the row-level security policies read;
-  - `SET search_path TO t_<id>, core, public`, for the RBAC tables;
-  - the data schema name, `t_<id>_data`, for the record SQL and the DDL of the Schema module.
+- The current tenant **is** a setting of the database session, `app.tenant_id` (phase 1).
+  `CurrentTenant` (`src/Shared/Tenant/`, implemented by `ConnectionCurrentTenant`) reads it,
+  with the tenant's row of `core.tenant`: its id and `data_schema`, which replaced
+  `DataSchema::NAME`. PHP and SQL can't disagree on the tenant.
+- Phase 1 selects the only tenant on every new connection (`DefaultTenantMiddleware`). Phase 2
+  replaces it with a switch that does three things on the connection:
+  - `set_config('app.tenant_id', '<id>', false)`, which the trigger, the ORM filter, the DBAL
+    queries and the row-level security policies read;
+  - `SET search_path TO core, t_<id>, public`, for the RBAC tables;
+  - `ConnectionCurrentTenant::reset()`, so the data schema is read again.
 - **Fail closed.** With no tenant, `app.tenant_id` is empty and the `search_path` is
-  `core, public`. The policies then return no row and the RBAC tables are not found, so a query
-  that forgot its tenant fails or sees nothing instead of reading someone else's data. The reset
-  of the kernel (worker mode) and the end of every console command go back to this state.
+  `core, public`. Inserts fail on `NOT NULL`, the filter and the policies return no row, and the
+  RBAC tables are not found, so a query that forgot its tenant fails or sees nothing instead of
+  reading someone else's data. The reset of the kernel (worker mode) and the end of every
+  console command go back to this state.
 - `CoreSearchPathMiddleware` goes away; the tenant switch sets the path.
 
 ### Row-level security, the safety net
@@ -116,13 +126,21 @@ CREATE POLICY tenant_isolation ON core.metadata_object
   `tenant_membership` to resolve a request) goes through tables without policies, or through a
   second role with `BYPASSRLS`. Which one is settled in phase 2.
 - Migrations run as a role that bypasses the policies (they touch every tenant's rows).
+- **`core.file` and the GC.** Until each tenant's files have a storage prefix (phase 5), the
+  bytes are shared: the GC deletes a content only once no row of **any** tenant uses its hash
+  (`DbalFileGarbageCollector::heldHashes()`, `deleteContent()`). A policy on `core.file` would
+  hide the other tenants' rows from that check, and the GC would delete bytes they use. So
+  either phase 5 lands before the policy on `core.file`, or that check runs through the
+  bypassing role.
 
 ### Users and memberships
 
 - `app_user` stays global: one email, one password, one account for a person.
 - `tenant_membership (tenant_id, user_id, created_at)` says which tenants they may enter.
   Signing in to a tenant they're not a member of fails like a wrong password.
-- `app_user_profile` gets a `tenant_id`: a language and preferences per tenant.
+- `app_user_profile` gets a `tenant_id`: a language and preferences per tenant. Its unique
+  `user_id` becomes `(tenant_id, user_id)`, and the user's one-to-one profile becomes one per
+  tenant, so it's done here rather than in phase 1.
 - A user in several tenants gets a tenant switcher in the top bar, linking to the other
   tenants' hosts. Each host has its own session cookie, so they sign in once per tenant (a
   shared sign-in across hosts is not in scope).
@@ -147,25 +165,32 @@ CREATE POLICY tenant_isolation ON core.metadata_object
 
 | Change | Where |
 |---|---|
-| `tenant_id UUID NOT NULL`, a foreign key to `core.tenant` with `ON DELETE CASCADE` | the 11 tables of `core` holding tenant data (`metadata_field`, `metadata_form`, `metadata_object`, `metadata_state`, `metadata_translation`, `metadata_view`, `schema_change_log`, `file`, `template_installation`, `template_item`, `template_source`), and `app_user_profile` |
-| Unique indexes made composite | `metadata_object (tenant_id, name)`, `metadata_form (tenant_id, name)`, `template_installation (tenant_id, name)`, `template_source (tenant_id, name)` with a partial index for the `NULL` rows, the `sha256` index of `file` becoming `(tenant_id, sha256)`, and the others found in the migrations |
-| Indexes whose first column is a tenant's | the hot lookups get `tenant_id` first, so each tenant's rows are a range of the index |
-| The 58 SQL statements naming `core.` (15 files) | each gets its `tenant_id` condition, and its inserts the column |
-| The ORM repositories | a Doctrine SQL filter adding `tenant_id`, plus the column on the mapped entities |
-| `metadata_state` | one row per tenant; the revision triggers become `FOR EACH ROW` and bump the row of the `tenant_id` they saw changed |
-| `doctrine_migration_versions` | named `core.doctrine_migration_versions` in the migrations configuration, so it stays shared whatever the `search_path` |
-| `schema_filter`, `DeclareDataSchemaListener` | the data schemas are `t_<id>_data`, hidden by a pattern |
+Done in phase 1 (migration `Version20261112120000`), except `app_user_profile` (phase 3):
 
-Foreign keys between shared tables (a field to its object) keep working; a composite foreign
-key including `tenant_id` would make a cross-tenant link impossible even by a bug, and is
-considered table by table in phase 1.
+| Change | Where |
+|---|---|
+| `tenant_id UUID NOT NULL`, a foreign key to `core.tenant` with `ON DELETE CASCADE`, an index `idx_<table>_tenant` | the 11 tables of `TenantScope::TABLES`: `metadata_field`, `metadata_form`, `metadata_object`, `metadata_state`, `metadata_translation`, `metadata_view`, `schema_change_log`, `file`, `template_installation`, `template_item`, `template_source` |
+| Filled in on insert by a trigger, `core.set_tenant_id()`, from `app.tenant_id` | the same tables. A trigger, not a column default: DBAL can't represent an expression as a default, and `migrations:diff` would drop it. No model maps the column |
+| Unique and lookup indexes with `tenant_id` first | `uniq_metadata_object_name`, `uniq_metadata_object_table_name`, `uniq_metadata_form_name`, `uniq_metadata_translation_locale_key`, `uniq_template_installation_name`, `uniq_template_source_name`, `uniq_template_item_item_id`, `uniq_template_item_local_id`, `idx_file_sha256`, `idx_schema_change_log_object`. The ones on `object_id` (fields, views) are per tenant already |
+| The ORM reads | the `tenant` SQL filter (`TenantFilter`), enabled in `doctrine.yaml` |
+| The DBAL reads | `MetadataRevision`, and the GC's choice of the rows to delete. The GC's hash checks stay across tenants on purpose (see "Row-level security") |
+| `metadata_state` | one row per tenant, `tenant_id` its primary key; the revision triggers are `FOR EACH ROW` and bump the row of the tenant they saw changed (`TRUNCATE`, with no rows, bumps them all) |
+| Schema tools | `DeclareTenantColumnsListener` declares the column, its key and indexes to the generated schema; `core.tenant` joins `metadata_state` in `schema_filter`. `doctrine:schema:update --dump-sql` is empty |
+| `doctrine_migration_versions` | unchanged: unqualified, in `core`, first in every `search_path` |
+
+Still to do for more than one tenant: the `schema_filter` pattern hiding every data schema, not
+only `data`; `DeclareDataSchemaListener` declaring them all (it declares the current tenant's).
+
+Foreign keys between shared tables (a field to its object) are not composite with `tenant_id`:
+a cross-tenant link would take a bug writing another tenant's id, which the trigger never does,
+and the policies of phase 2 will refuse it.
 
 ### Caches
 
 - Metadata: keyed by `metadata_state`'s instance id and revision, one row per tenant now, so the
   keys already differ between tenants. A new tenant gets a fresh `gen_random_uuid()`.
 - **Audit every other pool before phase 2 is done**: the tenant lookup itself,
-  `fedale/setting-bundle` (provide its `TenantProviderInterface` from `TenantContext`),
+  `fedale/setting-bundle` (provide its `TenantProviderInterface` from `CurrentTenant`),
   `fedale/rbac-bundle`'s cache (`fedale_rbac.yaml`, which doesn't know the schema it read), the
   localized metadata, the translations. Any key that doesn't carry the instance id or the tenant
   id gets the tenant id.
@@ -207,26 +232,29 @@ considered table by table in phase 1.
 
 One migration turns today's single tenant into the first tenant:
 
-1. create `core.tenant` with one row, and `tenant_membership` with every existing user;
+1. create `core.tenant` with one row, whose `data_schema` is `data`: the records stay where they
+   are, no rename (done, phase 1);
 2. add `tenant_id` to the shared tables, filled with that row's id, then `NOT NULL`, the new
-   indexes, the policies;
-3. `ALTER SCHEMA data RENAME TO t_<id>_data` (instant, the data stays);
-4. create `t_<id>` and move the RBAC tables there (`ALTER TABLE … SET SCHEMA`);
-5. move the files under their tenant's directory.
+   indexes (done, phase 1); the policies (phase 2);
+3. create `t_<id>` and move the RBAC tables there (`ALTER TABLE … SET SCHEMA`, phase 2);
+4. `tenant_membership` with every existing user (phase 3);
+5. move the files under their tenant's directory (phase 5).
 
-It is tested on a copy of the dev database before it runs anywhere else.
+Each step is tested on a copy of the dev database before it runs anywhere else.
 
 ## Phases
 
 One branch each, reviewed before the next, as usual.
 
-1. **`tenant_id` in the shared tables, one tenant still.** `core.tenant` with one row, the
-   column and its indexes, the queries and the ORM filter, `metadata_state` per tenant, the
-   triggers, the data schema name behind `TenantContext`. No behaviour changes: `make qa` green
-   proves it.
+1. **`tenant_id` in the shared tables, one tenant still** (implemented, waiting for review).
+   `core.tenant` with one row, the column and its indexes, the queries and the ORM filter,
+   `metadata_state` per tenant, the triggers, the data schema name behind `CurrentTenant`. No
+   behaviour changes: the 627 tests of before pass unchanged; `TenantScopeTest` adds a second
+   tenant by hand and checks that none of its rows, names, revisions or files reach the first.
 2. **The switch and the safety net.** The host resolver, the console option, the fail-closed
-   state, the reset in worker mode, row-level security, the RBAC tables in `t_<id>`, the cache
-   audit. Tests with two tenants: the same object name with different fields, and neither
+   state, the reset in worker mode, row-level security (mind `core.file` and the GC), the RBAC
+   tables in `t_<id>`, the cache audit, `schema_filter` and `DeclareDataSchemaListener` for
+   every data schema. Tests with two tenants: the same object name with different fields, and neither
    tenant's definitions, records, files or caches reachable from the other.
 3. **Users and memberships**: global identities, `tenant_membership`, profiles per tenant, the
    session bound to its tenant, the tenant switcher, the membership commands. Tests of

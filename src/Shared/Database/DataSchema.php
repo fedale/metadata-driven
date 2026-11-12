@@ -5,16 +5,16 @@ declare(strict_types=1);
 namespace App\Shared\Database;
 
 /**
- * PostgreSQL schema holding the record tables generated from metadata.
+ * The naming of what lives in a tenant's data schema, the PostgreSQL schema holding the record
+ * tables generated from its metadata. Each tenant has one, named by core.tenant.data_schema
+ * ({@see \App\Shared\Tenant\CurrentTenant::dataSchema()}); the first tenant's is "data".
  * Static tables live in the "core" schema ({@see CoreSchema}) and are managed by Doctrine migrations.
  *
- * The naming of what lives there is shared by the module building the tables (Schema) and the
- * one reading and writing them (Record).
+ * The naming is shared by the module building the tables (Schema) and the one reading and
+ * writing them (Record).
  */
 final class DataSchema
 {
-    public const string NAME = 'data';
-
     // PostgreSQL silently truncates longer identifiers.
     private const int MAX_IDENTIFIER_LENGTH = 63;
     // "l_<object>__<field>": machine names never hold "__", so no two fields share a name.
