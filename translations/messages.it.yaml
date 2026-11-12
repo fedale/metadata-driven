@@ -3,6 +3,7 @@ nav:
     records: Dati
     admin: Amministrazione
     language: Lingua
+    tenants: Spazi di lavoro
     sign_out: Esci
 login:
     title: Accedi

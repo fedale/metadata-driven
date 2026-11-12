@@ -6,6 +6,7 @@ namespace App\Module\Schema\Infrastructure\Dbal;
 
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Shared\Database\DataSchema;
+use App\Shared\Tenant\CurrentTenant;
 use Doctrine\DBAL\Connection;
 
 /**
@@ -26,6 +27,7 @@ final class UniqueTogetherIndexPlanner
 
     public function __construct(
         private readonly Connection $connection,
+        private readonly CurrentTenant $tenant,
     ) {
     }
 
@@ -41,7 +43,7 @@ final class UniqueTogetherIndexPlanner
             $statements[$name] = \sprintf(
                 'CREATE UNIQUE INDEX %s ON %s.%s (%s) WHERE %s IS NULL',
                 $this->connection->quoteSingleIdentifier($name),
-                $this->connection->quoteSingleIdentifier(DataSchema::NAME),
+                $this->connection->quoteSingleIdentifier($this->tenant->dataSchema()),
                 $this->connection->quoteSingleIdentifier($object->tableName),
                 implode(', ', array_map($this->connection->quoteSingleIdentifier(...), $columns)),
                 $this->connection->quoteSingleIdentifier('deleted_at'),
@@ -59,7 +61,7 @@ final class UniqueTogetherIndexPlanner
         /** @var list<string> $names */
         $names = $this->connection->fetchFirstColumn(
             "SELECT indexname FROM pg_indexes WHERE schemaname = ? AND tablename = ? AND indexname LIKE 'uniqc\\_%' ORDER BY indexname",
-            [DataSchema::NAME, $object->tableName],
+            [$this->tenant->dataSchema(), $object->tableName],
         );
 
         return $names;
@@ -69,7 +71,7 @@ final class UniqueTogetherIndexPlanner
     {
         return \sprintf(
             'DROP INDEX %s.%s',
-            $this->connection->quoteSingleIdentifier(DataSchema::NAME),
+            $this->connection->quoteSingleIdentifier($this->tenant->dataSchema()),
             $this->connection->quoteSingleIdentifier($indexName),
         );
     }

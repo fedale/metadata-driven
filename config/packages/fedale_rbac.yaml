@@ -3,15 +3,15 @@
 fedale_rbac:
     enabled: true
     # Holders of this role pass every check.
-    super_admin_role: ROLE_SUPER_ADMIN
+    super_admin_role: '%app.super_admin_role%'
     # Role → role edges come from auth_item_child, not from security.yaml.
     override_role_hierarchy: true
     # Assigned roles are loaded by our user provider itself.
     inject_assigned_roles: false
     provider: doctrine
 
-when@test:
-    fedale_rbac:
-        # Tests roll back database transactions: a persistent cache would outlive them.
-        cache:
-            enabled: false
+    # No cache: it keeps the roles and permissions under one key for the whole installation,
+    # and each tenant has its own (in its RBAC schema, see docs/architecture.md, "Tenants").
+    # Back once the bundle knows about tenants.
+    cache:
+        enabled: false

@@ -27,6 +27,30 @@ A user is two records, one-to-one:
 Passwords are hashed with Symfony's `auto` hasher and rehashed on sign-in when the algorithm or
 its cost changes; at least 12 characters. An unknown and a deactivated user get the same error.
 
+### Users and tenants
+
+Users are global: one email, one password, one profile, whichever [tenants](multi-tenancy.md)
+they work in. A **membership** (`core.tenant_membership`) lets a user sign in to a tenant:
+
+- Signing in to a tenant you're no member of fails with the same error as a wrong password.
+- A session is per host, so per tenant: you sign in to each tenant on its own. The user is loaded
+  again on every request, so a session whose membership was removed, or one replayed on another
+  tenant's host, is signed out at its next request.
+- Roles and permissions are per tenant: each tenant has its RBAC tables. Being an admin in one
+  tenant gives nothing in another. Run `rbac:*` with `--tenant=<slug>` for a tenant other than the
+  default one.
+- A user who's a member of two tenants or more gets links to the others in the top bar.
+
+```bash
+symfony console tenant:member:add acme anna@example.com      # Anna may sign in to acme
+symfony console rbac:assign --tenant=acme anna@example.com ROLE_PET_READER
+symfony console tenant:member:list acme
+symfony console tenant:member:remove acme anna@example.com   # her sessions there end
+```
+
+The `tenant:member:*` commands work for the tenant their first argument names. Removing a member
+leaves their roles in the tenant, unused until they're a member again.
+
 ### `user:create`
 
 ```
@@ -34,7 +58,9 @@ user:create [--first-name=…] [--last-name=…] [--password=…] <email>
 ```
 
 Without `--password` the password is asked, hidden (prefer it: an option ends up in the shell
-history). The user starts with no permission: assign a role or a permission.
+history). The user becomes a member of the command's tenant (the default one, or
+`--tenant=<slug>`), and starts with no permission there: assign a role or a permission. An email
+that exists already is refused: add that user to another tenant with `tenant:member:add`.
 
 Any signed-in user picks their language in the top bar (`POST /account/locale`); no permission
 is needed.

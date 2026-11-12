@@ -91,6 +91,29 @@ final class CurrentNames
         return ($this->fields[$id] ?? throw new \LogicException(\sprintf('No field has the id "%s".', $id)))[1];
     }
 
+    /**
+     * The name here of an object of the template, null when it has none yet (a new one).
+     */
+    public function ownedObject(string $id): ?string
+    {
+        return $this->objects[$id] ?? null;
+    }
+
+    /**
+     * Whether a field of the template, on its object $objectId, is named $name here: the
+     * template's own, not one in its way.
+     */
+    public function ownsField(string $objectId, string $name): bool
+    {
+        foreach ($this->fields as [$object, $field]) {
+            if ($object === $objectId && $field === $name) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function objectOfField(string $id): string
     {
         return $this->object(($this->fields[$id] ?? throw new \LogicException(\sprintf('No field has the id "%s".', $id)))[0]);

@@ -5,11 +5,13 @@ doctrine:
         # IMPORTANT: You MUST configure your server version,
         # either here or in the DATABASE_URL env var (see .env file)
         server_version: '17'
-        # Record tables in the "data" schema are owned by the Schema module, not by
-        # Doctrine migrations: hide them from schema tools (diff, validate). So is
-        # core.metadata_state, written by triggers only (migration Version20261107060749).
-        # (The comparison names core's tables with or without their schema.)
-        schema_filter: '~^(?!data(\.|$)|(core\.)?metadata_state$)~'
+        # Only core's tables are Doctrine's: hide the tenants' schemas from the schema tools
+        # (diff, validate). Their record tables are the Schema module's, their RBAC tables are
+        # made with each tenant. So are core.metadata_state, written by triggers only (migration
+        # Version20261107060749), and core.tenant and core.tenant_membership, the landlord's,
+        # read with DBAL before any tenant is selected. The comparison names core's tables with or without their
+        # schema, and a tenant's with theirs.
+        schema_filter: '~^(?!(core\.)?(metadata_state|tenant|tenant_membership)$)(core\.)?[^.]+$~'
 
         profiling_collect_backtrace: '%kernel.debug%'
     orm:
@@ -18,6 +20,11 @@ doctrine:
         identity_generation_preferences:
             Doctrine\DBAL\Platforms\PostgreSQLPlatform: identity
         auto_mapping: true
+        # Every read of a tenant's table is restricted to the current tenant (see TenantScope).
+        filters:
+            tenant:
+                class: App\Shared\Infrastructure\Tenant\TenantFilter
+                enabled: true
         # One XML mapping per module: Domain models stay free of Doctrine attributes.
         # The ORM is used only for static core tables; dynamic records go through DBAL.
         mappings:

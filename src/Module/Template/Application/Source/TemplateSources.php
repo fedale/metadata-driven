@@ -7,6 +7,7 @@ namespace App\Module\Template\Application\Source;
 use App\Module\Template\Domain\Exception\TemplateSourceFailed;
 use App\Module\Template\Domain\Model\TemplateSource;
 use App\Module\Template\Domain\Repository\TemplateSourceRepository;
+use App\Shared\Tenant\CurrentTenant;
 use Fedale\TemplateFormat\Archive;
 use Fedale\TemplateFormat\Constraint;
 use Fedale\TemplateFormat\Format;
@@ -46,6 +47,7 @@ final class TemplateSources
 
     public function __construct(
         private readonly TemplateSourceRepository $sources,
+        private readonly CurrentTenant $tenant,
         HttpClientInterface $http,
         private readonly Archive $archive,
         #[Autowire('%env(default::TEMPLATE_CATALOG_URL)%')]
@@ -65,7 +67,8 @@ final class TemplateSources
     }
 
     /**
-     * @return list<array{name: string, url: string, key: string|null}> the catalog first
+     * @return list<array{name: string, url: string, key: string|null, shared: bool}> the catalog
+     *                                                                                first; shared: offered to every tenant (the catalog, those of tenant:template:repo)
      *
      * @throws TemplateSourceFailed the catalog is configured without its key
      */
@@ -77,10 +80,10 @@ final class TemplateSources
             if (null === $this->catalogKey || !Signature::isPublicKey($this->catalogKey)) {
                 throw new TemplateSourceFailed('TEMPLATE_CATALOG_URL is set without TEMPLATE_CATALOG_KEY, the public key the catalog signs with.');
             }
-            $indexes[] = ['name' => self::CATALOG, 'url' => $this->catalogUrl, 'key' => $this->catalogKey];
+            $indexes[] = ['name' => self::CATALOG, 'url' => $this->catalogUrl, 'key' => $this->catalogKey, 'shared' => true];
         }
         foreach ($this->sources->all() as $source) {
-            $indexes[] = ['name' => $source->getName(), 'url' => $source->getUrl(), 'key' => $source->getPublicKey()];
+            $indexes[] = ['name' => $source->getName(), 'url' => $source->getUrl(), 'key' => $source->getPublicKey(), 'shared' => $this->sources->isShared($source)];
         }
 
         return $indexes;
@@ -100,7 +103,7 @@ final class TemplateSources
         if (1 !== preg_match(self::NAME_PATTERN, $name) || self::CATALOG === $name) {
             throw new TemplateSourceFailed(\sprintf('"%s" cannot name an index: lowercase letters, digits and hyphens, and not "%s".', $name, self::CATALOG));
         }
-        if (null !== $this->sources->findByName($name)) {
+        if ($this->sources->isNameTaken($name)) {
             throw new TemplateSourceFailed(\sprintf('An index is already named "%s".', $name));
         }
         if (null === $publicKey && !$unsigned) {
@@ -127,7 +130,11 @@ final class TemplateSources
      */
     public function remove(string $name): void
     {
-        $this->sources->remove($this->sources->findByName($name) ?? throw new TemplateSourceFailed(\sprintf('No index is named "%s".', $name)));
+        $source = $this->sources->findByName($name) ?? throw new TemplateSourceFailed(\sprintf('No index is named "%s".', $name));
+        if ($this->tenant->isSelected() && $this->sources->isShared($source)) {
+            throw new TemplateSourceFailed(\sprintf('"%s" is offered to every tenant: only the operator removes it (tenant:template:repo remove %s).', $name, $name));
+        }
+        $this->sources->remove($source);
     }
 
     /**

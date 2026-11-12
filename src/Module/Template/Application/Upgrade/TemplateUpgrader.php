@@ -104,7 +104,7 @@ final class TemplateUpgrader
             throw UpgradeRefused::conflicts($unresolved);
         }
         $changes = $plan->toApply($resolution);
-        $refusals = [...$this->unsupported($changes), ...$this->collisions($changes)];
+        $refusals = [...$this->unsupported($changes), ...$this->collisions($changes, $mine)];
         if ([] !== $refusals) {
             throw new UpgradeRefused($refusals);
         }
@@ -159,7 +159,7 @@ final class TemplateUpgrader
     public function preview(Package $theirs): UpgradePreview
     {
         try {
-            [$installation, , , $plan, $seeds, $steps] = $this->prepare($theirs, new Resolution());
+            [$installation, , $mine, $plan, $seeds, $steps] = $this->prepare($theirs, new Resolution());
         } catch (UpgradeRefused $e) {
             $installed = $this->installations->findByName($theirs->name());
 
@@ -181,7 +181,7 @@ final class TemplateUpgrader
                 ), $plan->conflicts()),
                 ...array_map(static fn (array $conflict): ConflictView => new ConflictView($conflict['key'], $conflict['description']), $seeds->conflicts),
             ],
-            [...$this->unsupported($undisputed), ...$this->collisions($undisputed)],
+            [...$this->unsupported($undisputed), ...$this->collisions($undisputed, $mine)],
         );
     }
 
@@ -649,14 +649,19 @@ final class TemplateUpgrader
     }
 
     /**
-     * New objects and forms named like local ones the template does not own.
+     * New objects, forms and fields named like local ones the template does not own: refused
+     * before anything changes, and shown by the preview. A field added here to one of the
+     * template's objects is the instance's, and stays its own; the user renames it first.
      *
      * @param list<Change> $changes
+     * @param Package      $mine    what the instance holds of the template now
      *
      * @return list<string>
      */
-    private function collisions(array $changes): array
+    private function collisions(array $changes, Package $mine): array
     {
+        $names = new CurrentNames($this->fieldTypes);
+        $names->learn($mine);
         $reasons = [];
         foreach ($changes as $change) {
             $state = $change->state();
@@ -670,6 +675,13 @@ final class TemplateUpgrader
             }
             if ('form' === $state->kind && (ChangeAction::Add === $change->action || $renamed) && $this->registry->hasForm($name)) {
                 $reasons[] = \sprintf('%s: form %s: this instance already has a form "%s".', $state->document->path, $state->id, $name);
+            }
+            $object = 'field' === $state->kind && (ChangeAction::Add === $change->action || $renamed) ? $names->ownedObject(self::string($state->value['object'] ?? null)) : null;
+            if (null !== $object && !$names->ownsField(self::string($state->value['object'] ?? null), $name) && $this->registry->hasObject($object)) {
+                $definition = $this->registry->getObject($object);
+                if ($definition->hasField($name) || isset($definition->archivedFields[$name])) {
+                    $reasons[] = \sprintf('%s: field %s: object "%s" already has a field "%s" of this instance: rename it first.', $state->document->path, $state->id, $object, $name);
+                }
             }
         }
 

@@ -23,12 +23,12 @@ final class DoctrineFileRepository implements FileRepository
         $this->entityManager->flush();
     }
 
-    public function underContentLock(string $sha256, callable $write): mixed
+    public function underContentLock(string $storageKey, callable $write): mixed
     {
         $connection = $this->entityManager->getConnection();
 
-        return $connection->transactional(static function () use ($connection, $sha256, $write): mixed {
-            ContentLock::acquire($connection, $sha256);
+        return $connection->transactional(static function () use ($connection, $storageKey, $write): mixed {
+            ContentLock::acquire($connection, $storageKey);
 
             return $write();
         });

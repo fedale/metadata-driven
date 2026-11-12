@@ -10,6 +10,7 @@ use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Shared\Database\DataSchema;
+use App\Shared\Tenant\CurrentTenant;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Type;
 use Doctrine\DBAL\Types\Types;
@@ -25,6 +26,7 @@ final class RecordTable
         private readonly Connection $connection,
         private readonly FieldTypeRegistryInterface $fieldTypes,
         private readonly MetadataRegistryInterface $metadata,
+        private readonly CurrentTenant $tenant,
     ) {
     }
 
@@ -49,7 +51,7 @@ final class RecordTable
         }
 
         return new LinkSource(
-            $this->quote(DataSchema::NAME).'.'.$this->quote(DataSchema::linkTable($object->name, $field->columnName)),
+            $this->quote($this->tenant->dataSchema()).'.'.$this->quote(DataSchema::linkTable($object->name, $field->columnName)),
             $this->quote('record_id'),
             $this->quote('target_id'),
             $this->table($this->metadata->getObject($settings->target)),
@@ -67,12 +69,12 @@ final class RecordTable
             throw new \LogicException(\sprintf('Field "%s.%s" does not hold several files: it has no file list.', $object->name, $field->name));
         }
 
-        return $this->quote(DataSchema::NAME).'.'.$this->quote(DataSchema::linkTable($object->name, $field->columnName));
+        return $this->quote($this->tenant->dataSchema()).'.'.$this->quote(DataSchema::linkTable($object->name, $field->columnName));
     }
 
     public function table(ObjectDefinitionDto $object): string
     {
-        return $this->quote(DataSchema::NAME).'.'.$this->quote($object->tableName);
+        return $this->quote($this->tenant->dataSchema()).'.'.$this->quote($object->tableName);
     }
 
     public function quote(string $identifier): string

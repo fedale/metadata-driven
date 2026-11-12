@@ -11,7 +11,7 @@
 
         <id name="id" type="uuid"/>
 
-        <field name="storageKey" length="100"/>
+        <field name="storageKey" length="120"/>
         <field name="originalName" length="255"/>
         <field name="mimeType" length="127"/>
         <field name="size" type="bigint"/>

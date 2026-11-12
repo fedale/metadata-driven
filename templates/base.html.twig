@@ -40,6 +40,15 @@
                             {% endfor %}
                         </form>
                     {% endif %}
+                    {% set tenants = tenant_links(app.user.id) %}
+                    {% if tenants is not empty %}
+                        <nav class="md-tenants" aria-label="{{ 'nav.tenants'|trans }}">
+                            {% for tenant in tenants %}
+                                <a href="{{ tenant.url }}" class="md-tenants__option{{ tenant.current ? ' md-tenants__option--current' }}"
+                                   {% if tenant.current %}aria-current="true"{% endif %}>{{ tenant.name }}</a>
+                            {% endfor %}
+                        </nav>
+                    {% endif %}
                     <span>{{ app.user.displayName }}</span>
                     <a href="{{ path('app_logout') }}">{{ 'nav.sign_out'|trans }}</a>
                 </div>

@@ -3,26 +3,99 @@
 Symfony 8.1, PostgreSQL 17, server-rendered (Twig, Symfony UX Turbo and Stimulus). The grid comes
 from `fedale/gridview-bundle`, the runtime settings from `fedale/setting-bundle`.
 
-## Two schemas
+## Schemas
 
 | Schema | Holds | Managed by |
 |---|---|---|
-| `core` | Object, field, view and composite form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the templates installed (`core.template_installation`) and the ids of items in templates (`core.template_item`), the settings of `fedale/setting-bundle`, the RBAC tables (`auth_*`) of `fedale/rbac-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
-| `data` | One table per object, `c_<object>`, holding the records, and one link table per many-to-many field, `l_<object>__<field>` | The Schema module, from the metadata |
+| `core` | The tenant registry (`core.tenant`) and who may sign in to each tenant (`core.tenant_membership`); object, field, view and composite form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the templates installed (`core.template_installation`) and the ids of items in templates (`core.template_item`), the settings of `fedale/setting-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
+| a tenant's data schema (`data` for the first tenant) | One table per object, `c_<object>`, holding the records, and one link table per many-to-many field, `l_<object>__<field>` | The Schema module, from the tenant's metadata |
+| a tenant's RBAC schema (`rbac` for the first tenant) | The tables of `fedale/rbac-bundle` (`auth_*`): the tenant's roles, permissions and assignments | Created with the tenant |
 
-Every connection sets `search_path` to `core, public` (`CoreSearchPathMiddleware`), so the tables
-whose mapping names no schema (the bundles', Doctrine's migration table) land in `core` too.
-`public` holds no table, only the `pg_trgm` extension. The middleware sets the path itself
+Every session's `search_path` starts with `core`, so the tables whose mapping names no schema
+(Doctrine's migration table, the settings) are found there; then comes the current tenant's
+RBAC schema, where `fedale/rbac-bundle` finds its tables unqualified; then `public`, which holds
+no table, only the `pg_trgm` extension. The application sets the path itself (see "Tenants")
 because `DATABASE_URL` can't: `pdo_pgsql` ignores the libpq `options` parameter, and the Symfony
 CLI replaces the URL with the one from the Docker container.
 
 Records are read and written with DBAL, never as ORM entities: their tables do not exist when the
 code is written.
 
+### Tenants
+
+The installation serves **tenants**, each with its own model, records, roles and files, created
+and managed with the [`tenant:*` commands](console.md#tenants); the [Tenants](multi-tenancy.md)
+guide says how to use and deploy them. Under the hood (see also
+[the plan](internal/multi-tenancy-plan.md)):
+
+- `core.tenant` registers them: a slug, a name, a `number` (for `fedale/setting-bundle`, whose
+  tenant ids are integers), its data schema and its RBAC schema, and a status (`active` or
+  `suspended`). The installation's first tenant is `default`, with `data` and `rbac`.
+- The core tables whose rows belong to a tenant (the definitions, the schema change log, the
+  files, the templates: `TenantScope::TABLES`) carry a `tenant_id`. Unique names are unique per
+  tenant: two tenants may both have an `account` object.
+- **The current tenant is a setting of the PostgreSQL session**, `app.tenant_id`, with the
+  `search_path` that goes with it (`TenantSessionSql`). `TenantSwitcher` sets both, and forgets
+  what the previous tenant left in memory: the ORM's entities and, through `TenantSwitched`,
+  the metadata snapshot, the translations, the revision. `CurrentTenant` reads the session, so
+  PHP and SQL can't disagree.
+- **A request** is for the tenant its host names, `<slug>.<base host>` (`HostTenantListener`,
+  above the firewall): `acme.example.com`, or `acme.localhost` in development, which browsers
+  resolve to 127.0.0.1 without any DNS. The base host itself, and any other host, is the
+  default tenant's. An unknown or suspended tenant is a 404.
+- **A command** of the application or of a `fedale/*` bundle is for the tenant of its global
+  `--tenant=<slug>` option, the default tenant without it (`ConsoleTenantListener`). The other
+  commands (Doctrine's, the migrations, `cache:clear`) and the `tenant:*` commands run in the
+  landlord's session, unless `--tenant` names a tenant.
+- **Without a tenant** (the landlord's session), the ORM reads no tenant's rows, and an insert
+  fails on `NOT NULL`. A trigger fills in `tenant_id` on insert from the session (no model maps
+  the column), the ORM's `tenant` filter adds it to every read, and the DBAL queries on these
+  tables add it themselves.
+- Doctrine's filters apply to SELECTs only. A DQL `UPDATE` or `DELETE` on these tables would
+  reach every tenant's rows: write it in SQL with `TenantScope::CURRENT`, as
+  `DoctrineTranslationRepository` does.
+- **Row-level security** is the safety net under those filters: a policy on each of these tables
+  lets a session with a tenant see and write that tenant's rows only,
+  a session without a tenant none, and the landlord's session every tenant's. The landlord's is
+  an explicit mark, `app.landlord = 'on'`, set by `TenantSwitcher::landlord()` for the
+  migrations and the tenant commands, and remembered for a connection opened later
+  (`TenantSessionState`): a session that lost its tenant sees nothing, not everything. The policies apply
+  to the owner of the tables too (`FORCE`), but **not to a superuser or a role with
+  `BYPASSRLS`**: connect the application as an ordinary role in production. The Docker database
+  of development connects as a superuser, so there the filters work alone; the tests check the
+  policies under a role of their own.
+- **Rows offered to every tenant**: `template_source` (`TenantScope::SHARED`) may have no
+  tenant, an index the operator offers to all (`tenant:template:repo`, as the landlord). The
+  `tenant` filter and the policies let every tenant read such a row, and none write it.
+- `CurrentTenant` gives the tenant's id and data schema to the code that names record tables
+  (the Schema and Record modules).
+- **Users are global**, with their profile; a membership (`core.tenant_membership`, the
+  landlord's, without row-level security) lets them sign in to a tenant. `UserProvider` finds
+  only the members of the request's tenant, at sign-in and on every request (see
+  [Users and tenants](access.md#users-and-tenants)).
+- `fedale/rbac-bundle`'s cache is off: it keeps the roles and permissions under one key for the
+  whole installation. It comes back once the bundle knows about tenants.
+- `DeclareTenantSchemaListener` brings the schema tools in line (the unmapped column, the RBAC
+  tables, the tenants' schemas), so `migrations:diff` stays empty.
+
+The settings: `TENANT_BASE_HOST` (default `localhost`) and `TENANT_DEFAULT` (default `default`;
+empty: every request must name its tenant, and the commands run without one unless they name it).
+`app.tenant.fallback` is the tenant every new connection starts in, before a request or a command
+selects one: empty, except in the tests, which have neither.
+
 The bytes of stored files are in neither schema: they are in the `record_files` storage of
 `league/flysystem-bundle` (`config/packages/flysystem.yaml`), on the local disk, and in memory in
 the tests. The directory is the `RECORD_FILES_DIR` environment variable, `var/storage/files` of
 the project when it's not set.
+
+Each tenant has a directory of its own there, named after its id (`StorageKeys`):
+`<tenant id>/<aa>/<SHA-256>` for the contents, `<tenant id>/thumbnails/<size>/<SHA-256>.<format>`
+for the thumbnails. The same bytes are stored once per tenant, never shared between tenants, so
+no tenant learns what another stores, the GC of one tenant looks at its own directory and rows
+only, and `tenant:delete` deletes the directory with the tenant. Each row of `core.file` keeps the
+key it was stored under: the files stored before tenants had directories, at the root of the
+storage (`<aa>/<SHA-256>`), stay readable until
+[`tenant:files:move`](console.md#tenantfilesmove) moves them, once.
 
 In production, set `RECORD_FILES_DIR` to a directory that outlives the deploys, such as
 `/srv/metadata-driven/files`: a deploy that builds each release in a directory of its own (or a
@@ -98,17 +171,19 @@ Inside a transaction the registry reads the definitions from the database, so th
 the uncommitted change; the cache is only refreshed once the change is committed.
 
 The cache keys of the metadata (the snapshot of the objects, the composite forms, the
-translations) carry the **metadata revision** and the **instance's id**, one row of
-`core.metadata_state` read once per request (`MetadataRevision`). Triggers on the metadata
-tables bump the revision in the transaction of every write, whatever makes it (the admin, the
-console, a template, a migration), so:
+translations) carry the **metadata revision** and the **instance's id**, the current tenant's
+row of `core.metadata_state`, read once per request (`MetadataRevision`). Triggers on the
+metadata tables bump the revision of the tenant whose rows changed, in the transaction of every
+write, whatever makes it (the admin, the console, a template, a migration), so:
 
 - a change made on one server reaches every server at its next request, whatever cache each one
   keeps (the filesystem by default): their keys have changed;
 - two databases never share cached metadata, even behind one cache (a shared Redis, a checkout
   pointed at another database). A copy of a database (`pg_dump` and restore) keeps the instance's
   id: give the copy a cache of its own, or a new id (`UPDATE core.metadata_state SET instance =
-  gen_random_uuid()`).
+  gen_random_uuid()`);
+- two tenants never share cached metadata either: each has an instance id of its own, and a
+  change to one tenant's metadata leaves the other tenants' keys alone.
 
 `MetadataChanged` still drops the cache of the server that made the change, early; elsewhere the
 stale items expire after a day. `core.metadata_state` is kept out of the ORM mapping

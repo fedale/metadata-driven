@@ -18,6 +18,20 @@ parameters:
     env(IMPORT_DRAFTS_DIR): '%kernel.project_dir%/var/imports'
     app.import.drafts_dir: '%env(resolve:IMPORT_DRAFTS_DIR)%'
     app.import.max_rows: 5000
+    # Tenants (docs/architecture.md, "Tenants"). A request for <slug>.<base host> is for that
+    # tenant's; one for the base host itself, or for any other host, and a command without
+    # --tenant, are for the default tenant's. Empty: no default, every request names its tenant.
+    env(TENANT_BASE_HOST): 'localhost'
+    env(TENANT_DEFAULT): 'default'
+    app.tenant.base_host: '%env(TENANT_BASE_HOST)%'
+    app.tenant.default: '%env(TENANT_DEFAULT)%'
+    # The tenant of every new database connection before a request or a command selects one.
+    # Empty, so that a session nobody pointed at a tenant sees none: only the tests set it, having
+    # no request or command to name one.
+    app.tenant.fallback: ''
+    # The RBAC role that passes every check (fedale_rbac.yaml); tenant:create gives it to a new
+    # tenant's first admin. App\Module\Access\Contract\Permissions::SUPER_ADMIN_ROLE says the same.
+    app.super_admin_role: 'ROLE_SUPER_ADMIN'
 
 services:
     # default configuration for services in *this* file
@@ -65,6 +79,9 @@ when@test:
         # would block them. TemplateSourcesTest checks the guard itself.
         app.template.allow_private_networks: true
         app.import.drafts_dir: '%kernel.cache_dir%/imports'
+        # Tests have no request or command to name a tenant: every connection starts in the
+        # installation's first one.
+        app.tenant.fallback: 'default'
     services:
         # The Flysystem storage is injected in one service only, so the container inlines and
         # removes it; the file tests read the stored bytes from it.
@@ -72,4 +89,11 @@ when@test:
             alias: record_files.storage
             public: true
         App\Tests\Support\FakeTemplateServer:
+            public: true
+        # Used by no service yet (tenant:create will): kept for the tests creating tenants.
+        App\Shared\Infrastructure\Tenant\TenantProvisioner:
+            autowire: true
+            public: true
+        App\Shared\Infrastructure\Tenant\TenantRegistry:
+            autowire: true
             public: true

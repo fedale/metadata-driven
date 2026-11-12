@@ -124,6 +124,12 @@ a:hover { color: var(--gv-color-link-hover); }
 .md-locale__option + .md-locale__option { border-left: 1px solid var(--gv-color-border); }
 .md-locale__option--current { background: var(--gv-color-primary); color: var(--gv-color-bg); }
 
+/* The tenants the user may sign in to, each a link to its host: the current one filled. */
+.md-tenants { display: inline-flex; border: 1px solid var(--gv-color-border); border-radius: var(--gv-radius); overflow: hidden; }
+.md-tenants__option { padding: .1rem .5rem; color: var(--gv-color-text-muted); font-size: .8rem; text-decoration: none; }
+.md-tenants__option + .md-tenants__option { border-left: 1px solid var(--gv-color-border); }
+.md-tenants__option--current { background: var(--gv-color-primary); color: var(--gv-color-bg); }
+
 .md-page { max-width: 72rem; margin: 0 auto; padding: 1.5rem 1rem; }
 .md-page__header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .md-page__actions { display: flex; gap: .5rem; margin-left: auto; }
