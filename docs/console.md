@@ -42,6 +42,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:template:upgrade`](#metadatatemplateupgrade) | Upgrade an installed template to a new version: only what it changed, what this instance changed kept |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
 | [`tenant:create`](#tenantcreate), [`tenant:list`](#tenantlist), [`tenant:suspend`, `tenant:resume`](#tenantsuspend-tenantresume), [`tenant:delete`](#tenantdelete), [`tenant:run`](#tenantrun) | Create, list, suspend, resume and delete tenants; run a command for several of them |
+| [`tenant:files:move`](#tenantfilesmove) | Move the files stored before tenants had directories into their tenant's directory, once |
 | `user:create` | Create a user who can sign in, a member of the command's tenant — see [Users and permissions](access.md#usercreate) |
 | `tenant:member:add`, `tenant:member:remove`, `tenant:member:list` | Let a user sign in to a tenant, or no longer; list a tenant's members — see [Users and tenants](access.md#users-and-tenants) |
 | `access:sync` | Create the permissions of every object, the admin permission and the super admin role — see [Users and permissions](access.md#permissions) |
@@ -803,8 +804,22 @@ tenant:delete [--confirm=<slug>] <slug>
 
 Deletes a tenant with its records, roles, definitions and members, once its slug is typed back
 (or given to `--confirm`, without a terminal). It can't be undone: back the database up first.
-The bytes of its files go at the next [`metadata:files:gc`](#metadatafilesgc). The default tenant
-(`TENANT_DEFAULT`) can't be deleted.
+The directory of its files in the storage goes with it. The default tenant (`TENANT_DEFAULT`)
+can't be deleted.
+
+### `tenant:files:move`
+
+```
+tenant:files:move [--dry-run]
+```
+
+Run it once, after upgrading to tenants with a directory of their own in the file storage (see
+[Architecture](architecture.md#schemas)). It copies the bytes of every file stored before, at the
+root of the storage, into its tenant's directory and points its row there; two tenants holding
+the same bytes get a copy each. Then it deletes the root contents no row uses any more, and the
+root thumbnails, which are made again under the tenants on demand. A file whose bytes are
+missing is left where it is, and listed. Running it again does nothing; `--dry-run` counts
+without changing anything.
 
 ### `tenant:run`
 

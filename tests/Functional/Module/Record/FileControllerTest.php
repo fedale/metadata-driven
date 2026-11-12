@@ -14,6 +14,7 @@ use App\Module\Metadata\Application\Handler\CreateObjectHandler;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\RecordManagerInterface;
+use App\Shared\Tenant\CurrentTenant;
 use App\Tests\Support\SignsIn;
 use League\Flysystem\FilesystemOperator;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -101,7 +102,7 @@ final class FileControllerTest extends WebTestCase
         self::assertSame([240, 160], [$size[0] ?? null, $size[1] ?? null]);
         /** @var FilesystemOperator $storage */
         $storage = self::getContainer()->get('record_files.storage');
-        self::assertCount(1, $storage->listContents('thumbnails/medium')->toArray());
+        self::assertCount(1, $storage->listContents(self::getContainer()->get(CurrentTenant::class)->id().'/thumbnails/medium')->toArray());
 
         // A document has no thumbnail.
         $this->client->request('GET', \sprintf('/files/%s/thumbnail/small', $this->fileOf($this->product(), 'manual')));

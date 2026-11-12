@@ -6,6 +6,8 @@ namespace App\Shared\Infrastructure\Tenant;
 
 use App\Shared\Tenant\Tenant;
 use Doctrine\DBAL\Connection;
+use League\Flysystem\FilesystemOperator;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -48,6 +50,8 @@ final class TenantProvisioner
         private readonly Connection $connection,
         private readonly TenantRegistry $registry,
         private readonly ConnectionCurrentTenant $current,
+        #[Target('record_files.storage')]
+        private readonly FilesystemOperator $files,
     ) {
     }
 
@@ -99,8 +103,9 @@ final class TenantProvisioner
 
     /**
      * Drops the tenant's schemas (its records, its roles) and deletes its rows of every core
-     * table (the foreign keys to core.tenant cascade), in one transaction. The bytes of its
-     * files stay until metadata:files:gc runs for any tenant: no row holds them any more.
+     * table (the foreign keys to core.tenant cascade), in one transaction; then the directory of
+     * its files in the record_files storage, named after its id (the File module's
+     * StorageKeys), once nothing can roll the deletion back.
      */
     public function delete(Tenant $tenant): void
     {
@@ -111,6 +116,10 @@ final class TenantProvisioner
             $this->connection->executeStatement(\sprintf('DROP SCHEMA IF EXISTS %s CASCADE', $tenant->rbacSchema));
             $this->connection->executeStatement('DELETE FROM core.tenant WHERE id = ?', [$tenant->id]);
         });
+        // Inside a caller's transaction (the tests'), the rows are not gone yet: the bytes stay.
+        if (!$this->connection->isTransactionActive()) {
+            $this->files->deleteDirectory(strtolower($tenant->id));
+        }
     }
 
     private function setStatus(Tenant $tenant, string $status): void

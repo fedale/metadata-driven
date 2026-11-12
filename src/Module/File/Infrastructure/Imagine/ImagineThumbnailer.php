@@ -9,6 +9,8 @@ use App\Module\File\Contract\Dto\ThumbnailSize;
 use App\Module\File\Contract\Exception\FileNotFound;
 use App\Module\File\Contract\ThumbnailerInterface;
 use App\Module\File\Domain\Repository\FileRepository;
+use App\Module\File\Infrastructure\StorageKeys;
+use App\Shared\Tenant\CurrentTenant;
 use Imagine\Exception\RuntimeException as ImagineException;
 use Imagine\Gd\Imagine;
 use Imagine\Image\Box;
@@ -19,8 +21,9 @@ use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Thumbnails with GD, kept in the file storage under thumbnails/<size>/<sha256>.<format>: the
- * same bytes share them, and a stored file never changes, so a thumbnail never goes stale.
+ * Thumbnails with GD, kept in the file storage under the tenant's directory,
+ * thumbnails/<size>/<sha256>.<format> (StorageKeys): the same bytes in a tenant share them, and
+ * a stored file never changes, so a thumbnail never goes stale.
  */
 final class ImagineThumbnailer implements ThumbnailerInterface
 {
@@ -34,6 +37,7 @@ final class ImagineThumbnailer implements ThumbnailerInterface
         #[Target('record_files.storage')]
         private readonly FilesystemOperator $storage,
         private readonly FileRepository $files,
+        private readonly CurrentTenant $tenant,
     ) {
     }
 
@@ -48,7 +52,7 @@ final class ImagineThumbnailer implements ThumbnailerInterface
         }
 
         $mimeType = 'image/'.$format;
-        $key = \sprintf('thumbnails/%s/%s.%s', $size->value, $file->getSha256(), $format);
+        $key = StorageKeys::thumbnail($this->tenant->id(), $size->value, $file->getSha256(), $format);
         try {
             if ($this->storage->fileExists($key)) {
                 return new Thumbnail($mimeType, $this->storage->read($key));

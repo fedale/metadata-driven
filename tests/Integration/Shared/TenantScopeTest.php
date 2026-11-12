@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Shared;
 
-use App\Module\File\Application\FileGarbageCollectorInterface;
-use App\Module\File\Contract\FileStorageInterface;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Domain\Repository\TranslationRepository;
 use App\Module\Template\Domain\Repository\TemplateSourceRepository;
@@ -122,29 +120,6 @@ final class TenantScopeTest extends KernelTestCase
             ['field.pet.name', 'object.pet.plural', 'object.pet.singular'],
             $this->connection->fetchFirstColumn('SELECT message_key FROM core.metadata_translation WHERE tenant_id = ? ORDER BY 1', [$other]),
         );
-    }
-
-    public function testTheGarbageCollectorLeavesAnotherTenantsFilesAlone(): void
-    {
-        $other = $this->createOtherTenant();
-        $path = tempnam(sys_get_temp_dir(), 'tenant');
-        self::assertIsString($path);
-        try {
-            file_put_contents($path, 'Oslo chair, assembly');
-            $theirs = self::getContainer()->get(FileStorageInterface::class)->store($path, 'assembly.pdf');
-        } finally {
-            unlink($path);
-        }
-        $this->connection->executeStatement(
-            "UPDATE core.file SET tenant_id = ?, created_at = created_at - INTERVAL '2 days' WHERE id = ?",
-            [$other, $theirs->id],
-        );
-
-        $report = self::getContainer()->get(FileGarbageCollectorInterface::class)->collect(new \DateTimeImmutable('-1 day'));
-
-        self::assertSame([], $report->files);
-        self::assertSame(0, $report->contents, 'The bytes another tenant holds are kept.');
-        self::assertNotFalse($this->connection->fetchOne('SELECT 1 FROM core.file WHERE id = ?', [$theirs->id]));
     }
 
     private function createOtherTenant(): string

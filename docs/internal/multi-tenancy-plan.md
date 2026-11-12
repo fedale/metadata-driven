@@ -1,7 +1,7 @@
 # Plan: multi-tenancy
 
-Status: **agreed**; phases 1 to 3 done (branches `multi_tenancy_phase1` to `multi_tenancy_phase3`,
-committed); phase 4 implemented on branch `multi_tenancy_phase4` (2026-11-12), waiting for the
+Status: **agreed**; phases 1 to 4 done (branches `multi_tenancy_phase1` to `multi_tenancy_phase4`,
+committed); phase 5 implemented on branch `multi_tenancy_phase5` (2026-11-12), waiting for the
 user's review. Discussed with the user on 2026-11-12, who chose the model (shared
 definitions with a `tenant_id`, records in a schema per tenant), global users, and the decisions
 below.
@@ -323,7 +323,17 @@ One branch each, reviewed before the next, as usual.
      tenant (`symfony/process`, now required explicitly), carrying on past failures.
    - Tests: `TenantLifecycleCommandsTest`. `tenant:run`'s processes don't see the test's
      transaction, so its test runs for the default tenant only.
-5. **Files per tenant**: the storage prefix, the GC per tenant, the move of existing files.
+5. **Files per tenant** (implemented, waiting for review). `StorageKeys` (File module):
+   `<tenant id>/<aa>/<SHA-256>` and `<tenant id>/thumbnails/…`; deduplication, the content lock
+   (now named by the storage key) and the GC within a tenant: the GC lists the tenant's
+   directory, and a content is held by a row with that very `storage_key`, a thumbnail by a row
+   of the tenant with that SHA-256. `core.file.storage_key` grows to 120 characters (104 used)
+   and gets the row-level security policy (`Version20261112180000`). Existing files keep their
+   root key, readable, until `tenant:files:move` (landlord) copies them under their tenant (a
+   copy per tenant when two share a root key), updates the rows, deletes the root contents and
+   thumbnails left; a file system change, so a command rather than a migration.
+   `tenant:delete` deletes the tenant's directory after its transaction, not inside a caller's
+   (the tests', so that path is not covered by them).
 6. **Templates across tenants**: global and per-tenant indexes, the name-collision check of
    decision 2 (if the upgrade doesn't refuse it already, a test proves it either way),
    `tenant:run` over upgrades with their report.

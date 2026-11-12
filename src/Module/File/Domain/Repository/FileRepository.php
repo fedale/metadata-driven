@@ -12,7 +12,8 @@ interface FileRepository
     public function save(File $file): void;
 
     /**
-     * Runs $write in a transaction holding the lock of a content until the outermost
+     * Runs $write in a transaction holding the lock of a content, named by its storage key (a
+     * tenant's content: the same bytes in two tenants are two contents), until the outermost
      * transaction ends, so the GC never deletes bytes a new row is about to use.
      *
      * @template T
@@ -21,7 +22,7 @@ interface FileRepository
      *
      * @return T
      */
-    public function underContentLock(string $sha256, callable $write): mixed;
+    public function underContentLock(string $storageKey, callable $write): mixed;
 
     public function find(Uuid $id): ?File;
 

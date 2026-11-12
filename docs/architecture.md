@@ -54,7 +54,7 @@ and managed with the [`tenant:*` commands](console.md#tenants) (see also
   reach every tenant's rows: write it in SQL with `TenantScope::CURRENT`, as
   `DoctrineTranslationRepository` does.
 - **Row-level security** is the safety net under those filters: a policy on each of these tables
-  (but `core.file`, see below) lets a session with a tenant see and write that tenant's rows only,
+  lets a session with a tenant see and write that tenant's rows only,
   a session without a tenant none, and the landlord's session every tenant's. The landlord's is
   an explicit mark, `app.landlord = 'on'`, set by `TenantSwitcher::landlord()` for the
   migrations and the tenant commands, and remembered for a connection opened later
@@ -62,9 +62,7 @@ and managed with the [`tenant:*` commands](console.md#tenants) (see also
   to the owner of the tables too (`FORCE`), but **not to a superuser or a role with
   `BYPASSRLS`**: connect the application as an ordinary role in production. The Docker database
   of development connects as a superuser, so there the filters work alone; the tests check the
-  policies under a role of their own. `core.file` has no policy yet: until each tenant's files
-  have a storage prefix of their own, the file GC must see every tenant's rows to know which
-  bytes nobody uses.
+  policies under a role of their own.
 - `CurrentTenant` gives the tenant's id and data schema to the code that names record tables
   (the Schema and Record modules).
 - **Users are global**, with their profile; a membership (`core.tenant_membership`, the
@@ -85,6 +83,15 @@ The bytes of stored files are in neither schema: they are in the `record_files` 
 `league/flysystem-bundle` (`config/packages/flysystem.yaml`), on the local disk, and in memory in
 the tests. The directory is the `RECORD_FILES_DIR` environment variable, `var/storage/files` of
 the project when it's not set.
+
+Each tenant has a directory of its own there, named after its id (`StorageKeys`):
+`<tenant id>/<aa>/<SHA-256>` for the contents, `<tenant id>/thumbnails/<size>/<SHA-256>.<format>`
+for the thumbnails. The same bytes are stored once per tenant, never shared between tenants, so
+no tenant learns what another stores, the GC of one tenant looks at its own directory and rows
+only, and `tenant:delete` deletes the directory with the tenant. Each row of `core.file` keeps the
+key it was stored under: the files stored before tenants had directories, at the root of the
+storage (`<aa>/<SHA-256>`), stay readable until
+[`tenant:files:move`](console.md#tenantfilesmove) moves them, once.
 
 In production, set `RECORD_FILES_DIR` to a directory that outlives the deploys, such as
 `/srv/metadata-driven/files`: a deploy that builds each release in a directory of its own (or a

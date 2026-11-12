@@ -7,7 +7,9 @@ namespace App\Module\File\Infrastructure\Dbal;
 use App\Module\File\Application\Dto\CollectedFile;
 use App\Module\File\Application\Dto\GarbageReport;
 use App\Module\File\Application\FileGarbageCollectorInterface;
+use App\Module\File\Infrastructure\StorageKeys;
 use App\Shared\Database\TenantScope;
+use App\Shared\Tenant\CurrentTenant;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
@@ -25,13 +27,12 @@ final class DbalFileGarbageCollector implements FileGarbageCollectorInterface
 {
     // Bounds the parameters of one statement.
     private const int CHUNK = 1000;
-    private const string CONTENT_KEY = '~^[0-9a-f]{2}/([0-9a-f]{64})$~';
-    private const string THUMBNAIL_KEY = '~^thumbnails/[a-z]+/([0-9a-f]{64})\.[a-z]+$~';
 
     public function __construct(
         private readonly Connection $connection,
         #[Target('record_files.storage')]
         private readonly FilesystemOperator $storage,
+        private readonly CurrentTenant $tenant,
     ) {
     }
 
@@ -43,14 +44,13 @@ final class DbalFileGarbageCollector implements FileGarbageCollectorInterface
         $ignoredIds = $dryRun ? array_map(static fn (CollectedFile $file): string => $file->id, $files) : [];
 
         [$contents, $thumbnails] = $this->storedContents();
-        $held = $this->heldHashes(array_keys($contents + $thumbnails), $ignoredIds);
-        $freedContents = array_diff_key($contents, $held);
-        $freedThumbnails = array_diff_key($thumbnails, $held);
+        $freedContents = array_diff_key($contents, $this->heldKeys(array_keys($contents), $ignoredIds));
+        $freedThumbnails = array_diff_key($thumbnails, $this->heldHashes(array_keys($thumbnails), $ignoredIds));
 
         $contentCount = 0;
         $contentBytes = 0;
-        foreach ($freedContents as $sha256 => [$key, $size]) {
-            if ($dryRun || $this->deleteContent($sha256, $key)) {
+        foreach ($freedContents as $key => $size) {
+            if ($dryRun || $this->deleteContent($key)) {
                 ++$contentCount;
                 $contentBytes += $size;
             }
@@ -135,22 +135,24 @@ final class DbalFileGarbageCollector implements FileGarbageCollectorInterface
     }
 
     /**
-     * Everything in the storage, by SHA-256. A key the storage did not get from store() or from
-     * the thumbnailer is not ours: it is left alone.
+     * Everything in the current tenant's directory of the storage (StorageKeys). A key the
+     * storage did not get from store() or from the thumbnailer is not ours: it is left alone. So
+     * are the other tenants' directories, and the keys of before tenants had directories
+     * (tenant:files:move takes care of those).
      *
-     * @return array{array<string, array{string, int}>, array<string, list<string>>} the contents (key, size), the thumbnails (keys)
+     * @return array{array<string, int>, array<string, list<string>>} the contents (key => size), the thumbnails (SHA-256 => keys)
      */
     private function storedContents(): array
     {
         $contents = [];
         $thumbnails = [];
-        foreach ($this->storage->listContents('', true) as $item) {
+        foreach ($this->storage->listContents(StorageKeys::directory($this->tenant->id()), true) as $item) {
             if (!$item instanceof FileAttributes) {
                 continue;
             }
-            if (1 === preg_match(self::CONTENT_KEY, $item->path(), $match)) {
-                $contents[$match[1]] = [$item->path(), $item->fileSize() ?? 0];
-            } elseif (1 === preg_match(self::THUMBNAIL_KEY, $item->path(), $match)) {
+            if (1 === preg_match(StorageKeys::CONTENT, $item->path())) {
+                $contents[$item->path()] = $item->fileSize() ?? 0;
+            } elseif (1 === preg_match(StorageKeys::THUMBNAIL, $item->path(), $match)) {
                 $thumbnails[$match[1]][] = $item->path();
             }
         }
@@ -159,29 +161,49 @@ final class DbalFileGarbageCollector implements FileGarbageCollectorInterface
     }
 
     /**
+     * @param list<string> $keys
+     * @param list<string> $ignoredIds rows to count as gone
+     *
+     * @return array<string, true> the content keys some row is stored under
+     */
+    private function heldKeys(array $keys, array $ignoredIds): array
+    {
+        return $this->held('storage_key', $keys, $ignoredIds);
+    }
+
+    /**
      * @param list<string> $hashes
      * @param list<string> $ignoredIds rows to count as gone
      *
-     * @return array<string, true> the hashes some row uses
-     *
-     * Rows of every tenant count, not only the current one's: the storage is shared by the
-     * tenants (one key per content, whoever stored it) until each gets a prefix of its own
-     * (phase 5 of docs/internal/multi-tenancy-plan.md). So does deleteContent().
+     * @return array<string, true> the hashes some row of the current tenant has: their
+     *                             thumbnails are made from its content
      */
     private function heldHashes(array $hashes, array $ignoredIds): array
     {
+        return $this->held('sha256', $hashes, $ignoredIds);
+    }
+
+    /**
+     * @param 'storage_key'|'sha256' $column
+     * @param list<string>           $values
+     * @param list<string>           $ignoredIds
+     *
+     * @return array<string, true>
+     */
+    private function held(string $column, array $values, array $ignoredIds): array
+    {
         $held = [];
-        foreach (array_chunk($hashes, self::CHUNK) as $chunk) {
-            $sql = 'SELECT DISTINCT sha256 FROM core.file WHERE sha256 IN (:hashes)';
-            $parameters = ['hashes' => $chunk];
+        foreach (array_chunk($values, self::CHUNK) as $chunk) {
+            $sql = \sprintf('SELECT DISTINCT %1$s FROM core.file WHERE tenant_id = %2$s AND %1$s IN (:values)', $column, TenantScope::CURRENT);
+            $parameters = ['values' => $chunk];
             if ([] !== $ignoredIds) {
                 $sql .= ' AND id NOT IN (:ignored)';
                 $parameters['ignored'] = $ignoredIds;
             }
-            /** @var list<string> $hashesInUse */
-            $hashesInUse = $this->connection->fetchFirstColumn($sql, $parameters, ['hashes' => ArrayParameterType::STRING, 'ignored' => ArrayParameterType::STRING]);
-            foreach ($hashesInUse as $sha256) {
-                $held[$sha256] = true;
+            /** @var list<string> $inUse */
+            $inUse = $this->connection->fetchFirstColumn($sql, $parameters, ['values' => ArrayParameterType::STRING, 'ignored' => ArrayParameterType::STRING]);
+            foreach ($inUse as $value) {
+                $held[$value] = true;
             }
         }
 
@@ -194,11 +216,11 @@ final class DbalFileGarbageCollector implements FileGarbageCollectorInterface
      *
      * @return bool false when a row uses the content after all
      */
-    private function deleteContent(string $sha256, string $key): bool
+    private function deleteContent(string $key): bool
     {
-        return $this->connection->transactional(function () use ($sha256, $key): bool {
-            ContentLock::acquire($this->connection, $sha256);
-            if (false !== $this->connection->fetchOne('SELECT 1 FROM core.file WHERE sha256 = ? LIMIT 1', [$sha256])) {
+        return $this->connection->transactional(function () use ($key): bool {
+            ContentLock::acquire($this->connection, $key);
+            if (false !== $this->connection->fetchOne('SELECT 1 FROM core.file WHERE storage_key = ? LIMIT 1', [$key])) {
                 return false;
             }
             $this->storage->delete($key);

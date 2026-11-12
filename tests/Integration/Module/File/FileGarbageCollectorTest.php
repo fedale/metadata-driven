@@ -12,10 +12,12 @@ use App\Module\File\Contract\Dto\StoredFile;
 use App\Module\File\Contract\Dto\ThumbnailSize;
 use App\Module\File\Contract\FileStorageInterface;
 use App\Module\File\Contract\ThumbnailerInterface;
+use App\Module\File\Infrastructure\StorageKeys;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\RecordManagerInterface;
+use App\Shared\Tenant\CurrentTenant;
 use Doctrine\DBAL\Connection;
 use League\Flysystem\FilesystemOperator;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -123,7 +125,7 @@ final class FileGarbageCollectorTest extends KernelTestCase
         $storage = $this->storage();
         // Bytes whose row rolled back with the transaction of their record.
         $stray = hash('sha256', 'Rolled back');
-        $storage->write(substr($stray, 0, 2).'/'.$stray, 'Rolled back');
+        $storage->write($this->contentKey($stray), 'Rolled back');
         // Not written by the File module: not ours to delete.
         $storage->write('exports/products.csv', 'name');
         $photo = $this->create(['manual' => new FileUpload($this->png(4, 3), 'photo.png')])->values['manual'];
@@ -139,24 +141,24 @@ final class FileGarbageCollectorTest extends KernelTestCase
         self::assertSame([$orphanPhoto->id], self::ids($report));
         self::assertSame(2, $report->contents);
         self::assertSame(1, $report->thumbnails);
-        self::assertFalse($storage->fileExists(substr($stray, 0, 2).'/'.$stray));
+        self::assertFalse($storage->fileExists($this->contentKey($stray)));
         self::assertTrue($storage->fileExists('exports/products.csv'));
-        $thumbnails = $storage->listContents('thumbnails', true)->filter(static fn ($item): bool => $item->isFile())->map(static fn ($item): string => $item->path())->toArray();
-        self::assertSame(['thumbnails/small/'.$this->files()->find($photo)?->sha256.'.png'], $thumbnails);
+        $thumbnails = $storage->listContents($this->tenant().'/thumbnails', true)->filter(static fn ($item): bool => $item->isFile())->map(static fn ($item): string => $item->path())->toArray();
+        self::assertSame([StorageKeys::thumbnail($this->tenant(), 'small', (string) $this->files()->find($photo)?->sha256, 'png')], $thumbnails);
     }
 
     public function testStoringAndCollectingTakeTheLockOfTheContent(): void
     {
         $stored = $this->store('Oslo chair, assembly', 'assembly.pdf');
         $stray = hash('sha256', 'Rolled back');
-        $this->storage()->write(substr($stray, 0, 2).'/'.$stray, 'Rolled back');
-        self::assertFalse($this->holdsTheLockOf($stray));
+        $this->storage()->write($this->contentKey($stray), 'Rolled back');
+        self::assertFalse($this->holdsTheLockOf($this->contentKey($stray)));
 
         $this->collector()->collect(new \DateTimeImmutable('-24 hours'));
 
         // Held until the outermost transaction ends: here, the one each test is rolled back in.
-        self::assertTrue($this->holdsTheLockOf($stored->sha256));
-        self::assertTrue($this->holdsTheLockOf($stray));
+        self::assertTrue($this->holdsTheLockOf($this->contentKey($stored->sha256)));
+        self::assertTrue($this->holdsTheLockOf($this->contentKey($stray)));
     }
 
     public function testADryRunReportsWithoutDeleting(): void
@@ -253,13 +255,23 @@ final class FileGarbageCollectorTest extends KernelTestCase
     /**
      * A bigint advisory lock is listed with its high half in classid and its low half in objid.
      */
-    private function holdsTheLockOf(string $sha256): bool
+    private function holdsTheLockOf(string $storageKey): bool
     {
         return true === self::getContainer()->get(Connection::class)->fetchOne(
             "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND granted
                 AND ((classid::bigint << 32) | objid::bigint) = hashtextextended(?, 0))",
-            [$sha256],
+            [$storageKey],
         );
+    }
+
+    private function tenant(): string
+    {
+        return self::getContainer()->get(CurrentTenant::class)->id();
+    }
+
+    private function contentKey(string $sha256): string
+    {
+        return StorageKeys::content($this->tenant(), $sha256);
     }
 
     private function bytes(string $id): string
@@ -273,7 +285,7 @@ final class FileGarbageCollectorTest extends KernelTestCase
 
     private function countContents(): int
     {
-        return \count($this->storage()->listContents('', true)->filter(static fn ($item): bool => $item->isFile() && !str_starts_with($item->path(), 'thumbnails/'))->toArray());
+        return \count($this->storage()->listContents('', true)->filter(static fn ($item): bool => $item->isFile() && !str_contains($item->path(), '/thumbnails/'))->toArray());
     }
 
     private function file(string $content): string
