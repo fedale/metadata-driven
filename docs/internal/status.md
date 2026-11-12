@@ -4,7 +4,7 @@ Internal notes for whoever (human or agent) picks the work up, on any machine. R
 starting a task; update it in the same branch whenever a decision is taken, a feature lands or the
 work queue changes. The user-facing documentation is in [../README.md](../README.md).
 
-Last updated: 2026-11-11.
+Last updated: 2026-11-12.
 
 ## Setting up on a new machine
 
@@ -227,6 +227,18 @@ revision bumped by triggers, see `architecture.md`).
 - **The format renamed** (2026-11-10): package, repository and directory are all
   `metadata-driven-template-format` (Packagist from v1.1.1; the old `fedale/template-format`
   removed from Packagist). The namespace stays `Fedale\TemplateFormat`.
+- **CSV import** (merged 2026-11-12): (A) the console, `record:import` (console.md), with phase 3
+  of the templates; (B) the web wizard at `/o/<object>/import`, plan in
+  [csv-import-wizard-plan.md](csv-import-wizard-plan.md), guide docs/import.md. Semicolon files
+  are read too, and a header repeated in one file is refused, by the console as well.
+- **Admin UI in Italian** (merged 2026-11-12): the pages, form labels and flash messages are
+  translated (`admin.*` keys in `translations/messages.*.yaml`), and so are the field types'
+  names, descriptions and settings (`translations/field_types.it.yaml`, read by
+  `Admin\UI\FieldTypeTexts` with the declared English text as fallback).
+- **From the form mock** (merged 2026-11-12): the "+" of a section of rows names the row's object
+  in the singular (`object_singular()`, Record UI Twig), and an administrator can show the
+  machine names next to the labels (the header's toggle, the `machine-names` Stimulus
+  controller, reading `data-gv-field` / `data-md-name` of the rows).
 
 ## Open
 
@@ -247,36 +259,28 @@ revision bumped by triggers, see `architecture.md`).
    fields, workflows/states, notifications), never code: templates that ship code stay out of
    scope.
 
-Smaller ones:
+Smaller ones, left as they are by the user's choice (2026-11-12; they may pick them up later):
 
-- `fedale/geo-italy`: a new version when ISTAT publishes a new list, through the catalog's
+- `fedale/geo-italy`: a new version only when ISTAT publishes a new list, through the catalog's
   `tools/geo-italy/build-seeds.php` (its README).
 - The catalog's code owner is the only maintainer: their own pull requests merge with the admin
   bypass (checks green first). A second maintainer in `.github/CODEOWNERS` would remove that.
 
 ### Other open items
 
-- **CSV import**: (A) done with phase 3 of the templates, `record:import` (console.md); (B) the
-  web wizard, on branch `csv_import_wizard` (2026-11-11, plan in
-  [csv-import-wizard-plan.md](csv-import-wizard-plan.md), guide docs/import.md). Not done:
-  (C) async with Messenger for very large files.
-- From the form mock, done 2026-11-11 (branch `admin_translations`): the "+" of a section of
-  rows names the row's object in the singular (`object_singular()`, Record UI Twig), and an
-  administrator can show the machine names next to the labels (the header's toggle, the
-  `machine-names` Stimulus controller, reading `data-gv-field` / `data-md-name` of the rows).
-- Admin UI in Italian (2026-11-11, branch `admin_translations`): the pages, form labels and
-  flash messages are translated (`admin.*` keys in `translations/messages.*.yaml`), and so are
-  the field types' names, descriptions and settings (`translations/field_types.it.yaml`, read
-  by `Admin\UI\FieldTypeTexts` with the declared English text as fallback). Still English:
-  the error messages of the metadata and the templates (`MetadataException`, `InstallRefused`,
-  upgrade changes and conflicts); see i18n.md, "Not yet".
+- **CSV import**, (C) only: imports of very large files in the background, with Messenger. (A)
+  and (B) are done (see "Done").
+- Admin UI in Italian: still English are the error messages of the metadata and the templates
+  (`MetadataException`, `InstallRefused`, upgrade changes and conflicts); see i18n.md, "Not yet".
 - Remaining roadmap ideas (phase 9+): audit/timeline, REST API, YAML export/import of metadata
   (now part of the template plan), multi-tenancy, roles/users admin UI, field-level permissions.
 - Relation filters in grids keep `multiple: true` by choice.
-- gridview-bundle: its failing tests are fixed on its branch `fix_failing_tests` (2026-11-11:
-  `DoctrineChildRowResolverTest` x4 mocked an ObjectRepository where ORM 3 wants an
-  EntityRepository, `ThemeRegistryTest` missed the `modal.dialog.*` keys, and two number tests
-  took the machine's locale). Still open there: `composer cs` (45 files) and `composer phpstan`
-  (stale baseline entries, `JsonDataProvider` calling `getDefaultPageSize()`, which
-  `PaginationInterface` lacks). Its `composer.lock` is not versioned: `composer update` after a
-  change of its `composer.json` (fedale/setting-bundle was missing).
+- gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
+  `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`
+  x4 mocked an ObjectRepository where ORM 3 wants an EntityRepository, `ThemeRegistryTest` missed
+  the `modal.dialog.*` keys, two number tests took the machine's locale); `PaginationInterface`
+  now declares `getDefaultPageSize()` (a BC break for host apps implementing it directly, noted
+  in its docs/14_extending.md); the phpstan baseline lost its stale entries; php-cs-fixer
+  formatting applied, with `void_return` disabled and the maker skeletons excluded. Its
+  `composer.lock` is not versioned: `composer update` after a change of its `composer.json`
+  (fedale/setting-bundle was missing).

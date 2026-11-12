@@ -1,7 +1,6 @@
 # Plan: the CSV import wizard
 
-Status: **all five phases done** on branch `csv_import_wizard` (from `admin_translations`),
-waiting for the user's review.
+Status: **done**, all five phases, reviewed by the user and merged into `main` on 2026-11-12.
 Discussed with the user on 2026-11-11.
 
 Item (B) of "CSV import" in [status.md](status.md): the web counterpart of `record:import`
