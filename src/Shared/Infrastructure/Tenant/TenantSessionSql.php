@@ -10,8 +10,9 @@ use App\Shared\Tenant\Tenant;
 /**
  * The SQL that points a database session at a tenant, or at none.
  *
- * Two settings of the session: app.tenant_id, which the insert trigger, the ORM filter, the
- * DBAL queries and the row-level security policies read; and the search_path, core first
+ * Three settings of the session: app.tenant_id, which the insert trigger, the ORM filter, the
+ * DBAL queries and the row-level security policies read; app.landlord, 'on' in the landlord's
+ * session only, which the policies let see every tenant's rows; and the search_path, core first
  * (doctrine_migration_versions and every unqualified core table must resolve there), then the
  * tenant's RBAC schema, where fedale/rbac-bundle finds its tables unqualified.
  *
@@ -31,16 +32,30 @@ final class TenantSessionSql
 
         // The schema names are checked by TenantRegistry: lower case letters, digits, underscores.
         return \sprintf(
-            "SELECT set_config('app.tenant_id', '%s', false), set_config('search_path', '%s, %s, public', false)",
+            "SELECT set_config('app.tenant_id', '%s', false), set_config('app.landlord', '', false), set_config('search_path', '%s, %s, public', false)",
             $tenant->id,
             CoreSchema::NAME,
             $tenant->rbacSchema,
         );
     }
 
+    /**
+     * No tenant, and no landlord either: the row-level security policies let such a session see
+     * and write no tenant's rows. A connection's state when nobody selected anything.
+     */
     public static function none(): string
     {
-        return \sprintf("SELECT set_config('app.tenant_id', '', false), set_config('search_path', '%s, public', false)", CoreSchema::NAME);
+        return \sprintf("SELECT set_config('app.tenant_id', '', false), set_config('app.landlord', '', false), set_config('search_path', '%s, public', false)", CoreSchema::NAME);
+    }
+
+    /**
+     * The landlord's session: no tenant, and the policies let it see and write every tenant's
+     * rows (the migrations, the tenant commands). An explicit mark rather than the absence of a
+     * tenant, so that a session that lost its tenant sees nothing instead of everything.
+     */
+    public static function landlord(): string
+    {
+        return \sprintf("SELECT set_config('app.tenant_id', '', false), set_config('app.landlord', 'on', false), set_config('search_path', '%s, public', false)", CoreSchema::NAME);
     }
 
     /**
@@ -62,6 +77,7 @@ final class TenantSessionSql
                 found_rbac_schema text;
             BEGIN
                 PERFORM set_config('app.tenant_id', '', false);
+                PERFORM set_config('app.landlord', '', false);
                 PERFORM set_config('search_path', '%1$s, public', false);
                 -- A block of its own: its error handler rolls back what the block did, and only that.
                 BEGIN

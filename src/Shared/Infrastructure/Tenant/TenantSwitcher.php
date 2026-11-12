@@ -27,6 +27,7 @@ final class TenantSwitcher implements ResetInterface
         private readonly Connection $connection,
         private readonly EntityManagerInterface $entityManager,
         private readonly ConnectionCurrentTenant $current,
+        private readonly TenantSessionState $state,
         private readonly EventDispatcherInterface $events,
         #[Autowire('%app.tenant.fallback%')]
         private readonly string $fallback,
@@ -43,21 +44,24 @@ final class TenantSwitcher implements ResetInterface
 
     public function switchTo(Tenant $tenant): void
     {
+        $this->state->setLandlord(false);
         $this->connection->executeStatement(TenantSessionSql::select($tenant));
         $this->forget($tenant);
     }
 
     /**
-     * No tenant at all, whatever the baseline: the landlord's session, which works across
-     * tenants (the migrations, the tenant commands, creating a tenant).
+     * The landlord's session, whatever the baseline: no tenant, and the row-level security
+     * policies let it see and write every tenant's rows (the migrations, the tenant commands,
+     * creating a tenant).
      */
     public function landlord(): void
     {
         // Never opens a connection: a command may run without a database, or before it exists
-        // (doctrine:database:create). One opened later is at its baseline, none outside the
-        // tests.
+        // (doctrine:database:create). One opened later is the landlord's too (the middleware
+        // reads the state).
+        $this->state->setLandlord(true);
         if ($this->connection->isConnected()) {
-            $this->connection->executeStatement(TenantSessionSql::none());
+            $this->connection->executeStatement(TenantSessionSql::landlord());
         }
         $this->forget(null);
     }
@@ -67,12 +71,14 @@ final class TenantSwitcher implements ResetInterface
      */
     public function leave(): void
     {
+        $this->state->setLandlord(false);
         $this->toBaseline();
         $this->forget(null);
     }
 
     public function reset(): void
     {
+        $this->state->setLandlord(false);
         $this->toBaseline();
         $this->current->reset();
     }

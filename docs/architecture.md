@@ -44,8 +44,8 @@ The installation serves **tenants**, each with its own model, records, roles and
   default tenant's. An unknown or suspended tenant is a 404.
 - **A command** of the application or of a `fedale/*` bundle is for the tenant of its global
   `--tenant=<slug>` option, the default tenant without it (`ConsoleTenantListener`). The other
-  commands (Doctrine's, the migrations, `cache:clear`) run in the landlord's session, with no
-  tenant, unless `--tenant` names one.
+  commands (Doctrine's, the migrations, `cache:clear`) and the `tenant:*` commands run in the
+  landlord's session, unless `--tenant` names a tenant.
 - **Without a tenant** (the landlord's session), the ORM reads no tenant's rows, and an insert
   fails on `NOT NULL`. A trigger fills in `tenant_id` on insert from the session (no model maps
   the column), the ORM's `tenant` filter adds it to every read, and the DBAL queries on these
@@ -55,7 +55,10 @@ The installation serves **tenants**, each with its own model, records, roles and
   `DoctrineTranslationRepository` does.
 - **Row-level security** is the safety net under those filters: a policy on each of these tables
   (but `core.file`, see below) lets a session with a tenant see and write that tenant's rows only,
-  and one without see them all, for the migrations and the tenant commands. The policies apply
+  a session without a tenant none, and the landlord's session every tenant's. The landlord's is
+  an explicit mark, `app.landlord = 'on'`, set by `TenantSwitcher::landlord()` for the
+  migrations and the tenant commands, and remembered for a connection opened later
+  (`TenantSessionState`): a session that lost its tenant sees nothing, not everything. The policies apply
   to the owner of the tables too (`FORCE`), but **not to a superuser or a role with
   `BYPASSRLS`**: connect the application as an ordinary role in production. The Docker database
   of development connects as a superuser, so there the filters work alone; the tests check the

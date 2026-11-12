@@ -122,6 +122,9 @@ final class TwoTenantsTest extends KernelTestCase
             }
 
             $this->connection->executeStatement(TenantSessionSql::none());
+            self::assertSame([], $this->sourceNames(), 'A session that has no tenant, and is no landlord, sees nothing.');
+
+            $this->connection->executeStatement(TenantSessionSql::landlord());
             self::assertSame(['acme', 'globex-catalog'], $this->sourceNames(), 'The landlord sees every tenant\'s rows.');
         } finally {
             // Undoes the role, the grants and the session's settings with them.
