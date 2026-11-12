@@ -37,22 +37,21 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Requirement\EnumRequirement;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * The no-code builder: objects, fields, labels, search, views and the state of the tables.
  *
  * Every change goes through MetadataManagerInterface, which applies the matching DDL in the
  * same transaction. Open to everyone until access control arrives.
+ *
+ * Labels, help texts and placeholders are keys of translations/messages.*.yaml, translated by
+ * the form theme; texts put together here (a flash, a help listing values) are translated here.
  */
 #[Route('/admin', name: 'admin_')]
 final class AdminController extends AbstractController
 {
     private const array TYPE_ORDER = ['text', 'number', 'date', 'boolean', 'select', 'email', 'tel', 'url', 'password', 'file', 'relation'];
-    private const string NAME_HELP = 'Lowercase letters, digits and single underscores, starting with a letter.';
-    private const string RENAME_OBJECT_HELP = 'Lowercase letters, digits and single underscores. The table, the relations pointing here, the composite forms, the translations and the permissions follow; the links to the old pages stop working.';
-    private const string RENAME_FIELD_HELP = 'Lowercase letters, digits and single underscores. The column, the views, the composite forms, the conditions, the cascades and the translations follow.';
-    private const string FORM_VIEW_HELP = 'Put a {field} token where each field goes; the fields left out follow the layout. A {t:name} token shows a text of Admin > Translations in the user\'s language. Scripts, styles and event attributes are removed; class attributes are kept.';
-    private const string GRID_VIEW_HELP = 'The columns in order: a field name, or a map with field, label, renderer (truncate, badge, date), options, hidden, sortable, filter; a virtual column takes a name and a template of {field} tokens. A label may hold {t:name} tokens (Admin > Translations). Optional: sort and page_size.';
     private const string GRID_VIEW_EXAMPLE = <<<'YAML'
         columns:
           - title
@@ -73,6 +72,7 @@ final class AdminController extends AbstractController
         private readonly FormFactoryInterface $forms,
         private readonly AccessCheckerInterface $access,
         private readonly LifecycleForms $lifecycle,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -94,9 +94,9 @@ final class AdminController extends AbstractController
     {
         $this->denyUnlessAdministrator();
         $form = $this->forms->createNamedBuilder('object')
-            ->add('name', TextType::class, ['label' => 'Machine name', 'help' => self::NAME_HELP.' The table is data.c_<name>.'])
-            ->add('labelSingular', TextType::class, ['label' => 'Singular label'])
-            ->add('labelPlural', TextType::class, ['label' => 'Plural label'])
+            ->add('name', TextType::class, ['label' => 'admin.machine_name', 'help' => 'admin.object.name_help'])
+            ->add('labelSingular', TextType::class, ['label' => 'admin.object.singular_label'])
+            ->add('labelPlural', TextType::class, ['label' => 'admin.object.plural_label'])
             ->getForm()
             ->handleRequest($request);
 
@@ -104,7 +104,7 @@ final class AdminController extends AbstractController
             $name = $this->text($form, 'name');
             $done = $this->apply($form, fn () => $this->manager->createObject($name, $this->text($form, 'labelSingular'), $this->text($form, 'labelPlural')));
             if ($done) {
-                $this->addFlash('success', \sprintf('Object "%s" created, with its table.', $name));
+                $this->addFlash('success', $this->translator->trans('admin.object.created', ['%name%' => $name]));
 
                 return $this->redirectToRoute('admin_object_show', ['object' => $name], Response::HTTP_SEE_OTHER);
             }
@@ -136,7 +136,7 @@ final class AdminController extends AbstractController
             ),
             'unique_form' => $this->uniqueTogetherForm($definition)->createView(),
             'sync_form' => $this->actionForm('sync', 'admin_object_sync', $definition)->createView(),
-            'rename_form' => $this->lifecycle->rename($this->generateUrl('admin_object_rename', ['object' => $definition->name]), $definition->name, self::RENAME_OBJECT_HELP)->createView(),
+            'rename_form' => $this->lifecycle->rename($this->generateUrl('admin_object_rename', ['object' => $definition->name]), $definition->name, 'admin.object.rename_help')->createView(),
             'archive_form' => $this->lifecycle->button('archive', $this->generateUrl('admin_object_archive', ['object' => $definition->name]))->createView(),
             'archived_fields' => array_map(
                 fn (FieldDefinitionDto $field): array => ['field' => $field, 'restore_form' => $this->lifecycle->button('restore', $this->generateUrl('admin_field_restore', ['object' => $definition->name, 'field' => $field->name]))->createView()],
@@ -154,7 +154,7 @@ final class AdminController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             $this->applyAndFlash(
                 fn () => $this->manager->relabelObject($definition->name, $this->text($form, 'labelSingular'), $this->text($form, 'labelPlural')),
-                'Labels saved.',
+                $this->translator->trans('admin.object.labels_saved'),
             );
         }
 
@@ -171,7 +171,7 @@ final class AdminController extends AbstractController
             $field = $form->get('field')->getData();
             $this->applyAndFlash(
                 fn () => $this->manager->configureLabel($definition->name, \is_string($field) ? $field : null),
-                'Record label saved.',
+                $this->translator->trans('admin.object.record_label_saved'),
             );
         }
 
@@ -194,7 +194,7 @@ final class AdminController extends AbstractController
                     // No field ticked means "the default fields".
                     \is_array($fields) && [] !== $fields ? array_values(array_filter($fields, is_string(...))) : null,
                 ),
-                'Search saved; the search indexes follow.',
+                $this->translator->trans('admin.object.search_saved'),
             );
         }
 
@@ -211,7 +211,7 @@ final class AdminController extends AbstractController
             $fields = $form->get('fields')->getData();
             $this->applyAndFlash(
                 fn () => $this->manager->addUniqueTogether($definition->name, \is_array($fields) ? array_values(array_filter($fields, is_string(...))) : []),
-                'The fields are unique together; their unique index is built.',
+                $this->translator->trans('admin.object.unique_added'),
             );
         }
 
@@ -227,7 +227,7 @@ final class AdminController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             $this->applyAndFlash(
                 fn () => $this->manager->removeUniqueTogether($definition->name, explode(',', $fields)),
-                'The fields are no longer unique together; their index is dropped.',
+                $this->translator->trans('admin.object.unique_removed'),
             );
         }
 
@@ -246,7 +246,9 @@ final class AdminController extends AbstractController
         $form = $this->actionForm('sync', 'admin_object_sync', $definition)->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
             $plan = $this->schema->synchronize($definition->name);
-            $this->addFlash('success', $plan->isEmpty() ? 'The table was already up to date.' : \sprintf('%d change(s) applied to the table.', \count($plan->statements)));
+            $this->addFlash('success', $plan->isEmpty()
+                ? $this->translator->trans('admin.object.table_up_to_date')
+                : $this->translator->trans('admin.object.table_synced', ['%count%' => \count($plan->statements)]));
         }
 
         return $this->backToObject($definition);
@@ -274,10 +276,10 @@ final class AdminController extends AbstractController
         $fieldType = $this->fieldTypeOr404($type);
 
         $builder = $this->forms->createNamedBuilder('field')
-            ->add('name', TextType::class, ['label' => 'Machine name', 'help' => self::NAME_HELP.' It is also the column name.'])
-            ->add('label', TextType::class, ['label' => 'Label'])
-            ->add('required', CheckboxType::class, ['label' => 'Required', 'required' => false])
-            ->add('unique', CheckboxType::class, ['label' => 'Unique', 'required' => false, 'help' => 'Backed by a unique index.']);
+            ->add('name', TextType::class, ['label' => 'admin.machine_name', 'help' => 'admin.field.name_help'])
+            ->add('label', TextType::class, ['label' => 'admin.label'])
+            ->add('required', CheckboxType::class, ['label' => 'admin.field.required', 'required' => false])
+            ->add('unique', CheckboxType::class, ['label' => 'admin.field.unique', 'required' => false, 'help' => 'admin.field.unique_help']);
         $this->settingsForm->add($builder, $fieldType);
         $form = $builder->getForm()->handleRequest($request);
 
@@ -293,7 +295,7 @@ final class AdminController extends AbstractController
                 $this->settingsForm->data($form),
             ));
             if ($done) {
-                $this->addFlash('success', \sprintf('Field "%s" created, with its column.', $name));
+                $this->addFlash('success', $this->translator->trans('admin.field.created', ['%name%' => $name]));
 
                 return $this->backToObject($definition);
             }
@@ -316,7 +318,7 @@ final class AdminController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             if ($this->apply($form, fn () => $this->manager->relabelField($definition->name, $field, $this->text($form, 'label')))) {
-                $this->addFlash('success', 'Field saved.');
+                $this->addFlash('success', $this->translator->trans('admin.field.saved'));
 
                 return $this->backToObject($definition);
             }
@@ -337,7 +339,7 @@ final class AdminController extends AbstractController
         $form = $this->fieldSettingsForm($definition, $fieldDefinition)->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()
             && $this->apply($form, fn () => $this->manager->configureFieldSettings($definition->name, $field, $this->settingsForm->dataForUpdate($form)))) {
-            $this->addFlash('success', 'Settings saved.');
+            $this->addFlash('success', $this->translator->trans('admin.field.settings_saved'));
 
             return $this->redirectToRoute('admin_field_edit', ['object' => $definition->name, 'field' => $field], Response::HTTP_SEE_OTHER);
         }
@@ -362,7 +364,7 @@ final class AdminController extends AbstractController
             'condition_form' => $this->conditionForm($object, $field)->createView(),
             // A FormInterface: render() answers 422 when it was submitted and refused.
             'settings_form' => $settingsForm,
-            'rename_form' => $this->lifecycle->rename($this->generateUrl('admin_field_rename', ['object' => $object->name, 'field' => $field->name]), $field->name, self::RENAME_FIELD_HELP)->createView(),
+            'rename_form' => $this->lifecycle->rename($this->generateUrl('admin_field_rename', ['object' => $object->name, 'field' => $field->name]), $field->name, 'admin.field.rename_help')->createView(),
             'archive_form' => $this->lifecycle->button('archive', $this->generateUrl('admin_field_archive', ['object' => $object->name, 'field' => $field->name]))->createView(),
         ]);
     }
@@ -373,7 +375,7 @@ final class AdminController extends AbstractController
     private function labelForm(FieldDefinitionDto $field): FormInterface
     {
         return $this->forms->createNamedBuilder('field', FormType::class, ['label' => $field->label])
-            ->add('label', TextType::class, ['label' => 'Label'])
+            ->add('label', TextType::class, ['label' => 'admin.label'])
             ->getForm();
     }
 
@@ -391,7 +393,7 @@ final class AdminController extends AbstractController
             $values = array_values(array_filter(array_map(trim(...), explode(',', $this->text($form, 'values'))), static fn (string $value): bool => '' !== $value));
             $this->applyAndFlash(
                 fn () => $this->manager->configureFieldCondition($definition->name, $field, \is_string($when) ? $when : null, $values),
-                \is_string($when) ? 'Condition saved.' : 'The field always applies.',
+                $this->translator->trans(\is_string($when) ? 'admin.field.condition_saved' : 'admin.field.always_applies'),
             );
         }
 
@@ -409,7 +411,7 @@ final class AdminController extends AbstractController
             $name = $this->text($form, 'name');
             $kind = $form->get('kind')->getData();
             if ($kind instanceof ViewKind && $this->saveView($form, $definition, $kind, $name)) {
-                $this->addFlash('success', \sprintf('View "%s" created.', $name));
+                $this->addFlash('success', $this->translator->trans('admin.view.created', ['%name%' => $name]));
 
                 return $this->backToObject($definition);
             }
@@ -427,7 +429,7 @@ final class AdminController extends AbstractController
         $form = $this->viewForm($definition, $viewDefinition)->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid() && $this->saveView($form, $definition, $kind, $view)) {
-            $this->addFlash('success', 'View saved.');
+            $this->addFlash('success', $this->translator->trans('admin.view.saved'));
 
             return $this->backToObject($definition);
         }
@@ -447,7 +449,7 @@ final class AdminController extends AbstractController
         $definition = $this->objectOr404($object);
         $form = $this->viewDeleteForm($definition, $this->viewOr404($definition, $kind, $view))->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
-            $this->applyAndFlash(fn () => $this->manager->deleteView($definition->name, $kind, $view), \sprintf('View "%s" deleted.', $view));
+            $this->applyAndFlash(fn () => $this->manager->deleteView($definition->name, $kind, $view), $this->translator->trans('admin.view.deleted', ['%name%' => $view]));
         }
 
         return $this->backToObject($definition);
@@ -520,8 +522,8 @@ final class AdminController extends AbstractController
             'labelSingular' => $object->labelSingular,
             'labelPlural' => $object->labelPlural,
         ], ['action' => $this->generateUrl('admin_object_labels', ['object' => $object->name])])
-            ->add('labelSingular', TextType::class, ['label' => 'Singular label'])
-            ->add('labelPlural', TextType::class, ['label' => 'Plural label'])
+            ->add('labelSingular', TextType::class, ['label' => 'admin.object.singular_label'])
+            ->add('labelPlural', TextType::class, ['label' => 'admin.object.plural_label'])
             ->getForm();
     }
 
@@ -541,10 +543,10 @@ final class AdminController extends AbstractController
             'action' => $this->generateUrl('admin_object_label_field', ['object' => $object->name]),
         ])
             ->add('field', ChoiceType::class, [
-                'label' => 'Records are named by',
+                'label' => 'admin.object.named_by',
                 'choices' => $choices,
                 'required' => false,
-                'placeholder' => 'Default: the first text field',
+                'placeholder' => 'admin.object.named_by_default',
             ])
             ->getForm();
     }
@@ -558,7 +560,7 @@ final class AdminController extends AbstractController
         foreach ($object->fields as $name => $field) {
             // A relation or a many-to-many field is searched on the labels of its records.
             if (null !== $field->target()) {
-                $fields[\sprintf('%s (by the %s label)', $field->label, mb_strtolower($this->metadata->getObject($field->target())->labelSingular))] = $name;
+                $fields[$this->translator->trans('admin.object.searched_by_label', ['%field%' => $field->label, '%object%' => mb_strtolower($this->metadata->getObject($field->target())->labelSingular)])] = $name;
             } elseif ($field->storesColumn() && !$this->fieldTypes->get($field->type)->isWriteOnly()) {
                 $fields[$field->label] = $name;
             }
@@ -569,14 +571,14 @@ final class AdminController extends AbstractController
             'fields' => $object->searchFields ?? [],
         ], ['action' => $this->generateUrl('admin_object_search', ['object' => $object->name])])
             ->add('handler', ChoiceType::class, [
-                'label' => 'Search handler',
+                'label' => 'admin.object.search_handler',
                 'choices' => array_combine($this->searchHandlers->names(), $this->searchHandlers->names()),
                 'required' => false,
-                'placeholder' => 'Default: every word, in any field',
+                'placeholder' => 'admin.object.search_handler_default',
             ])
             ->add('fields', ChoiceType::class, [
-                'label' => 'Searched fields',
-                'help' => 'None ticked: every text field. Related records are searched only when ticked.',
+                'label' => 'admin.object.searched_fields',
+                'help' => 'admin.object.searched_fields_help',
                 'choices' => $fields,
                 'multiple' => true,
                 'expanded' => true,
@@ -603,8 +605,8 @@ final class AdminController extends AbstractController
             'action' => $this->generateUrl('admin_object_unique', ['object' => $object->name]),
         ])
             ->add('fields', ChoiceType::class, [
-                'label' => 'Fields',
-                'help' => 'At least two: no two records may hold the same values in all of them.',
+                'label' => 'admin.fields',
+                'help' => 'admin.object.unique_fields_help',
                 'choices' => $fields,
                 'multiple' => true,
                 'expanded' => true,
@@ -629,31 +631,37 @@ final class AdminController extends AbstractController
         ]);
         if (null === $view) {
             $builder
-                ->add('name', TextType::class, ['label' => 'Machine name', 'help' => self::NAME_HELP])
-                ->add('kind', EnumType::class, ['label' => 'Used for', 'class' => ViewKind::class, 'choice_label' => static fn (ViewKind $kind): string => match ($kind) {
-                    ViewKind::Form => 'The record form',
-                    ViewKind::Grid => 'The record grid',
+                ->add('name', TextType::class, ['label' => 'admin.machine_name', 'help' => 'admin.name_help'])
+                ->add('kind', EnumType::class, ['label' => 'admin.object.used_for', 'class' => ViewKind::class, 'choice_label' => static fn (ViewKind $kind): string => match ($kind) {
+                    ViewKind::Form => 'admin.view.used_for_form',
+                    ViewKind::Grid => 'admin.view.used_for_grid',
                 }]);
         }
 
         return $builder
             ->add('template', TextareaType::class, [
                 'label' => match ($view?->kind) {
-                    ViewKind::Form => 'Layout (HTML)',
-                    ViewKind::Grid => 'Grid definition (YAML)',
-                    null => 'Layout (HTML) or grid definition (YAML)',
+                    ViewKind::Form => 'admin.view.layout',
+                    ViewKind::Grid => 'admin.view.grid_definition',
+                    null => 'admin.view.layout_or_grid',
                 },
-                'help' => match ($view?->kind) {
-                    ViewKind::Form => self::FORM_VIEW_HELP,
-                    ViewKind::Grid => self::GRID_VIEW_HELP,
-                    null => 'Form: '.self::FORM_VIEW_HELP.' Grid: '.self::GRID_VIEW_HELP,
-                }.' Fields: '.$tokens.'.',
+                'help' => $this->translator->trans('admin.view.fields_help', [
+                    '%help%' => match ($view?->kind) {
+                        ViewKind::Form => $this->translator->trans('admin.view.form_help'),
+                        ViewKind::Grid => $this->translator->trans('admin.view.grid_help'),
+                        null => $this->translator->trans('admin.view.both_help', [
+                            '%form%' => $this->translator->trans('admin.view.form_help'),
+                            '%grid%' => $this->translator->trans('admin.view.grid_help'),
+                        ]),
+                    },
+                    '%tokens%' => $tokens,
+                ]),
                 'attr' => ['rows' => 16, 'class' => 'md-code-input', 'placeholder' => ViewKind::Grid === $view?->kind || null === $view ? self::GRID_VIEW_EXAMPLE : null],
             ])
             ->add('isDefault', CheckboxType::class, [
-                'label' => 'Default view',
+                'label' => 'admin.view.default_view',
                 'required' => false,
-                'help' => 'Used when the page names no view. The first view of a kind is the default; to change it, mark another view.',
+                'help' => 'admin.view.default_help',
             ])
             ->getForm();
     }
@@ -714,15 +722,15 @@ final class AdminController extends AbstractController
             'values' => null === $field->condition ? '' : implode(', ', $field->condition->values),
         ], ['action' => $this->generateUrl('admin_field_condition', ['object' => $object->name, 'field' => $field->name])])
             ->add('when', ChoiceType::class, [
-                'label' => 'Shown when',
+                'label' => 'admin.field.shown_when',
                 'choices' => $choices,
                 'required' => false,
-                'placeholder' => 'Always',
+                'placeholder' => 'admin.field.always',
             ])
             ->add('values', TextType::class, [
-                'label' => 'is one of',
+                'label' => 'admin.field.is_one_of',
                 'required' => false,
-                'help' => [] === $help ? 'The object has no choice or yes/no field to decide.' : 'Comma separated. '.implode(' · ', $help),
+                'help' => [] === $help ? 'admin.field.no_deciding_field' : $this->translator->trans('admin.field.values_help', ['%values%' => implode(' · ', $help)]),
             ])
             ->getForm();
     }

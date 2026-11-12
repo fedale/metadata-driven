@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% set heading = view ? 'View ' ~ view.name : 'New view' %}
+{% set heading = view ? 'admin.view.title'|trans({'%name%': view.name}) : 'admin.view.new'|trans %}
 
 {% block title %}{{ heading }} · {{ object.labelPlural }}{% endblock %}
 
@@ -10,11 +10,11 @@
 
     {% if view %}
         <dl class="md-facts">
-            <dt>Used for</dt><dd>{{ view.kind.value }}</dd>
+            <dt>{{ 'admin.object.used_for'|trans }}</dt><dd>{{ ('admin.view.kind.' ~ view.kind.value)|trans }}</dd>
             {% if view.kind.value == 'grid' %}
-                <dt>Preview</dt><dd><a href="{{ path('record_grid', {object: object.name, grid: view.name}) }}">{{ object.labelPlural }} with this view</a></dd>
+                <dt>{{ 'admin.view.preview'|trans }}</dt><dd><a href="{{ path('record_grid', {object: object.name, grid: view.name}) }}">{{ 'admin.view.preview_grid'|trans({'%objects%': object.labelPlural}) }}</a></dd>
             {% else %}
-                <dt>Preview</dt><dd><a href="{{ path('record_new', {object: object.name, view: view.name}) }}">New {{ object.labelSingular|lower }} with this view</a></dd>
+                <dt>{{ 'admin.view.preview'|trans }}</dt><dd><a href="{{ path('record_new', {object: object.name, view: view.name}) }}">{{ 'admin.view.preview_form'|trans({'%object%': object.labelSingular|lower}) }}</a></dd>
             {% endif %}
         </dl>
     {% endif %}
@@ -22,12 +22,12 @@
     {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
         {{ form_errors(form) }}
         {{ form_rest(form) }}
-        <button type="submit" class="gv-btn gv-btn-primary">Save</button>
+        <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.save'|trans }}</button>
     {{ form_end(form) }}
 
     {% if delete_form is defined %}
-        {{ form_start(delete_form, {attr: {class: 'md-delete-form', 'data-turbo-confirm': 'Delete the view ' ~ view.name ~ '?'}}) }}
-            <button type="submit" class="gv-btn gv-btn-danger">Delete</button>
+        {{ form_start(delete_form, {attr: {class: 'md-delete-form', 'data-turbo-confirm': 'admin.view.delete_confirm'|trans({'%name%': view.name})}}) }}
+            <button type="submit" class="gv-btn gv-btn-danger">{{ 'admin.delete'|trans }}</button>
         {{ form_end(delete_form) }}
     {% endif %}
 {% endblock %}

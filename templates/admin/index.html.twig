@@ -1,29 +1,29 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Admin{% endblock %}
+{% block title %}{{ 'admin.title'|trans }}{% endblock %}
 
 {% block body %}
     <div class="md-page__header">
-        <h1>Objects</h1>
+        <h1>{{ 'admin.objects'|trans }}</h1>
         <div class="md-page__actions">
-            <a class="gv-btn" href="{{ path('admin_form_index') }}">Forms</a>
-            <a class="gv-btn" href="{{ path('admin_translation_index') }}">Translations</a>
-            <a class="gv-btn" href="{{ path('admin_template_index') }}">Templates</a>
-            <a class="gv-btn gv-btn-primary" href="{{ path('admin_object_new') }}">New object</a>
+            <a class="gv-btn" href="{{ path('admin_form_index') }}">{{ 'admin.forms'|trans }}</a>
+            <a class="gv-btn" href="{{ path('admin_translation_index') }}">{{ 'admin.translations'|trans }}</a>
+            <a class="gv-btn" href="{{ path('admin_template_index') }}">{{ 'admin.templates'|trans }}</a>
+            <a class="gv-btn gv-btn-primary" href="{{ path('admin_object_new') }}">{{ 'admin.index.new_object'|trans }}</a>
         </div>
     </div>
 
     {% if objects is empty %}
-        <p class="gv-muted">No objects yet. Create the first one: it gets its own table at once.</p>
+        <p class="gv-muted">{{ 'admin.index.empty'|trans }}</p>
     {% else %}
         <table class="md-table">
             <thead>
                 <tr>
-                    <th scope="col">Object</th>
-                    <th scope="col">Machine name</th>
-                    <th scope="col">Table</th>
-                    <th scope="col">Fields</th>
-                    <th scope="col"><span class="md-visually-hidden">Actions</span></th>
+                    <th scope="col">{{ 'admin.object_heading'|trans }}</th>
+                    <th scope="col">{{ 'admin.machine_name'|trans }}</th>
+                    <th scope="col">{{ 'admin.table'|trans }}</th>
+                    <th scope="col">{{ 'admin.fields'|trans }}</th>
+                    <th scope="col"><span class="md-visually-hidden">{{ 'admin.actions'|trans }}</span></th>
                 </tr>
             </thead>
             <tbody>
@@ -33,7 +33,7 @@
                         <td><code>{{ object.name }}</code></td>
                         <td><code>data.{{ object.tableName }}</code></td>
                         <td>{{ object.fields|length }}</td>
-                        <td><a href="{{ path('record_index', {object: object.name}) }}">Records</a></td>
+                        <td><a href="{{ path('record_index', {object: object.name}) }}">{{ 'admin.records'|trans }}</a></td>
                     </tr>
                 {% endfor %}
             </tbody>
@@ -42,15 +42,15 @@
 
     {% if archived is not empty %}
         <section class="md-admin__section">
-            <h2>Archived</h2>
-            <p class="gv-muted">Out of the application; their tables and records are kept, and their names stay taken. Restore one here; <code>metadata:purge</code> deletes one for good.</p>
+            <h2>{{ 'admin.index.archived'|trans }}</h2>
+            <p class="gv-muted">{{ 'admin.index.archived_help'|trans|raw }}</p>
             <table class="md-table">
                 <thead>
                     <tr>
-                        <th scope="col">Object</th>
-                        <th scope="col">Machine name</th>
-                        <th scope="col">Table</th>
-                        <th scope="col"><span class="md-visually-hidden">Actions</span></th>
+                        <th scope="col">{{ 'admin.object_heading'|trans }}</th>
+                        <th scope="col">{{ 'admin.machine_name'|trans }}</th>
+                        <th scope="col">{{ 'admin.table'|trans }}</th>
+                        <th scope="col"><span class="md-visually-hidden">{{ 'admin.actions'|trans }}</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -61,7 +61,7 @@
                             <td><code>data.{{ entry.object.tableName }}</code></td>
                             <td>
                                 {{ form_start(entry.restore_form) }}
-                                    <button type="submit" class="gv-btn">Restore</button>
+                                    <button type="submit" class="gv-btn">{{ 'admin.restore'|trans }}</button>
                                 {{ form_end(entry.restore_form) }}
                             </td>
                         </tr>

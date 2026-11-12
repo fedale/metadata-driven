@@ -16,6 +16,7 @@ Objects are defined from the admin UI at `/admin` or from the console.
 | [Composite forms](forms.md) | One form writing a record and its related records (one-to-one and repeatable sections, nested), defined in YAML, laid out with `{token}` layouts |
 | [Views](views.md) | Layouts of the record form (HTML with a `{field}` token per field; composite forms use the same tokens) and columns of the record grid (YAML: order, labels, renderers, virtual columns, sort), from the admin UI or the console |
 | [Languages](i18n.md) | Translations of the labels, options and titles, `{t:name}` texts in layouts, the language of each user |
+| [Importing records](import.md) | CSV files into an object, all or nothing: the wizard of the records page (columns mapped, a check first) and `record:import` |
 | [Users and permissions](access.md) | Signing in, users, the permissions of every object, roles |
 | [Renaming and archiving](lifecycle.md) | New machine names for objects and fields (table, columns and every reference follow), archiving with the data kept, restoring, purging for good |
 | [Templates](templates.md) | A model as a package of YAML documents: exporting objects, views, forms and translations, validating a template |

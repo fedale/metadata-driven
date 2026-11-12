@@ -1,0 +1,61 @@
+{% extends 'base.html.twig' %}
+
+{% set heading = 'import.title'|trans({'%objects%': object.labelPlural|lower}) %}
+
+{% block title %}{{ heading }}{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('record_index', {object: object.name}) }}">&larr; {{ object.labelPlural }}</a></p>
+    <h1>{{ heading }}</h1>
+    {{ include('record/import/_steps.html.twig', {current: 'columns'}) }}
+
+    <p class="gv-muted">{{ 'import.columns_intro'|trans({'%file%': draft.originalName, '%rows%': 'import.rows'|trans({'%count%': rows})}) }}</p>
+
+    {{ form_start(form, {attr: {class: 'md-form md-form--wide', novalidate: 'novalidate'}}) }}
+        {{ form_errors(form) }}
+        <table class="md-table md-import-columns">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'import.column'|trans }}</th>
+                    <th scope="col">{{ 'import.first_values'|trans }}</th>
+                    <th scope="col">{{ 'import.field'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for index, header in headers %}
+                    {% set input = form['c' ~ index] %}
+                    <tr>
+                        <th scope="row">{{ form_label(input) }}</th>
+                        <td class="gv-muted">
+                            {%- for sample in samples -%}
+                                {%- set value = sample.values[header] -%}
+                                {%- if value is not null %}<div class="md-import-columns__sample">{{ value|length > 40 ? value|slice(0, 40) ~ '…' : value }}</div>{% endif -%}
+                            {%- endfor -%}
+                        </td>
+                        <td>{{ form_widget(input) }}{{ form_errors(input) }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <section class="md-admin__section">
+            {{ form_row(form.key) }}
+        </section>
+
+        {% if relations is not empty %}
+            <fieldset class="md-admin__section">
+                <legend>{{ 'import.relations'|trans }}</legend>
+                <p class="gv-muted">{{ 'import.relations_help'|trans }}</p>
+                {% for name in relations %}{{ form_row(form['m_' ~ name]) }}{% endfor %}
+            </fieldset>
+        {% endif %}
+
+        <div class="md-page__actions">
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'import.continue'|trans }}</button>
+        </div>
+    {{ form_end(form) }}
+
+    {{ form_start(cancel_form, {attr: {class: 'md-import__cancel'}}) }}
+        <button type="submit" class="gv-btn">{{ 'import.cancel'|trans }}</button>
+    {{ form_end(cancel_form) }}
+{% endblock %}

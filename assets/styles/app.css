@@ -257,6 +257,17 @@ a:hover { color: var(--gv-color-link-hover); }
 .md-sheet__actions { display: flex; gap: .5rem; flex-shrink: 0; }
 /* "Save" comes before "Save and new" in the markup, so Enter in a field saves plainly; shown last. */
 .md-sheet__actions .gv-btn-primary { order: 1; }
+/* The steps of the import wizard, the current one marked. */
+.md-steps { display: flex; gap: 1.5rem; margin: 0 0 1.25rem; padding: 0; list-style: none; color: var(--gv-color-text-muted); }
+.md-steps__number { display: inline-grid; place-items: center; width: 1.5rem; height: 1.5rem; margin-inline-end: .3rem; border: 1px solid currentColor; border-radius: 50%; font-size: .8rem; }
+.md-steps__item--current { color: var(--gv-color-text); font-weight: 600; }
+.md-import-columns__sample { max-width: 20rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.md-import__cancel { margin-top: .75rem; }
+
+/* The machine names next to the labels, for an administrator: shown by the header's toggle. */
+.md-sheet__machine-names[aria-pressed="true"] { background: var(--gv-color-bg-hover); }
+.md-machine-name { display: none; margin-inline-start: .4rem; font: 400 .75rem var(--md-font-mono); color: var(--gv-color-text-muted); }
+.md-machine-names--on .md-machine-name { display: inline; }
 
 .md-sheet__body { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: 2rem; align-items: start; }
 .md-sheet__parts { display: grid; gap: 1.25rem; min-width: 0; }

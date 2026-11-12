@@ -340,7 +340,7 @@ final class AdminControllerTest extends WebTestCase
 
         $this->client->submitForm('Apply');
         $this->client->followRedirect();
-        self::assertSelectorTextContains('.md-flash--success', 'change(s) applied');
+        self::assertSelectorTextContains('.md-flash--success', '2 changes applied to the table.');
         self::assertSelectorNotExists('.md-sql');
     }
 

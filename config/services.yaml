@@ -13,6 +13,11 @@ parameters:
     # true lets indexes and archives be on a private network (an intranet index); false refuses
     # private, loopback and link-local addresses, redirects included.
     app.template.allow_private_networks: false
+    # The CSV import wizard: where the uploaded files wait between its steps (a day at most), and
+    # the most rows it imports at once; a larger file goes through record:import.
+    env(IMPORT_DRAFTS_DIR): '%kernel.project_dir%/var/imports'
+    app.import.drafts_dir: '%env(resolve:IMPORT_DRAFTS_DIR)%'
+    app.import.max_rows: 5000
 
 services:
     # default configuration for services in *this* file
@@ -59,6 +64,7 @@ when@test:
         # The fake template server's hosts resolve nowhere: the guard against private networks
         # would block them. TemplateSourcesTest checks the guard itself.
         app.template.allow_private_networks: true
+        app.import.drafts_dir: '%kernel.cache_dir%/imports'
     services:
         # The Flysystem storage is injected in one service only, so the container inlines and
         # removes it; the file tests read the stored bytes from it.

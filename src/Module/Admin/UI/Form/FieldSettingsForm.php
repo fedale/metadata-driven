@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Admin\UI\Form;
 
+use App\Module\Admin\UI\FieldTypeTexts;
 use App\Module\FieldType\Contract\Dto\SettingDefinition;
 use App\Module\FieldType\Contract\Dto\SettingKind;
 use App\Module\FieldType\Contract\FieldTypeInterface;
@@ -17,6 +18,7 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormTypeInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Builds the settings part of the "new field" form from the setting definitions the field
@@ -26,6 +28,8 @@ final class FieldSettingsForm
 {
     public function __construct(
         private readonly MetadataRegistryInterface $metadata,
+        private readonly TranslatorInterface $translator,
+        private readonly FieldTypeTexts $texts,
     ) {
     }
 
@@ -38,11 +42,14 @@ final class FieldSettingsForm
     {
         $settings = $builder->create('settings', FormType::class, ['label' => false, 'data' => $current ?? $type->defaultSettings()]);
         foreach ($type->settingDefinitions() as $definition) {
-            [$formType, $options] = $this->control($definition);
+            [$formType, $options] = $this->control($type, $definition);
             $fixed = null !== $current && $definition->fixed;
+            $help = $this->texts->settingHelp($type, $definition);
             $settings->add($definition->key, $formType, $options + [
-                'label' => $definition->label,
-                'help' => $fixed ? trim(($definition->help ?? '').' Fixed: it shapes the column.') : $definition->help,
+                // The texts of the field type (see FieldTypeTexts); only the note of a fixed
+                // setting is the admin's own.
+                'label' => $this->texts->settingLabel($type, $definition),
+                'help' => $fixed ? trim(($help ?? '').' '.$this->translator->trans('admin.field.fixed_setting')) : $help,
                 'required' => $definition->required && SettingKind::Boolean !== $definition->kind,
                 'disabled' => $fixed,
             ]);
@@ -95,7 +102,7 @@ final class FieldSettingsForm
     /**
      * @return array{class-string<FormTypeInterface<mixed>>, array<string, mixed>}
      */
-    private function control(SettingDefinition $definition): array
+    private function control(FieldTypeInterface $type, SettingDefinition $definition): array
     {
         return match ($definition->kind) {
             SettingKind::Integer => [IntegerType::class, ['attr' => array_filter([
@@ -104,10 +111,10 @@ final class FieldSettingsForm
             ], static fn (mixed $bound): bool => \is_int($bound))]],
             SettingKind::Boolean => [CheckboxType::class, []],
             SettingKind::String => [TextType::class, ['empty_data' => null]],
-            SettingKind::Choice => [ChoiceType::class, ['choices' => $this->choicesByLabel($definition)]],
+            SettingKind::Choice => [ChoiceType::class, ['choices' => $this->choicesByLabel($type, $definition)]],
             SettingKind::ObjectName => [ChoiceType::class, [
                 'choices' => array_flip(array_map(static fn ($object): string => $object->labelPlural, $this->metadata->allObjects())),
-                'placeholder' => 'Choose an object',
+                'placeholder' => 'admin.field.choose_object',
             ]],
             SettingKind::OptionList => [TextareaType::class, ['attr' => ['rows' => 6, 'placeholder' => "dog | Dog\ncat | Cat"]]],
         };
@@ -116,12 +123,12 @@ final class FieldSettingsForm
     /**
      * @return array<string, string> label => value, as ChoiceType expects
      */
-    private function choicesByLabel(SettingDefinition $definition): array
+    private function choicesByLabel(FieldTypeInterface $type, SettingDefinition $definition): array
     {
         $choices = [];
         foreach (\is_array($definition->options['choices'] ?? null) ? $definition->options['choices'] : [] as $value => $label) {
             if (\is_string($label)) {
-                $choices[$label] = (string) $value;
+                $choices[$this->texts->settingChoice($type, $definition, (string) $value, $label)] = (string) $value;
             }
         }
 

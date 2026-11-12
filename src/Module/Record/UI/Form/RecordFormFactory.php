@@ -204,7 +204,9 @@ final class RecordFormFactory
         if (WidgetKind::Checkbox === $widget->kind) {
             $options['required'] = $field->isRequired;
         }
-        $builder->add($field->name, $type, $options + ['label' => $field->label]);
+        // Named like a record field's row (data-gv-field), but apart: no condition or cascade
+        // may take a service field for a field of the record.
+        $builder->add($field->name, $type, $options + ['label' => $field->label, 'row_attr' => ['data-md-name' => $field->name]]);
     }
 
     /**

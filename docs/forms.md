@@ -43,8 +43,13 @@ The page is a sheet:
   A file field counts once, filled while it holds a file, stored or chosen.
   It follows the inputs as they change, and marks the card in view. On a narrow screen it is
   hidden and the cards fill the width;
-- the rows of a section are numbered ("01 Qualifications"), with **Remove** on each and
-  **+ <section>** below.
+- the rows of a section are numbered and named after their object ("01 Qualification"), with
+  **Remove** on each and a
+  button adding one below, named after the object of a row in the singular, in the user's
+  language: **+ Qualification** ("+ Titolo di studio" with an Italian label);
+- for an administrator, **Machine names** in the header shows the machine name of each field
+  next to its label (`email`, `terms`), the name its `{token}` takes in a layout. Hidden at
+  first; the browser remembers the choice for the next forms. Other users never see it.
 
 The texts of the page itself (Save, Save and new, Cancel, Required field...) are in the user's language too
 (see [Languages](i18n.md#the-texts-of-the-application)).

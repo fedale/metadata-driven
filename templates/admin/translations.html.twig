@@ -1,35 +1,33 @@
 {% extends 'base.html.twig' %}
 
-{% set original = default_locale|locale_name('en')|capitalize %}
-{% set language = locale|locale_name('en')|capitalize %}
+{# Language names in the language of the page: "Italian" in English, "italiano" in Italian. #}
+{% set original = default_locale|locale_name(app.request.locale)|capitalize %}
+{% set language = locale|locale_name(app.request.locale)|capitalize %}
+{% set heading = 'admin.translation.metadata_into'|trans({'%language%': language}) %}
 
-{% block title %}Metadata into {{ language }} · Translations · Admin{% endblock %}
+{% block title %}{{ heading }} · {{ 'admin.translations'|trans }} · {{ 'admin.title'|trans }}{% endblock %}
 
 {% block body %}
-    <p><a href="{{ path('admin_index') }}">&larr; Objects</a></p>
+    <p><a href="{{ path('admin_index') }}">&larr; {{ 'admin.objects'|trans }}</a></p>
     <div class="md-page__header">
-        <h1>Translations <span class="gv-muted">· Metadata into {{ language }}</span></h1>
+        <h1>{{ 'admin.translations'|trans }} <span class="gv-muted">· {{ heading }}</span></h1>
         {{ include('admin/_languages_nav.html.twig', {current: 'metadata'}) }}
     </div>
     {% if targets|length > 1 %}
         {# One language at a time: the inputs of a page are those of one language. #}
-        <nav class="md-switch md-translations__languages" aria-label="Language">
+        <nav class="md-switch md-translations__languages" aria-label="{{ 'admin.translation.language'|trans }}">
             {% for item in targets %}
                 <a class="md-switch__item{{ locale == item ? ' md-switch__item--current' }}" href="{{ path('admin_translation_edit', {locale: item}) }}"
-                   {% if locale == item %}aria-current="page"{% endif %}>{{ item|locale_name('en')|capitalize }}</a>
+                   {% if locale == item %}aria-current="page"{% endif %}>{{ item|locale_name(app.request.locale)|capitalize }}</a>
             {% endfor %}
         </nav>
     {% endif %}
     <p class="gv-muted">
-        The labels of the metadata (objects, fields, options, forms) are written in {{ original }}, the default language.
-        Here they get their {{ language }} text, shown to the users reading the application in {{ language }}; a key
-        left empty shows the {{ original }} text, in grey inside the input. The {{ original }} text is changed where it
-        is defined: follow its link. Your own texts, placed in the layouts with <code>{t:name}</code>, are under
-        <a href="{{ path('admin_text_index') }}">Texts</a>.
+        {{ 'admin.translation.intro'|trans({'%original%': original|e, '%language%': language|e, '%texts%': path('admin_text_index')|e})|raw }}
     </p>
 
     {% if groups is empty %}
-        <p class="gv-muted">Nothing to translate yet.</p>
+        <p class="gv-muted">{{ 'admin.translation.nothing'|trans }}</p>
     {% endif %}
 
     {{ form_start(form, {attr: {class: 'md-form md-form--wide', novalidate: 'novalidate'}}) }}
@@ -40,8 +38,8 @@
                 <table class="md-table md-translations">
                     <thead>
                         <tr>
-                            <th scope="col">Key</th>
-                            <th scope="col">{{ original }} (original)</th>
+                            <th scope="col">{{ 'admin.translation.key'|trans }}</th>
+                            <th scope="col">{{ 'admin.translation.original'|trans({'%language%': original}) }}</th>
                             <th scope="col">{{ language }}</th>
                         </tr>
                     </thead>
@@ -52,7 +50,7 @@
                                 <td><label for="{{ input.vars.id }}"><code>{{ row.entry.key }}</code></label></td>
                                 <td>
                                     {{ row.entry.source }}
-                                    {% if row.edit_url %}<a class="md-translations__edit" href="{{ row.edit_url }}" title="Change the {{ original }} text">Edit</a>{% endif %}
+                                    {% if row.edit_url %}<a class="md-translations__edit" href="{{ row.edit_url }}" title="{{ 'admin.translation.change_original'|trans({'%language%': original}) }}">{{ 'admin.edit'|trans }}</a>{% endif %}
                                 </td>
                                 <td>{{ form_widget(input) }}{{ form_errors(input) }}</td>
                             </tr>
@@ -62,7 +60,7 @@
             </section>
         {% endfor %}
         {% if groups is not empty %}
-            <button type="submit" class="gv-btn gv-btn-primary">Save</button>
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.save'|trans }}</button>
         {% endif %}
     {{ form_end(form) }}
 {% endblock %}

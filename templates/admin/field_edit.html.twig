@@ -7,29 +7,35 @@
     <h1>{{ field.label }} <span class="gv-muted">· <code>{{ object.name }}.{{ field.name }}</code></span></h1>
 
     <dl class="md-facts">
-        <dt>Type</dt><dd>{{ type.label }}</dd>
-        <dt>Column</dt><dd><code>data.{{ object.tableName }}.{{ field.columnName }}</code></dd>
-        <dt>Rules</dt><dd>{{ field.isRequired ? 'required' : 'optional' }}{{ field.isUnique ? ', unique' : '' }}</dd>
-        <dt>Settings</dt><dd><code class="md-settings">{{ field.settings|json_encode }}</code></dd>
-        <dt>Applies</dt><dd>{{ field.condition ? 'when ' ~ field.condition.field ~ ' is ' ~ field.condition.values|join(' or ') : 'always' }}</dd>
+        <dt>{{ 'admin.type'|trans }}</dt><dd>{{ field_type_label(type) }}</dd>
+        <dt>{{ 'admin.column'|trans }}</dt><dd><code>data.{{ object.tableName }}.{{ field.columnName }}</code></dd>
+        <dt>{{ 'admin.rules'|trans }}</dt><dd>{{ (field.isRequired ? 'admin.rule.required' : 'admin.rule.optional')|trans }}{{ field.isUnique ? ', ' ~ 'admin.rule.unique'|trans }}</dd>
+        <dt>{{ 'admin.settings'|trans }}</dt><dd><code class="md-settings">{{ field.settings|json_encode }}</code></dd>
+        <dt>{{ 'admin.field.applies'|trans }}</dt><dd>
+            {%- if field.condition -%}
+                {{ 'admin.field.applies_when'|trans({'%field%': field.condition.field, '%values%': field.condition.values|join('admin.field.applies_or'|trans)}) }}
+            {%- else -%}
+                {{ 'admin.field.applies_always'|trans }}
+            {%- endif -%}
+        </dd>
     </dl>
-    <p class="gv-muted">The type and the rules are fixed once the column exists, and so are the settings that shape it; the label, the other settings, the condition and the machine name can change.</p>
+    <p class="gv-muted">{{ 'admin.field.fixed_help'|trans }}</p>
 
     {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
         {{ form_errors(form) }}
         {{ form_rest(form) }}
-        <button type="submit" class="gv-btn gv-btn-primary">Save</button>
+        <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.save'|trans }}</button>
     {{ form_end(form) }}
 
     {% if settings_form.settings|length > 0 %}
         <section class="md-admin__section">
-            <h2>Settings</h2>
+            <h2>{{ 'admin.settings'|trans }}</h2>
             {{ form_start(settings_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
                 {{ form_errors(settings_form) }}
                 {{ form_errors(settings_form.settings) }}
                 {{ form_widget(settings_form.settings) }}
                 {{ form_rest(settings_form) }}
-                <button type="submit" class="gv-btn gv-btn-primary">Save settings</button>
+                <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.field.save_settings'|trans }}</button>
             {{ form_end(settings_form) }}
         </section>
     {% else %}
@@ -37,27 +43,27 @@
     {% endif %}
 
     <section class="md-admin__section">
-        <h2>Condition</h2>
-        <p class="gv-muted">Show the field only while another field holds some values. Hidden, it is not required, and its value is emptied when the record is saved.</p>
+        <h2>{{ 'admin.field.condition'|trans }}</h2>
+        <p class="gv-muted">{{ 'admin.field.condition_help'|trans }}</p>
         {{ form_start(condition_form, {attr: {class: 'md-form'}}) }}
             {{ form_rest(condition_form) }}
-            <button type="submit" class="gv-btn gv-btn-primary">Save condition</button>
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.field.save_condition'|trans }}</button>
         {{ form_end(condition_form) }}
     </section>
 
     <section class="md-admin__section">
-        <h2>Machine name</h2>
+        <h2>{{ 'admin.machine_name'|trans }}</h2>
         {{ form_start(rename_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
             {{ form_rest(rename_form) }}
-            <button type="submit" class="gv-btn gv-btn-primary">Rename</button>
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.rename'|trans }}</button>
         {{ form_end(rename_form) }}
     </section>
 
     <section class="md-admin__section md-admin__section--danger">
-        <h2>Archive</h2>
-        <p class="gv-muted">Takes the field out of the forms, the grids and the validation. The column and its values are kept, and it can be restored from the page of the object. Refused while a view, a composite form, a condition or a cascade uses it.</p>
-        {{ form_start(archive_form, {attr: {class: 'md-delete-form', 'data-turbo-confirm': 'Archive the field ' ~ field.label ~ '? Its values are kept.'}}) }}
-            <button type="submit" class="gv-btn gv-btn-danger">Archive {{ field.label|lower }}</button>
+        <h2>{{ 'admin.archive'|trans }}</h2>
+        <p class="gv-muted">{{ 'admin.field.archive_help'|trans }}</p>
+        {{ form_start(archive_form, {attr: {class: 'md-delete-form', 'data-turbo-confirm': 'admin.field.archive_confirm'|trans({'%field%': field.label})}}) }}
+            <button type="submit" class="gv-btn gv-btn-danger">{{ 'admin.field.archive_button'|trans({'%field%': field.label|lower}) }}</button>
         {{ form_end(archive_form) }}
     </section>
 {% endblock %}

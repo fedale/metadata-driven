@@ -62,7 +62,8 @@ final class LocalizedRecordPagesTest extends WebTestCase
         self::assertSelectorTextSame('h1', 'Nuovo: animale');
         self::assertSelectorTextSame('.md-topbar__nav a', 'Dati');
         // In markup order: "Save" comes before "Save and new" (the stylesheet shows it last).
-        self::assertSame(['Annulla', 'Salva', 'Salva e crea nuovo'], $crawler->filter('.md-sheet__header .md-sheet__actions > *')->each(static fn ($action): string => trim($action->text())));
+        // "Nomi tecnici" first: the user is an administrator.
+        self::assertSame(['Nomi tecnici', 'Annulla', 'Salva', 'Salva e crea nuovo'], $crawler->filter('.md-sheet__header .md-sheet__actions > *')->each(static fn ($action): string => trim($action->text())));
         self::assertSelectorTextContains('.gv-required-note', 'Campo obbligatorio');
     }
 

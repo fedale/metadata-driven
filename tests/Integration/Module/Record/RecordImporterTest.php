@@ -119,6 +119,24 @@ final class RecordImporterTest extends KernelTestCase
         }
     }
 
+    public function testImportsRowsReadElsewhereWithoutFiles(): void
+    {
+        $importer = self::getContainer()->get(RecordImporter::class);
+        $rows = [['line' => 5, 'values' => ['code' => 'TO', 'name' => 'Torino', 'region' => '01']]];
+
+        $report = $importer->importRows('province', $rows, 'code', ['region' => 'code']);
+        self::assertSame([1, 0], [$report->created, $report->updated]);
+
+        // Without a directory to read them from, a file column is refused, and so is the file.
+        try {
+            $importer->importRows('province', [['line' => 2, 'values' => ['code' => 'MI', 'name' => 'Milano', 'region' => '03', 'coat' => 'milano.png']]], matches: ['region' => 'code']);
+            self::fail('A file column needs a directory.');
+        } catch (ImportRefused $e) {
+            self::assertSame(['Column "coat": a file field is imported from the console only (record:import), with its files next to the CSV file.'], $e->reasons);
+        }
+        self::assertSame(['TO'], array_keys($this->byCode('province')));
+    }
+
     public function testImportsFromTheConsole(): void
     {
         file_put_contents($this->directory.'/provinces.csv', "code,name,region\nTO,Torino,01\n");

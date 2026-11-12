@@ -44,6 +44,7 @@ form:
     through_links: 'Added and removed as records of %object%.'
     repeat: 'Repeat %label%'
     required_note: Required field
+    machine_names: Machine names
     index:
         label: Parts of the form
         required: '%done%/%total% required'
@@ -57,3 +58,310 @@ flash:
     deleted: '%object% deleted.'
     saved: '%form% saved.'
     cascade_denied: 'Deleting this record also deletes %objects%, which you may not delete.'
+import:
+    button: Import
+    title: 'Import %objects%'
+    steps: Steps of the import
+    step:
+        upload: File
+        columns: Columns
+        check: Check
+    intro: 'A CSV file, as a spreadsheet saves it: a header naming the columns, then one record per line. Nothing is written until the last step, and then all the rows or none.'
+    file: CSV file
+    file_help: 'UTF-8 (in Excel: "CSV UTF-8"), up to %rows% rows. A larger file is imported from the console, with record:import.'
+    separator: Separator
+    separator_detect: Detect it
+    separator_comma: Comma (,)
+    separator_semicolon: Semicolon (;)
+    no_rows: The file has a header but no rows.
+    too_many_rows: 'The file has %rows% rows, the wizard imports up to %max%: import it from the console, with record:import.'
+    continue: Continue
+    cancel: Cancel the import
+    columns_intro: '%file%, %rows%. Choose the field each column fills; the columns left on "Ignore" are not imported.'
+    rows: '{1}1 row|]1,Inf[%count% rows'
+    column: Column
+    column_unnamed: 'Column %index% (no name)'
+    first_values: First values
+    field: Field
+    ignore: Ignore
+    field_twice: 'The column "%column%" fills this field already.'
+    nothing_mapped: Choose the field of one column at least.
+    key: Key
+    key_help: 'A unique field: a row whose value a record holds updates that record, the others create one. Without a key, every row creates a record.'
+    no_key: 'None: every row creates a record'
+    key_not_mapped: The key must be one of the fields the columns fill.
+    key_needs_update: Updating records needs the permission to change them; import without a key.
+    relations: Relations
+    relations_help: 'For each relation a column fills: whether its cells hold the ids of the records, or the values of a unique field of theirs (a code, a name).'
+    match_ids: Record ids
+    match_by: 'Values of %field%'
+    refused: '{1}Nothing would be imported: 1 problem.|]1,Inf[Nothing would be imported: %count% problems.'
+    would: '%created% record(s) will be created, %updated% updated.'
+    preview: The first rows
+    line: Line
+    with_key: 'The rows whose %field% a record holds update that record.'
+    run: Import
+    back_to_columns: Back to the columns
+    done: '%created% record(s) created, %updated% updated.'
+# The admin pages. A text holding HTML (a <code>, a link) is shown with |raw: its parameters
+# are escaped by the template.
+admin:
+    title: Admin
+    actions: Actions
+    save: Save
+    create: Create
+    delete: Delete
+    rename: Rename
+    restore: Restore
+    remove: Remove
+    edit: Edit
+    open: Open
+    apply: Apply
+    records: Records
+    object_heading: Object
+    objects: Objects
+    form_heading: Form
+    forms: Forms
+    fields: Fields
+    views: Views
+    translations: Translations
+    templates: Templates
+    template_heading: Template
+    machine_name: Machine name
+    name: Name
+    label: Label
+    type: Type
+    column: Column
+    rules: Rules
+    settings: Settings
+    table: Table
+    archive: Archive
+    rule:
+        required: required
+        optional: optional
+        unique: unique
+    name_help: 'Lowercase letters, digits and single underscores, starting with a letter.'
+    form_expired: 'The form expired: try again.'
+    rewritten: 'Rewritten to name the new one: %definitions% (a YAML definition rewritten loses its comments).'
+    index:
+        new_object: New object
+        empty: 'No objects yet. Create the first one: it gets its own table at once.'
+        archived: Archived
+        archived_help: 'Out of the application; their tables and records are kept, and their names stay taken. Restore one here; <code>metadata:purge</code> deletes one for good.'
+    object:
+        new: New object
+        name_help: 'Lowercase letters, digits and single underscores, starting with a letter. The table is data.c_<name>.'
+        singular_label: Singular label
+        plural_label: Plural label
+        created: 'Object "%name%" created, with its table.'
+        add_field: Add a field
+        no_fields: 'No fields yet. The table only has its system columns (id, created_at, updated_at, created_by, deleted_at).'
+        archived_fields: Archived fields
+        archived_fields_help: 'Out of the forms and grids; their columns and values are kept. <code>metadata:purge %object% --field=&lt;name&gt;</code> deletes one for good.'
+        add_view: Add a view
+        no_views: 'No views yet. The record form shows the fields one after another; the grid has a column per field.'
+        used_for: Used for
+        default: Default
+        is_default: 'yes'
+        pointed_at_by: Pointed at by
+        many_to_many: many-to-many
+        on_delete: 'on delete: %rule%'
+        on_delete_rule:
+            set_null: set null
+            restrict: restrict
+            cascade: cascade
+            unlink: unlink
+        labels: Labels
+        save_labels: Save labels
+        labels_saved: Labels saved.
+        record_label: Record label
+        record_label_help: How records are named in relations and lookups.
+        named_by: Records are named by
+        named_by_default: 'Default: the first text field'
+        save_record_label: Save record label
+        record_label_saved: Record label saved.
+        search: Search
+        search_handler: Search handler
+        search_handler_default: 'Default: every word, in any field'
+        searched_fields: Searched fields
+        searched_fields_help: 'None ticked: every text field. Related records are searched only when ticked.'
+        searched_by_label: '%field% (by the %object% label)'
+        save_search: Save search
+        search_saved: 'Search saved; the search indexes follow.'
+        unique_together: Unique together
+        unique_together_help: 'Sets of fields no two records may share all the values of, e.g. a user and a tag on a junction object. Deleted records do not count; a record with one of the fields empty never clashes.'
+        unique_fields_help: 'At least two: no two records may hold the same values in all of them.'
+        make_unique: Make unique together
+        unique_added: 'The fields are unique together; their unique index is built.'
+        unique_removed: 'The fields are no longer unique together; their index is dropped.'
+        table_matches: The table matches the metadata.
+        table_missing: 'The table is missing these changes:'
+        table_skipped: 'Differences kept on purpose (destructive; only <code>schema:sync --allow-destructive</code> applies them):'
+        table_up_to_date: The table was already up to date.
+        table_synced: '{1}1 change applied to the table.|]1,Inf[%count% changes applied to the table.'
+        rename_help: 'Lowercase letters, digits and single underscores. The table, the relations pointing here, the composite forms, the translations and the permissions follow; the links to the old pages stop working.'
+        archive_help: 'Takes the object out of the application: its pages, grids and forms. The table and the records are kept, and it can be restored from the list of objects. Refused while a relation or a composite form uses it.'
+        archive_confirm: 'Archive %objects%? Their records are kept.'
+        archive_button: 'Archive %objects%'
+        renamed: 'Object "%old%" is now "%new%", with its table.'
+        archived: 'Object "%name%" is archived: out of the application, its table and records kept.'
+        restored: 'Object "%name%" is back, with its records.'
+    field:
+        new: New field
+        choose_type: 'New field: choose its type'
+        field_types: Field types
+        new_typed: 'New %type% field'
+        new_typed_on: 'New %type% field on %objects%'
+        name_help: 'Lowercase letters, digits and single underscores, starting with a letter. It is also the column name.'
+        required: Required
+        unique: Unique
+        unique_help: Backed by a unique index.
+        created: 'Field "%name%" created, with its column.'
+        saved: Field saved.
+        fixed_help: 'The type and the rules are fixed once the column exists, and so are the settings that shape it; the label, the other settings, the condition and the machine name can change.'
+        fixed_setting: 'Fixed: it shapes the column.'
+        choose_object: Choose an object
+        save_settings: Save settings
+        settings_saved: Settings saved.
+        applies: Applies
+        applies_when: 'when %field% is %values%'
+        applies_or: ' or '
+        applies_always: always
+        condition: Condition
+        condition_help: 'Show the field only while another field holds some values. Hidden, it is not required, and its value is emptied when the record is saved.'
+        shown_when: Shown when
+        always: Always
+        is_one_of: is one of
+        values_help: 'Comma separated. %values%'
+        no_deciding_field: The object has no choice or yes/no field to decide.
+        save_condition: Save condition
+        condition_saved: Condition saved.
+        always_applies: The field always applies.
+        rename_help: 'Lowercase letters, digits and single underscores. The column, the views, the composite forms, the conditions, the cascades and the translations follow.'
+        archive_help: 'Takes the field out of the forms, the grids and the validation. The column and its values are kept, and it can be restored from the page of the object. Refused while a view, a composite form, a condition or a cascade uses it.'
+        archive_confirm: 'Archive the field %field%? Its values are kept.'
+        archive_button: 'Archive %field%'
+        renamed: 'Field "%old%" is now "%new%", with its column.'
+        archived: 'Field "%name%" is archived: out of the forms and grids, its column and values kept.'
+        restored: 'Field "%name%" is back, with its values.'
+    view:
+        new: New view
+        title: 'View %name%'
+        kind:
+            form: form
+            grid: grid
+        used_for_form: The record form
+        used_for_grid: The record grid
+        preview: Preview
+        preview_grid: '%objects% with this view'
+        preview_form: 'New %object% with this view'
+        layout: Layout (HTML)
+        grid_definition: Grid definition (YAML)
+        layout_or_grid: Layout (HTML) or grid definition (YAML)
+        form_help: 'Put a {field} token where each field goes; the fields left out follow the layout. A {t:name} token shows a text of Admin > Translations in the user''s language. Scripts, styles and event attributes are removed; class attributes are kept.'
+        grid_help: 'The columns in order: a field name, or a map with field, label, renderer (truncate, badge, date), options, hidden, sortable, filter; a virtual column takes a name and a template of {field} tokens. A label may hold {t:name} tokens (Admin > Translations). Optional: sort and page_size.'
+        both_help: 'Form: %form% Grid: %grid%'
+        fields_help: '%help% Fields: %tokens%.'
+        default_view: Default view
+        default_help: 'Used when the page names no view. The first view of a kind is the default; to change it, mark another view.'
+        delete_confirm: 'Delete the view %name%?'
+        created: 'View "%name%" created.'
+        saved: View saved.
+        deleted: 'View "%name%" deleted.'
+    composite:
+        intro: 'A form writes a record and the records related to it at once: a profile, its phones, the qualifications of an account...'
+        new: New form
+        empty: No forms yet.
+        open_form: Open the form
+        name_help: 'Lowercase letters, digits and single underscores, starting with a letter. The form opens at /f/<name>/new.'
+        definition: Definition (YAML)
+        delete_confirm: 'Delete the form %name%? Its records stay.'
+        languages: Languages
+        languages_help: 'The labels here are the texts of the default language; translate them under <a href="%translations%">Translations</a>. A layout shows a text of its own with a <code>{t:name}</code> token, e.g. <code>&lt;legend&gt;{t:sign_in}&lt;/legend&gt;</code>: create the text first, under <a href="%texts%">Texts</a>.'
+        objects_relations: Objects and relations
+        objects_relations_help: 'A section names an <code>object</code> and the relation field (<code>via</code>) by which it points at the object of its parent.'
+        exists: 'A form named "%name%" already exists.'
+        created: 'Form "%name%" created.'
+        saved: Form saved.
+        deleted: 'Form "%name%" deleted; its records stay.'
+    translation:
+        metadata: Metadata
+        texts: Texts
+        metadata_into: 'Metadata into %language%'
+        language: Language
+        intro: 'The labels of the metadata (objects, fields, options, forms) are written in %original%, the default language. Here they get their %language% text, shown to the users reading the application in %language%; a key left empty shows the %original% text, in grey inside the input. The %original% text is changed where it is defined: follow its link. Your own texts, placed in the layouts with <code>{t:name}</code>, are under <a href="%texts%">Texts</a>.'
+        nothing: Nothing to translate yet.
+        key: Key
+        original: '%language% (original)'
+        change_original: 'Change the %language% text'
+        texts_intro: 'Texts of your own, not tied to the metadata, for the layouts: a <code>{t:name}</code> token in a form view, a composite form or a grid heading shows the text of that name in the language of the user. Each text is written here in every language; the %original% one is required and shows wherever another is missing. Empty it to remove the text, once no token places it.'
+        no_texts: No texts yet.
+        required_language: '%language% (required)'
+        optional_language: '%language% (optional)'
+        not_placed: Not placed yet
+        placed_in: 'In %uses%'
+        new_text: New text
+        text_name_help: 'Lowercase letters, digits and single underscores. A layout places it with {t:<name>}.'
+        text_created: Text created.
+        nothing_changed: Nothing changed.
+        saved: '{1}1 text saved.|]1,Inf[%count% texts saved.'
+        give_name: 'Give the text a name and its %locale% text.'
+        text_exists: 'A text named "%name%" already exists.'
+    template_admin:
+        intro: 'A template brings objects, their views and forms, their translations and their records. It is installed in one go, and upgraded later: only what its new version changed is applied, what was changed here is kept.'
+        installed: Installed
+        none_installed: No template is installed.
+        version: Version
+        upgraded: Upgraded
+        from: From
+        available: Available
+        no_offer: The indexes offer no template.
+        no_offer_no_index: 'The indexes offer no template: add an index below.'
+        newest_version: Newest version
+        index: Index
+        install_link: Install…
+        upgrade_link: 'Upgrade from %version%…'
+        indexes: Indexes
+        address: Address
+        signed: Signed
+        signed_yes: 'Yes'
+        signed_no: 'No: accepted unsigned'
+        remove_confirm: 'Remove the index "%name%"? What was installed from it stays.'
+        add_index: Add an index
+        add_the_index: Add the index
+        index_name_help: 'How commands and this page name it: lowercase letters, digits and hyphens.'
+        index_url: Index address
+        index_url_help: The https address of its index.json.
+        index_key: Public key
+        index_key_help: 'The Ed25519 key (base64) its versions are signed with: every version is checked against it.'
+        index_unsigned: Accept it unsigned, trusting its checksums only
+        index_added: 'Index "%name%" added.'
+        index_removed: 'Index "%name%" removed; what was installed from it stays.'
+        install_title: 'Install %template%'
+        install_heading: 'Install <code>%template%</code>'
+        cannot_install: 'It cannot be installed:'
+        requires_missing: '%name% requires templates this instance does not have: they are installed with it, first.'
+        trial_one: 'A trial install went through: nothing was changed yet. Installing it creates:'
+        trial_many: 'A trial install went through: nothing was changed yet. Installing them creates:'
+        from_source: 'From %source%'
+        skipped_locales: 'Left out, this instance not having them: the languages %locales%.'
+        install_button: 'Install %name% %version%'
+        install_button_many: 'Install %name% %version% and what it requires'
+        installed_one: 'Template %templates% installed.'
+        installed_many: 'Templates %templates% installed.'
+        upgrade_title: 'Upgrade %template%'
+        upgrade_heading: 'Upgrade <code>%template%</code>'
+        upgrade_heading_versions: 'Upgrade <code>%template%</code> from %from% to %to%'
+        cannot_upgrade: 'It cannot be upgraded:'
+        changes: Changes
+        only_conflicts: 'Nothing but the conflicts below: this instance already has the rest.'
+        conflicts: Conflicts
+        conflicts_help: 'Both the new version and this instance changed these: choose, one by one, which stays.'
+        here: Here
+        new_version: New version
+        removed_here: (removed here)
+        removed_there: (removed by the new version)
+        keep: Keep this instance's version
+        take: Take the new version
+        upgrade_button: 'Upgrade to %version%'
+        upgrade_done: '%name% upgraded from %from% to %to%.'
