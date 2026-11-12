@@ -33,8 +33,13 @@ The app answers on `http://127.0.0.1:8000` and asks you to sign in. Run every co
 That address is the default tenant's. Another tenant answers on its own host,
 `http://<slug>.localhost:8000`: browsers resolve every `*.localhost` to 127.0.0.1, so it needs no
 DNS. The commands work for the default tenant unless you add `--tenant=<slug>` (see
-[Architecture](architecture.md#tenants)). Until the `tenant:*` commands land, the installation
-has its one tenant, `default`.
+[Architecture](architecture.md#tenants)). The installation starts with one tenant, `default`;
+add others with [`tenant:create`](console.md#tenantcreate):
+
+```bash
+symfony console tenant:create acme --name="Acme Corp" --admin-email=you@example.com
+# then sign in at http://acme.localhost:8000
+```
 
 The home page lists the objects; each object has its grid at `/o/<object>`.
 

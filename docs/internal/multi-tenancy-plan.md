@@ -1,7 +1,7 @@
 # Plan: multi-tenancy
 
-Status: **agreed**; phases 1 and 2 done (branches `multi_tenancy_phase1`, `multi_tenancy_phase2`,
-committed); phase 3 implemented on branch `multi_tenancy_phase3` (2026-11-12), waiting for the
+Status: **agreed**; phases 1 to 3 done (branches `multi_tenancy_phase1` to `multi_tenancy_phase3`,
+committed); phase 4 implemented on branch `multi_tenancy_phase4` (2026-11-12), waiting for the
 user's review. Discussed with the user on 2026-11-12, who chose the model (shared
 definitions with a `tenant_id`, records in a schema per tenant), global users, and the decisions
 below.
@@ -306,7 +306,23 @@ One branch each, reviewed before the next, as usual.
    other tenants (`TenantLinks`). Profiles stay global (see "Users and memberships"). Tests:
    sign-in refused outside one's tenants, a removed membership, a replayed session, a file of
    another tenant on `/files/{id}`, the commands.
-4. **Lifecycle commands**: create, list, suspend, resume, delete, run.
+4. **Lifecycle commands** (implemented, waiting for review), in `src/Shared/Infrastructure/Tenant/Console/`:
+   - `tenant:create <slug> [--name] [--admin-email] [--admin-password] [--template]`:
+     `TenantProvisioner::create()`, then the commands that do the rest for any tenant, run with
+     `--tenant` through `Application::doRun()` (so the console events select the tenant):
+     `access:sync`, `user:create` or `tenant:member:add`, `rbac:assign <email>
+     %app.super_admin_role%`, `metadata:template:install`. The shared layer may not use the
+     modules (deptrac), and these are the steps an operator would type; a failed step leaves the
+     tenant and names the step to run again.
+   - `tenant:list`, `tenant:suspend`, `tenant:resume`.
+   - `tenant:delete <slug> [--confirm]`: the slug typed back; the schemas dropped first (the
+     record tables reference `core.file`, RESTRICT), then the row, whose foreign keys cascade.
+     The default tenant can't be deleted. The bytes of its files go at the next GC of any tenant
+     (no row holds them).
+   - `tenant:run (--all | --only=<slug>...) -- <command>`: one `bin/console` process per active
+     tenant (`symfony/process`, now required explicitly), carrying on past failures.
+   - Tests: `TenantLifecycleCommandsTest`. `tenant:run`'s processes don't see the test's
+     transaction, so its test runs for the default tenant only.
 5. **Files per tenant**: the storage prefix, the GC per tenant, the move of existing files.
 6. **Templates across tenants**: global and per-tenant indexes, the name-collision check of
    decision 2 (if the upgrade doesn't refuse it already, a test proves it either way),

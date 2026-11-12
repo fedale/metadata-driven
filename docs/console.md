@@ -41,6 +41,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:template:publish`](#metadatatemplatepublish) | Prepare a template version for the central catalog: copied into a checkout of it, ready for a pull request |
 | [`metadata:template:upgrade`](#metadatatemplateupgrade) | Upgrade an installed template to a new version: only what it changed, what this instance changed kept |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
+| [`tenant:create`](#tenantcreate), [`tenant:list`](#tenantlist), [`tenant:suspend`, `tenant:resume`](#tenantsuspend-tenantresume), [`tenant:delete`](#tenantdelete), [`tenant:run`](#tenantrun) | Create, list, suspend, resume and delete tenants; run a command for several of them |
 | `user:create` | Create a user who can sign in, a member of the command's tenant — see [Users and permissions](access.md#usercreate) |
 | `tenant:member:add`, `tenant:member:remove`, `tenant:member:list` | Let a user sign in to a tenant, or no longer; list a tenant's members — see [Users and tenants](access.md#users-and-tenants) |
 | `access:sync` | Create the permissions of every object, the admin permission and the super admin role — see [Users and permissions](access.md#permissions) |
@@ -57,8 +58,8 @@ symfony console metadata:list                   # the default tenant's objects
 symfony console metadata:list --tenant=acme     # tenant acme's
 ```
 
-The other commands (the migrations, Doctrine's, `cache:clear`) work for no tenant, across all of
-them, unless `--tenant` names one. An unknown or suspended tenant stops the command:
+The other commands (the migrations, Doctrine's, `cache:clear`) and the `tenant:*` commands work
+for no tenant, as the landlord, across all of them, unless `--tenant` names one. An unknown or suspended tenant stops the command:
 `There is no tenant "acme".` See [Architecture](architecture.md#tenants).
 
 ## How the commands change the database
@@ -751,6 +752,76 @@ Run it on a schedule, for example every night from cron:
 30 3 * * * cd /srv/app && php bin/console metadata:files:gc --no-interaction
 ```
 
+## Tenants
+
+The `tenant:*` commands manage the installation's [tenants](architecture.md#tenants). They run as
+the landlord: the tenant they work on is their first argument, not `--tenant`.
+
+### `tenant:create`
+
+```
+tenant:create [--name=…] [--admin-email=…] [--admin-password=…] [--template=…] <slug>
+```
+
+Creates a tenant ready to use, at `http://<slug>.<TENANT_BASE_HOST>`:
+
+1. its row of `core.tenant` and its two schemas, `t_<id>_data` for its records and `t_<id>_rbac`
+   for its roles, named after its id rather than its slug;
+2. its permissions and super admin role (`access:sync`);
+3. with `--admin-email`, its first admin: an existing user becomes a member, a new one is created
+   (the password is asked, hidden, without `--admin-password`), and gets the super admin role
+   there;
+4. with `--template`, a template installed (`metadata:template:install`).
+
+```bash
+symfony console tenant:create acme --name="Acme Corp" --admin-email=anna@example.com --template=fedale/registration
+```
+
+The slug is lower case letters, digits and dashes, 63 at most. Steps 2 to 4 are the commands
+that do them for any tenant: when one fails, the tenant exists, and the command names the step
+to run again with `--tenant=acme`.
+
+### `tenant:list`
+
+Every tenant: slug, name, status, members, objects, schemas.
+
+### `tenant:suspend`, `tenant:resume`
+
+```
+tenant:suspend <slug>
+tenant:resume <slug>
+```
+
+A suspended tenant answers 404 to every request, and its commands refuse to run. Its data stays
+as it is; `tenant:resume` brings it back.
+
+### `tenant:delete`
+
+```
+tenant:delete [--confirm=<slug>] <slug>
+```
+
+Deletes a tenant with its records, roles, definitions and members, once its slug is typed back
+(or given to `--confirm`, without a terminal). It can't be undone: back the database up first.
+The bytes of its files go at the next [`metadata:files:gc`](#metadatafilesgc). The default tenant
+(`TENANT_DEFAULT`) can't be deleted.
+
+### `tenant:run`
+
+```
+tenant:run (--all | --only=<slug>...) -- <command> [arguments]
+```
+
+Runs a command for every active tenant, or for the ones you name, each in a process of its own:
+
+```bash
+symfony console tenant:run --all -- metadata:template:upgrade fedale/registration
+symfony console tenant:run --only=acme --only=globex -- metadata:files:gc
+```
+
+It carries on past a failure, prints each tenant's output under its slug, and fails when one of
+them did.
+
 ## `schema:sync`
 
 Align the record tables with the metadata. The `metadata:*` commands already do it for the table
@@ -814,6 +885,6 @@ changes, date).
 | `make test` | The test suite (starts the database and builds the styles first) |
 | `make qa` | All of the above checks |
 
-The `core` schema (definitions, logs, settings) is managed by Doctrine migrations; the `data`
-schema (record tables) only by the commands above. Doctrine's schema tools ignore `data`, so
+The `core` schema (definitions, logs, settings) is managed by Doctrine migrations; the tenants'
+data schemas (record tables) only by the commands above. Doctrine's schema tools ignore them, so
 `doctrine:migrations:diff` never proposes to drop a record table.

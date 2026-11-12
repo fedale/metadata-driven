@@ -9,12 +9,14 @@ use Doctrine\DBAL\Connection;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Creates a tenant: its row of core.tenant, its row of core.metadata_state, its data schema
- * (empty: the Schema module fills it from the tenant's metadata) and its RBAC schema with
- * fedale/rbac-bundle's tables. In one transaction.
+ * Creates, suspends, resumes and deletes tenants, in the landlord's session only
+ * (TenantSwitcher::landlord()): where row-level security applies, a tenant's session may not
+ * write another tenant's rows.
  *
- * The tenant starts with no objects, users or permissions: tenant:create (phase 4 of the plan)
- * adds its first member and admin, and a template if asked.
+ * A tenant is its row of core.tenant, its row of core.metadata_state, its data schema (empty:
+ * the Schema module fills it from the tenant's metadata) and its RBAC schema with
+ * fedale/rbac-bundle's tables. It starts with no objects, members or permissions: tenant:create
+ * adds its permissions, its first admin and a template if asked.
  */
 final class TenantProvisioner
 {
@@ -49,15 +51,9 @@ final class TenantProvisioner
     ) {
     }
 
-    /**
-     * In the landlord's session only (TenantSwitcher::leave()): where row-level security
-     * applies, a tenant's session may not write another tenant's rows.
-     */
     public function create(string $slug, string $name): Tenant
     {
-        if ($this->current->isSelected()) {
-            throw new \LogicException('Tenants are created in the landlord\'s session: leave the current tenant first.');
-        }
+        $this->assertLandlord();
         if (1 !== preg_match(self::SLUG, $slug)) {
             throw new \InvalidArgumentException(\sprintf('"%s" is no tenant slug: lower case letters, digits and dashes, 63 at most.', $slug));
         }
@@ -85,5 +81,48 @@ final class TenantProvisioner
         });
 
         return $this->registry->byId($id) ?? throw new \LogicException(\sprintf('Tenant "%s" was not created.', $slug));
+    }
+
+    /**
+     * A suspended tenant answers 404 to every request, and its commands refuse to run; its data
+     * stays as it is.
+     */
+    public function suspend(Tenant $tenant): void
+    {
+        $this->setStatus($tenant, 'suspended');
+    }
+
+    public function resume(Tenant $tenant): void
+    {
+        $this->setStatus($tenant, 'active');
+    }
+
+    /**
+     * Drops the tenant's schemas (its records, its roles) and deletes its rows of every core
+     * table (the foreign keys to core.tenant cascade), in one transaction. The bytes of its
+     * files stay until metadata:files:gc runs for any tenant: no row holds them any more.
+     */
+    public function delete(Tenant $tenant): void
+    {
+        $this->assertLandlord();
+        $this->connection->transactional(function () use ($tenant): void {
+            // The schemas first: the record tables reference core.file, RESTRICT.
+            $this->connection->executeStatement(\sprintf('DROP SCHEMA IF EXISTS %s CASCADE', $tenant->dataSchema));
+            $this->connection->executeStatement(\sprintf('DROP SCHEMA IF EXISTS %s CASCADE', $tenant->rbacSchema));
+            $this->connection->executeStatement('DELETE FROM core.tenant WHERE id = ?', [$tenant->id]);
+        });
+    }
+
+    private function setStatus(Tenant $tenant, string $status): void
+    {
+        $this->assertLandlord();
+        $this->connection->executeStatement('UPDATE core.tenant SET status = ? WHERE id = ?', [$status, $tenant->id]);
+    }
+
+    private function assertLandlord(): void
+    {
+        if ($this->current->isSelected()) {
+            throw new \LogicException('Tenants are managed in the landlord\'s session: leave the current tenant first.');
+        }
     }
 }

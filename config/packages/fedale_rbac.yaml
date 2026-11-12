@@ -3,7 +3,7 @@
 fedale_rbac:
     enabled: true
     # Holders of this role pass every check.
-    super_admin_role: ROLE_SUPER_ADMIN
+    super_admin_role: '%app.super_admin_role%'
     # Role → role edges come from auth_item_child, not from security.yaml.
     override_role_hierarchy: true
     # Assigned roles are loaded by our user provider itself.

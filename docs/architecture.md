@@ -23,9 +23,9 @@ code is written.
 
 ### Tenants
 
-The installation serves **tenants**, each with its own model, records, roles and files (see
-[the plan](internal/multi-tenancy-plan.md), whose later phases add users per tenant and the
-`tenant:*` commands):
+The installation serves **tenants**, each with its own model, records, roles and files, created
+and managed with the [`tenant:*` commands](console.md#tenants) (see also
+[the plan](internal/multi-tenancy-plan.md)):
 
 - `core.tenant` registers them: a slug, a name, a `number` (for `fedale/setting-bundle`, whose
   tenant ids are integers), its data schema and its RBAC schema, and a status (`active` or
