@@ -13,7 +13,11 @@ use Doctrine\ORM\Query\Filter\SQLFilter;
  * and the lazy loads of associations. Enabled for every entity manager (doctrine.yaml).
  *
  * The column is unmapped, so the condition names it in SQL; it compares with the session's
- * setting rather than a parameter, the same expression the column's default uses.
+ * setting rather than a parameter, the same expression the insert trigger uses.
+ *
+ * SELECTs only: Doctrine applies no filter to a DQL UPDATE or DELETE. Write those in SQL with
+ * the tenant condition (DoctrineTranslationRepository::write()), or load the entities and
+ * remove them one by one.
  */
 final class TenantFilter extends SQLFilter
 {

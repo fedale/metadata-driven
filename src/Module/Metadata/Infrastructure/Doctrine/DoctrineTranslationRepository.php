@@ -6,6 +6,7 @@ namespace App\Module\Metadata\Infrastructure\Doctrine;
 
 use App\Module\Metadata\Domain\Model\Translation;
 use App\Module\Metadata\Domain\Repository\TranslationRepository;
+use App\Shared\Database\TenantScope;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class DoctrineTranslationRepository implements TranslationRepository
@@ -48,41 +49,42 @@ final class DoctrineTranslationRepository implements TranslationRepository
 
     public function removeKey(string $key): void
     {
-        $this->entityManager->createQueryBuilder()
-            ->delete(Translation::class, 't')
-            ->where('t.key = :key')
-            ->setParameter('key', $key)
-            ->getQuery()
-            ->execute();
+        $this->write('DELETE FROM %1$s WHERE %3$s AND %2$s = ?', [$key]);
     }
 
     public function removeKeysUnder(array $prefixes): void
     {
         foreach ($prefixes as $prefix) {
             // LIKE wildcards in a prefix would widen the match: escape them.
-            $like = addcslashes($prefix, '%_\\').'.%';
-            $this->entityManager->createQueryBuilder()
-                ->delete(Translation::class, 't')
-                ->where('t.key = :key OR t.key LIKE :under')
-                ->setParameter('key', $prefix)
-                ->setParameter('under', $like)
-                ->getQuery()
-                ->execute();
+            $this->write('DELETE FROM %1$s WHERE %3$s AND (%2$s = ? OR %2$s LIKE ?)', [$prefix, addcslashes($prefix, '%_\\').'.%']);
         }
     }
 
     public function moveKeysUnder(array $prefixes): void
     {
-        $connection = $this->entityManager->getConnection();
-        $metadata = $this->entityManager->getClassMetadata(Translation::class);
-        $table = (null === $metadata->getSchemaName() ? '' : $metadata->getSchemaName().'.').$metadata->getTableName();
-        $column = $metadata->getColumnName('key');
         foreach ($prefixes as $from => $to) {
             // substr() counts from 1: what follows the prefix, its dot included.
-            $connection->executeStatement(
-                \sprintf('UPDATE %1$s SET %2$s = ? || substr(%2$s, ?) WHERE %2$s = ? OR %2$s LIKE ?', $table, $column),
+            $this->write(
+                'UPDATE %1$s SET %2$s = ? || substr(%2$s, ?) WHERE %3$s AND (%2$s = ? OR %2$s LIKE ?)',
                 [$to, \strlen($from) + 1, $from, addcslashes($from, '%_\\').'.%'],
             );
         }
+    }
+
+    /**
+     * A write to the current tenant's translations, in SQL: Doctrine's filters apply to
+     * SELECTs only, so a DQL UPDATE or DELETE would reach every tenant's rows.
+     *
+     * @param string           $sql        %1$s the table, %2$s the key column, %3$s the tenant condition
+     * @param list<string|int> $parameters
+     */
+    private function write(string $sql, array $parameters): void
+    {
+        $metadata = $this->entityManager->getClassMetadata(Translation::class);
+        $table = (null === $metadata->getSchemaName() ? '' : $metadata->getSchemaName().'.').$metadata->getTableName();
+        $this->entityManager->getConnection()->executeStatement(
+            \sprintf($sql, $table, $metadata->getColumnName('key'), TenantScope::COLUMN.' = '.TenantScope::CURRENT),
+            $parameters,
+        );
     }
 }

@@ -34,6 +34,9 @@ files (see [the plan](internal/multi-tenancy-plan.md); today it serves one):
   in `tenant_id` from it on insert (no model maps the column), the ORM's `tenant` filter adds
   it to every read, and the DBAL queries on these tables add it themselves. Without a tenant
   an insert fails on `NOT NULL`.
+- Doctrine's filters apply to SELECTs only. A DQL `UPDATE` or `DELETE` on these tables would
+  reach every tenant's rows: write it in SQL with `TenantScope::CURRENT`, as
+  `DoctrineTranslationRepository` does.
 - `CurrentTenant` gives the tenant's id and data schema to the code that names record tables
   (the Schema and Record modules).
 - `DeclareTenantColumnsListener` declares the unmapped column to the schema tools, so

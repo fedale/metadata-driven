@@ -7,6 +7,7 @@ namespace App\Tests\Integration\Shared;
 use App\Module\File\Application\FileGarbageCollectorInterface;
 use App\Module\File\Contract\FileStorageInterface;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
+use App\Module\Metadata\Domain\Repository\TranslationRepository;
 use App\Module\Template\Domain\Repository\TemplateSourceRepository;
 use App\Shared\Database\TenantScope;
 use App\Shared\Tenant\CurrentTenant;
@@ -93,6 +94,31 @@ final class TenantScopeTest extends KernelTestCase
 
         self::assertGreaterThan($before[0], $this->revision($ours));
         self::assertSame($before[1], $this->revision($other));
+    }
+
+    /**
+     * Doctrine's filters apply to SELECTs only: a DQL DELETE, or SQL, must name the tenant
+     * itself.
+     */
+    public function testRemovingAndMovingTranslationsLeavesAnotherTenantsAlone(): void
+    {
+        $other = $this->createOtherTenant();
+        foreach (['object.pet.singular', 'object.pet.plural', 'field.pet.name'] as $key) {
+            $this->connection->executeStatement(
+                "INSERT INTO core.metadata_translation (id, locale, message_key, text, updated_at, tenant_id) VALUES (?, 'it', ?, 'Theirs', now(), ?)",
+                [Uuid::v7()->toRfc4122(), $key, $other],
+            );
+        }
+        $translations = self::getContainer()->get(TranslationRepository::class);
+
+        $translations->removeKey('object.pet.singular');
+        $translations->removeKeysUnder(['field.pet']);
+        $translations->moveKeysUnder(['object.pet' => 'object.animal']);
+
+        self::assertSame(
+            ['field.pet.name', 'object.pet.plural', 'object.pet.singular'],
+            $this->connection->fetchFirstColumn('SELECT message_key FROM core.metadata_translation WHERE tenant_id = ? ORDER BY 1', [$other]),
+        );
     }
 
     public function testTheGarbageCollectorLeavesAnotherTenantsFilesAlone(): void
