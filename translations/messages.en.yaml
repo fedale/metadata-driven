@@ -4,6 +4,7 @@ nav:
     records: Records
     admin: Admin
     language: Language
+    tenants: Workspaces
     sign_out: Sign out
 login:
     title: Sign in

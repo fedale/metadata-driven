@@ -8,10 +8,10 @@ doctrine:
         # Only core's tables are Doctrine's: hide the tenants' schemas from the schema tools
         # (diff, validate). Their record tables are the Schema module's, their RBAC tables are
         # made with each tenant. So are core.metadata_state, written by triggers only (migration
-        # Version20261107060749), and core.tenant, the tenant registry, read with DBAL before
-        # any tenant is selected. The comparison names core's tables with or without their
+        # Version20261107060749), and core.tenant and core.tenant_membership, the landlord's,
+        # read with DBAL before any tenant is selected. The comparison names core's tables with or without their
         # schema, and a tenant's with theirs.
-        schema_filter: '~^(?!(core\.)?(metadata_state|tenant)$)(core\.)?[^.]+$~'
+        schema_filter: '~^(?!(core\.)?(metadata_state|tenant|tenant_membership)$)(core\.)?[^.]+$~'
 
         profiling_collect_backtrace: '%kernel.debug%'
     orm:

@@ -9,7 +9,9 @@ use App\Module\User\Contract\Exception\UserException;
 interface UserManagerInterface
 {
     /**
-     * Creates an active user with its profile. The email is the login, stored lowercase.
+     * Creates an active user with its profile. The email is the login, stored lowercase. Users
+     * are global: the new one is a member of the current tenant, if one is selected, and of no
+     * other (addToTenant()).
      *
      * @return string the id of the new user
      *
@@ -24,4 +26,28 @@ interface UserManagerInterface
      * @throws UserException unknown user, language not enabled
      */
     public function changeLocale(string $email, ?string $locale): void;
+
+    /**
+     * Lets a user sign in to a tenant, whose roles then apply to them there.
+     *
+     * @return bool false when they were a member already
+     *
+     * @throws UserException unknown user
+     */
+    public function addToTenant(string $email, string $tenantId): bool;
+
+    /**
+     * Takes a user out of a tenant: they can no longer sign in there, and a session of theirs
+     * there ends at its next request. Their roles in the tenant stay, unused.
+     *
+     * @return bool false when they were no member
+     *
+     * @throws UserException unknown user
+     */
+    public function removeFromTenant(string $email, string $tenantId): bool;
+
+    /**
+     * @return list<string> the emails of the tenant's members, sorted
+     */
+    public function membersOf(string $tenantId): array;
 }

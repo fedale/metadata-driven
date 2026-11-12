@@ -7,7 +7,7 @@ from `fedale/gridview-bundle`, the runtime settings from `fedale/setting-bundle`
 
 | Schema | Holds | Managed by |
 |---|---|---|
-| `core` | The tenant registry (`core.tenant`); object, field, view and composite form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the templates installed (`core.template_installation`) and the ids of items in templates (`core.template_item`), the settings of `fedale/setting-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
+| `core` | The tenant registry (`core.tenant`) and who may sign in to each tenant (`core.tenant_membership`); object, field, view and composite form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the templates installed (`core.template_installation`) and the ids of items in templates (`core.template_item`), the settings of `fedale/setting-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
 | a tenant's data schema (`data` for the first tenant) | One table per object, `c_<object>`, holding the records, and one link table per many-to-many field, `l_<object>__<field>` | The Schema module, from the tenant's metadata |
 | a tenant's RBAC schema (`rbac` for the first tenant) | The tables of `fedale/rbac-bundle` (`auth_*`): the tenant's roles, permissions and assignments | Created with the tenant |
 
@@ -67,6 +67,10 @@ The installation serves **tenants**, each with its own model, records, roles and
   bytes nobody uses.
 - `CurrentTenant` gives the tenant's id and data schema to the code that names record tables
   (the Schema and Record modules).
+- **Users are global**, with their profile; a membership (`core.tenant_membership`, the
+  landlord's, without row-level security) lets them sign in to a tenant. `UserProvider` finds
+  only the members of the request's tenant, at sign-in and on every request (see
+  [Users and tenants](access.md#users-and-tenants)).
 - `fedale/rbac-bundle`'s cache is off: it keeps the roles and permissions under one key for the
   whole installation. It comes back once the bundle knows about tenants.
 - `DeclareTenantSchemaListener` brings the schema tools in line (the unmapped column, the RBAC

@@ -8,7 +8,9 @@ use App\Module\User\Contract\UserManagerInterface;
 use App\Module\User\Domain\Exception\InvalidUser;
 use App\Module\User\Domain\Model\User;
 use App\Module\User\Domain\Model\UserProfile;
+use App\Module\User\Domain\Repository\MembershipRepository;
 use App\Module\User\Domain\Repository\UserRepository;
+use App\Shared\Tenant\CurrentTenant;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -23,6 +25,8 @@ final class UserManager implements UserManagerInterface
      */
     public function __construct(
         private readonly UserRepository $users,
+        private readonly MembershipRepository $memberships,
+        private readonly CurrentTenant $tenant,
         private readonly PasswordHasherFactoryInterface $hashers,
         #[Autowire('%kernel.enabled_locales%')]
         private readonly array $enabledLocales,
@@ -44,6 +48,9 @@ final class UserManager implements UserManagerInterface
         $user = new User(Uuid::v7(), $email, $hash);
         new UserProfile(Uuid::v7(), $user, $firstName, $lastName);
         $this->users->save($user);
+        if ($this->tenant->isSelected()) {
+            $this->memberships->add($this->tenant->id(), $user->getId());
+        }
 
         return $user->getId()->toRfc4122();
     }
@@ -57,5 +64,25 @@ final class UserManager implements UserManagerInterface
         $profile = $user->getProfile() ?? new UserProfile(Uuid::v7(), $user);
         $profile->changeLocale($locale);
         $this->users->save($user);
+    }
+
+    public function addToTenant(string $email, string $tenantId): bool
+    {
+        return $this->memberships->add($tenantId, $this->user($email)->getId());
+    }
+
+    public function removeFromTenant(string $email, string $tenantId): bool
+    {
+        return $this->memberships->remove($tenantId, $this->user($email)->getId());
+    }
+
+    public function membersOf(string $tenantId): array
+    {
+        return $this->memberships->membersOf($tenantId);
+    }
+
+    private function user(string $email): User
+    {
+        return $this->users->findByEmail(User::normalizeEmail($email)) ?? throw InvalidUser::notFound($email);
     }
 }

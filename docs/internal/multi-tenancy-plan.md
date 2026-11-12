@@ -1,7 +1,8 @@
 # Plan: multi-tenancy
 
-Status: **agreed**; phase 1 done (branch `multi_tenancy_phase1`, committed); phase 2
-implemented on branch `multi_tenancy_phase2` (2026-11-12), waiting for the user's review. Discussed with the user on 2026-11-12, who chose the model (shared
+Status: **agreed**; phases 1 and 2 done (branches `multi_tenancy_phase1`, `multi_tenancy_phase2`,
+committed); phase 3 implemented on branch `multi_tenancy_phase3` (2026-11-12), waiting for the
+user's review. Discussed with the user on 2026-11-12, who chose the model (shared
 definitions with a `tenant_id`, records in a schema per tenant), global users, and the decisions
 below.
 
@@ -36,7 +37,7 @@ core                         shared
   tenant                     the registry
   tenant_membership          (tenant_id, user_id): who may enter which tenant
   app_user                   global identities: email, password
-  app_user_profile           + tenant_id (phase 3): language and preferences in one tenant
+  app_user_profile           global too: a person's name and language (phase 3 decided)
   metadata_*, schema_change_log, metadata_state      + tenant_id
   file, template_installation, template_item          + tenant_id
   template_source            + nullable tenant_id: NULL = offered to every tenant
@@ -138,9 +139,10 @@ CREATE POLICY tenant_isolation ON core.metadata_object
 - `app_user` stays global: one email, one password, one account for a person.
 - `tenant_membership (tenant_id, user_id, created_at)` says which tenants they may enter.
   Signing in to a tenant they're not a member of fails like a wrong password.
-- `app_user_profile` gets a `tenant_id`: a language and preferences per tenant. Its unique
-  `user_id` becomes `(tenant_id, user_id)`, and the user's one-to-one profile becomes one per
-  tenant, so it's done here rather than in phase 1.
+- `app_user_profile` stays global (decided in phase 3): it holds a person's first and last name
+  and language, which don't change from one tenant to the next, and keeping it one-to-one spares
+  the model a profile per tenant. Preferences that do differ per tenant, when some come, go in
+  a table of their own with a `tenant_id`.
 - A user in several tenants gets a tenant switcher in the top bar, linking to the other
   tenants' hosts. Each host has its own session cookie, so they sign in once per tenant (a
   shared sign-in across hosts is not in scope).
@@ -285,15 +287,25 @@ One branch each, reviewed before the next, as usual.
    - `schema_filter` keeps only `core`'s tables; `DeclareTenantSchemaListener` (which replaced
      `DeclareDataSchemaListener`) declares every tenant's schemas and leaves the RBAC tables out
      of the generated schema.
+   - Row-level security failed open at first (a session without a tenant saw every row); fixed
+     on the phase 3 branch (`Version20261112160000`): the landlord is an explicit mark,
+     `app.landlord = 'on'`, remembered across connects (`TenantSessionState`), and a session
+     with neither a tenant nor the mark sees nothing.
    - Not done here, left to phase 3 with the users: binding a session to its tenant. Today a
      signed-in user's session is per host (the cookie), and their roles are per tenant (the RBAC
      schema), so a user with no role in a tenant sees nothing there; memberships will refuse the
      sign-in itself. Tests with two tenants: the same object name with different fields, and neither
    tenant's definitions, records, files or caches reachable from the other.
-3. **Users and memberships**: global identities, `tenant_membership`, profiles per tenant, the
-   session bound to its tenant, the tenant switcher, the membership commands. Tests of
-   cross-tenant requests: a session cookie replayed on another host, a file id of another
-   tenant on `/files/{id}`.
+3. **Users and memberships** (implemented, waiting for review). `core.tenant_membership`
+   (`Version20261112170000`, every existing user a member of the first tenant), the landlord's
+   table: no row-level security, since the tenant switcher lists a user's tenants from any of
+   them. `UserProvider` finds only the members of the request's tenant, at sign-in and on every
+   request (`refreshUser()`): that is what binds a session to its tenant, a removed membership
+   or a session replayed on another host ending at the next request. `user:create` makes a
+   member of the command's tenant; `tenant:member:add|remove|list`. The top bar links a user's
+   other tenants (`TenantLinks`). Profiles stay global (see "Users and memberships"). Tests:
+   sign-in refused outside one's tenants, a removed membership, a replayed session, a file of
+   another tenant on `/files/{id}`, the commands.
 4. **Lifecycle commands**: create, list, suspend, resume, delete, run.
 5. **Files per tenant**: the storage prefix, the GC per tenant, the move of existing files.
 6. **Templates across tenants**: global and per-tenant indexes, the name-collision check of

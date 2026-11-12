@@ -279,11 +279,13 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   tenant, global users with memberships; `fedale/rbac-bundle` gets no `tenant_id` for now (its
   tables go in a schema per tenant). Decisions taken on 2026-11-12: tenant by host, a name
   collision refuses a template upgrade, a tenant's admins change its model, the operator creates
-  tenants and memberships from the console. Phase 1 (a `tenant_id` on the shared tables) is
-  committed on `multi_tenancy_phase1`; phase 2 (the switch by host and `--tenant`, the RBAC
-  schema per tenant, row-level security) is on `multi_tenancy_phase2`, branched from it,
-  waiting for review. They add migrations `Version20261112120000` and `Version20261112150000`:
-  run the migrations (`make db`, `make db-test`) after checking them out.
+  tenants and memberships from the console. Phases 1 (a `tenant_id` on the shared tables) and 2
+  (the switch by host and `--tenant`, the RBAC schema per tenant, row-level security) are
+  committed on `multi_tenancy_phase1` and `multi_tenancy_phase2`; phase 3 (global users,
+  memberships, row-level security failing closed) is on `multi_tenancy_phase3`, branched from
+  them, waiting for review. Each branch adds migrations (`Version20261112120000` to
+  `Version20261112170000`): run the migrations (`make db`, `make db-test`) after checking one
+  out. Next: phase 4, the `tenant:*` lifecycle commands.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

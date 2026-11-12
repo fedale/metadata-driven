@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Tenant;
 
 use App\Shared\Tenant\Tenant;
+use App\Shared\Tenant\Tenants;
 use Doctrine\DBAL\Connection;
 
 /**
  * The tenants of core.tenant, read with DBAL: before any tenant is selected, by the request's
  * host or the command's --tenant, and by the schema tools.
  */
-final class TenantRegistry
+final class TenantRegistry implements Tenants
 {
     private const string COLUMNS = 'id, slug, name, number, data_schema, rbac_schema, status';
 

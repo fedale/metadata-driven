@@ -41,7 +41,8 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:template:publish`](#metadatatemplatepublish) | Prepare a template version for the central catalog: copied into a checkout of it, ready for a pull request |
 | [`metadata:template:upgrade`](#metadatatemplateupgrade) | Upgrade an installed template to a new version: only what it changed, what this instance changed kept |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
-| `user:create` | Create a user who can sign in — see [Users and permissions](access.md#usercreate) |
+| `user:create` | Create a user who can sign in, a member of the command's tenant — see [Users and permissions](access.md#usercreate) |
+| `tenant:member:add`, `tenant:member:remove`, `tenant:member:list` | Let a user sign in to a tenant, or no longer; list a tenant's members — see [Users and tenants](access.md#users-and-tenants) |
 | `access:sync` | Create the permissions of every object, the admin permission and the super admin role — see [Users and permissions](access.md#permissions) |
 | `rbac:*` | Roles, permissions and assignments (`fedale/rbac-bundle`) — see [Users and permissions](access.md#roles) |
 
