@@ -30,6 +30,12 @@ symfony console rbac:assign you@example.com ROLE_SUPER_ADMIN
 The app answers on `http://127.0.0.1:8000` and asks you to sign in. Run every command through `symfony console`, not
 `bin/console`: the Symfony CLI passes the `DATABASE_URL` of the Docker container to PHP.
 
+That address is the default tenant's. Another tenant answers on its own host,
+`http://<slug>.localhost:8000`: browsers resolve every `*.localhost` to 127.0.0.1, so it needs no
+DNS. The commands work for the default tenant unless you add `--tenant=<slug>` (see
+[Architecture](architecture.md#tenants)). Until the `tenant:*` commands land, the installation
+has its one tenant, `default`.
+
 The home page lists the objects; each object has its grid at `/o/<object>`.
 
 ## Working on the bundles

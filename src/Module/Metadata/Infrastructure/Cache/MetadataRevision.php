@@ -6,6 +6,7 @@ namespace App\Module\Metadata\Infrastructure\Cache;
 
 use App\Module\Metadata\Contract\Event\MetadataChanged;
 use App\Shared\Database\TenantScope;
+use App\Shared\Tenant\TenantSwitched;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Contracts\Service\ResetInterface;
@@ -25,6 +26,8 @@ use Symfony\Contracts\Service\ResetInterface;
  * key, which no one reads any more, never the old metadata under the new key.
  */
 #[AsEventListener(event: MetadataChanged::class, method: 'reset')]
+// Kept in memory for one tenant: forgotten when the request switches to another.
+#[AsEventListener(event: TenantSwitched::class, method: 'reset')]
 final class MetadataRevision implements ResetInterface
 {
     private ?string $current = null;

@@ -5,12 +5,13 @@ doctrine:
         # IMPORTANT: You MUST configure your server version,
         # either here or in the DATABASE_URL env var (see .env file)
         server_version: '17'
-        # Record tables in the "data" schema are owned by the Schema module, not by
-        # Doctrine migrations: hide them from schema tools (diff, validate). So are
-        # core.metadata_state, written by triggers only (migration Version20261107060749),
-        # and core.tenant, the tenant registry, read with DBAL before any tenant is selected.
-        # (The comparison names core's tables with or without their schema.)
-        schema_filter: '~^(?!data(\.|$)|(core\.)?(metadata_state|tenant)$)~'
+        # Only core's tables are Doctrine's: hide the tenants' schemas from the schema tools
+        # (diff, validate). Their record tables are the Schema module's, their RBAC tables are
+        # made with each tenant. So are core.metadata_state, written by triggers only (migration
+        # Version20261107060749), and core.tenant, the tenant registry, read with DBAL before
+        # any tenant is selected. The comparison names core's tables with or without their
+        # schema, and a tenant's with theirs.
+        schema_filter: '~^(?!(core\.)?(metadata_state|tenant)$)(core\.)?[^.]+$~'
 
         profiling_collect_backtrace: '%kernel.debug%'
     orm:

@@ -15,6 +15,7 @@ use App\Module\Metadata\Contract\Exception\FormDefinitionNotFound;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
 use App\Module\Metadata\Contract\FieldTypeCatalogInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Shared\Tenant\TenantSwitched;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -37,6 +38,8 @@ use Symfony\Contracts\Service\ResetInterface;
  */
 #[AsAlias(MetadataRegistryInterface::class)]
 #[AsEventListener(event: MetadataChanged::class, method: 'invalidate')]
+// Kept in memory for one tenant: forgotten when the request switches to another.
+#[AsEventListener(event: TenantSwitched::class, method: 'reset')]
 final class CachedMetadataRegistry implements MetadataRegistryInterface, ResetInterface
 {
     // Bump the version whenever the shape of the DTOs changes: the pool outlives deploys

@@ -10,8 +10,8 @@ fedale_rbac:
     inject_assigned_roles: false
     provider: doctrine
 
-when@test:
-    fedale_rbac:
-        # Tests roll back database transactions: a persistent cache would outlive them.
-        cache:
-            enabled: false
+    # No cache: it keeps the roles and permissions under one key for the whole installation,
+    # and each tenant has its own (in its RBAC schema, see docs/architecture.md, "Tenants").
+    # Back once the bundle knows about tenants.
+    cache:
+        enabled: false

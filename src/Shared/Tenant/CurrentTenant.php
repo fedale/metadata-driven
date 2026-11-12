@@ -14,6 +14,12 @@ namespace App\Shared\Tenant;
 interface CurrentTenant
 {
     /**
+     * Whether a tenant is selected. None is the landlord's session: the migrations, the tenant
+     * commands; it reads no tenant's rows through the ORM and writes none.
+     */
+    public function isSelected(): bool;
+
+    /**
      * The tenant's id, a UUID.
      *
      * @throws \LogicException when no tenant is selected

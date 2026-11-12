@@ -8,6 +8,7 @@ use App\Module\Metadata\Contract\Event\MetadataChanged;
 use App\Module\Metadata\Domain\Repository\TranslationRepository;
 use App\Module\Metadata\Infrastructure\Cache\CachedMetadataRegistry;
 use App\Module\Metadata\Infrastructure\Cache\MetadataRevision;
+use App\Shared\Tenant\TenantSwitched;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -22,6 +23,8 @@ use Symfony\Contracts\Service\ResetInterface;
  * As for the snapshot, inside a transaction the texts are read from the database, never cached.
  */
 #[AsEventListener(event: MetadataChanged::class, method: 'reset')]
+// Kept in memory for one tenant: forgotten when the request switches to another.
+#[AsEventListener(event: TenantSwitched::class, method: 'reset')]
 final class TranslationCatalog implements ResetInterface
 {
     private const string CACHE_KEY = 'metadata_translations.v1.';

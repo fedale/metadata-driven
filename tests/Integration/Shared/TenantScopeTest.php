@@ -11,6 +11,7 @@ use App\Module\Metadata\Domain\Repository\TranslationRepository;
 use App\Module\Template\Domain\Repository\TemplateSourceRepository;
 use App\Shared\Database\TenantScope;
 use App\Shared\Tenant\CurrentTenant;
+use App\Tests\Support\CreatesTenants;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\NotNullConstraintViolationException;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -22,6 +23,8 @@ use Symfony\Component\Uid\Uuid;
  */
 final class TenantScopeTest extends KernelTestCase
 {
+    use CreatesTenants;
+
     private Connection $connection;
 
     protected function setUp(): void
@@ -146,13 +149,7 @@ final class TenantScopeTest extends KernelTestCase
 
     private function createOtherTenant(): string
     {
-        $id = $this->connection->fetchOne(
-            "INSERT INTO core.tenant (slug, name, data_schema) VALUES ('globex', 'Globex', 't_globex_data') RETURNING id",
-        );
-        self::assertIsString($id);
-        $this->connection->executeStatement('INSERT INTO core.metadata_state (tenant_id) VALUES (?)', [$id]);
-
-        return $id;
+        return self::createTenant(self::getContainer(), 'globex', 'Globex')->id;
     }
 
     /**

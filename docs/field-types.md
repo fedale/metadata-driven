@@ -286,7 +286,7 @@ contract.
   the file*. Saved without a new file, the record keeps the one it has. A required file can be
   replaced, never removed.
 - **Stored files never change.** A new upload is a new file; the one it replaces stays in the
-  storage (see [Architecture](architecture.md#two-schemas)). The column holds the id of a row of
+  storage (see [Architecture](architecture.md#schemas)). The column holds the id of a row of
   `core.file`, with a foreign key that refuses to delete a file a record still points at. The
   files no record holds any more (replaced, removed, unlinked from a list, or left by a purged
   field) are deleted by [`metadata:files:gc`](console.md#metadatafilesgc), run on a schedule.

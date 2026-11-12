@@ -3,16 +3,18 @@
 Symfony 8.1, PostgreSQL 17, server-rendered (Twig, Symfony UX Turbo and Stimulus). The grid comes
 from `fedale/gridview-bundle`, the runtime settings from `fedale/setting-bundle`.
 
-## Two schemas
+## Schemas
 
 | Schema | Holds | Managed by |
 |---|---|---|
-| `core` | Object, field, view and composite form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the templates installed (`core.template_installation`) and the ids of items in templates (`core.template_item`), the settings of `fedale/setting-bundle`, the RBAC tables (`auth_*`) of `fedale/rbac-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
-| `data` | One table per object, `c_<object>`, holding the records, and one link table per many-to-many field, `l_<object>__<field>` | The Schema module, from the metadata |
+| `core` | The tenant registry (`core.tenant`); object, field, view and composite form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the templates installed (`core.template_installation`) and the ids of items in templates (`core.template_item`), the settings of `fedale/setting-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
+| a tenant's data schema (`data` for the first tenant) | One table per object, `c_<object>`, holding the records, and one link table per many-to-many field, `l_<object>__<field>` | The Schema module, from the tenant's metadata |
+| a tenant's RBAC schema (`rbac` for the first tenant) | The tables of `fedale/rbac-bundle` (`auth_*`): the tenant's roles, permissions and assignments | Created with the tenant |
 
-Every connection sets `search_path` to `core, public` (`CoreSearchPathMiddleware`), so the tables
-whose mapping names no schema (the bundles', Doctrine's migration table) land in `core` too.
-`public` holds no table, only the `pg_trgm` extension. The middleware sets the path itself
+Every session's `search_path` starts with `core`, so the tables whose mapping names no schema
+(Doctrine's migration table, the settings) are found there; then comes the current tenant's
+RBAC schema, where `fedale/rbac-bundle` finds its tables unqualified; then `public`, which holds
+no table, only the `pg_trgm` extension. The application sets the path itself (see "Tenants")
 because `DATABASE_URL` can't: `pdo_pgsql` ignores the libpq `options` parameter, and the Symfony
 CLI replaces the URL with the one from the Docker container.
 
@@ -21,26 +23,56 @@ code is written.
 
 ### Tenants
 
-The installation is ready to serve several **tenants**, each with its own model, records and
-files (see [the plan](internal/multi-tenancy-plan.md); today it serves one):
+The installation serves **tenants**, each with its own model, records, roles and files (see
+[the plan](internal/multi-tenancy-plan.md), whose later phases add users per tenant and the
+`tenant:*` commands):
 
-- `core.tenant` registers them: a slug, a name, and `data_schema`, the schema holding the
-  tenant's records. The first tenant's is `data`.
+- `core.tenant` registers them: a slug, a name, a `number` (for `fedale/setting-bundle`, whose
+  tenant ids are integers), its data schema and its RBAC schema, and a status (`active` or
+  `suspended`). The installation's first tenant is `default`, with `data` and `rbac`.
 - The core tables whose rows belong to a tenant (the definitions, the schema change log, the
   files, the templates: `TenantScope::TABLES`) carry a `tenant_id`. Unique names are unique per
   tenant: two tenants may both have an `account` object.
-- The current tenant is a setting of the PostgreSQL session, `app.tenant_id`.
-  `DefaultTenantMiddleware` selects the only tenant on every new connection. A trigger fills
-  in `tenant_id` from it on insert (no model maps the column), the ORM's `tenant` filter adds
-  it to every read, and the DBAL queries on these tables add it themselves. Without a tenant
-  an insert fails on `NOT NULL`.
+- **The current tenant is a setting of the PostgreSQL session**, `app.tenant_id`, with the
+  `search_path` that goes with it (`TenantSessionSql`). `TenantSwitcher` sets both, and forgets
+  what the previous tenant left in memory: the ORM's entities and, through `TenantSwitched`,
+  the metadata snapshot, the translations, the revision. `CurrentTenant` reads the session, so
+  PHP and SQL can't disagree.
+- **A request** is for the tenant its host names, `<slug>.<base host>` (`HostTenantListener`,
+  above the firewall): `acme.example.com`, or `acme.localhost` in development, which browsers
+  resolve to 127.0.0.1 without any DNS. The base host itself, and any other host, is the
+  default tenant's. An unknown or suspended tenant is a 404.
+- **A command** of the application or of a `fedale/*` bundle is for the tenant of its global
+  `--tenant=<slug>` option, the default tenant without it (`ConsoleTenantListener`). The other
+  commands (Doctrine's, the migrations, `cache:clear`) run in the landlord's session, with no
+  tenant, unless `--tenant` names one.
+- **Without a tenant** (the landlord's session), the ORM reads no tenant's rows, and an insert
+  fails on `NOT NULL`. A trigger fills in `tenant_id` on insert from the session (no model maps
+  the column), the ORM's `tenant` filter adds it to every read, and the DBAL queries on these
+  tables add it themselves.
 - Doctrine's filters apply to SELECTs only. A DQL `UPDATE` or `DELETE` on these tables would
   reach every tenant's rows: write it in SQL with `TenantScope::CURRENT`, as
   `DoctrineTranslationRepository` does.
+- **Row-level security** is the safety net under those filters: a policy on each of these tables
+  (but `core.file`, see below) lets a session with a tenant see and write that tenant's rows only,
+  and one without see them all, for the migrations and the tenant commands. The policies apply
+  to the owner of the tables too (`FORCE`), but **not to a superuser or a role with
+  `BYPASSRLS`**: connect the application as an ordinary role in production. The Docker database
+  of development connects as a superuser, so there the filters work alone; the tests check the
+  policies under a role of their own. `core.file` has no policy yet: until each tenant's files
+  have a storage prefix of their own, the file GC must see every tenant's rows to know which
+  bytes nobody uses.
 - `CurrentTenant` gives the tenant's id and data schema to the code that names record tables
   (the Schema and Record modules).
-- `DeclareTenantColumnsListener` declares the unmapped column to the schema tools, so
-  `migrations:diff` stays empty.
+- `fedale/rbac-bundle`'s cache is off: it keeps the roles and permissions under one key for the
+  whole installation. It comes back once the bundle knows about tenants.
+- `DeclareTenantSchemaListener` brings the schema tools in line (the unmapped column, the RBAC
+  tables, the tenants' schemas), so `migrations:diff` stays empty.
+
+The settings: `TENANT_BASE_HOST` (default `localhost`) and `TENANT_DEFAULT` (default `default`;
+empty: every request must name its tenant, and the commands run without one unless they name it).
+`app.tenant.fallback` is the tenant every new connection starts in, before a request or a command
+selects one: empty, except in the tests, which have neither.
 
 The bytes of stored files are in neither schema: they are in the `record_files` storage of
 `league/flysystem-bundle` (`config/packages/flysystem.yaml`), on the local disk, and in memory in

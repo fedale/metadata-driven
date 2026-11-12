@@ -6,34 +6,54 @@ namespace App\Shared\Infrastructure\Tenant;
 
 use App\Shared\Database\TenantScope;
 use App\Shared\Tenant\CurrentTenant;
+use App\Shared\Tenant\Tenant;
 use Doctrine\DBAL\Connection;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
- * The current tenant as the database session knows it: app.tenant_id, the setting the column
- * defaults and the tenant filter read. Taking it from there rather than keeping an id of its
- * own means PHP and SQL can't disagree on the tenant.
+ * The current tenant as the database session knows it: app.tenant_id, the setting the insert
+ * trigger, the tenant filter and the policies read. Taking it from there rather than keeping an
+ * id of its own means PHP and SQL can't disagree on the tenant.
  *
- * Read once per request (one row of core.tenant), and again after reset(): a worker serves
- * the next request, possibly for another tenant, with a fresh read.
+ * Read once (one row of core.tenant), and again after reset(): TenantSwitcher resets it on
+ * every switch, the kernel between two requests of a worker.
  */
 final class ConnectionCurrentTenant implements CurrentTenant, ResetInterface
 {
-    /** @var array{id: string, dataSchema: non-empty-string}|null */
-    private ?array $tenant = null;
+    private Tenant|false|null $tenant = null;
 
-    public function __construct(private readonly Connection $connection)
+    public function __construct(
+        private readonly Connection $connection,
+        private readonly TenantRegistry $registry,
+    ) {
+    }
+
+    public function isSelected(): bool
     {
+        return null !== $this->tenant();
     }
 
     public function id(): string
     {
-        return $this->load()['id'];
+        return $this->selected()->id;
     }
 
     public function dataSchema(): string
     {
-        return $this->load()['dataSchema'];
+        return $this->selected()->dataSchema;
+    }
+
+    /**
+     * The current tenant's row, null when none is selected.
+     */
+    public function tenant(): ?Tenant
+    {
+        if (null === $this->tenant) {
+            $id = $this->connection->fetchOne(\sprintf('SELECT %s::text', TenantScope::CURRENT));
+            $this->tenant = (\is_string($id) ? $this->registry->byId($id) : null) ?? false;
+        }
+
+        return false === $this->tenant ? null : $this->tenant;
     }
 
     public function reset(): void
@@ -41,23 +61,8 @@ final class ConnectionCurrentTenant implements CurrentTenant, ResetInterface
         $this->tenant = null;
     }
 
-    /**
-     * @return array{id: string, dataSchema: non-empty-string}
-     */
-    private function load(): array
+    private function selected(): Tenant
     {
-        if (null === $this->tenant) {
-            $row = $this->connection->fetchAssociative(
-                \sprintf('SELECT id, data_schema FROM core.tenant WHERE id = %s', TenantScope::CURRENT),
-            );
-            $id = false === $row ? null : $row['id'];
-            $dataSchema = false === $row ? null : $row['data_schema'];
-            if (!\is_string($id) || !\is_string($dataSchema) || '' === $dataSchema) {
-                throw new \LogicException('No tenant is selected: the database session has no app.tenant_id naming a row of core.tenant.');
-            }
-            $this->tenant = ['id' => $id, 'dataSchema' => $dataSchema];
-        }
-
-        return $this->tenant;
+        return $this->tenant() ?? throw new \LogicException('No tenant is selected: the database session has no app.tenant_id naming a row of core.tenant.');
     }
 }

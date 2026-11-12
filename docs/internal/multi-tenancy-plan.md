@@ -1,7 +1,7 @@
 # Plan: multi-tenancy
 
-Status: **agreed**; phase 1 implemented on branch `multi_tenancy_phase1` (2026-11-12), waiting
-for the user's review. Discussed with the user on 2026-11-12, who chose the model (shared
+Status: **agreed**; phase 1 done (branch `multi_tenancy_phase1`, committed); phase 2
+implemented on branch `multi_tenancy_phase2` (2026-11-12), waiting for the user's review. Discussed with the user on 2026-11-12, who chose the model (shared
 definitions with a `tenant_id`, records in a schema per tenant), global users, and the decisions
 below.
 
@@ -251,10 +251,44 @@ One branch each, reviewed before the next, as usual.
    `metadata_state` per tenant, the triggers, the data schema name behind `CurrentTenant`. No
    behaviour changes: the 627 tests of before pass unchanged; `TenantScopeTest` adds a second
    tenant by hand and checks that none of its rows, names, revisions or files reach the first.
-2. **The switch and the safety net.** The host resolver, the console option, the fail-closed
-   state, the reset in worker mode, row-level security (mind `core.file` and the GC), the RBAC
-   tables in `t_<id>`, the cache audit, `schema_filter` and `DeclareDataSchemaListener` for
-   every data schema. Tests with two tenants: the same object name with different fields, and neither
+2. **The switch and the safety net** (implemented, waiting for review). What was built, and
+   where it departs from the design above:
+   - `TenantSwitcher` sets `app.tenant_id` and the `search_path` (`core, <rbac schema>, public`)
+     on the session, clears the entity manager and dispatches `TenantSwitched` (the metadata
+     caches in memory reset on it). `TenantSessionMiddleware` puts every new connection at its
+     baseline: `app.tenant.fallback`, empty outside the tests, which have no request or command
+     to name a tenant. `landlord()` is no tenant whatever the baseline; `leave()` and the
+     kernel's reset go back to the baseline. A connection opened again (lost, closed) is at its
+     baseline, so it sees no tenant's rows rather than the wrong ones.
+   - The first tenant keeps `data` for its records and gets `rbac` for its RBAC tables
+     (`core.tenant.rbac_schema`): no rename. New tenants get `t_<12 hex>_data` and
+     `t_<12 hex>_rbac`, named after their id (`TenantProvisioner`, which `tenant:create` will
+     use; the tests use it already).
+   - `HostTenantListener` (priority 40, above the firewall): `<slug>.<TENANT_BASE_HOST>`; the
+     base host and any other host are `TENANT_DEFAULT`'s; unknown, suspended or nested
+     subdomains are a 404.
+   - `ConsoleTenantListener`: `--tenant` is a global option of the application. Without it, the
+     default tenant for the commands whose class is in `App\` or `Fedale\` (resolved through
+     lazy and invokable commands), none (the landlord) for the others and for `tenant:*`:
+     the migrations must see every tenant's rows, and `cache:clear` must run before the
+     migrations have made `core.tenant` what the code expects.
+   - Row-level security on the ten tenant tables but `core.file`. A session **without** a tenant
+     sees every row (the landlord: migrations, tenant commands); requests always have one, or are
+     a 404. Superusers and `BYPASSRLS` roles bypass the policies, `FORCE` or not: the Docker
+     database connects as a superuser, so development relies on the explicit filters, and
+     `TwoTenantsTest` checks the policies under a role of its own. Production must connect as an
+     ordinary role (documented in architecture.md).
+   - Cache audit: the metadata caches are keyed by the tenant's instance id (phase 1);
+     `fedale/rbac-bundle`'s cache keeps everything under one key, so it is **off** until the bundle
+     knows about tenants; `fedale/setting-bundle` gets the tenant's `number` through
+     `SettingsTenantProvider` (its global layer 0 still applies under every tenant).
+   - `schema_filter` keeps only `core`'s tables; `DeclareTenantSchemaListener` (which replaced
+     `DeclareDataSchemaListener`) declares every tenant's schemas and leaves the RBAC tables out
+     of the generated schema.
+   - Not done here, left to phase 3 with the users: binding a session to its tenant. Today a
+     signed-in user's session is per host (the cookie), and their roles are per tenant (the RBAC
+     schema), so a user with no role in a tenant sees nothing there; memberships will refuse the
+     sign-in itself. Tests with two tenants: the same object name with different fields, and neither
    tenant's definitions, records, files or caches reachable from the other.
 3. **Users and memberships**: global identities, `tenant_membership`, profiles per tenant, the
    session bound to its tenant, the tenant switcher, the membership commands. Tests of

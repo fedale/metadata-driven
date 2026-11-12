@@ -45,11 +45,26 @@ symfony console <command> --help        # the same reference, from the command i
 | `access:sync` | Create the permissions of every object, the admin permission and the super admin role — see [Users and permissions](access.md#permissions) |
 | `rbac:*` | Roles, permissions and assignments (`fedale/rbac-bundle`) — see [Users and permissions](access.md#roles) |
 
+## Which tenant a command works for
+
+Every command takes a global `--tenant=<slug>` option. The application's commands (`metadata:*`,
+`schema:sync`, `record:*`, `user:*`, `access:*`) and the bundles' `rbac:*` work for the default
+tenant, `default` unless `TENANT_DEFAULT` says otherwise, when you leave it out:
+
+```bash
+symfony console metadata:list                   # the default tenant's objects
+symfony console metadata:list --tenant=acme     # tenant acme's
+```
+
+The other commands (the migrations, Doctrine's, `cache:clear`) work for no tenant, across all of
+them, unless `--tenant` names one. An unknown or suspended tenant stops the command:
+`There is no tenant "acme".` See [Architecture](architecture.md#tenants).
+
 ## How the commands change the database
 
 The `metadata:*` commands that write a definition run in **one PostgreSQL transaction**: they save
 the definition in the `core` schema, then the Schema module applies the matching DDL to the record
-table in the `data` schema. If the DDL fails, the definition is rolled back too (PostgreSQL DDL is
+table in the tenant's data schema (`data` for the default tenant). If the DDL fails, the definition is rolled back too (PostgreSQL DDL is
 transactional), so metadata and tables never disagree. Every DDL statement applied is logged in
 `core.schema_change_log`.
 

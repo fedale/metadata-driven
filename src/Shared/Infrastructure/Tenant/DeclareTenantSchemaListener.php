@@ -12,15 +12,20 @@ use Doctrine\ORM\Tools\Event\GenerateSchemaEventArgs;
 use Doctrine\ORM\Tools\ToolEvents;
 
 /**
- * Adds the tenant_id column, its foreign key and its indexes to the schema generated from the
- * ORM mapping, as migration Version20261112120000 created them.
+ * Brings the schema generated from the ORM mapping in line with what the tenants add to it, so
+ * that migrations:diff stays empty. Only schema tools run this listener.
  *
- * No model maps the column (the domain doesn't know about tenants; a trigger fills it in, the
- * tenant filter reads it), so without this every migrations:diff would drop it. Only schema
- * tools run this listener.
+ * - The tenant_id column, its foreign key and its indexes, as migration Version20261112120000
+ *   created them. No model maps the column (the domain doesn't know about tenants; a trigger
+ *   fills it in, the tenant filter reads it), so the diff would drop it.
+ * - No fedale/rbac-bundle tables: the bundle maps them, unqualified, but each tenant has its own,
+ *   in its RBAC schema, hidden from the schema tools (doctrine.yaml); the diff would create them
+ *   in core.
+ * - Every tenant's schemas, declared: their tables are hidden, but schema names are not
+ *   filtered, and every diff would emit a spurious "CREATE SCHEMA" in down().
  */
 #[AsDoctrineListener(event: ToolEvents::postGenerateSchema)]
-final class DeclareTenantColumnsListener
+final class DeclareTenantSchemaListener
 {
     /** Indexes that start with tenant_id, in front of the columns the mapping gives them. */
     private const array TENANT_LEADING_INDEXES = [
@@ -36,9 +41,32 @@ final class DeclareTenantColumnsListener
         'idx_schema_change_log_object',
     ];
 
+    /** fedale/rbac-bundle's tables, by their unqualified names. */
+    private const array RBAC_TABLES = ['auth_assignment', 'auth_item', 'auth_item_child', 'auth_rule'];
+
+    public function __construct(private readonly TenantRegistry $tenants)
+    {
+    }
+
+    /**
+     * Deprecated methods of Schema and Table: since DBAL 4.5 a schema is rebuilt through an
+     * editor, but the event hands over a schema to change in place, with no way to replace it.
+     */
     public function postGenerateSchema(GenerateSchemaEventArgs $args): void
     {
         $schema = $args->getSchema();
+        foreach (self::RBAC_TABLES as $name) {
+            if ($schema->hasTable($name)) {
+                $schema->dropTable($name);
+            }
+        }
+        foreach ($this->tenants->all() as $tenant) {
+            foreach ([$tenant->dataSchema, $tenant->rbacSchema] as $namespace) {
+                if (!$schema->hasNamespace($namespace)) {
+                    $schema->createNamespace($namespace);
+                }
+            }
+        }
         foreach (TenantScope::TABLES as $name) {
             $qualified = CoreSchema::NAME.'.'.$name;
             // metadata_state is not mapped: hidden from the schema tools (doctrine.yaml).
@@ -48,10 +76,6 @@ final class DeclareTenantColumnsListener
         }
     }
 
-    /**
-     * The deprecated mutators of Table: since DBAL 4.5 a table is rebuilt through an editor,
-     * but the event hands over a schema to change in place, with no way to replace a table.
-     */
     private function declare(Table $table, string $name): void
     {
         $table->addColumn(TenantScope::COLUMN, 'guid', ['notnull' => true]);
