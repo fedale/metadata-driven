@@ -29,8 +29,9 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  * A member is named in the forms by a short hash of their email, not the email: no address in
  * a URL, and an id of its own for each row's forms.
  *
- * No way to more power: an admin gives and takes only the roles they hold themselves (the super
- * admin holds them all), and leaves alone a member holding a role they don't: their roles and
+ * No way to more power: an admin gives and takes only the roles they could hold themselves
+ * (AccessCheckerInterface::canGrant(): they hold the role, or every permission it gives; the
+ * super admin holds them all), and leaves alone a member holding a role they don't: their roles and
  * membership don't change, and once removed (their roles stay) they aren't added back. Else the
  * right to manage members would be the right to make anyone, an account of one's own included,
  * super admin, or to take from those above.
@@ -228,7 +229,7 @@ final class AdminMemberController extends AbstractController
      */
     private function grantable(): array
     {
-        return array_values(array_filter(array_keys($this->roles->roles()), $this->access->holds(...)));
+        return array_values(array_filter(array_keys($this->roles->roles()), $this->access->canGrant(...)));
     }
 
     /**
@@ -240,7 +241,7 @@ final class AdminMemberController extends AbstractController
     private function outranks(string $email): bool
     {
         foreach ($this->roles->assignmentsOf($email) as $item) {
-            if (!$this->access->holds($item)) {
+            if (!$this->access->canGrant($item)) {
                 return false;
             }
         }

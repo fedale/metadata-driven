@@ -130,6 +130,7 @@ The application checks these RBAC items:
 | `record.<object>.delete` | permission | Deleting records |
 | `admin.metadata` | permission | The admin UI (objects, fields, search, tables) — not the records |
 | `admin.members` | permission | The members page, `/admin/members`: who may sign in to the tenant, with which roles |
+| `admin.roles` | permission | The roles page, `/admin/roles`: which permissions each role gives |
 | `ROLE_SUPER_ADMIN` | role | Everything, now and in the future |
 
 The four permissions of an object are created with it (by the admin or the console). `access:sync`
@@ -150,6 +151,26 @@ Where objects meet:
 - The grid UI settings modal changes the grids of every user: it needs `admin.metadata`.
 
 ## Roles
+
+### The roles page — `/admin/roles`
+
+Whoever holds `admin.roles` (or the super admin role) defines the tenant's roles from the admin,
+linked from the top bar as **Roles**: a new role (`ROLE_` and capitals, a description, its
+permissions, grouped by object), a role's permissions changed, a role deleted. Members get roles on
+[the members page](#the-members-page--adminmembers). Defining roles never gives more than you have:
+
+- a role gets only **permissions you hold**;
+- you change a role only when you hold every permission it gives, and every member holding it
+  holds nothing you couldn't give yourself; through the hierarchy too (a role contained in
+  another counts as that one, its holders as its);
+- you delete a role only when, on top of that, no one holds it and no role contains it;
+- the super admin role is never changed here, and roles within roles stay the console's
+  (`rbac:child:add`, below): shown, not changed.
+
+On the members page you give a role you hold, or one all of whose permissions you hold: giving it
+then gives nothing you don't have. The super admin role only a super admin gives.
+
+### From the command line
 
 Roles are groups of permissions and of other roles, defined at runtime with the commands of the
 bundle — no code, no `security.yaml`:

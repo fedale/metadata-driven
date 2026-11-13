@@ -285,7 +285,7 @@ console (`HostTenantListener` lets `/account` through there):
 
 Branch `user_profile`, from `tenant_admin_invitation_fix`. Tests: `AccountControllerTest` (5).
 
-## Part D: roles from the admin (2026-11-13, planned)
+## Part D: roles from the admin (2026-11-13)
 
 A tenant's admins define its roles from the admin, not only from the console (`rbac:*`).
 `/admin/roles`, behind a new permission, `admin.roles`. Rules decided before writing it, after
@@ -299,4 +299,21 @@ the members page's reviews, so that defining roles is no way to more power:
   edited.
 
 Branch `tenant_roles_ui`, from `user_profile`.
+
+As built:
+
+- Access: `Permissions::ROLES` (`admin.roles`, synced by `access:sync`), `canManageRoles()`;
+  `TenantRolesInterface::permissions()`, `permissionsOf()`, `childRolesOf()`,
+  `rolesContaining()`, `createRole()`, `setPermissions()` (the roles a role contains left alone),
+  `deleteRole()`.
+- **`AccessCheckerInterface::canGrant()`**, for the members page too: a role you hold, or every
+  permission of which, through the roles it contains, you hold; the super admin role only a super
+  admin gives. Without it, a role a lesser admin defined could never be given by them (they don't
+  hold it); with it, giving a role still gives nothing the admin doesn't have.
+- `AdminRoleController` (`/admin/roles`, `/{role}`, `/{role}/delete`), its templates, the
+  **Roles** link of the top bar and of the admin's index. The rules are the controller's
+  docblock; **the hierarchy** was found while checking them: a role within another held above
+  (the boss holds `ROLE_MANAGER`, which contains `ROLE_READER`) counts as that one, its holders as
+  its, and a role within another is not deleted from here.
+- Tests: `AdminRoleControllerTest` (6).
 

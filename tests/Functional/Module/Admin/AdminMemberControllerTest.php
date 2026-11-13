@@ -338,19 +338,22 @@ final class AdminMemberControllerTest extends WebTestCase
     /**
      * Managing members is no way to more power: you give, take and remove only what you hold.
      */
-    public function testGrantsOnlyTheRolesTheAdminHolds(): void
+    public function testGrantsOnlyTheRolesTheAdminCouldHold(): void
     {
         $rbac = self::getContainer()->get(RbacManagerInterface::class);
         $rbac->addItem('ROLE_HR', AuthItemType::ROLE);
         $rbac->addItem('ROLE_EDITOR', AuthItemType::ROLE);
+        $rbac->addItem('ROLE_INVITER', AuthItemType::ROLE);
         self::signIn($this->client, 'boss@example.com', [Permissions::SUPER_ADMIN_ROLE]);
         $rbac->addChild('ROLE_HR', Permissions::MEMBERS);
+        $rbac->addChild('ROLE_EDITOR', Permissions::ADMINISTER);    // a permission HR doesn't hold
+        $rbac->addChild('ROLE_INVITER', Permissions::MEMBERS);      // one HR holds, through ROLE_HR
         self::signIn($this->client, 'hr@example.com', ['ROLE_HR']);
         self::createUser('mallory@example.com');
 
         $crawler = $this->client->request('GET', '/admin/members');
         $options = $crawler->filter(\sprintf('form[name="roles_%s"] input[type="checkbox"]', self::key('mallory@example.com')))->each(static fn ($input): string => (string) $input->attr('value'));
-        self::assertSame(['ROLE_HR'], $options, 'Only the roles HR holds are offered.');
+        self::assertSame(['ROLE_HR', 'ROLE_INVITER'], $options, 'The roles HR holds, or all of whose permissions HR holds; never the super admin role.');
         // The boss holds a role HR doesn't: their row can't be changed by HR.
         self::assertCount(0, $crawler->filter(\sprintf('form[name="remove_%s"]', self::key('boss@example.com'))));
 

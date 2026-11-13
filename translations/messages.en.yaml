@@ -4,6 +4,7 @@ nav:
     records: Records
     admin: Admin
     members: Members
+    roles: Roles
     language: Language
     tenants: Workspaces
     account: My account
@@ -188,6 +189,31 @@ admin:
     views: Views
     translations: Translations
     templates: Templates
+    roles:
+        title: Roles
+        intro: 'What each role of this workspace gives. Members get roles on the members page.'
+        permissions: Permissions
+        holders: Members
+        contains: 'Contains %roles% (from the command line).'
+        new: New role
+        new_intro: 'You can give a role only permissions you hold yourself.'
+        name: Name
+        name_help: 'ROLE_ and capital letters, digits or underscores: ROLE_PET_READER.'
+        description: Description
+        created: 'Role %name% created.'
+        saved: 'Role %name% saved.'
+        deleted: 'Role %name% deleted.'
+        delete_confirm: 'Delete the role %name%?'
+        administration: Administration
+        action:
+            read: read
+            create: create
+            update: update
+            delete: delete
+        permission:
+            admin_metadata: 'Objects, fields and views'
+            admin_members: Members
+            admin_roles: Roles
     members:
         title: Members
         intro: 'Who may sign in to this workspace, and with which of its roles. Accounts are shared by every workspace: one email, one password.'

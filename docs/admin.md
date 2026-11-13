@@ -114,6 +114,11 @@ tick their roles, remove them. It needs the
 `admin.members` permission rather than `admin.metadata`, and it is linked from the top bar. See
 [The members page](access.md#the-members-page--adminmembers).
 
+## Roles — `/admin/roles`
+
+What each role of the tenant gives: create a role with permissions you hold, change or delete one
+within your reach. It needs `admin.roles`. See [The roles page](access.md#the-roles-page--adminroles).
+
 ## A field — `/admin/objects/<object>/fields/<field>`
 
 The field's type, column, rules and settings, and when it applies. **Label** renames it.

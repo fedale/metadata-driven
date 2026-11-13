@@ -40,4 +40,45 @@ interface TenantRolesInterface
      * Takes away everything assigned to the user directly in the tenant, roles and permissions.
      */
     public function revokeAll(string $email): void;
+
+    /**
+     * @return array<string, string|null> permission name => description, by name
+     */
+    public function permissions(): array;
+
+    /**
+     * @return list<string> the permissions the role gives directly, by name
+     */
+    public function permissionsOf(string $role): array;
+
+    /**
+     * @return list<string> the roles the role contains (the hierarchy, rbac:child:add), by name
+     */
+    public function childRolesOf(string $role): array;
+
+    /**
+     * @return list<string> the roles containing the role, directly or through others, by name
+     */
+    public function rolesContaining(string $role): array;
+
+    /**
+     * @param list<string> $permissions
+     *
+     * @throws \InvalidArgumentException a malformed or taken name, an unknown permission
+     */
+    public function createRole(string $name, ?string $description, array $permissions): void;
+
+    /**
+     * Gives the role exactly these permissions; the roles it contains are left alone.
+     *
+     * @param list<string> $permissions
+     *
+     * @throws \InvalidArgumentException no such role, an unknown permission
+     */
+    public function setPermissions(string $role, array $permissions): void;
+
+    /**
+     * @throws \InvalidArgumentException no such role
+     */
+    public function deleteRole(string $role): void;
 }

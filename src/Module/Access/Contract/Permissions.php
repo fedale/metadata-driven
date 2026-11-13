@@ -15,6 +15,9 @@ final class Permissions
     /** The members of the tenant: who may sign in, with which roles (/admin/members). */
     public const string MEMBERS = 'admin.members';
 
+    /** The roles of the tenant: which permissions each gives (/admin/roles). */
+    public const string ROLES = 'admin.roles';
+
     /** Short-circuits every check (fedale_rbac.super_admin_role). */
     public const string SUPER_ADMIN_ROLE = 'ROLE_SUPER_ADMIN';
 

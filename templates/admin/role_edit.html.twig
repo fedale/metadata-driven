@@ -1,0 +1,14 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ role }} · {{ 'admin.title'|trans }}{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('admin_role_index') }}">&larr; {{ 'admin.roles.title'|trans }}</a></p>
+    <h1><code>{{ role }}</code></h1>
+    {% if roles is not empty %}<p class="gv-muted">{{ 'admin.roles.contains'|trans({'%roles%': roles|join(', ')}) }}</p>{% endif %}
+    {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+        {{ form_errors(form) }}
+        {{ form_rest(form) }}
+        <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.save'|trans }}</button>
+    {{ form_end(form) }}
+{% endblock %}

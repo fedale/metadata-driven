@@ -290,8 +290,11 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   (`tenant:operator grant`), on `tenant_admin_console`; security fixes found by the automated
   review afterwards on `tenant_admin_invitation_fix`. Each branch from the one before, from
   `multi_tenancy_followups` (merge the last one); waiting for review, nothing merged (the user merges at the end, and
-  tests by hand then). Run the migrations, up to `Version20261113130000`. Left: a second factor
-  for signing in (later, for every user), Monolog for the console's log (the user's call).
+  tests by hand then). Run the migrations, up to `Version20261113130000`. Then part C, the account
+  page (`/account`: name, password), on `user_profile`, and part D, the roles page
+  (`/admin/roles`, permission `admin.roles`), on `tenant_roles_ui`, each from the one before.
+  Left: email sending (invitations by email, a password reset: the user put it off), a second
+  factor for signing in (later, for every user), Monolog for the console's log (the user's call).
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

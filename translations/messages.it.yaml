@@ -3,6 +3,7 @@ nav:
     records: Dati
     admin: Amministrazione
     members: Membri
+    roles: Ruoli
     language: Lingua
     tenants: Spazi di lavoro
     account: Il mio account
@@ -185,6 +186,31 @@ admin:
     views: Viste
     translations: Traduzioni
     templates: Template
+    roles:
+        title: Ruoli
+        intro: 'Cosa concede ogni ruolo di questo spazio di lavoro. I ruoli si assegnano dalla pagina dei membri.'
+        permissions: Permessi
+        holders: Membri
+        contains: 'Contiene %roles% (da riga di comando).'
+        new: Nuovo ruolo
+        new_intro: 'A un ruolo puoi dare solo permessi che hai tu.'
+        name: Nome
+        name_help: 'ROLE_ e lettere maiuscole, cifre o trattini bassi: ROLE_PET_READER.'
+        description: Descrizione
+        created: 'Ruolo %name% creato.'
+        saved: 'Ruolo %name% salvato.'
+        deleted: 'Ruolo %name% eliminato.'
+        delete_confirm: 'Eliminare il ruolo %name%?'
+        administration: Amministrazione
+        action:
+            read: lettura
+            create: creazione
+            update: modifica
+            delete: eliminazione
+        permission:
+            admin_metadata: 'Oggetti, campi e viste'
+            admin_members: Membri
+            admin_roles: Ruoli
     members:
         title: Membri
         intro: 'Chi può accedere a questo spazio di lavoro, e con quali dei suoi ruoli. Gli account sono comuni a tutti gli spazi: una email, una password.'
