@@ -46,6 +46,11 @@ final class InvalidUser extends UserException
         return new self(\sprintf('%s is a member already.', $email));
     }
 
+    public static function invitedByAnother(string $email, string $inviter): self
+    {
+        return new self(\sprintf('%s has an invitation pending, invited by %s: revoke it first.', $email, $inviter));
+    }
+
     public static function invitationNotFound(): self
     {
         return new self('This invitation is no longer valid: ask for another one.');

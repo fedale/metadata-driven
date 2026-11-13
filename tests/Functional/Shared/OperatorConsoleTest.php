@@ -134,6 +134,25 @@ final class OperatorConsoleTest extends WebTestCase
         self::assertNotContains('bruno@example.com', self::getContainer()->get(UserManagerInterface::class)->membersOf($this->tenant('default')->id));
     }
 
+    /**
+     * Every action of the console checks its CSRF token: a request forged elsewhere does nothing.
+     */
+    public function testAForgedRequestChangesNothing(): void
+    {
+        self::createUser('bruno@example.com');
+        $this->signedInOperator();
+        $key = substr(hash('sha256', 'bruno@example.com'), 0, 12);
+        $default = $this->tenant('default');
+
+        $this->client->request('POST', '/console/tenants/default/status', ['status' => []]);
+        $this->client->request('POST', \sprintf('/console/tenants/default/members/%s/admin', $key), ['admin_'.$key => []]);
+        $this->client->request('POST', \sprintf('/console/tenants/default/members/%s/remove', $key), ['remove_'.$key => []]);
+
+        self::assertTrue($this->tenant('default')->active);
+        self::assertSame([], self::getContainer()->get(Connection::class)->fetchFirstColumn("SELECT item_name FROM rbac.auth_assignment WHERE user_id = 'bruno@example.com'"));
+        self::assertContains('bruno@example.com', self::getContainer()->get(UserManagerInterface::class)->membersOf($default->id));
+    }
+
     public function testRevokingTheFlagSignsTheOperatorOut(): void
     {
         $this->signedInOperator();

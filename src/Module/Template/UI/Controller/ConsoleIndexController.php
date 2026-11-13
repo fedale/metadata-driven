@@ -74,7 +74,7 @@ final class ConsoleIndexController extends AbstractController
     #[Route('/{name}/remove', name: 'index_remove', requirements: ['name' => '[a-z][a-z0-9-]*'], methods: ['POST'])]
     public function remove(string $name, Request $request): Response
     {
-        if ($this->removeForm($name)->handleRequest($request)->isSubmitted()) {
+        if ($this->isValidSubmission($this->removeForm($name), $request)) {
             try {
                 $this->sources->remove($name);
                 $this->logger->notice('Operator {operator} removed the shared index {name}', ['operator' => $this->getUser()?->getUserIdentifier(), 'name' => $name]);
@@ -118,5 +118,17 @@ final class ConsoleIndexController extends AbstractController
         $value = $form->get($child)->getData();
 
         return \is_string($value) ? trim($value) : '';
+    }
+
+    /**
+     * Submitted, and valid: its CSRF token checked. An action of the console runs on nothing less.
+     *
+     * @param FormInterface<mixed> $form
+     */
+    private function isValidSubmission(FormInterface $form, Request $request): bool
+    {
+        $form->handleRequest($request);
+
+        return $form->isSubmitted() && $form->isValid();
     }
 }

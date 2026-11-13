@@ -119,7 +119,7 @@ final class UserManager implements UserManagerInterface
         return array_map(static fn (User $user): string => $user->getEmail(), $this->users->operators());
     }
 
-    public function invite(string $email, string $tenantId, string $invitedBy, bool $keepAssignments): string
+    public function invite(string $email, string $tenantId, string $invitedBy, bool $keepAssignments, bool $replaceOthers = false): string
     {
         $email = User::normalizeEmail($email);
         // Inviting a member would only be a way to touch what they have here; their membership
@@ -128,7 +128,13 @@ final class UserManager implements UserManagerInterface
         if (null !== $user && $this->memberships->isMember($tenantId, $user->getId())) {
             throw InvalidUser::alreadyMember($email);
         }
-        // One pending invitation per email: a new one replaces it.
+        // One pending invitation per email: a new one replaces the inviter's own. Another
+        // inviter's stands until revoked (in the open, on the members page): replacing it would
+        // be a way to change what it carries, or to take it over.
+        $pending = $this->invitations->pendingOf($tenantId, $email, new \DateTimeImmutable(), self::INVITATION_MAX_FAILURES);
+        if (null !== $pending && $pending->invitedBy !== $invitedBy && !$replaceOthers) {
+            throw InvalidUser::invitedByAnother($email, $pending->invitedBy);
+        }
         $this->invitations->removePendingOf($tenantId, $email);
         $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
         $now = new \DateTimeImmutable();

@@ -130,7 +130,7 @@ final class ConsoleController extends AbstractController
     public function status(string $slug, Request $request): Response
     {
         $tenant = $this->tenantOr404($slug);
-        if ($this->actionForm('status', 'console_tenant_status', $tenant)->handleRequest($request)->isSubmitted()) {
+        if ($this->isValidSubmission($this->actionForm('status', 'console_tenant_status', $tenant), $request)) {
             $tenant->active ? $this->administration->suspend($tenant) : $this->administration->resume($tenant);
             $this->log($tenant->active ? 'suspended tenant' : 'resumed tenant', $tenant);
             $this->addFlash('success', $this->translator->trans($tenant->active ? 'console.suspended' : 'console.resumed', ['%slug%' => $tenant->slug]));
@@ -179,7 +179,7 @@ final class ConsoleController extends AbstractController
     {
         $tenant = $this->tenantOr404($slug);
         $member = $this->memberOr404($tenant, $key);
-        if ($this->actionForm('admin_'.$key, 'console_member_admin', $tenant, ['key' => $key])->handleRequest($request)->isSubmitted()) {
+        if ($this->isValidSubmission($this->actionForm('admin_'.$key, 'console_member_admin', $tenant, ['key' => $key]), $request)) {
             $made = $this->sessions->within($tenant, function () use ($member): bool {
                 // The role exists even where access:sync never ran.
                 $this->accessSetup->syncAll();
@@ -202,7 +202,7 @@ final class ConsoleController extends AbstractController
     {
         $tenant = $this->tenantOr404($slug);
         $member = $this->memberOr404($tenant, $key);
-        if ($this->actionForm('remove_'.$key, 'console_member_remove', $tenant, ['key' => $key])->handleRequest($request)->isSubmitted()) {
+        if ($this->isValidSubmission($this->actionForm('remove_'.$key, 'console_member_remove', $tenant, ['key' => $key]), $request)) {
             $this->users->removeFromTenant($member->email, $tenant->id);
             $this->log('removed member', $tenant, $member->email);
             $this->addFlash('success', $this->translator->trans('admin.members.removed', ['%name%' => $member->displayName]));
@@ -218,7 +218,8 @@ final class ConsoleController extends AbstractController
     {
         $email = $this->users->canonicalEmail($email) ?? mb_strtolower(trim($email));
         try {
-            $token = $this->users->invite($email, $tenant->id, $this->operator(), true);
+            // The operator is above every admin: their invitation replaces a pending one.
+            $token = $this->users->invite($email, $tenant->id, $this->operator(), true, true);
         } catch (UserException $e) {
             $this->addFlash('error', $e->getMessage());
 
@@ -327,5 +328,17 @@ final class ConsoleController extends AbstractController
         $value = $form->get($child)->getData();
 
         return \is_string($value) ? trim($value) : '';
+    }
+
+    /**
+     * Submitted, and valid: its CSRF token checked. An action of the console runs on nothing less.
+     *
+     * @param FormInterface<mixed> $form
+     */
+    private function isValidSubmission(FormInterface $form, Request $request): bool
+    {
+        $form->handleRequest($request);
+
+        return $form->isSubmitted() && $form->isValid();
     }
 }

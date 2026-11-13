@@ -36,6 +36,17 @@ final class DbalInvitationRepository implements InvitationRepository
         ]);
     }
 
+    public function pendingOf(string $tenantId, string $email, \DateTimeImmutable $now, int $maxFailures): ?Invitation
+    {
+        $row = $this->connection->fetchAssociative(
+            \sprintf('SELECT %s FROM core.tenant_invitation WHERE tenant_id = :tenant AND email = :email AND %s ORDER BY created_at DESC LIMIT 1', self::COLUMNS, self::PENDING),
+            ['tenant' => $tenantId, 'email' => $email, 'now' => $now, 'max' => $maxFailures],
+            ['now' => Types::DATETIME_IMMUTABLE],
+        );
+
+        return false === $row ? null : self::invitation($row);
+    }
+
     public function removePendingOf(string $tenantId, string $email): void
     {
         $this->connection->executeStatement('DELETE FROM core.tenant_invitation WHERE tenant_id = ? AND email = ? AND accepted_at IS NULL', [$tenantId, $email]);

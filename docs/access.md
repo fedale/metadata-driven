@@ -72,8 +72,8 @@ tenant: linked from the top bar as **Members**.
   `/invitation/…` joins the tenant and is signed in: with the password of their account if the
   email has one, or choosing a password (12 characters at least) and their name. Five wrong
   passwords burn the invitation, and an account gets five tries a quarter of an hour whatever the
-  invitation, so inviting again gives no more guesses. One invitation per email at a time (a new
-  one replaces it); a member can't be invited.
+  invitation, so inviting again gives no more guesses. One invitation per email at a time: your
+  new one replaces yours, another admin's must be revoked first; a member can't be invited.
 - **Roles**: a checkbox per role of the tenant, saved per member. Permissions assigned directly
   with `rbac:assign` are left alone.
 - **Remove** a member: they can no longer sign in here, and their session ends at its next

@@ -165,6 +165,50 @@ final class AdminMemberControllerTest extends WebTestCase
     }
 
     /**
+     * Roles are keyed by the email, account or not: an email given the super admin role ahead
+     * of its account (as the console invites a tenant's admin) is above a lesser admin too.
+     */
+    public function testALesserAdminsInvitationCarriesNoRoleTheyDontHold(): void
+    {
+        $rbac = self::getContainer()->get(RbacManagerInterface::class);
+        $rbac->addItem('ROLE_HR', AuthItemType::ROLE);
+        self::signIn($this->client, 'hr@example.com', ['ROLE_HR']);
+        $rbac->addChild('ROLE_HR', Permissions::MEMBERS);
+        $rbac->assign('dora@example.com', Permissions::SUPER_ADMIN_ROLE);   // no account yet
+
+        $link = $this->invite('dora@example.com');
+        $this->client->getCookieJar()->clear();
+        $this->client->request('GET', $link);
+        $this->client->submitForm('Join', ['invitation[password]' => self::PASSWORD]);
+        $this->client->followRedirect();
+        $this->client->followRedirect();
+
+        self::assertContains('dora@example.com', $this->members());
+        self::assertSame([], self::getContainer()->get(TenantRolesInterface::class)->assignmentsOf('dora@example.com'));
+    }
+
+    /**
+     * Nor does an invitation replace another admin's: that one is revoked first, in the open.
+     */
+    public function testAnotherAdminsPendingInvitationIsNotReplaced(): void
+    {
+        $rbac = self::getContainer()->get(RbacManagerInterface::class);
+        $rbac->addItem('ROLE_HR', AuthItemType::ROLE);
+        self::signInAsSuperAdmin($this->client);
+        $boss = $this->invite('dora@example.com');
+        $rbac->addChild('ROLE_HR', Permissions::MEMBERS);
+        self::signIn($this->client, 'hr@example.com', ['ROLE_HR']);
+
+        $this->client->request('GET', '/admin/members');
+        $this->client->submitForm('Invite', ['add_member[email]' => 'dora@example.com']);
+        $this->client->followRedirect();
+
+        self::assertSelectorTextContains('.md-flash--error', 'invited by admin@example.com');
+        $this->client->request('GET', $boss);
+        self::assertResponseIsSuccessful('The first invitation still stands.');
+    }
+
+    /**
      * Inviting a member would only be a way to touch their roles: refused.
      */
     public function testAMemberIsNotInvited(): void

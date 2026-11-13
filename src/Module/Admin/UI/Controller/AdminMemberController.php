@@ -69,8 +69,10 @@ final class AdminMemberController extends AbstractController
         // whoever the email belongs to (tenant-admin-ui-plan.md, part A2). If it names an account
         // holding assignments here you don't hold (a former member above you), the invitation
         // takes them away on acceptance: nothing told, no escalation.
+        // The assignments are keyed by the email, account or not: one given a role ahead of its
+        // account (the console invites a tenant's admin so) is weighed all the same.
         $existing = $this->users->canonicalEmail($email);
-        $keepAssignments = null === $existing || $this->outranks($existing);
+        $keepAssignments = $this->outranks($existing ?? mb_strtolower(trim($email)));
         try {
             $token = $this->users->invite($email, $this->tenant->id(), $this->yourEmail(), $keepAssignments);
             $this->addFlash('success', $this->translator->trans('admin.members.invited', ['%email%' => $email]));

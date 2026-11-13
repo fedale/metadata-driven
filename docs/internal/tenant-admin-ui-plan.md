@@ -141,6 +141,13 @@ Hardened after the automated security review's fourth round (2026-11-13):
 - **A member can't be invited** (`InvalidUser::alreadyMember`): it would only be a way to take
   their assignments away. Their membership is no secret to the tenant's admins. Someone who
   became a member meanwhile keeps everything when accepting.
+- **Assignments made ahead of an account are weighed too** (the review's fifth round): the
+  roles are keyed by the email, so the console's invited admin holds the super admin role before
+  having an account. An invitation by an admin who doesn't hold them now takes them away on
+  acceptance, account or not; and **another inviter's pending invitation is not replaced** (it is
+  revoked first, in the open), else a lesser admin could take over the operator's invitation and
+  accept it with an account of their own. The console's invitations may replace any: the
+  operator is above every admin.
 - `symfony/rate-limiter` is now required; sign-in throttling (`login_throttling`, five tries a
   minute) came with it, ahead of part B. In the tests the limiters' cache (`cache.rate_limiter`,
   on disk, since a request reboots the kernel) is cleared before each test that relies on it.
@@ -252,6 +259,10 @@ console.md (`tenant:operator:*`), access.md (operators), status.md.
   (`TenantSessionSql::NO_TENANT_RBAC`): fedale/rbac-bundle's voter looks every attribute up in
   `auth_item`, and on the console, where no tenant's tables are, it failed on an undefined table
   (found when a revoked operator, signed out, was asked about). Empty, they grant nothing.
+- **Every console action checks its CSRF token** (`isValidSubmission()`): suspend or resume, the
+  super admin role, removing a member, removing an index only checked that their form was
+  submitted, so a page elsewhere could have made a signed-in operator do them (found by the
+  review's sixth round; `testAForgedRequestChangesNothing`).
 - Sign-in throttling came with part A2's hardening (`login_throttling`, five tries a minute).
 - Tests: `OperatorConsoleTest` (7: an operator only, the hosts kept apart, a tenant created with
   its permissions and an invited admin and a reserved slug refused, suspend, resume, delete and

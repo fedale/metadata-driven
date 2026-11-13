@@ -77,14 +77,17 @@ interface UserManagerInterface
      * Invites someone to a tenant: whoever the email belongs to accepts with acceptInvitation().
      * The same whether the email has an account or not: nothing of the account is told.
      *
+     * One invitation per email is pending: the inviter's own replaces theirs; another inviter's
+     * is refused unless $replaceOthers (the operator, above every admin).
+     *
      * @param bool $keepAssignments false: take the account's assignments in the tenant away on
      *                              acceptance (its inviter doesn't hold them all)
      *
      * @return string the token of the invitation's link, shown once, never stored
      *
-     * @throws UserException not an email address
+     * @throws UserException not an email address, a member, another inviter's pending invitation
      */
-    public function invite(string $email, string $tenantId, string $invitedBy, bool $keepAssignments): string;
+    public function invite(string $email, string $tenantId, string $invitedBy, bool $keepAssignments, bool $replaceOthers = false): string;
 
     /**
      * @return list<Invitation> the tenant's pending invitations, the newest first
