@@ -9,6 +9,7 @@
             <a class="gv-btn" href="{{ path('admin_form_index') }}">{{ 'admin.forms'|trans }}</a>
             <a class="gv-btn" href="{{ path('admin_translation_index') }}">{{ 'admin.translations'|trans }}</a>
             <a class="gv-btn" href="{{ path('admin_template_index') }}">{{ 'admin.templates'|trans }}</a>
+            {% if can('admin.members') %}<a class="gv-btn" href="{{ path('admin_member_index') }}">{{ 'admin.members.title'|trans }}</a>{% endif %}
             <a class="gv-btn gv-btn-primary" href="{{ path('admin_object_new') }}">{{ 'admin.index.new_object'|trans }}</a>
         </div>
     </div>

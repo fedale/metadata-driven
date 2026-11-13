@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\User\Contract;
 
+use App\Module\User\Contract\Dto\Member;
 use App\Module\User\Contract\Exception\UserException;
 
 interface UserManagerInterface
@@ -50,4 +51,16 @@ interface UserManagerInterface
      * @return list<string> the emails of the tenant's members, sorted
      */
     public function membersOf(string $tenantId): array;
+
+    /**
+     * The tenant's members, by name.
+     *
+     * @return list<Member>
+     */
+    public function members(string $tenantId): array;
+
+    /**
+     * Whether an account has this email, in any tenant or none: users are global.
+     */
+    public function exists(string $email): bool;
 }

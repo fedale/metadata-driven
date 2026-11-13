@@ -52,6 +52,30 @@ symfony console tenant:member:remove acme anna@example.com   # her sessions ther
 The `tenant:member:*` commands work for the tenant their first argument names. Removing a member
 leaves their roles in the tenant, unused until they're a member again.
 
+### The members page — `/admin/members`
+
+The same, from the admin, for whoever holds `admin.members` (or the super admin role), in each
+tenant: linked from the top bar as **Members**.
+
+- **The members** of the tenant: name, email, roles, last sign-in. Members of other tenants
+  aren't listed.
+- **Add a member** by email. An existing account becomes a member; a new email needs a name and an
+  initial password (12 characters at least), and gets an account. The application sends no
+  email: pass the password on.
+- **Roles**: a checkbox per role of the tenant, saved per member. Permissions assigned directly
+  with `rbac:assign` are left alone.
+- **Remove** a member: they can no longer sign in here, and their session ends at its next
+  request.
+- **Your own row can't be changed**: another admin changes your roles or removes you, so no one
+  locks themselves out.
+- **You give only what you have**: you can give and take only the roles you hold yourself
+  (a super admin holds them all). A member's other roles are shown, and kept, and you can't
+  remove a member holding a role you don't. Managing members never makes anyone more powerful
+  than the admin doing it.
+
+Accounts are shared by every tenant, so adding an existing email tells you it has an account, and
+shows the name of its profile; nothing else about it (its other tenants, its roles there).
+
 ### `user:create`
 
 ```
@@ -77,6 +101,7 @@ The application checks these RBAC items:
 | `record.<object>.update` | permission | Saving changes to records |
 | `record.<object>.delete` | permission | Deleting records |
 | `admin.metadata` | permission | The admin UI (objects, fields, search, tables) — not the records |
+| `admin.members` | permission | The members page, `/admin/members`: who may sign in to the tenant, with which roles |
 | `ROLE_SUPER_ADMIN` | role | Everything, now and in the future |
 
 The four permissions of an object are created with it (by the admin or the console). `access:sync`
@@ -131,7 +156,7 @@ Other commands of the bundle: `rbac:list-items`, `rbac:revoke`, `rbac:item:remov
 
 ## Not yet available
 
-- Managing users, roles and assignments from the admin UI (console only).
+- Defining roles, and managing users beyond the members of a tenant, from the admin UI (console only).
 - Permissions per field (hidden or read-only fields per role).
 - Rules on single records (e.g. "only the records I created"): the bundle supports them
   (`auth_rule`), the application does not use them yet.

@@ -281,9 +281,12 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   remember-me cookie bound to their tenant, tests of `tenant:delete`'s files and of `tenant:run`
   over real tenants) are on `multi_tenancy_followups`, waiting for review. Run the migrations
   (`make db`, `make db-test`) and `tenant:files:move` once on an installation from before. Left:
-  `fedale/rbac-bundle` with a `tenant_id` (on standby; its cache is off meanwhile), and the admin
-  UI for tenants and members, discussed on 2026-11-13: a members page in each tenant's admin
-  first, the operator's console later (who may enter it is still to decide).
+  `fedale/rbac-bundle` with a `tenant_id` (on standby; its cache is off meanwhile).
+- **Tenants and members in the admin UI**: [tenant-admin-ui-plan.md](tenant-admin-ui-plan.md)
+  (2026-11-13). Part A, the members page of each tenant (`/admin/members`, permission
+  `admin.members`), is on `tenant_admin_members`, branched from `multi_tenancy_followups`,
+  waiting for review; nothing of either is merged yet (the user merges at the end). Part B, the
+  operator's console on `admin.<base host>` for users with an operator flag, is to plan.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\User\Application;
 
+use App\Module\User\Contract\Dto\Member;
 use App\Module\User\Contract\UserManagerInterface;
 use App\Module\User\Domain\Exception\InvalidUser;
 use App\Module\User\Domain\Model\User;
@@ -79,6 +80,28 @@ final class UserManager implements UserManagerInterface
     public function membersOf(string $tenantId): array
     {
         return $this->memberships->membersOf($tenantId);
+    }
+
+    public function members(string $tenantId): array
+    {
+        return array_map(static function (array $row): Member {
+            $name = trim(($row['first_name'] ?? '').' '.($row['last_name'] ?? ''));
+
+            return new Member(
+                $row['email'],
+                '' !== $name ? $name : $row['email'],
+                null === $row['last_login_at'] ? null : new \DateTimeImmutable($row['last_login_at']),
+            );
+        }, $this->memberships->membersWithProfiles($tenantId));
+    }
+
+    public function exists(string $email): bool
+    {
+        try {
+            return null !== $this->users->findByEmail(User::normalizeEmail($email));
+        } catch (InvalidUser) {
+            return false;
+        }
     }
 
     private function user(string $email): User

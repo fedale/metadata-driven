@@ -28,4 +28,14 @@ final class AccessChecker implements AccessCheckerInterface
     {
         return $this->access->can(Permissions::ADMINISTER);
     }
+
+    public function canManageMembers(): bool
+    {
+        return $this->access->can(Permissions::MEMBERS);
+    }
+
+    public function holds(string $item): bool
+    {
+        return $this->access->can($item);
+    }
 }

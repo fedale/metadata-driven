@@ -168,5 +168,5 @@ deptrac:
     Template: [TemplateContract, MetadataContract, RecordContract, FieldTypeContract, FileContract, AccessContract, Shared]
     TemplateContract: [Shared]
 
-    Admin: [AdminContract, MetadataContract, FieldTypeContract, SchemaContract, ViewContract, SettingsContract, AccessContract, Shared]
+    Admin: [AdminContract, MetadataContract, FieldTypeContract, SchemaContract, ViewContract, SettingsContract, AccessContract, UserContract, Shared]
     AdminContract: [Shared]

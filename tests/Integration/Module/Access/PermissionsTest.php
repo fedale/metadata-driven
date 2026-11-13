@@ -31,7 +31,7 @@ final class PermissionsTest extends KernelTestCase
         self::getContainer()->get(CreateObjectHandler::class)(new CreateObjectCommand('pet', 'Pet', 'Pets'));
         $synchronizer = self::getContainer()->get(PermissionSynchronizer::class);
 
-        self::assertSame(['admin.metadata', 'ROLE_SUPER_ADMIN'], $synchronizer->syncAll());
+        self::assertSame(['admin.metadata', 'admin.members', 'ROLE_SUPER_ADMIN'], $synchronizer->syncAll());
         self::assertSame([], $synchronizer->syncAll());
 
         $command = new CommandTester((new Application(self::bootKernel()))->find('access:sync'));

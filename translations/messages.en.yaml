@@ -3,6 +3,7 @@
 nav:
     records: Records
     admin: Admin
+    members: Members
     language: Language
     tenants: Workspaces
     sign_out: Sign out
@@ -127,6 +128,29 @@ admin:
     views: Views
     translations: Translations
     templates: Templates
+    members:
+        title: Members
+        intro: 'Who may sign in to this workspace, and with which of its roles. Accounts are shared by every workspace: one email, one password.'
+        email: Email
+        email_help: 'An existing account becomes a member; a new email gets an account, with the name and password below.'
+        first_name: First name
+        last_name: Last name
+        password: Initial password
+        password_help: 'For a new account only, 12 characters at least: pass it on to them.'
+        password_needed: 'No account has this email yet: give it an initial password.'
+        roles: Roles
+        other_roles: 'Roles you do not hold: another admin gives or takes them.'
+        last_login: Last sign-in
+        you: you
+        add: Add a member
+        add_intro: 'Add someone who has an account already, by their email, or create one.'
+        add_submit: Add
+        added: '%email% may now sign in here.'
+        already: '%email% is a member already.'
+        created: 'Account %email% created: they may sign in here.'
+        roles_saved: 'Roles of %name% saved.'
+        removed: '%name% can no longer sign in here.'
+        remove_confirm: '%name% will no longer be able to sign in here. Their roles stay, unused. Remove them?'
     template_heading: Template
     machine_name: Machine name
     name: Name

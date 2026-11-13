@@ -69,6 +69,9 @@ fails at the end when one of them did.
 A user is one email and one password for the whole installation. A **membership** lets them sign
 in to a tenant:
 
+A tenant's admins manage its members on the **Members** page of the admin (`/admin/members`):
+add an account, tick its roles, remove it. From the console:
+
 ```bash
 symfony console user:create anna@example.com --tenant=acme      # a new user, a member of acme
 symfony console tenant:member:add globex anna@example.com        # an existing user, now of globex too
@@ -146,7 +149,9 @@ never share a stored file. `tenant:delete` deletes the tenant's directory, and
 
 ## Not yet
 
-- Managing tenants and memberships from the admin UI: the console only.
+- Managing tenants from the admin UI: the console only (a tenant's members have their page,
+  `/admin/members`). The operator's console is planned:
+  [tenant-admin-ui-plan.md](internal/tenant-admin-ui-plan.md), part B.
 - Signing up, and inviting a user to a tenant.
 - One sign-in for all the tenants a user belongs to: you sign in to each host.
 - `fedale/rbac-bundle`'s cache: off, because it keeps one set of roles for the whole

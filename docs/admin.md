@@ -107,6 +107,13 @@ Templates are only named on these pages (`vendor/name@version`), never given as 
 the server: installing from a directory, packing and exporting are console commands
 ([`metadata:template:*`](console.md)).
 
+## Members — `/admin/members`
+
+Who may sign in to this tenant, and with which of its roles: add a member (an existing account,
+or a new one with an initial password), tick their roles, remove them. It needs the
+`admin.members` permission rather than `admin.metadata`, and it is linked from the top bar. See
+[The members page](access.md#the-members-page--adminmembers).
+
 ## A field — `/admin/objects/<object>/fields/<field>`
 
 The field's type, column, rules and settings, and when it applies. **Label** renames it.

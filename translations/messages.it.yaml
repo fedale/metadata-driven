@@ -2,6 +2,7 @@
 nav:
     records: Dati
     admin: Amministrazione
+    members: Membri
     language: Lingua
     tenants: Spazi di lavoro
     sign_out: Esci
@@ -124,6 +125,29 @@ admin:
     views: Viste
     translations: Traduzioni
     templates: Template
+    members:
+        title: Membri
+        intro: 'Chi può accedere a questo spazio di lavoro, e con quali dei suoi ruoli. Gli account sono comuni a tutti gli spazi: una email, una password.'
+        email: Email
+        email_help: 'Un account esistente diventa membro; per una email nuova viene creato un account, con il nome e la password qui sotto.'
+        first_name: Nome
+        last_name: Cognome
+        password: Password iniziale
+        password_help: 'Solo per un account nuovo, almeno 12 caratteri: comunicala alla persona.'
+        password_needed: 'Nessun account ha ancora questa email: indica una password iniziale.'
+        roles: Ruoli
+        other_roles: 'Ruoli che non hai: li assegna o li toglie un altro admin.'
+        last_login: Ultimo accesso
+        you: tu
+        add: Aggiungi un membro
+        add_intro: 'Aggiungi chi ha già un account, con la sua email, oppure creane uno.'
+        add_submit: Aggiungi
+        added: '%email% può ora accedere qui.'
+        already: '%email% è già membro.'
+        created: 'Account %email% creato: può accedere qui.'
+        roles_saved: 'Ruoli di %name% salvati.'
+        removed: '%name% non può più accedere qui.'
+        remove_confirm: '%name% non potrà più accedere qui. I suoi ruoli restano, inutilizzati. Rimuovere?'
     template_heading: Template
     machine_name: Nome tecnico
     name: Nome

@@ -1,0 +1,59 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'admin.members.title'|trans }} · {{ 'admin.title'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="md-page__header">
+        <h1>{{ 'admin.members.title'|trans }}</h1>
+    </div>
+    <p class="gv-muted">{{ 'admin.members.intro'|trans }}</p>
+
+    <table class="md-table">
+        <thead>
+            <tr>
+                <th scope="col">{{ 'admin.name'|trans }}</th>
+                <th scope="col">{{ 'admin.members.email'|trans }}</th>
+                <th scope="col">{{ 'admin.members.roles'|trans }}</th>
+                <th scope="col">{{ 'admin.members.last_login'|trans }}</th>
+                <th scope="col"><span class="md-visually-hidden">{{ 'admin.actions'|trans }}</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+                <tr>
+                    <td>{{ row.member.displayName }}{% if row.yourself %} <span class="gv-muted">({{ 'admin.members.you'|trans }})</span>{% endif %}</td>
+                    <td>{{ row.member.email }}</td>
+                    <td>
+                        {% if row.roles_form %}
+                            {{ form_start(row.roles_form, {attr: {class: 'md-member-roles'}}) }}
+                                {{ form_widget(row.roles_form.roles) }}
+                                {% if row.other_roles is not empty %}<span class="gv-muted" title="{{ 'admin.members.other_roles'|trans }}">{{ row.other_roles|join(', ') }}</span>{% endif %}
+                                <button type="submit" class="gv-btn">{{ 'admin.save'|trans }}</button>
+                            {{ form_end(row.roles_form) }}
+                        {% else %}
+                            {{ row.roles is empty ? '—' : row.roles|join(', ') }}
+                        {% endif %}
+                    </td>
+                    <td>{{ row.member.lastLoginAt ? row.member.lastLoginAt|date('Y-m-d H:i') : '—' }}</td>
+                    <td>
+                        {% if row.remove_form %}
+                            {{ form_start(row.remove_form, {attr: {'data-turbo-confirm': 'admin.members.remove_confirm'|trans({'%name%': row.member.displayName})}}) }}
+                                <button type="submit" class="gv-btn">{{ 'admin.remove'|trans }}</button>
+                            {{ form_end(row.remove_form) }}
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <section class="md-admin__section">
+        <h2>{{ 'admin.members.add'|trans }}</h2>
+        <p class="gv-muted">{{ 'admin.members.add_intro'|trans }}</p>
+        {{ form_start(add_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+            {{ form_errors(add_form) }}
+            {{ form_rest(add_form) }}
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.members.add_submit'|trans }}</button>
+        {{ form_end(add_form) }}
+    </section>
+{% endblock %}
