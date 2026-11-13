@@ -276,25 +276,21 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   (now part of the template plan), roles/users admin UI, field-level permissions.
 - **Multi-tenancy**: done, see [multi-tenancy-plan.md](multi-tenancy-plan.md) and the guide
   [../multi-tenancy.md](../multi-tenancy.md). The user chose Twenty CRM's model: shared tables
-  with a `tenant_id`, records in a schema per tenant, global users with memberships. The seven
-  phases were merged into `main` on 2026-11-12; the follow-ups of 2026-11-13 (the session and the
-  remember-me cookie bound to their tenant, tests of `tenant:delete`'s files and of `tenant:run`
-  over real tenants) are on `multi_tenancy_followups`, waiting for review. Run the migrations
-  (`make db`, `make db-test`) and `tenant:files:move` once on an installation from before. Left:
+  with a `tenant_id`, records in a schema per tenant, global users with memberships. Merged into
+  `main`: the seven phases on 2026-11-12, the follow-ups (the session and the remember-me cookie
+  bound to their tenant, more tests) on 2026-11-13. Run the migrations (`make db`, `make
+  db-test`) and `tenant:files:move` once on an installation from before. Left:
   `fedale/rbac-bundle` with a `tenant_id` (on standby; its cache is off meanwhile).
-- **Tenants and members in the admin UI**: [tenant-admin-ui-plan.md](tenant-admin-ui-plan.md)
-  (2026-11-13), implemented. Part A, the members page of each tenant (`/admin/members`,
-  permission `admin.members`), on `tenant_admin_members`; part A2, invitations instead of adding
-  accounts (the user's choice: no admin learns whether an email has an account), on
-  `tenant_admin_invitations`; part B, the operators' console on `console.<base host>`
-  (`tenant:operator grant`), on `tenant_admin_console`; security fixes found by the automated
-  review afterwards on `tenant_admin_invitation_fix`. Each branch from the one before, from
-  `multi_tenancy_followups` (merge the last one); waiting for review, nothing merged (the user merges at the end, and
-  tests by hand then). Run the migrations, up to `Version20261113130000`. Then part C, the account
-  page (`/account`: name, password), on `user_profile`, and part D, the roles page
-  (`/admin/roles`, permission `admin.roles`), on `tenant_roles_ui`, each from the one before.
-  Left: email sending (invitations by email, a password reset: the user put it off), a second
-  factor for signing in (later, for every user), Monolog for the console's log (the user's call).
+- **Tenants and members in the admin UI**: done, see
+  [tenant-admin-ui-plan.md](tenant-admin-ui-plan.md); merged into `main` on 2026-11-13, not yet
+  tested by hand by the user (no email is sent: invitation links are shown on the page). The
+  members page (`/admin/members`, `admin.members`) with invitations by link, the roles page
+  (`/admin/roles`, `admin.roles`), the account page (`/account`), the operators' console on
+  `console.<base host>` (`tenant:operator grant`). Migrations up to `Version20261113130000`.
+  Left, roughly in the order discussed: email sending and a password reset (put off by the
+  user); the console's finishing touches (renaming a tenant, its pending invitations,
+  deactivating an account everywhere); a domain of its own per tenant, if needed; a second factor
+  and the operators' log (with Monolog, the user's call).
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

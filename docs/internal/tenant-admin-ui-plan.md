@@ -1,9 +1,7 @@
 # Plan: tenants and members in the admin UI
 
-Status: **implemented**; part A on branch `tenant_admin_members`, part A2 (invitations) on
-`tenant_admin_invitations`, part B (the operator's console) on `tenant_admin_console`, each from
-the one before (2026-11-13). Waiting for the user's review; nothing merged yet (the user merges at
-the end). Discussed with the user on 2026-11-13. Builds on [multi-tenancy-plan.md](multi-tenancy-plan.md), whose
+Status: **done**, parts A to D merged into `main` on 2026-11-13 (`Merge branch
+'console_assets_fix'`), not yet tested by hand by the user. Discussed with the user on 2026-11-13. Builds on [multi-tenancy-plan.md](multi-tenancy-plan.md), whose
 "Not in scope" left the admin UI out: until now tenants and memberships are managed from the
 console only (decision 4 of that plan).
 
