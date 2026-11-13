@@ -95,12 +95,12 @@ final class UserManager implements UserManagerInterface
         }, $this->memberships->membersWithProfiles($tenantId));
     }
 
-    public function exists(string $email): bool
+    public function canonicalEmail(string $email): ?string
     {
         try {
-            return null !== $this->users->findByEmail(User::normalizeEmail($email));
+            return $this->users->findByEmail(User::normalizeEmail($email))?->getEmail();
         } catch (InvalidUser) {
-            return false;
+            return null;
         }
     }
 

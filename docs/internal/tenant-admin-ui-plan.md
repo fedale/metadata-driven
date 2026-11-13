@@ -53,7 +53,10 @@ roles are the tenant's RBAC items of type role, its super admin role included.
   and take only the roles you hold, directly or through the hierarchy
   (`AccessCheckerInterface::holds()`; the super admin holds them all). A member holding a role you
   don't is out of your reach: no roles form, no removal, and no adding back once removed (a
-  removed member keeps their roles in the tenant). Without this, `admin.members` would be the
+  removed member keeps their roles in the tenant). "A role you don't" means any item assigned to
+  them directly, permissions given with `rbac:assign` included; and the check works on the
+  account's canonical email, never the one typed (`canonicalEmail()`: the assignments are keyed
+  by the stored, lower-case email) — both found by the review's third round. Without this, `admin.members` would be the
   power to make any account, one of your own included, super admin, or to take from those above.
   A forged request outside these rules is a 403.
 - **Existing accounts are revealed**: the review flagged it too. Kept, as the user's to decide:
@@ -74,15 +77,16 @@ refused, one with `admin.members` only let in. A removed member's session ending
 
 ### As built
 
-- Access: `Permissions::MEMBERS`, synced by `access:sync`; `AccessCheckerInterface::canManageMembers()`;
-  `TenantRolesInterface` (`roles()`, `rolesOf()`, `setRoles()`), through fedale/rbac-bundle.
+- Access: `Permissions::MEMBERS`, synced by `access:sync`; `AccessCheckerInterface::canManageMembers()`
+  and `holds()`; `TenantRolesInterface` (`roles()`, `rolesOf()`, `assignmentsOf()`,
+  `setRoles()`), through fedale/rbac-bundle.
 - User: `UserManagerInterface::members()` (the `Member` DTO: email, name, last sign-in) and
-  `exists()`; `MembershipRepository::membersWithProfiles()`.
+  `canonicalEmail()`; `MembershipRepository::membersWithProfiles()`.
 - Admin: `AdminMemberController` (`/admin/members`, `/add`, `/{key}/roles`, `/{key}/remove`, a
   member named by the first 12 hex of the SHA-256 of their email), `templates/admin/members.html.twig`,
   the **Members** link of the top bar and of the admin's index; deptrac lets Admin use the User
   contract.
-- Tests: `AdminMemberControllerTest` (10, three for the escalations). A test reading the RBAC assignments after a change
+- Tests: `AdminMemberControllerTest` (12, five for the escalations). A test reading the RBAC assignments after a change
   follows the redirect first: the bundle keeps what it read during a request in memory.
 
 ### Documentation

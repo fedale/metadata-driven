@@ -60,7 +60,9 @@ interface UserManagerInterface
     public function members(string $tenantId): array;
 
     /**
-     * Whether an account has this email, in any tenant or none: users are global.
+     * The email of the account the given one names, as stored (trimmed, lower case), or null
+     * when no account has it, in any tenant or none: users are global. Check anything keyed by
+     * the email (the RBAC assignments) with this, never with the email as typed.
      */
-    public function exists(string $email): bool;
+    public function canonicalEmail(string $email): ?string;
 }

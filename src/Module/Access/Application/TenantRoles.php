@@ -43,6 +43,14 @@ final class TenantRoles implements TenantRolesInterface
         return $roles;
     }
 
+    public function assignmentsOf(string $email): array
+    {
+        $items = array_values($this->assignments->getAssignments($email));
+        sort($items);
+
+        return $items;
+    }
+
     public function setRoles(string $email, array $roles): void
     {
         $unknown = array_diff($roles, array_keys($this->roles()));

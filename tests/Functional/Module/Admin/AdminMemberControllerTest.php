@@ -167,6 +167,44 @@ final class AdminMemberControllerTest extends WebTestCase
     }
 
     /**
+     * The email as typed is no way around it: the check works on the account's canonical email.
+     */
+    public function testDoesNotReAddAMemberWrittenInAnotherCase(): void
+    {
+        $rbac = self::getContainer()->get(RbacManagerInterface::class);
+        $rbac->addItem('ROLE_HR', AuthItemType::ROLE);
+        self::signIn($this->client, 'mallory@example.com', [Permissions::SUPER_ADMIN_ROLE]);
+        self::getContainer()->get(UserManagerInterface::class)->removeFromTenant('mallory@example.com', $this->tenant('default')->id);
+        $rbac->addChild('ROLE_HR', Permissions::MEMBERS);
+        self::signIn($this->client, 'hr@example.com', ['ROLE_HR']);
+
+        $this->client->request('GET', '/admin/members');
+        $this->client->submitForm('Add', ['add_member[email]' => ' Mallory@Example.COM ']);
+        $this->client->followRedirect();
+
+        self::assertSelectorExists('.md-flash--error');
+        self::assertNotContains('mallory@example.com', $this->members());
+    }
+
+    /**
+     * A permission assigned directly (rbac:assign) counts as a role does.
+     */
+    public function testLeavesAMemberHoldingAPermissionTheAdminDoesNotAlone(): void
+    {
+        $rbac = self::getContainer()->get(RbacManagerInterface::class);
+        $rbac->addItem('ROLE_HR', AuthItemType::ROLE);
+        self::signIn($this->client, 'designer@example.com', [Permissions::ADMINISTER]);
+        $rbac->addChild('ROLE_HR', Permissions::MEMBERS);
+        self::signIn($this->client, 'hr@example.com', ['ROLE_HR']);
+
+        $crawler = $this->client->request('GET', '/admin/members');
+        self::assertCount(0, $crawler->filter(\sprintf('form[name="remove_%s"]', self::key('designer@example.com'))));
+        $this->client->request('POST', \sprintf('/admin/members/%s/remove', self::key('designer@example.com')));
+        self::assertResponseStatusCodeSame(403);
+        self::assertContains('designer@example.com', $this->members());
+    }
+
+    /**
      * Nor taking from a member above you what you could give to one below.
      */
     public function testLeavesTheRolesOfAMemberAboveTheAdminAlone(): void

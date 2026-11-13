@@ -67,8 +67,12 @@ final class AdminMemberController extends AbstractController
             return $this->page($form, Response::HTTP_UNPROCESSABLE_ENTITY);
         }
         $email = self::text($form, 'email');
+        $existing = $this->users->canonicalEmail($email);
         try {
-            if ($this->users->exists($email)) {
+            if (null !== $existing) {
+                // From here on the account's own email: the RBAC assignments are keyed by it,
+                // and the email as typed (another case, spaces) would find none.
+                $email = $existing;
                 // A member removed keeps their roles here: adding them back must not give back
                 // one the admin doesn't hold.
                 if (!$this->outranks($email)) {
@@ -229,12 +233,20 @@ final class AdminMemberController extends AbstractController
     }
 
     /**
-     * Whether you hold every role the user holds in this tenant: then you may change their roles,
-     * remove them, or add them back.
+     * Whether you hold everything assigned to the user in this tenant, roles and permissions
+     * assigned directly alike: then you may change their roles, remove them, or add them back.
+     *
+     * @param string $email the account's canonical email (UserManagerInterface::canonicalEmail())
      */
     private function outranks(string $email): bool
     {
-        return [] === array_diff($this->roles->rolesOf($email), $this->grantable());
+        foreach ($this->roles->assignmentsOf($email) as $item) {
+            if (!$this->access->holds($item)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function memberOr404(string $key): Member

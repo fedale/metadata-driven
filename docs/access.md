@@ -69,7 +69,8 @@ tenant: linked from the top bar as **Members**.
 - **Your own row can't be changed**: another admin changes your roles or removes you, so no one
   locks themselves out.
 - **You give only what you have**: you can give and take only the roles you hold yourself
-  (a super admin holds them all). A member holding a role you don't is out of your reach: you
+  (a super admin holds them all). A member holding a role you don't, or a permission assigned
+  to them directly that you don't hold, is out of your reach: you
   can't change their roles, remove them, or add them back once removed (a removed member keeps
   their roles here). Managing members never makes anyone more powerful than the admin doing it.
 

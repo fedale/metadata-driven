@@ -21,6 +21,12 @@ interface TenantRolesInterface
     public function rolesOf(string $email): array;
 
     /**
+     * @return list<string> every item assigned to the user directly in the tenant, roles and
+     *                      permissions (rbac:assign), by name
+     */
+    public function assignmentsOf(string $email): array;
+
+    /**
      * Gives the user exactly these roles of the tenant, assigning and revoking what differs.
      * Permissions assigned directly (rbac:assign) are left alone.
      *
