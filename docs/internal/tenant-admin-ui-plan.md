@@ -315,5 +315,9 @@ As built:
   docblock; **the hierarchy** was found while checking them: a role within another held above
   (the boss holds `ROLE_MANAGER`, which contains `ROLE_READER`) counts as that one, its holders as
   its, and a role within another is not deleted from here.
-- Tests: `AdminRoleControllerTest` (6).
+- **Holders are read from the assignments**, `TenantRolesInterface::assigneesOf()`, not from the
+  members: a removed member keeps their roles, and the console's invited admin gets the super
+  admin role ahead of an account; counting members only let a lesser admin change a role such
+  a holder had (the automated review, on `tenant_roles_holders_fix`).
+- Tests: `AdminRoleControllerTest` (7).
 

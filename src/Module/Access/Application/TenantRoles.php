@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Access\Application;
 
 use App\Module\Access\Contract\TenantRolesInterface;
+use Doctrine\DBAL\Connection;
 use Fedale\RbacBundle\Contract\AssignmentStorageInterface;
 use Fedale\RbacBundle\Contract\ItemStorageInterface;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
@@ -20,6 +21,7 @@ final class TenantRoles implements TenantRolesInterface
     private const string ROLE_NAME = '/^ROLE_[A-Z0-9_]{1,59}$/';
 
     public function __construct(
+        private readonly Connection $connection,
         private readonly ItemStorageInterface $items,
         private readonly AssignmentStorageInterface $assignments,
         private readonly RbacManagerInterface $rbac,
@@ -83,6 +85,16 @@ final class TenantRoles implements TenantRolesInterface
     public function childRolesOf(string $role): array
     {
         return $this->childrenOf($role, array_keys($this->roles()));
+    }
+
+    public function assigneesOf(string $role): array
+    {
+        // The bundle reads assignments per user only: its table, in the tenant's RBAC schema
+        // (first after core in the session's search_path).
+        /** @var list<string> $emails */
+        $emails = $this->connection->fetchFirstColumn('SELECT user_id FROM auth_assignment WHERE item_name = ? ORDER BY user_id', [$role]);
+
+        return $emails;
     }
 
     public function rolesContaining(string $role): array

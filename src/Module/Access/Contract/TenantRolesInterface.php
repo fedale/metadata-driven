@@ -57,6 +57,14 @@ interface TenantRolesInterface
     public function childRolesOf(string $role): array;
 
     /**
+     * Everyone the role is assigned to directly, members or not (a member removed keeps their
+     * assignments; an email may get one ahead of its account).
+     *
+     * @return list<string> emails, sorted
+     */
+    public function assigneesOf(string $role): array;
+
+    /**
      * @return list<string> the roles containing the role, directly or through others, by name
      */
     public function rolesContaining(string $role): array;

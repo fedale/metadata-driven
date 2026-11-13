@@ -160,9 +160,10 @@ permissions, grouped by object), a role's permissions changed, a role deleted. M
 [the members page](#the-members-page--adminmembers). Defining roles never gives more than you have:
 
 - a role gets only **permissions you hold**;
-- you change a role only when you hold every permission it gives, and every member holding it
-  holds nothing you couldn't give yourself; through the hierarchy too (a role contained in
-  another counts as that one, its holders as its);
+- you change a role only when you hold every permission it gives, and everyone holding it
+  holds nothing you couldn't give yourself: members, and those who aren't (a removed member
+  keeps their roles; an invited admin gets theirs ahead of their account); through the hierarchy
+  too (a role contained in another counts as that one, its holders as its);
 - you delete a role only when, on top of that, no one holds it and no role contains it;
 - the super admin role is never changed here, and roles within roles stay the console's
   (`rbac:child:add`, below): shown, not changed.

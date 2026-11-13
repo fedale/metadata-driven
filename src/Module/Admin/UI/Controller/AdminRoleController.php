@@ -8,8 +8,6 @@ use App\Module\Access\Contract\AccessCheckerInterface;
 use App\Module\Access\Contract\Permissions;
 use App\Module\Access\Contract\TenantRolesInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
-use App\Module\User\Contract\UserManagerInterface;
-use App\Shared\Tenant\CurrentTenant;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -44,8 +42,6 @@ final class AdminRoleController extends AbstractController
     public function __construct(
         private readonly TenantRolesInterface $roles,
         private readonly AccessCheckerInterface $access,
-        private readonly UserManagerInterface $users,
-        private readonly CurrentTenant $tenant,
         #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
         private readonly FormFactoryInterface $forms,
@@ -197,33 +193,17 @@ final class AdminRoleController extends AbstractController
     }
 
     /**
-     * Who holds each role directly, among the members.
-     *
-     * @return array<string, list<string>> role => emails
-     */
-    private function holders(): array
-    {
-        $holders = [];
-        foreach ($this->users->members($this->tenant->id()) as $member) {
-            foreach ($this->roles->rolesOf($member->email) as $role) {
-                $holders[$role][] = $member->email;
-            }
-        }
-
-        return $holders;
-    }
-
-    /**
-     * Who holds the role, directly or through a role containing it.
+     * Who holds the role, directly or through a role containing it: members or not, from the
+     * assignments themselves (a member removed keeps theirs; an email may get one ahead of its
+     * account).
      *
      * @return list<string> emails
      */
     private function holdersOf(string $role): array
     {
-        $holders = $this->holders();
         $emails = [];
         foreach ([$role, ...$this->roles->rolesContaining($role)] as $holding) {
-            $emails = [...$emails, ...$holders[$holding] ?? []];
+            $emails = [...$emails, ...$this->roles->assigneesOf($holding)];
         }
 
         return array_values(array_unique($emails));

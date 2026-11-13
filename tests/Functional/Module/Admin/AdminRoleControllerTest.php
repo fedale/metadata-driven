@@ -135,6 +135,29 @@ final class AdminRoleControllerTest extends WebTestCase
         self::assertArrayHasKey('ROLE_READER', $this->roles()->roles());
     }
 
+    /**
+     * Holders who aren't members (removed, keeping their roles; or given a role ahead of their
+     * account) count all the same.
+     */
+    public function testARoleHeldBySomeoneOutsideTheMembersIsGuardedToo(): void
+    {
+        $rbac = self::getContainer()->get(RbacManagerInterface::class);
+        $rbac->addItem('ROLE_ROLES', AuthItemType::ROLE);
+        $rbac->addItem('ROLE_READER', AuthItemType::ROLE);
+        self::signIn($this->client, 'lena@example.com', ['ROLE_ROLES']);
+        $rbac->addChild('ROLE_ROLES', Permissions::ROLES);
+        $rbac->addChild('ROLE_ROLES', Permissions::record('pet', RecordAction::Read));
+        $rbac->addChild('ROLE_READER', Permissions::record('pet', RecordAction::Read));
+        // No member: an email given roles ahead of its account, one of them beyond Lena.
+        $rbac->assign('former@example.com', 'ROLE_READER');
+        $rbac->assign('former@example.com', Permissions::SUPER_ADMIN_ROLE);
+
+        $this->client->request('GET', '/admin/roles/ROLE_READER');
+        self::assertResponseStatusCodeSame(403);
+        $this->client->request('POST', '/admin/roles/ROLE_READER/delete');
+        self::assertResponseStatusCodeSame(403);
+    }
+
     public function testNeedsThePermissionToManageRoles(): void
     {
         self::signIn($this->client, 'editor@example.com', [Permissions::ADMINISTER]);
