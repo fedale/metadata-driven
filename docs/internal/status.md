@@ -287,8 +287,9 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   permission `admin.members`), on `tenant_admin_members`; part A2, invitations instead of adding
   accounts (the user's choice: no admin learns whether an email has an account), on
   `tenant_admin_invitations`; part B, the operators' console on `console.<base host>`
-  (`tenant:operator grant`), on `tenant_admin_console`. Each branch from the one before, from
-  `multi_tenancy_followups`; waiting for review, nothing merged (the user merges at the end, and
+  (`tenant:operator grant`), on `tenant_admin_console`; security fixes found by the automated
+  review afterwards on `tenant_admin_invitation_fix`. Each branch from the one before, from
+  `multi_tenancy_followups` (merge the last one); waiting for review, nothing merged (the user merges at the end, and
   tests by hand then). Run the migrations, up to `Version20261113130000`. Left: a second factor
   for signing in (later, for every user), Monolog for the console's log (the user's call).
 - Relation filters in grids keep `multiple: true` by choice.
