@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Module\User\Application;
 
+use App\Module\User\Contract\Dto\Invitation;
 use App\Module\User\Contract\Dto\Member;
 use App\Module\User\Contract\UserManagerInterface;
 use App\Module\User\Domain\Exception\InvalidUser;
 use App\Module\User\Domain\Model\User;
 use App\Module\User\Domain\Model\UserProfile;
+use App\Module\User\Domain\Repository\InvitationRepository;
 use App\Module\User\Domain\Repository\MembershipRepository;
 use App\Module\User\Domain\Repository\UserRepository;
 use App\Shared\Tenant\CurrentTenant;
@@ -21,12 +23,19 @@ final class UserManager implements UserManagerInterface
 {
     public const int MIN_PASSWORD_LENGTH = 12;
 
+    /** How long an invitation lasts. */
+    private const string INVITATION_LIFETIME = '+7 days';
+
+    /** Wrong passwords that burn an invitation: guessing, or probing for an account, is costly. */
+    public const int INVITATION_MAX_FAILURES = 5;
+
     /**
      * @param list<string> $enabledLocales
      */
     public function __construct(
         private readonly UserRepository $users,
         private readonly MembershipRepository $memberships,
+        private readonly InvitationRepository $invitations,
         private readonly CurrentTenant $tenant,
         private readonly PasswordHasherFactoryInterface $hashers,
         #[Autowire('%kernel.enabled_locales%')]
@@ -93,6 +102,52 @@ final class UserManager implements UserManagerInterface
                 null === $row['last_login_at'] ? null : new \DateTimeImmutable($row['last_login_at']),
             );
         }, $this->memberships->membersWithProfiles($tenantId));
+    }
+
+    public function invite(string $email, string $tenantId, string $invitedBy, bool $keepAssignments): string
+    {
+        $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+        $now = new \DateTimeImmutable();
+        $this->invitations->add(
+            new Invitation(Uuid::v7()->toRfc4122(), User::normalizeEmail($email), $invitedBy, $now, $now->modify(self::INVITATION_LIFETIME), $keepAssignments),
+            $tenantId,
+            hash('sha256', $token),
+        );
+
+        return $token;
+    }
+
+    public function invitations(string $tenantId): array
+    {
+        return $this->invitations->pending($tenantId, new \DateTimeImmutable(), self::INVITATION_MAX_FAILURES);
+    }
+
+    public function revokeInvitation(string $tenantId, string $id): bool
+    {
+        return Uuid::isValid($id) && $this->invitations->remove($tenantId, $id);
+    }
+
+    public function openInvitation(string $tenantId, string $token): ?Invitation
+    {
+        return $this->invitations->findPending($tenantId, hash('sha256', $token), new \DateTimeImmutable(), self::INVITATION_MAX_FAILURES);
+    }
+
+    public function acceptInvitation(string $tenantId, string $token, string $password, ?string $firstName = null, ?string $lastName = null): Invitation
+    {
+        $invitation = $this->openInvitation($tenantId, $token) ?? throw InvalidUser::invitationNotFound();
+        $user = $this->users->findByEmail($invitation->email);
+        if (null === $user) {
+            $this->createUser($invitation->email, $password, $firstName, $lastName);
+            $user = $this->users->findByEmail($invitation->email) ?? throw InvalidUser::notFound($invitation->email);
+        } elseif (!$this->hashers->getPasswordHasher(PasswordAuthenticatedUserInterface::class)->verify($user->getPasswordHash(), $password)) {
+            $this->invitations->recordFailure($invitation->id);
+
+            throw InvalidUser::wrongPassword();
+        }
+        $this->memberships->add($tenantId, $user->getId());
+        $this->invitations->markAccepted($invitation->id, new \DateTimeImmutable());
+
+        return $invitation;
     }
 
     public function canonicalEmail(string $email): ?string

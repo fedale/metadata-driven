@@ -109,8 +109,8 @@ the server: installing from a directory, packing and exporting are console comma
 
 ## Members — `/admin/members`
 
-Who may sign in to this tenant, and with which of its roles: add a member (an existing account,
-or a new one with an initial password), tick their roles, remove them. It needs the
+Who may sign in to this tenant, and with which of its roles: invite someone (a link they accept),
+tick their roles, remove them. It needs the
 `admin.members` permission rather than `admin.metadata`, and it is linked from the top bar. See
 [The members page](access.md#the-members-page--adminmembers).
 

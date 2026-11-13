@@ -14,19 +14,17 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
-use Symfony\Component\Form\Extension\Core\Type\PasswordType;
-use Symfony\Component\Form\Extension\Core\Type\TextType;
-use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * The members of the current tenant: who may sign in to it, with which of its roles
- * (docs/internal/tenant-admin-ui-plan.md, part A). The page of tenant:member:* and rbac:assign.
+ * (docs/internal/tenant-admin-ui-plan.md, parts A and A2). New members come by invitation.
  *
  * A member is named in the forms by a short hash of their email, not the email: no address in
  * a URL, and an id of its own for each row's forms.
@@ -67,34 +65,30 @@ final class AdminMemberController extends AbstractController
             return $this->page($form, Response::HTTP_UNPROCESSABLE_ENTITY);
         }
         $email = self::text($form, 'email');
+        // The same answer whether the email has an account or not: an invitation, accepted by
+        // whoever the email belongs to (tenant-admin-ui-plan.md, part A2). If it names an account
+        // holding assignments here you don't hold (a former member above you), the invitation
+        // takes them away on acceptance: nothing told, no escalation.
         $existing = $this->users->canonicalEmail($email);
+        $keepAssignments = null === $existing || $this->outranks($existing);
         try {
-            if (null !== $existing) {
-                // From here on the account's own email: the RBAC assignments are keyed by it,
-                // and the email as typed (another case, spaces) would find none.
-                $email = $existing;
-                // A member removed keeps their roles here: adding them back must not give back
-                // one the admin doesn't hold.
-                if (!$this->outranks($email)) {
-                    $this->addFlash('error', $this->translator->trans('admin.members.holds_more', ['%email%' => $email]));
-
-                    return $this->redirectToRoute('admin_member_index', [], Response::HTTP_SEE_OTHER);
-                }
-                $added = $this->users->addToTenant($email, $this->tenant->id());
-                $this->addFlash('success', $this->translator->trans($added ? 'admin.members.added' : 'admin.members.already', ['%email%' => $email]));
-            } else {
-                $password = self::text($form, 'password');
-                if ('' === $password) {
-                    $form->get('password')->addError(new FormError($this->translator->trans('admin.members.password_needed')));
-
-                    return $this->page($form, Response::HTTP_UNPROCESSABLE_ENTITY);
-                }
-                // A member of the current tenant, as user:create makes one.
-                $this->users->createUser($email, $password, self::nullable($form, 'first_name'), self::nullable($form, 'last_name'));
-                $this->addFlash('success', $this->translator->trans('admin.members.created', ['%email%' => $email]));
-            }
+            $token = $this->users->invite($email, $this->tenant->id(), $this->yourEmail(), $keepAssignments);
+            $this->addFlash('success', $this->translator->trans('admin.members.invited', ['%email%' => $email]));
+            $this->addFlash('invitation', $this->generateUrl('invitation_show', ['token' => $token], UrlGeneratorInterface::ABSOLUTE_URL));
         } catch (UserException $e) {
             $this->addFlash('error', $e->getMessage());
+        }
+
+        return $this->redirectToRoute('admin_member_index', [], Response::HTTP_SEE_OTHER);
+    }
+
+    #[Route('/invitations/{id}/revoke', name: 'invitation_revoke', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['POST'])]
+    public function revokeInvitation(string $id, Request $request): Response
+    {
+        $this->denyUnlessAllowed();
+        $form = $this->revokeForm($id)->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid() && $this->users->revokeInvitation($this->tenant->id(), $id)) {
+            $this->addFlash('success', $this->translator->trans('admin.members.invitation_revoked'));
         }
 
         return $this->redirectToRoute('admin_member_index', [], Response::HTTP_SEE_OTHER);
@@ -166,8 +160,14 @@ final class AdminMemberController extends AbstractController
             ];
         }
 
+        $invitations = [];
+        foreach ($this->users->invitations($this->tenant->id()) as $invitation) {
+            $invitations[] = ['invitation' => $invitation, 'revoke_form' => $this->revokeForm($invitation->id)->createView()];
+        }
+
         return $this->render('admin/members.html.twig', [
             'rows' => $rows,
+            'invitations' => $invitations,
             'add_form' => $add->createView(),
         ], new Response(status: $status));
     }
@@ -181,9 +181,6 @@ final class AdminMemberController extends AbstractController
             'action' => $this->generateUrl('admin_member_add'),
         ])
             ->add('email', EmailType::class, ['label' => 'admin.members.email', 'help' => 'admin.members.email_help'])
-            ->add('first_name', TextType::class, ['label' => 'admin.members.first_name', 'required' => false])
-            ->add('last_name', TextType::class, ['label' => 'admin.members.last_name', 'required' => false])
-            ->add('password', PasswordType::class, ['label' => 'admin.members.password', 'required' => false, 'help' => 'admin.members.password_help'])
             ->getForm();
     }
 
@@ -249,6 +246,16 @@ final class AdminMemberController extends AbstractController
         return true;
     }
 
+    /**
+     * @return FormInterface<mixed>
+     */
+    private function revokeForm(string $id): FormInterface
+    {
+        return $this->forms->createNamedBuilder('revoke_'.substr(str_replace('-', '', $id), -12), FormType::class, null, [
+            'action' => $this->generateUrl('admin_member_invitation_revoke', ['id' => $id]),
+        ])->getForm();
+    }
+
     private function memberOr404(string $key): Member
     {
         foreach ($this->users->members($this->tenant->id()) as $member) {
@@ -292,15 +299,5 @@ final class AdminMemberController extends AbstractController
         $value = $form->get($child)->getData();
 
         return \is_string($value) ? trim($value) : '';
-    }
-
-    /**
-     * @param FormInterface<mixed> $form
-     */
-    private static function nullable(FormInterface $form, string $child): ?string
-    {
-        $value = self::text($form, $child);
-
-        return '' === $value ? null : $value;
     }
 }

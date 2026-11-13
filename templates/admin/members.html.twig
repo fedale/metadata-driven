@@ -46,6 +46,43 @@
         </tbody>
     </table>
 
+    {% for link in app.flashes('invitation') %}
+        <div class="md-flash md-flash--success" role="status">
+            <p>{{ 'admin.members.invitation_link'|trans }}</p>
+            <input type="text" class="gv-form-control" value="{{ link }}" readonly aria-label="{{ 'admin.members.invitation_link'|trans }}">
+        </div>
+    {% endfor %}
+
+    {% if invitations is not empty %}
+        <section class="md-admin__section">
+            <h2>{{ 'admin.members.invitations'|trans }}</h2>
+            <table class="md-table">
+                <thead>
+                    <tr>
+                        <th scope="col">{{ 'admin.members.email'|trans }}</th>
+                        <th scope="col">{{ 'admin.members.invited_by'|trans }}</th>
+                        <th scope="col">{{ 'admin.members.expires'|trans }}</th>
+                        <th scope="col"><span class="md-visually-hidden">{{ 'admin.actions'|trans }}</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in invitations %}
+                        <tr>
+                            <td>{{ row.invitation.email }}</td>
+                            <td>{{ row.invitation.invitedBy }}</td>
+                            <td>{{ row.invitation.expiresAt|date('Y-m-d H:i') }}</td>
+                            <td>
+                                {{ form_start(row.revoke_form, {attr: {'data-turbo-confirm': 'admin.members.revoke_confirm'|trans({'%email%': row.invitation.email})}}) }}
+                                    <button type="submit" class="gv-btn">{{ 'admin.members.revoke'|trans }}</button>
+                                {{ form_end(row.revoke_form) }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% endif %}
+
     <section class="md-admin__section">
         <h2>{{ 'admin.members.add'|trans }}</h2>
         <p class="gv-muted">{{ 'admin.members.add_intro'|trans }}</p>

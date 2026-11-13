@@ -59,9 +59,11 @@ tenant: linked from the top bar as **Members**.
 
 - **The members** of the tenant: name, email, roles, last sign-in. Members of other tenants
   aren't listed.
-- **Add a member** by email. An existing account becomes a member; a new email needs a name and an
-  initial password (12 characters at least), and gets an account. The application sends no
-  email: pass the password on.
+- **Invite someone** by email. You get a link, shown once, to pass on (the application sends no
+  email); it lasts 7 days, and pending invitations are listed, to revoke. Whoever opens it at
+  `/invitation/…` joins the tenant and is signed in: with the password of their account if the
+  email has one, or choosing a password (12 characters at least) and their name. Five wrong
+  passwords burn the invitation.
 - **Roles**: a checkbox per role of the tenant, saved per member. Permissions assigned directly
   with `rbac:assign` are left alone.
 - **Remove** a member: they can no longer sign in here, and their session ends at its next
@@ -74,8 +76,11 @@ tenant: linked from the top bar as **Members**.
   can't change their roles, remove them, or add them back once removed (a removed member keeps
   their roles here). Managing members never makes anyone more powerful than the admin doing it.
 
-Accounts are shared by every tenant, so adding an existing email tells you it has an account, and
-shows the name of its profile; nothing else about it (its other tenants, its roles there).
+Accounts are shared by every tenant, so the page tells you nothing about the email you invite:
+the answer is the same whether it has an account or not, and no name shows until the invitation
+is accepted. Only opening the link yourself would show whether it asks for an existing password,
+and each try costs an invitation. A former member invited back by an admin who doesn't hold all
+they had here comes back without it.
 
 ### `user:create`
 

@@ -70,7 +70,8 @@ A user is one email and one password for the whole installation. A **membership*
 in to a tenant:
 
 A tenant's admins manage its members on the **Members** page of the admin (`/admin/members`):
-add an account, tick its roles, remove it. From the console:
+invite someone by email (they accept with a link, signing in or creating their account), tick
+their roles, remove them. From the console, where the operator adds an account at once:
 
 ```bash
 symfony console user:create anna@example.com --tenant=acme      # a new user, a member of acme

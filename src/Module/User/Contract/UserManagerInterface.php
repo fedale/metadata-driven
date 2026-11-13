@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\User\Contract;
 
+use App\Module\User\Contract\Dto\Invitation;
 use App\Module\User\Contract\Dto\Member;
 use App\Module\User\Contract\Exception\UserException;
 
@@ -58,6 +59,46 @@ interface UserManagerInterface
      * @return list<Member>
      */
     public function members(string $tenantId): array;
+
+    /**
+     * Invites someone to a tenant: whoever the email belongs to accepts with acceptInvitation().
+     * The same whether the email has an account or not: nothing of the account is told.
+     *
+     * @param bool $keepAssignments false: take the account's assignments in the tenant away on
+     *                              acceptance (its inviter doesn't hold them all)
+     *
+     * @return string the token of the invitation's link, shown once, never stored
+     *
+     * @throws UserException not an email address
+     */
+    public function invite(string $email, string $tenantId, string $invitedBy, bool $keepAssignments): string;
+
+    /**
+     * @return list<Invitation> the tenant's pending invitations, the newest first
+     */
+    public function invitations(string $tenantId): array;
+
+    /**
+     * @return bool false when the tenant has no such invitation
+     */
+    public function revokeInvitation(string $tenantId, string $id): bool;
+
+    /**
+     * A pending invitation of the tenant by its token: not accepted, not expired, not burned by
+     * too many wrong passwords. Null otherwise.
+     */
+    public function openInvitation(string $tenantId, string $token): ?Invitation;
+
+    /**
+     * Accepts an invitation: an existing account proves it with its password (a wrong one counts
+     * against the invitation), a new one is created with this password and name. Either way it
+     * becomes a member of the tenant.
+     *
+     * @return Invitation the invitation accepted
+     *
+     * @throws UserException no such invitation any more, a wrong password, a password too short
+     */
+    public function acceptInvitation(string $tenantId, string $token, string $password, ?string $firstName = null, ?string $lastName = null): Invitation;
 
     /**
      * The email of the account the given one names, as stored (trimmed, lower case), or null

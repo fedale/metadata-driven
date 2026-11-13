@@ -6,6 +6,15 @@ nav:
     language: Lingua
     tenants: Spazi di lavoro
     sign_out: Esci
+invitation:
+    title: Entra in questo spazio di lavoro
+    intro: 'Sei stato invitato come %email%. Se hai un account, inserisci la sua password; altrimenti scegli una password e il tuo nome.'
+    password: Password
+    password_help: 'Almeno 12 caratteri per un account nuovo.'
+    first_name: Nome
+    last_name: Cognome
+    submit: Entra
+    welcome: Benvenuto.
 login:
     title: Accedi
     email: Email
@@ -129,22 +138,21 @@ admin:
         title: Membri
         intro: 'Chi può accedere a questo spazio di lavoro, e con quali dei suoi ruoli. Gli account sono comuni a tutti gli spazi: una email, una password.'
         email: Email
-        email_help: 'Un account esistente diventa membro; per una email nuova viene creato un account, con il nome e la password qui sotto.'
-        first_name: Nome
-        last_name: Cognome
-        password: Password iniziale
-        password_help: 'Solo per un account nuovo, almeno 12 caratteri: comunicala alla persona.'
-        password_needed: 'Nessun account ha ancora questa email: indica una password iniziale.'
+        email_help: 'Riceverà un link da accettare: con la password del suo account se ne ha uno, oppure creandone uno.'
         roles: Ruoli
-        holds_more: '%email% ha qui un ruolo che tu non hai: lo riaggiunge un altro admin.'
         last_login: Ultimo accesso
         you: tu
-        add: Aggiungi un membro
-        add_intro: 'Aggiungi chi ha già un account, con la sua email, oppure creane uno.'
-        add_submit: Aggiungi
-        added: '%email% può ora accedere qui.'
-        already: '%email% è già membro.'
-        created: 'Account %email% creato: può accedere qui.'
+        add: Invita qualcuno
+        add_intro: 'Un invito dura 7 giorni. L''applicazione non invia email: comunica tu il link.'
+        add_submit: Invita
+        invited: 'Invito per %email% creato.'
+        invitation_link: 'Comunica questo link: viene mostrato una sola volta.'
+        invitations: Inviti in sospeso
+        invited_by: Invitato da
+        expires: Scade
+        revoke: Revoca
+        revoke_confirm: 'Il link inviato a %email% smetterà di funzionare. Revocare?'
+        invitation_revoked: Invito revocato.
         roles_saved: 'Ruoli di %name% salvati.'
         removed: '%name% non può più accedere qui.'
         remove_confirm: '%name% non potrà più accedere qui. I suoi ruoli restano, inutilizzati. Rimuovere?'

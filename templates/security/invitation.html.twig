@@ -1,0 +1,16 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'invitation.title'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="md-login">
+        <h1>{{ 'invitation.title'|trans }}</h1>
+        <p>{{ 'invitation.intro'|trans({'%email%': email}) }}</p>
+
+        {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+            {{ form_errors(form) }}
+            {{ form_rest(form) }}
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'invitation.submit'|trans }}</button>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}

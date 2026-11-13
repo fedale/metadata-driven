@@ -31,6 +31,16 @@ final class InvalidUser extends UserException
         return new self(\sprintf('"%s" is no language of the application (%s).', $locale, implode(', ', $enabled)));
     }
 
+    public static function wrongPassword(): self
+    {
+        return new self('This is not the password of the account.');
+    }
+
+    public static function invitationNotFound(): self
+    {
+        return new self('This invitation is no longer valid: ask for another one.');
+    }
+
     public static function notFound(string $email): self
     {
         return new self(\sprintf('No user has the email "%s".', $email));

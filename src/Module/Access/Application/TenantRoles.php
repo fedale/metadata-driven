@@ -51,6 +51,13 @@ final class TenantRoles implements TenantRolesInterface
         return $items;
     }
 
+    public function revokeAll(string $email): void
+    {
+        foreach ($this->assignmentsOf($email) as $item) {
+            $this->rbac->revoke($email, $item);
+        }
+    }
+
     public function setRoles(string $email, array $roles): void
     {
         $unknown = array_diff($roles, array_keys($this->roles()));

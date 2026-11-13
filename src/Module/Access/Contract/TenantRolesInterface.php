@@ -35,4 +35,9 @@ interface TenantRolesInterface
      * @throws \InvalidArgumentException a name that is no role of the tenant
      */
     public function setRoles(string $email, array $roles): void;
+
+    /**
+     * Takes away everything assigned to the user directly in the tenant, roles and permissions.
+     */
+    public function revokeAll(string $email): void;
 }

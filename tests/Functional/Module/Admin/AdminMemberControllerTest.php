@@ -11,6 +11,7 @@ use App\Shared\Infrastructure\Tenant\TenantRegistry;
 use App\Shared\Tenant\Tenant;
 use App\Tests\Support\CreatesTenants;
 use App\Tests\Support\SignsIn;
+use Doctrine\DBAL\Connection;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
 use Fedale\RbacBundle\Enum\AuthItemType;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -50,27 +51,121 @@ final class AdminMemberControllerTest extends WebTestCase
         self::assertSelectorTextNotContains('main', 'carla@example.com');
     }
 
-    public function testAddsAnExistingAccountOrCreatesOne(): void
+    /**
+     * The same answer for an email with an account and one without, and nothing of the account:
+     * an invitation, its link shown once.
+     */
+    public function testAnInvitationTellsNothingOfTheAccount(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        $globex = self::createTenant(self::getContainer(), 'globex', 'Globex');
+        self::useTenant(self::getContainer(), $globex);
+        self::getContainer()->get(UserManagerInterface::class)->createUser('carla@example.com', self::PASSWORD, 'Carla', 'Bruni');
+        self::useTenant(self::getContainer(), $this->tenant('default'));
+
+        $carla = $this->invite('carla@example.com');
+        $flashCarla = $this->client->getCrawler()->filter('.md-flash--success')->first()->text();
+        $dora = $this->invite('dora@example.com');
+        $flashDora = $this->client->getCrawler()->filter('.md-flash--success')->first()->text();
+
+        self::assertSame(str_replace('carla', 'dora', $flashCarla), $flashDora);
+        self::assertSelectorTextNotContains('main', 'Carla');
+        self::assertNotSame($carla, $dora);
+        self::assertSame(['admin@example.com'], $this->members(), 'Nobody is a member before accepting.');
+        self::assertSelectorTextContains('main', 'carla@example.com');
+    }
+
+    public function testANewAccountAcceptsWithAPasswordOfItsOwn(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        $link = $this->invite('dora@example.com');
+
+        $this->client->getCookieJar()->clear();
+        $this->client->request('GET', $link);
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('main', 'dora@example.com');
+        $this->client->submitForm('Join', ['invitation[password]' => self::PASSWORD, 'invitation[first_name]' => 'Dora', 'invitation[last_name]' => 'Maar']);
+
+        self::assertResponseRedirects('/invitation/welcome', 303);
+        $this->client->followRedirect();
+        self::assertResponseRedirects('/', 303);
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.md-topbar__user', 'Dora Maar');
+        self::assertContains('dora@example.com', $this->members());
+        $this->client->request('GET', $link);
+        self::assertResponseStatusCodeSame(404, 'Accepted: used up.');
+    }
+
+    public function testAnExistingAccountAcceptsWithItsPasswordAndFiveWrongOnesBurnTheInvitation(): void
     {
         self::signInAsSuperAdmin($this->client);
         $globex = self::createTenant(self::getContainer(), 'globex', 'Globex');
         self::useTenant(self::getContainer(), $globex);
         self::createUser('carla@example.com');
         self::useTenant(self::getContainer(), $this->tenant('default'));
+        $burned = $this->invite('carla@example.com');
+        $good = $this->invite('carla@example.com');
+        $this->client->getCookieJar()->clear();
 
-        $this->add(['email' => 'carla@example.com']);
-        self::assertSelectorTextContains('.md-flash--success', 'carla@example.com may now sign in here.');
+        for ($i = 0; $i < 5; ++$i) {
+            $this->client->request('GET', $burned);
+            $this->client->submitForm('Join', ['invitation[password]' => 'not her password at all']);
+            self::assertResponseStatusCodeSame(422);
+        }
+        $this->client->request('GET', $burned);
+        self::assertResponseStatusCodeSame(404);
 
-        // A new email needs a password.
-        $this->client->request('GET', '/admin/members');
-        $this->client->submitForm('Add', ['add_member[email]' => 'dora@example.com']);
-        self::assertResponseStatusCodeSame(422);
-        self::assertSelectorTextContains('main', 'give it an initial password');
+        $this->client->request('GET', $good);
+        $this->client->submitForm('Join', ['invitation[password]' => self::PASSWORD]);
+        self::assertResponseRedirects('/invitation/welcome', 303);
+        self::assertContains('carla@example.com', $this->members());
+    }
 
-        $this->add(['email' => 'dora@example.com', 'first_name' => 'Dora', 'last_name' => 'Maar', 'password' => self::PASSWORD]);
-        self::assertSelectorTextContains('.md-flash--success', 'Account dora@example.com created');
+    public function testARevokedExpiredOrOtherTenantsInvitationIsNotFound(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        $revoked = $this->invite('dora@example.com');
+        $crawler = $this->client->request('GET', '/admin/members');
+        $this->client->submit($crawler->filter('form[name^="revoke_"]')->form());
+        $expired = $this->invite('eva@example.com');
+        self::getContainer()->get(Connection::class)->executeStatement("UPDATE core.tenant_invitation SET expires_at = now() - INTERVAL '1 minute' WHERE email = 'eva@example.com'");
+        $elsewhere = $this->invite('fede@example.com');
+        self::createTenant(self::getContainer(), 'globex', 'Globex');
+        $this->client->getCookieJar()->clear();
 
-        self::assertSame(['admin@example.com', 'carla@example.com', 'dora@example.com'], $this->members());
+        foreach ([$revoked, $expired, str_replace('://localhost', '://globex.localhost', $elsewhere)] as $link) {
+            $this->client->request('GET', $link);
+            self::assertResponseStatusCodeSame(404, $link);
+        }
+    }
+
+    /**
+     * A member removed keeps their roles here. Invited back by an admin who doesn't hold them
+     * (written in any case), they come back without them; the admin is told nothing.
+     */
+    public function testAMemberInvitedBackByALesserAdminComesBackWithoutTheirRoles(): void
+    {
+        $rbac = self::getContainer()->get(RbacManagerInterface::class);
+        $rbac->addItem('ROLE_HR', AuthItemType::ROLE);
+        self::signIn($this->client, 'mallory@example.com', [Permissions::SUPER_ADMIN_ROLE]);
+        self::getContainer()->get(UserManagerInterface::class)->removeFromTenant('mallory@example.com', $this->tenant('default')->id);
+        $rbac->addChild('ROLE_HR', Permissions::MEMBERS);
+        self::signIn($this->client, 'hr@example.com', ['ROLE_HR']);
+
+        $link = $this->invite(' Mallory@Example.COM ');
+        $this->client->getCookieJar()->clear();
+        $this->client->request('GET', $link);
+        $this->client->submitForm('Join', ['invitation[password]' => self::PASSWORD]);
+
+        self::assertResponseRedirects('/invitation/welcome', 303);
+        $this->client->followRedirect();
+        // The next request's container: the RBAC bundle keeps what it read during one in memory.
+        $this->client->followRedirect();
+        self::assertResponseIsSuccessful();
+        self::assertSelectorExists('.md-topbar__user', 'Signed in, and still so on the next request.');
+        self::assertSelectorNotExists('.md-topbar__nav a[href="/admin"]', 'Without the super admin role.');
+        self::assertContains('mallory@example.com', $this->members());
+        self::assertSame([], self::getContainer()->get(TenantRolesInterface::class)->assignmentsOf('mallory@example.com'));
     }
 
     public function testGivesAndTakesTheTenantsRoles(): void
@@ -146,47 +241,6 @@ final class AdminMemberControllerTest extends WebTestCase
     }
 
     /**
-     * Removing a member keeps their roles: re-adding them must not be a way to give back what the
-     * admin doesn't hold.
-     */
-    public function testDoesNotReAddAMemberHoldingARoleTheAdminDoesNot(): void
-    {
-        $rbac = self::getContainer()->get(RbacManagerInterface::class);
-        $rbac->addItem('ROLE_HR', AuthItemType::ROLE);
-        self::signIn($this->client, 'mallory@example.com', [Permissions::SUPER_ADMIN_ROLE]);
-        self::getContainer()->get(UserManagerInterface::class)->removeFromTenant('mallory@example.com', $this->tenant('default')->id);
-        $rbac->addChild('ROLE_HR', Permissions::MEMBERS);
-        self::signIn($this->client, 'hr@example.com', ['ROLE_HR']);
-
-        $this->client->request('GET', '/admin/members');
-        $this->client->submitForm('Add', ['add_member[email]' => 'mallory@example.com']);
-        $this->client->followRedirect();
-
-        self::assertSelectorExists('.md-flash--error');
-        self::assertNotContains('mallory@example.com', $this->members());
-    }
-
-    /**
-     * The email as typed is no way around it: the check works on the account's canonical email.
-     */
-    public function testDoesNotReAddAMemberWrittenInAnotherCase(): void
-    {
-        $rbac = self::getContainer()->get(RbacManagerInterface::class);
-        $rbac->addItem('ROLE_HR', AuthItemType::ROLE);
-        self::signIn($this->client, 'mallory@example.com', [Permissions::SUPER_ADMIN_ROLE]);
-        self::getContainer()->get(UserManagerInterface::class)->removeFromTenant('mallory@example.com', $this->tenant('default')->id);
-        $rbac->addChild('ROLE_HR', Permissions::MEMBERS);
-        self::signIn($this->client, 'hr@example.com', ['ROLE_HR']);
-
-        $this->client->request('GET', '/admin/members');
-        $this->client->submitForm('Add', ['add_member[email]' => ' Mallory@Example.COM ']);
-        $this->client->followRedirect();
-
-        self::assertSelectorExists('.md-flash--error');
-        self::assertNotContains('mallory@example.com', $this->members());
-    }
-
-    /**
      * A permission assigned directly (rbac:assign) counts as a role does.
      */
     public function testLeavesAMemberHoldingAPermissionTheAdminDoesNotAlone(): void
@@ -247,18 +301,18 @@ final class AdminMemberControllerTest extends WebTestCase
     }
 
     /**
-     * @param array<string, string> $fields
+     * Invites someone from the members page, as the signed-in admin.
+     *
+     * @return string the invitation's link
      */
-    private function add(array $fields): void
+    private function invite(string $email): string
     {
         $this->client->request('GET', '/admin/members');
-        $values = [];
-        foreach ($fields as $name => $value) {
-            $values[\sprintf('add_member[%s]', $name)] = $value;
-        }
-        $this->client->submitForm('Add', $values);
+        $this->client->submitForm('Invite', ['add_member[email]' => $email]);
         self::assertResponseRedirects('/admin/members', 303);
-        $this->client->followRedirect();
+        $crawler = $this->client->followRedirect();
+
+        return (string) $crawler->filter('input[readonly]')->attr('value');
     }
 
     /**

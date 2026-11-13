@@ -1,7 +1,8 @@
 # Plan: tenants and members in the admin UI
 
-Status: **agreed**; part A done (branch `tenant_admin_members`, committed); part B planned and
-agreed (2026-11-13), to build on branch `tenant_admin_operator`. Discussed with the user on 2026-11-13. Builds on [multi-tenancy-plan.md](multi-tenancy-plan.md), whose
+Status: **agreed**; part A done (branch `tenant_admin_members`, committed); part A2, the
+invitations, in progress on branch `tenant_admin_invitations`; part B planned and agreed
+(2026-11-13), next. Discussed with the user on 2026-11-13. Builds on [multi-tenancy-plan.md](multi-tenancy-plan.md), whose
 "Not in scope" left the admin UI out: until now tenants and memberships are managed from the
 console only (decision 4 of that plan).
 
@@ -93,6 +94,40 @@ refused, one with `admin.members` only let in. A removed member's session ending
 
 access.md (the page, next to the commands), admin.md (the admin's pages), multi-tenancy.md
 ("Not yet" loses the members), status.md.
+
+## Part A2: invitations
+
+Decided by the user on 2026-11-13: adding an existing account by email told the admin that the
+email had an account, and showed its profile's name ("Accounts are global" above). That is now
+**limited**, with invitations, before part B.
+
+- **The members page asks for an email only**, and always answers the same: an invitation is
+  created, and its link shown once, for the admin to pass on (the application sends no email).
+  No admin chooses another person's password any more. Pending invitations are listed with the
+  email as the admin typed it, who invited, and when it expires, and can be revoked.
+- **The invitation page**, `/invitation/{token}` on the tenant's host, public: whoever has an
+  account confirms it with their password; whoever hasn't chooses a name and a password. Either
+  way they become a member and are signed in.
+- **Probing is costly and logged**: an invitation names one email, lasts 7 days, and is burned
+  after 5 wrong passwords; it shows nothing of the account. What is left: whoever opens a link
+  (its admin included) sees whether it asks for a password that must match. Hiding that would take
+  sending the invitation to the email itself.
+- **No escalation through an invitation**: when the account holds assignments in the tenant its
+  inviter doesn't hold (a former member above them), the invitation records it, and those
+  assignments are taken away when it is accepted. The admin's answer is the same either way.
+- `core.tenant_invitation` (the landlord's, as `tenant_membership`): the email, a SHA-256 of the
+  token (the token itself is shown once, never stored), who invited, created, expires, accepted,
+  failed attempts, whether to keep the account's assignments.
+- `tenant:member:add` (the operator's) still adds an existing account at once.
+
+As built: `Version20261113100000`; `UserManagerInterface::invite()`, `invitations()`,
+`revokeInvitation()`, `openInvitation()`, `acceptInvitation()` (`InvitationRepository`,
+`DbalInvitationRepository`, the `Invitation` DTO); `TenantRolesInterface::revokeAll()`;
+`InvitationController` (`/invitation/{token}`, public; `/invitation/welcome`). The account is
+signed in at the request after the acceptance, not during it: fedale/rbac-bundle keeps the
+assignments it read during a request (`MemoizedAssignmentStorage`, with no reset), so a user
+loaded right after `revokeAll()` would carry the roles just taken, and be signed out at the next
+request for it. Tests: `AdminMemberControllerTest` (14).
 
 ## Part B: the operator's console
 
