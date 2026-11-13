@@ -33,9 +33,10 @@ Users are global: one email, one password, one profile, whichever [tenants](mult
 they work in. A **membership** (`core.tenant_membership`) lets a user sign in to a tenant:
 
 - Signing in to a tenant you're no member of fails with the same error as a wrong password.
-- A session is per host, so per tenant: you sign in to each tenant on its own. The user is loaded
-  again on every request, so a session whose membership was removed, or one replayed on another
-  tenant's host, is signed out at its next request.
+- A session belongs to the tenant it was opened in: you sign in to each tenant on its own, even
+  when you're a member of several. The user is loaded again on every request, so a session whose
+  membership was removed, or one replayed on another tenant's host, is signed out at its next
+  request. A "keep me signed in" cookie, likewise, signs you in to its own tenant only.
 - Roles and permissions are per tenant: each tenant has its RBAC tables. Being an admin in one
   tenant gives nothing in another. Run `rbac:*` with `--tenant=<slug>` for a tenant other than the
   default one.

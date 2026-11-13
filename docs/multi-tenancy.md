@@ -77,7 +77,8 @@ symfony console tenant:member:remove globex anna@example.com     # her sessions 
 ```
 
 - Signing in to a tenant you're no member of fails like a wrong password.
-- You sign in to each tenant on its own: a session belongs to a host.
+- You sign in to each tenant on its own: a session, and a "keep me signed in" cookie, belong to
+  the tenant they were opened in, even when you're a member of several.
 - Roles and permissions belong to the tenant. An admin of `acme` has no rights in `globex`
   until someone gives them a role there.
 - A member of several tenants gets links to the others in the top bar.
@@ -137,7 +138,8 @@ never share a stored file. `tenant:delete` deletes the tenant's directory, and
 
 1. Back up the database and the file storage.
 2. Run the migrations: the installation becomes the `default` tenant, its users members of it,
-   its records where they were.
+   its records where they were. Everyone signed in is signed out once: their sessions predate
+   tenants.
 3. Run `symfony console tenant:files:move` once: it moves the stored files into the default
    tenant's directory. Until then they stay readable where they are.
 4. Set `TENANT_BASE_HOST`, then create the other tenants.

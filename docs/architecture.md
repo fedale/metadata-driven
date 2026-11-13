@@ -71,8 +71,9 @@ guide says how to use and deploy them. Under the hood (see also
   (the Schema and Record modules).
 - **Users are global**, with their profile; a membership (`core.tenant_membership`, the
   landlord's, without row-level security) lets them sign in to a tenant. `UserProvider` finds
-  only the members of the request's tenant, at sign-in and on every request (see
-  [Users and tenants](access.md#users-and-tenants)).
+  only the members of the request's tenant, at sign-in and on every request; the
+  `SecurityUser` it loads holds that tenant, so the session and the remember-me cookie are bound
+  to it (see [Users and tenants](access.md#users-and-tenants)).
 - `fedale/rbac-bundle`'s cache is off: it keeps the roles and permissions under one key for the
   whole installation. It comes back once the bundle knows about tenants.
 - `DeclareTenantSchemaListener` brings the schema tools in line (the unmapped column, the RBAC

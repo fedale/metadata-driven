@@ -31,6 +31,9 @@ security:
             remember_me:
                 secret: '%kernel.secret%'
                 lifetime: 1209600 # 2 weeks
+                # A cookie signs in to the tenant it was made in only (SecurityUser::getTenantId()),
+                # and stops working when the password changes.
+                signature_properties: ['password', 'tenantId']
 
     # Signing in is required everywhere; what a user may do is decided by the RBAC
     # permissions, checked by the controllers (App\Module\Access).

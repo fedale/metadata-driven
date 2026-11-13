@@ -50,7 +50,11 @@ final class UserProvider implements UserProviderInterface, PasswordUpgraderInter
             throw $exception;
         }
 
-        return SecurityUser::fromUser($user, array_values($this->roles->getRolesFor($user->getEmail())));
+        return SecurityUser::fromUser(
+            $user,
+            array_values($this->roles->getRolesFor($user->getEmail())),
+            $this->tenant->isSelected() ? $this->tenant->id() : null,
+        );
     }
 
     public function refreshUser(UserInterface $user): SecurityUser

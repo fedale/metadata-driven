@@ -274,24 +274,16 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   (`MetadataException`, `InstallRefused`, upgrade changes and conflicts); see i18n.md, "Not yet".
 - Remaining roadmap ideas (phase 9+): audit/timeline, REST API, YAML export/import of metadata
   (now part of the template plan), roles/users admin UI, field-level permissions.
-- **Multi-tenancy**: proposed in [multi-tenancy-plan.md](multi-tenancy-plan.md) (2026-11-12),
-  the user chose Twenty CRM's model: shared tables with a `tenant_id`, records in a schema per
-  tenant, global users with memberships; `fedale/rbac-bundle` gets no `tenant_id` for now (its
-  tables go in a schema per tenant). Decisions taken on 2026-11-12: tenant by host, a name
-  collision refuses a template upgrade, a tenant's admins change its model, the operator creates
-  tenants and memberships from the console. Phases 1 (a `tenant_id` on the shared tables) and 2
-  (the switch by host and `--tenant`, the RBAC schema per tenant, row-level security) are
-  committed on `multi_tenancy_phase1` and `multi_tenancy_phase2`, phase 3 (global users,
-  memberships, row-level security failing closed) on `multi_tenancy_phase3`, phase 4 (the
-  `tenant:*` lifecycle commands) on `multi_tenancy_phase4`, phase 5 (the files in a directory
-  per tenant, row-level security on `core.file`) on `multi_tenancy_phase5`, phase 6 (shared
-  template indexes, field-name collisions refused before an upgrade) on `multi_tenancy_phase6`;
-  phase 7 (the guide, docs/multi-tenancy.md) is on `multi_tenancy_phase7`, waiting for review.
-  Each branch starts from the one before; none is merged into `main` yet (merge the last one,
-  `--no-ff` as usual, once reviewed). The branches add migrations (`Version20261112120000`
-  to `Version20261112190000`): run the migrations (`make db`, `make db-test`) after checking
-  one out, and `tenant:files:move` once. Left: `fedale/rbac-bundle` with a `tenant_id` (on
-  standby; its cache is off meanwhile).
+- **Multi-tenancy**: done, see [multi-tenancy-plan.md](multi-tenancy-plan.md) and the guide
+  [../multi-tenancy.md](../multi-tenancy.md). The user chose Twenty CRM's model: shared tables
+  with a `tenant_id`, records in a schema per tenant, global users with memberships. The seven
+  phases were merged into `main` on 2026-11-12; the follow-ups of 2026-11-13 (the session and the
+  remember-me cookie bound to their tenant, tests of `tenant:delete`'s files and of `tenant:run`
+  over real tenants) are on `multi_tenancy_followups`, waiting for review. Run the migrations
+  (`make db`, `make db-test`) and `tenant:files:move` once on an installation from before. Left:
+  `fedale/rbac-bundle` with a `tenant_id` (on standby; its cache is off meanwhile), and the admin
+  UI for tenants and members, discussed on 2026-11-13: a members page in each tenant's admin
+  first, the operator's console later (who may enter it is still to decide).
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

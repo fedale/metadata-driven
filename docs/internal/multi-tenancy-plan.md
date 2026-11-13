@@ -1,10 +1,8 @@
 # Plan: multi-tenancy
 
-Status: **implemented**; phases 1 to 6 done (branches `multi_tenancy_phase1` to
-`multi_tenancy_phase6`, committed), phase 7 (the guide) on branch `multi_tenancy_phase7`
-(2026-11-12), waiting for the user's review. Each branch starts from the one before; none is
-merged into `main` yet. Left: `fedale/rbac-bundle` with a `tenant_id` (on standby), and what
-"Not in scope" lists. Discussed with the user on 2026-11-12, who chose the model (shared
+Status: **done**, the seven phases merged into `main` on 2026-11-12 (`Merge branch
+'multi_tenancy_phase7'`), and the follow-ups of 2026-11-13 below. Left: `fedale/rbac-bundle` with
+a `tenant_id` (on standby), and what "Not in scope" lists. Discussed with the user on 2026-11-12, who chose the model (shared
 definitions with a `tenant_id`, records in a schema per tenant), global users, and the decisions
 below.
 
@@ -154,11 +152,12 @@ CREATE POLICY tenant_isolation ON core.metadata_object
 ### Resolving the tenant
 
 - **HTTP**: a `kernel.request` listener with a priority above the firewall's. It reads the
-  host, looks the slug up in `core.tenant` (cached), and switches. An unknown or suspended
+  host, looks the slug up in `core.tenant` (one query on its unique index, not cached: decided
+  on 2026-11-13, a cache only when it shows), and switches. An unknown or suspended
   tenant gets a 404, before the session is touched.
 - **Sessions**: the session cookie is per host, so two tenants never share one. The tenant id is
-  also written into the session at sign-in, and a session presented to another tenant is
-  invalidated.
+  also kept in the session from the sign-in, and a session presented to another tenant is
+  signed out (follow-ups below: the tenant is part of the security user the session keeps).
 - **Console**: a global `--tenant=<slug>` option, read by a `console.command` listener. Commands
   that touch a tenant refuse to run without it. The `tenant:*` commands, `user:create` and the
   migrations are exempt.
@@ -181,9 +180,6 @@ Done in phase 1 (migration `Version20261112120000`), except `app_user_profile` (
 | `metadata_state` | one row per tenant, `tenant_id` its primary key; the revision triggers are `FOR EACH ROW` and bump the row of the tenant they saw changed (`TRUNCATE`, with no rows, bumps them all) |
 | Schema tools | `DeclareTenantColumnsListener` declares the column, its key and indexes to the generated schema; `core.tenant` joins `metadata_state` in `schema_filter`. `doctrine:schema:update --dump-sql` is empty |
 | `doctrine_migration_versions` | unchanged: unqualified, in `core`, first in every `search_path` |
-
-Still to do for more than one tenant: the `schema_filter` pattern hiding every data schema, not
-only `data`; `DeclareDataSchemaListener` declaring them all (it declares the current tenant's).
 
 Foreign keys between shared tables (a field to its object) are not composite with `tenant_id`:
 a cross-tenant link would take a bug writing another tenant's id, which the trigger never does,
@@ -250,12 +246,12 @@ Each step is tested on a copy of the dev database before it runs anywhere else.
 
 One branch each, reviewed before the next, as usual.
 
-1. **`tenant_id` in the shared tables, one tenant still** (implemented, waiting for review).
+1. **`tenant_id` in the shared tables, one tenant still** (done).
    `core.tenant` with one row, the column and its indexes, the queries and the ORM filter,
    `metadata_state` per tenant, the triggers, the data schema name behind `CurrentTenant`. No
    behaviour changes: the 627 tests of before pass unchanged; `TenantScopeTest` adds a second
    tenant by hand and checks that none of its rows, names, revisions or files reach the first.
-2. **The switch and the safety net** (implemented, waiting for review). What was built, and
+2. **The switch and the safety net** (done). What was built, and
    where it departs from the design above:
    - `TenantSwitcher` sets `app.tenant_id` and the `search_path` (`core, <rbac schema>, public`)
      on the session, clears the entity manager and dispatches `TenantSwitched` (the metadata
@@ -298,7 +294,7 @@ One branch each, reviewed before the next, as usual.
      schema), so a user with no role in a tenant sees nothing there; memberships will refuse the
      sign-in itself. Tests with two tenants: the same object name with different fields, and neither
    tenant's definitions, records, files or caches reachable from the other.
-3. **Users and memberships** (implemented, waiting for review). `core.tenant_membership`
+3. **Users and memberships** (done). `core.tenant_membership`
    (`Version20261112170000`, every existing user a member of the first tenant), the landlord's
    table: no row-level security, since the tenant switcher lists a user's tenants from any of
    them. `UserProvider` finds only the members of the request's tenant, at sign-in and on every
@@ -308,7 +304,7 @@ One branch each, reviewed before the next, as usual.
    other tenants (`TenantLinks`). Profiles stay global (see "Users and memberships"). Tests:
    sign-in refused outside one's tenants, a removed membership, a replayed session, a file of
    another tenant on `/files/{id}`, the commands.
-4. **Lifecycle commands** (implemented, waiting for review), in `src/Shared/Infrastructure/Tenant/Console/`:
+4. **Lifecycle commands** (done), in `src/Shared/Infrastructure/Tenant/Console/`:
    - `tenant:create <slug> [--name] [--admin-email] [--admin-password] [--template]`:
      `TenantProvisioner::create()`, then the commands that do the rest for any tenant, run with
      `--tenant` through `Application::doRun()` (so the console events select the tenant):
@@ -325,7 +321,7 @@ One branch each, reviewed before the next, as usual.
      tenant (`symfony/process`, now required explicitly), carrying on past failures.
    - Tests: `TenantLifecycleCommandsTest`. `tenant:run`'s processes don't see the test's
      transaction, so its test runs for the default tenant only.
-5. **Files per tenant** (implemented, waiting for review). `StorageKeys` (File module):
+5. **Files per tenant** (done). `StorageKeys` (File module):
    `<tenant id>/<aa>/<SHA-256>` and `<tenant id>/thumbnails/…`; deduplication, the content lock
    (now named by the storage key) and the GC within a tenant: the GC lists the tenant's
    directory, and a content is held by a row with that very `storage_key`, a thumbnail by a row
@@ -336,7 +332,7 @@ One branch each, reviewed before the next, as usual.
    thumbnails left; a file system change, so a command rather than a migration.
    `tenant:delete` deletes the tenant's directory after its transaction, not inside a caller's
    (the tests', so that path is not covered by them).
-6. **Templates across tenants** (implemented, waiting for review).
+6. **Templates across tenants** (done).
    - Name collisions (decision 2): an upgrade adding a field named like one the instance added
      to the same object was refused already, but only while applying (the step failing, the
      transaction rolled back), with the app's message, and the admin's preview missed it.
@@ -352,12 +348,32 @@ One branch each, reviewed before the next, as usual.
      shared index.
    - Upgrades across tenants: `tenant:run --all -- metadata:template:upgrade …` (phase 4),
      documented in templates.md.
-7. **Documentation** (implemented, waiting for review): [`docs/multi-tenancy.md`](../multi-tenancy.md),
+7. **Documentation** (done): [`docs/multi-tenancy.md`](../multi-tenancy.md),
    the guide for whoever runs an installation (hosts and settings, the `tenant:*` commands,
    users in several tenants, templates, files, production: wildcard DNS and TLS,
    `trusted_hosts`, a database role that is no superuser; upgrading an installation from
    before tenants), linked from docs/README.md, getting-started.md, architecture.md and
    access.md. The other pages were updated with each phase.
+
+## Follow-ups (2026-11-13)
+
+Found by checking the plan against the code once merged, done on branch
+`multi_tenancy_followups`:
+
+- **The session bound to its tenant.** Phase 3 checked the membership on every request, which
+  stops a non-member, but a member of two tenants could carry a session (or a remember-me cookie)
+  from one host to the other, and a shared `cookie_domain` would have done it silently.
+  `SecurityUser` now holds the tenant it was loaded for: kept in the session at sign-in,
+  compared on every request by `isEqualTo()` (another tenant signs the session out), and a
+  remember-me signature property (`signature_properties: ['password', 'tenantId']`). A session
+  of before has no tenant: signed out once.
+- **Tests for the two paths phase 4 and 5 left uncovered.** `tenant:delete` deleting the
+  tenant's file directory (`TenantProvisionerTest`, a unit test: the integration tests' own
+  transaction keeps the directory); `tenant:run` over several real tenants
+  (`TenantLifecycleCommandsTest`, the tenants created and deleted by processes of their own, so
+  committed where the processes `tenant:run` starts see them).
+- **The host lookup stays uncached** (above).
+- This plan and status.md brought up to date.
 
 Later, once `fedale/rbac-bundle` has tenants: its tables move into `core` and `t_<id>` goes
 away.
