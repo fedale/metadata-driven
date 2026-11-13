@@ -291,6 +291,11 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   user); the console's finishing touches (renaming a tenant, its pending invitations,
   deactivating an account everywhere); a domain of its own per tenant, if needed; a second factor
   and the operators' log (with Monolog, the user's call).
+- **Workflows**: proposed in [workflow-plan.md](workflow-plan.md) (2026-11-13), after reading
+  Directus Flows and Twenty's workflows with the user: record triggers (before and after the
+  write), if/else and data steps, permissions per step (no way to more power), versions, runs,
+  usage per tenant; then manual workflows, the operator's (an app installed with every new
+  workspace), the background with Messenger, states. Agreed on 2026-11-13; next: phase 1.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`
