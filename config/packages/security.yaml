@@ -45,6 +45,8 @@ security:
         - { path: ^/login$, roles: PUBLIC_ACCESS }
         # An invitation's link: its token is the credential (InvitationController).
         - { path: ^/invitation/, roles: PUBLIC_ACCESS }
+        # The console of the installation, on its own host (HostTenantListener): its operators.
+        - { path: ^/console, roles: ROLE_OPERATOR }
         # The grid UI settings (fedale/gridview-bundle) apply to every user: administrators only.
         - { path: ^/gridview/_settings, allow_if: "is_granted('ROLE_SUPER_ADMIN') or is_granted('admin.metadata')" }
         - { path: ^/, roles: ROLE_USER }

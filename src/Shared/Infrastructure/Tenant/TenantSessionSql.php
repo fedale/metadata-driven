@@ -21,6 +21,12 @@ use App\Shared\Tenant\Tenant;
  */
 final class TenantSessionSql
 {
+    /**
+     * Empty RBAC tables (migration Version20261113130000) for the sessions of no tenant, in their
+     * search_path: fedale/rbac-bundle finds tables there, and they grant nothing.
+     */
+    public const string NO_TENANT_RBAC = 'landlord_rbac';
+
     private const string UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
     private const string SLUG = '/^[a-z0-9][a-z0-9-]{0,62}$/';
 
@@ -45,7 +51,7 @@ final class TenantSessionSql
      */
     public static function none(): string
     {
-        return \sprintf("SELECT set_config('app.tenant_id', '', false), set_config('app.landlord', '', false), set_config('search_path', '%s, public', false)", CoreSchema::NAME);
+        return \sprintf("SELECT set_config('app.tenant_id', '', false), set_config('app.landlord', '', false), set_config('search_path', '%s, %s, public', false)", CoreSchema::NAME, self::NO_TENANT_RBAC);
     }
 
     /**
@@ -55,7 +61,7 @@ final class TenantSessionSql
      */
     public static function landlord(): string
     {
-        return \sprintf("SELECT set_config('app.tenant_id', '', false), set_config('app.landlord', 'on', false), set_config('search_path', '%s, public', false)", CoreSchema::NAME);
+        return \sprintf("SELECT set_config('app.tenant_id', '', false), set_config('app.landlord', 'on', false), set_config('search_path', '%s, %s, public', false)", CoreSchema::NAME, self::NO_TENANT_RBAC);
     }
 
     /**
@@ -78,7 +84,7 @@ final class TenantSessionSql
             BEGIN
                 PERFORM set_config('app.tenant_id', '', false);
                 PERFORM set_config('app.landlord', '', false);
-                PERFORM set_config('search_path', '%1$s, public', false);
+                PERFORM set_config('search_path', '%1$s, %3$s, public', false);
                 -- A block of its own: its error handler rolls back what the block did, and only that.
                 BEGIN
                     SELECT t.id, t.rbac_schema INTO found_id, found_rbac_schema FROM %1$s.tenant t WHERE t.slug = '%2$s';
@@ -92,6 +98,6 @@ final class TenantSessionSql
                 END;
             END
             $$
-            SQL, CoreSchema::NAME, $slug);
+            SQL, CoreSchema::NAME, $slug, self::NO_TENANT_RBAC);
     }
 }

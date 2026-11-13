@@ -6,6 +6,40 @@ nav:
     language: Lingua
     tenants: Spazi di lavoro
     sign_out: Esci
+console:
+    title: Console
+    tenants: Tenant
+    indexes: Indici dei template
+    indexes_intro: 'Offerti a tutti i tenant, accanto ai loro; nessun tenant li rimuove.'
+    new: Nuovo tenant
+    create: Crea
+    slug: Slug
+    slug_help: 'La prima parte del suo indirizzo: lettere minuscole, cifre e trattini.'
+    name: Nome
+    admin_email: Primo admin
+    admin_email_help: 'Facoltativo: riceve un invito, e il ruolo di super admin quando lo accetta.'
+    created: 'Tenant %slug% creato.'
+    status: Stato
+    members: Membri
+    objects: Oggetti
+    active: attivo
+    suspended_status: sospeso
+    suspend: Sospendi
+    resume: Riattiva
+    suspended: 'Tenant %slug% sospeso: il suo indirizzo risponde 404, i dati restano.'
+    resumed: 'Tenant %slug% di nuovo attivo.'
+    super_admin: Super admin
+    give_admin: Rendi super admin
+    take_admin: Togli super admin
+    no_members: 'Ancora nessun membro: invita un admin.'
+    invite_admin: Invita un admin
+    invite_admin_intro: 'Riceve il ruolo di super admin di questo tenant quando accetta il link.'
+    delete: Elimina il tenant
+    delete_intro: 'Dati, ruoli, definizioni, membri e file vengono eliminati per sempre.'
+    confirm: Di nuovo lo slug
+    confirm_help: 'Scrivi lo slug per confermare.'
+    not_confirmed: 'Non confermato: non è stato eliminato nulla.'
+    deleted: 'Tenant %slug% eliminato.'
 invitation:
     title: Entra in questo spazio di lavoro
     intro: 'Sei stato invitato come %email%. Se hai un account, inserisci la sua password; altrimenti scegli una password e il tuo nome.'

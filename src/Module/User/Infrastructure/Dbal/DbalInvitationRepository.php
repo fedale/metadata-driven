@@ -68,9 +68,12 @@ final class DbalInvitationRepository implements InvitationRepository
         $this->connection->executeStatement('UPDATE core.tenant_invitation SET accepted_at = ? WHERE id = ?', [$at, $id], [Types::DATETIME_IMMUTABLE]);
     }
 
-    public function recordFailure(string $id): void
+    public function takeAttempt(string $id, int $maxAttempts): bool
     {
-        $this->connection->executeStatement('UPDATE core.tenant_invitation SET failed_attempts = failed_attempts + 1 WHERE id = ?', [$id]);
+        return false !== $this->connection->fetchOne(
+            'UPDATE core.tenant_invitation SET failed_attempts = failed_attempts + 1 WHERE id = ? AND failed_attempts < ? RETURNING id',
+            [$id, $maxAttempts],
+        );
     }
 
     public function remove(string $tenantId, string $id): bool

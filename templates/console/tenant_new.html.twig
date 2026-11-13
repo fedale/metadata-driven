@@ -1,0 +1,13 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'console.new'|trans }} · {{ 'console.title'|trans }}{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('console_index') }}">&larr; {{ 'console.tenants'|trans }}</a></p>
+    <h1>{{ 'console.new'|trans }}</h1>
+    {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+        {{ form_errors(form) }}
+        {{ form_rest(form) }}
+        <button type="submit" class="gv-btn gv-btn-primary">{{ 'console.create'|trans }}</button>
+    {{ form_end(form) }}
+{% endblock %}

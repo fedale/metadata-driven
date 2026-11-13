@@ -17,4 +17,9 @@ interface UserRepository
      * @param string $email any case
      */
     public function findByEmail(string $email): ?User;
+
+    /**
+     * @return list<User> by email
+     */
+    public function operators(): array;
 }

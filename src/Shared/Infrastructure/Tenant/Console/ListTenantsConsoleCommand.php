@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Tenant\Console;
 
-use App\Shared\Infrastructure\Tenant\TenantRegistry;
-use Doctrine\DBAL\Connection;
+use App\Shared\Tenant\TenantAdministration;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -18,26 +17,20 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 final class ListTenantsConsoleCommand
 {
     public function __construct(
-        private readonly TenantRegistry $tenants,
-        private readonly Connection $connection,
+        private readonly TenantAdministration $tenants,
     ) {
     }
 
     public function __invoke(SymfonyStyle $io): int
     {
-        /** @var array<string, int|string> $members */
-        $members = $this->connection->fetchAllKeyValue('SELECT tenant_id, count(*) FROM core.tenant_membership GROUP BY tenant_id');
-        /** @var array<string, int|string> $objects */
-        $objects = $this->connection->fetchAllKeyValue('SELECT tenant_id, count(*) FROM core.metadata_object GROUP BY tenant_id');
-
         $rows = [];
-        foreach ($this->tenants->all() as $tenant) {
+        foreach ($this->tenants->overview() as ['tenant' => $tenant, 'members' => $members, 'objects' => $objects]) {
             $rows[] = [
                 $tenant->slug,
                 $tenant->name,
                 $tenant->active ? 'active' : 'suspended',
-                (int) ($members[$tenant->id] ?? 0),
-                (int) ($objects[$tenant->id] ?? 0),
+                $members,
+                $objects,
                 $tenant->dataSchema.', '.$tenant->rbacSchema,
             ];
         }

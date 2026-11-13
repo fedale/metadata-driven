@@ -1,8 +1,9 @@
 # Plan: tenants and members in the admin UI
 
-Status: **agreed**; part A done (branch `tenant_admin_members`, committed); part A2, the
-invitations, in progress on branch `tenant_admin_invitations`; part B planned and agreed
-(2026-11-13), next. Discussed with the user on 2026-11-13. Builds on [multi-tenancy-plan.md](multi-tenancy-plan.md), whose
+Status: **implemented**; part A on branch `tenant_admin_members`, part A2 (invitations) on
+`tenant_admin_invitations`, part B (the operator's console) on `tenant_admin_console`, each from
+the one before (2026-11-13). Waiting for the user's review; nothing merged yet (the user merges at
+the end). Discussed with the user on 2026-11-13. Builds on [multi-tenancy-plan.md](multi-tenancy-plan.md), whose
 "Not in scope" left the admin UI out: until now tenants and memberships are managed from the
 console only (decision 4 of that plan).
 
@@ -217,3 +218,44 @@ out; a reserved slug refused; the throttling after five tries.
 
 multi-tenancy.md (the console, the operators, production: the console's host in DNS and TLS),
 console.md (`tenant:operator:*`), access.md (operators), status.md.
+
+### As built (part B)
+
+- `app_user.is_operator` (`Version20261113120000`), `User::grantOperator()`, `revokeOperator()`;
+  `UserManagerInterface::setOperator()`, `operators()`. **One command**, `tenant:operator
+  list|grant|revoke <email>`, in the style of `metadata:template:repo`, rather than three.
+- `HostTenantListener`: `<app.tenant.console_label>.<base host>` (`console` by default) runs in the
+  landlord's session, with the request attribute `OperatorConsole::REQUEST_ATTRIBUTE`. The
+  console's paths are under **`/console`** (`OperatorConsole::PATH_PREFIX`): only they, `/login`,
+  `/logout` and the profiler answer on its host (`/` redirects to `/console`), and `/console` is a
+  404 on every tenant's host. `security.yaml`: `^/console` needs `ROLE_OPERATOR`.
+- `UserProvider`, on the console's host: active operators only, with `ROLE_OPERATOR` alone and no
+  tenant. Revoking the flag signs the console session out at its next request.
+- Reserved slugs (`OperatorConsole::RESERVED_SLUGS` and the console's label), refused by
+  `TenantProvisioner::create()`, so by `tenant:create` and the console alike.
+- Ports: `TenantAdministration` (`TenantProvisioner`: create, suspend, resume, delete,
+  `overview()`, which `tenant:list` uses too), `TenantSessions::within()` (`TenantSwitcher`),
+  `AccessSetupInterface` (`PermissionSynchronizer`).
+- Pages: `ConsoleController` (Admin module: `/console`, `/console/tenants/new`,
+  `/console/tenants/{slug}` with suspend or resume, delete confirmed by the slug and never the
+  default tenant's, members with their super admin role given or taken and removal, an admin
+  invited), `ConsoleIndexController` (Template module: `/console/indexes`). A tenant's first admin,
+  or another, is **invited** (part A2) and gets the super admin role on accepting: the operator
+  chooses no one's password. The console makes sure the tenant's base permissions exist
+  (`syncAll()`) before giving the role, even where `access:sync` never ran.
+- **Departures from the plan**: no template chosen at creation (the tenant's admins install one
+  from their own admin, `/admin/templates`; the Admin module may not use the Template module);
+  `tenant:create` still runs the commands, not the new ports; the console's actions are logged
+  through the framework's PSR logger, Monolog not being installed (adding it is the user's call).
+- **Empty RBAC tables for no tenant**, `landlord_rbac` (`Version20261113130000`), in the
+  `search_path` of the landlord's session and of a session with no tenant
+  (`TenantSessionSql::NO_TENANT_RBAC`): fedale/rbac-bundle's voter looks every attribute up in
+  `auth_item`, and on the console, where no tenant's tables are, it failed on an undefined table
+  (found when a revoked operator, signed out, was asked about). Empty, they grant nothing.
+- Sign-in throttling came with part A2's hardening (`login_throttling`, five tries a minute).
+- Tests: `OperatorConsoleTest` (7: an operator only, the hosts kept apart, a tenant created with
+  its permissions and an invited admin and a reserved slug refused, suspend, resume, delete and
+  never the default tenant, the super admin role given and a member removed, a revoked flag
+  signing out, the throttling). The limiters' cache is cleared before and after the tests that
+  fill it: it outlives a test.
+

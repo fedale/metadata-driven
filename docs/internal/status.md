@@ -283,10 +283,14 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   (`make db`, `make db-test`) and `tenant:files:move` once on an installation from before. Left:
   `fedale/rbac-bundle` with a `tenant_id` (on standby; its cache is off meanwhile).
 - **Tenants and members in the admin UI**: [tenant-admin-ui-plan.md](tenant-admin-ui-plan.md)
-  (2026-11-13). Part A, the members page of each tenant (`/admin/members`, permission
-  `admin.members`), is on `tenant_admin_members`, branched from `multi_tenancy_followups`,
-  waiting for review; nothing of either is merged yet (the user merges at the end). Part B, the
-  operator's console on `admin.<base host>` for users with an operator flag, is to plan.
+  (2026-11-13), implemented. Part A, the members page of each tenant (`/admin/members`,
+  permission `admin.members`), on `tenant_admin_members`; part A2, invitations instead of adding
+  accounts (the user's choice: no admin learns whether an email has an account), on
+  `tenant_admin_invitations`; part B, the operators' console on `console.<base host>`
+  (`tenant:operator grant`), on `tenant_admin_console`. Each branch from the one before, from
+  `multi_tenancy_followups`; waiting for review, nothing merged (the user merges at the end, and
+  tests by hand then). Run the migrations, up to `Version20261113130000`. Left: a second factor
+  for signing in (later, for every user), Monolog for the console's log (the user's call).
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

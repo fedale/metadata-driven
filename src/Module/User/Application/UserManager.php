@@ -107,6 +107,18 @@ final class UserManager implements UserManagerInterface
         }, $this->memberships->membersWithProfiles($tenantId));
     }
 
+    public function setOperator(string $email, bool $operator): void
+    {
+        $user = $this->user($email);
+        $operator ? $user->grantOperator() : $user->revokeOperator();
+        $this->users->save($user);
+    }
+
+    public function operators(): array
+    {
+        return array_map(static fn (User $user): string => $user->getEmail(), $this->users->operators());
+    }
+
     public function invite(string $email, string $tenantId, string $invitedBy, bool $keepAssignments): string
     {
         $email = User::normalizeEmail($email);
@@ -152,17 +164,18 @@ final class UserManager implements UserManagerInterface
             $this->createUser($invitation->email, $password, $firstName, $lastName);
             $user = $this->users->findByEmail($invitation->email) ?? throw InvalidUser::notFound($invitation->email);
         } else {
-            // Counted per account, whatever the invitation: inviting again gives no more
-            // guesses. Always checked, a member's included: the next step signs the account in.
-            $limiter = $this->invitationPasswordLimiter->create($user->getEmail());
-            // consume(0) asks for nothing, and is always accepted: what is left is the answer.
-            if (0 === $limiter->consume(0)->getRemainingTokens()) {
+            // Every try is taken before the password is checked, so concurrent requests can't
+            // try more than are left: the account's (whatever the invitation: inviting again
+            // gives no more guesses), then the invitation's (burned at the fifth). A right
+            // password uses one too; the invitation is used up then anyway. Always checked, a
+            // member's included: the next step signs the account in.
+            if (!$this->invitationPasswordLimiter->create($user->getEmail())->consume()->isAccepted()) {
                 throw InvalidUser::tooManyTries();
             }
+            if (!$this->invitations->takeAttempt($invitation->id, self::INVITATION_MAX_FAILURES)) {
+                throw InvalidUser::invitationNotFound();
+            }
             if (!$this->hashers->getPasswordHasher(PasswordAuthenticatedUserInterface::class)->verify($user->getPasswordHash(), $password)) {
-                $limiter->consume();
-                $this->invitations->recordFailure($invitation->id);
-
                 throw InvalidUser::wrongPassword();
             }
             // A member already (added meanwhile): nothing of theirs is taken away.

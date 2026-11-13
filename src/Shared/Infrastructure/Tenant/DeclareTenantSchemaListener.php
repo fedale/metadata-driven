@@ -60,11 +60,13 @@ final class DeclareTenantSchemaListener
                 $schema->dropTable($name);
             }
         }
+        $namespaces = [TenantSessionSql::NO_TENANT_RBAC];
         foreach ($this->tenants->all() as $tenant) {
-            foreach ([$tenant->dataSchema, $tenant->rbacSchema] as $namespace) {
-                if (!$schema->hasNamespace($namespace)) {
-                    $schema->createNamespace($namespace);
-                }
+            $namespaces = [...$namespaces, $tenant->dataSchema, $tenant->rbacSchema];
+        }
+        foreach ($namespaces as $namespace) {
+            if (!$schema->hasNamespace($namespace)) {
+                $schema->createNamespace($namespace);
             }
         }
         foreach (TenantScope::TABLES as $name) {

@@ -7,6 +7,40 @@ nav:
     language: Language
     tenants: Workspaces
     sign_out: Sign out
+console:
+    title: Console
+    tenants: Tenants
+    indexes: Template indexes
+    indexes_intro: 'Offered to every tenant, next to its own; no tenant removes them.'
+    new: New tenant
+    create: Create
+    slug: Slug
+    slug_help: 'The first label of its address: lower case letters, digits and dashes.'
+    name: Name
+    admin_email: First admin
+    admin_email_help: 'Optional: they get an invitation, and the super admin role once they accept.'
+    created: 'Tenant %slug% created.'
+    status: Status
+    members: Members
+    objects: Objects
+    active: active
+    suspended_status: suspended
+    suspend: Suspend
+    resume: Resume
+    suspended: 'Tenant %slug% suspended: its address answers 404, its data stays.'
+    resumed: 'Tenant %slug% active again.'
+    super_admin: Super admin
+    give_admin: Make super admin
+    take_admin: Take super admin
+    no_members: 'No member yet: invite an admin.'
+    invite_admin: Invite an admin
+    invite_admin_intro: 'They get the super admin role of this tenant once they accept the link.'
+    delete: Delete the tenant
+    delete_intro: 'Its records, roles, definitions, members and files go, for good.'
+    confirm: Its slug again
+    confirm_help: 'Type the slug to confirm.'
+    not_confirmed: 'Not confirmed: nothing was deleted.'
+    deleted: 'Tenant %slug% deleted.'
 invitation:
     title: Join this workspace
     intro: 'You were invited, as %email%. If you have an account, enter its password; if not, choose a password, and your name.'

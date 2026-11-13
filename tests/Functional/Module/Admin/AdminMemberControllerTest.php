@@ -41,6 +41,17 @@ final class AdminMemberControllerTest extends WebTestCase
         $this->client->setServerParameter('HTTP_ORIGIN', 'http://localhost');
     }
 
+    /**
+     * Their tries counted here (wrong passwords) must not count in the next test class either.
+     */
+    protected function tearDown(): void
+    {
+        $limits = self::getContainer()->get('cache.rate_limiter');
+        self::assertInstanceOf(CacheItemPoolInterface::class, $limits);
+        $limits->clear();
+        parent::tearDown();
+    }
+
     public function testListsTheMembersOfTheTenantOnly(): void
     {
         self::signInAsSuperAdmin($this->client);

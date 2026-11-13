@@ -10,6 +10,7 @@ from `fedale/gridview-bundle`, the runtime settings from `fedale/setting-bundle`
 | `core` | The tenant registry (`core.tenant`) and who may sign in to each tenant (`core.tenant_membership`); object, field, view and composite form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the templates installed (`core.template_installation`) and the ids of items in templates (`core.template_item`), the settings of `fedale/setting-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
 | a tenant's data schema (`data` for the first tenant) | One table per object, `c_<object>`, holding the records, and one link table per many-to-many field, `l_<object>__<field>` | The Schema module, from the tenant's metadata |
 | a tenant's RBAC schema (`rbac` for the first tenant) | The tables of `fedale/rbac-bundle` (`auth_*`): the tenant's roles, permissions and assignments | Created with the tenant |
+| `landlord_rbac` | The same tables, empty: the RBAC tables of a session with no tenant (the landlord's, the console's), where the bundle finds tables and no permission | Migrations |
 
 Every session's `search_path` starts with `core`, so the tables whose mapping names no schema
 (Doctrine's migration table, the settings) are found there; then comes the current tenant's
@@ -43,6 +44,9 @@ guide says how to use and deploy them. Under the hood (see also
   above the firewall): `acme.example.com`, or `acme.localhost` in development, which browsers
   resolve to 127.0.0.1 without any DNS. The base host itself, and any other host, is the
   default tenant's. An unknown or suspended tenant is a 404.
+- **The console of the installation** answers on `console.<base host>` (`app.tenant.console_label`),
+  in the landlord's session, for the operators only; its paths (`/console…`) answer nowhere
+  else. See [Tenants](multi-tenancy.md#the-console).
 - **A command** of the application or of a `fedale/*` bundle is for the tenant of its global
   `--tenant=<slug>` option, the default tenant without it (`ConsoleTenantListener`). The other
   commands (Doctrine's, the migrations, `cache:clear`) and the `tenant:*` commands run in the

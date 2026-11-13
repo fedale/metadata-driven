@@ -1,0 +1,44 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'console.indexes'|trans }} · {{ 'console.title'|trans }}{% endblock %}
+
+{% block body %}
+    <h1>{{ 'console.indexes'|trans }}</h1>
+    <p class="gv-muted">{{ 'console.indexes_intro'|trans }}</p>
+
+    {% if indexes is not empty %}
+        <table class="md-table">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'admin.name'|trans }}</th>
+                    <th scope="col">{{ 'admin.template_admin.address'|trans }}</th>
+                    <th scope="col">{{ 'admin.template_admin.signed'|trans }}</th>
+                    <th scope="col"><span class="md-visually-hidden">{{ 'admin.actions'|trans }}</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for index in indexes %}
+                    <tr>
+                        <td>{{ index.name }}</td>
+                        <td class="md-file__name">{{ index.url }}</td>
+                        <td>{{ (index.key is null ? 'admin.template_admin.signed_no' : 'admin.template_admin.signed_yes')|trans }}</td>
+                        <td>
+                            {% if remove_forms[index.name] %}
+                                {{ form_start(remove_forms[index.name], {attr: {'data-turbo-confirm': 'admin.template_admin.remove_confirm'|trans({'%name%': index.name})}}) }}
+                                    <button type="submit" class="gv-btn">{{ 'admin.remove'|trans }}</button>
+                                {{ form_end(remove_forms[index.name]) }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    <h2>{{ 'admin.template_admin.add_index'|trans }}</h2>
+    {{ form_start(add_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+        {{ form_errors(add_form) }}
+        {{ form_rest(add_form) }}
+        <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.template_admin.add_the_index'|trans }}</button>
+    {{ form_end(add_form) }}
+{% endblock %}

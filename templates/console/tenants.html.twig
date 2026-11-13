@@ -1,0 +1,33 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'console.tenants'|trans }} · {{ 'console.title'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="md-page__header">
+        <h1>{{ 'console.tenants'|trans }}</h1>
+        <a class="gv-btn gv-btn-primary" href="{{ path('console_tenant_new') }}">{{ 'console.new'|trans }}</a>
+    </div>
+
+    <table class="md-table">
+        <thead>
+            <tr>
+                <th scope="col">{{ 'console.slug'|trans }}</th>
+                <th scope="col">{{ 'console.name'|trans }}</th>
+                <th scope="col">{{ 'console.status'|trans }}</th>
+                <th scope="col">{{ 'console.members'|trans }}</th>
+                <th scope="col">{{ 'console.objects'|trans }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in overview %}
+                <tr>
+                    <td><a href="{{ path('console_tenant_show', {slug: row.tenant.slug}) }}">{{ row.tenant.slug }}</a></td>
+                    <td>{{ row.tenant.name }}</td>
+                    <td>{{ (row.tenant.active ? 'console.active' : 'console.suspended_status')|trans }}</td>
+                    <td>{{ row.members }}</td>
+                    <td>{{ row.objects }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

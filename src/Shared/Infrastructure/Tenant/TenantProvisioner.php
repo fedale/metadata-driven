@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Tenant;
 
+use App\Shared\Tenant\OperatorConsole;
 use App\Shared\Tenant\Tenant;
+use App\Shared\Tenant\TenantAdministration;
 use Doctrine\DBAL\Connection;
 use League\Flysystem\FilesystemOperator;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Uid\Uuid;
 
@@ -20,7 +23,7 @@ use Symfony\Component\Uid\Uuid;
  * fedale/rbac-bundle's tables. It starts with no objects, members or permissions: tenant:create
  * adds its permissions, its first admin and a template if asked.
  */
-final class TenantProvisioner
+final class TenantProvisioner implements TenantAdministration
 {
     private const string SLUG = '/^[a-z0-9][a-z0-9-]{0,62}$/';
 
@@ -52,6 +55,8 @@ final class TenantProvisioner
         private readonly ConnectionCurrentTenant $current,
         #[Target('record_files.storage')]
         private readonly FilesystemOperator $files,
+        #[Autowire('%app.tenant.console_label%')]
+        private readonly string $consoleLabel = 'console',
     ) {
     }
 
@@ -60,6 +65,9 @@ final class TenantProvisioner
         $this->assertLandlord();
         if (1 !== preg_match(self::SLUG, $slug)) {
             throw new \InvalidArgumentException(\sprintf('"%s" is no tenant slug: lower case letters, digits and dashes, 63 at most.', $slug));
+        }
+        if (\in_array($slug, [...OperatorConsole::RESERVED_SLUGS, $this->consoleLabel], true)) {
+            throw new \InvalidArgumentException(\sprintf('"%s" is reserved: choose another slug.', $slug));
         }
         if (null !== $this->registry->bySlug($slug)) {
             throw new \InvalidArgumentException(\sprintf('There is a tenant "%s" already.', $slug));
@@ -120,6 +128,21 @@ final class TenantProvisioner
         if (!$this->connection->isTransactionActive()) {
             $this->files->deleteDirectory(strtolower($tenant->id));
         }
+    }
+
+    public function overview(): array
+    {
+        /** @var array<string, int|string> $members */
+        $members = $this->connection->fetchAllKeyValue('SELECT tenant_id, count(*) FROM core.tenant_membership GROUP BY tenant_id');
+        // As the landlord: every tenant's rows.
+        /** @var array<string, int|string> $objects */
+        $objects = $this->connection->fetchAllKeyValue('SELECT tenant_id, count(*) FROM core.metadata_object GROUP BY tenant_id');
+
+        return array_map(static fn (Tenant $tenant): array => [
+            'tenant' => $tenant,
+            'members' => (int) ($members[$tenant->id] ?? 0),
+            'objects' => (int) ($objects[$tenant->id] ?? 0),
+        ], $this->registry->all());
     }
 
     private function setStatus(Tenant $tenant, string $status): void

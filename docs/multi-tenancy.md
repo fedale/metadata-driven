@@ -27,6 +27,28 @@ any DNS.
 | `TENANT_BASE_HOST` | `localhost` | The host the tenants' hosts end with |
 | `TENANT_DEFAULT` | `default` | The tenant of the base host, of any other host, and of a command without `--tenant`. Empty: every request names its tenant, and a command without `--tenant` works for none |
 
+## The console
+
+Operators manage the tenants from the **console of the installation**, at
+`https://console.<base host>` (`console.localhost` in development), with their ordinary account:
+
+```bash
+symfony console tenant:operator grant olga@example.com    # olga may enter the console
+symfony console tenant:operator                          # the operators
+symfony console tenant:operator revoke olga@example.com  # her console session ends
+```
+
+- **Tenants**: the list (members, objects, status), a new one (its slug, its name, and its first
+  admin, invited: they accept the link on the tenant's host, with their account or a new one, and
+  hold its super admin role), suspend or resume, delete (typing the slug back; never the default
+  tenant).
+- **A tenant's members**: give or take the super admin role, remove, invite another admin.
+- **Template indexes** offered to every tenant.
+
+The console is no tenant: an operator has no power inside a tenant unless they're a member there,
+with a role. Only operators sign in there, and only the command line makes operators. The slug
+`console`, and `admin`, `www`, `api`, `mail`, `static`, are reserved: no tenant takes them.
+
 ## Creating and managing tenants
 
 ```bash
@@ -121,7 +143,7 @@ never share a stored file. `tenant:delete` deletes the tenant's directory, and
 ## Running in production
 
 - **DNS and TLS.** Point a wildcard record, `*.example.com`, at the server, and serve a wildcard
-  certificate. Pass the `Host` header through any proxy. If you set Symfony's
+  certificate: it covers the console's host, `console.example.com`, too. Pass the `Host` header through any proxy. If you set Symfony's
   `framework.trusted_hosts`, allow the subdomains: `'^(.+\.)?example\.com$'`.
 - **The database role.** Connect the application as an ordinary role that owns the tables, not
   as a superuser. Row-level security, the database's own check that no tenant reads another's
@@ -150,9 +172,7 @@ never share a stored file. `tenant:delete` deletes the tenant's directory, and
 
 ## Not yet
 
-- Managing tenants from the admin UI: the console only (a tenant's members have their page,
-  `/admin/members`). The operator's console is planned:
-  [tenant-admin-ui-plan.md](internal/tenant-admin-ui-plan.md), part B.
+- A second factor for signing in, operators included: planned for every user at once.
 - Signing up, and inviting a user to a tenant.
 - One sign-in for all the tenants a user belongs to: you sign in to each host.
 - `fedale/rbac-bundle`'s cache: off, because it keeps one set of roles for the whole

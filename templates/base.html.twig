@@ -21,6 +21,21 @@
     </head>
     <body data-gv-scope>
         <header class="md-topbar">
+            {% if app.request.attributes.get('_operator_console') %}
+                {# The console of the installation: the landlord's, no tenant's navigation (whose
+                   permission checks would find no RBAC tables). #}
+                <a href="{{ path('console_index') }}" class="md-topbar__brand">{{ 'console.title'|trans }}</a>
+                {% if app.user %}
+                    <nav class="md-topbar__nav">
+                        <a href="{{ path('console_index') }}">{{ 'console.tenants'|trans }}</a>
+                        <a href="{{ path('console_indexes') }}">{{ 'console.indexes'|trans }}</a>
+                    </nav>
+                    <div class="md-topbar__user">
+                        <span>{{ app.user.displayName }}</span>
+                        <a href="{{ path('app_logout') }}">{{ 'nav.sign_out'|trans }}</a>
+                    </div>
+                {% endif %}
+            {% else %}
             <a href="{{ path('app_home') }}" class="md-topbar__brand">Metadata-driven</a>
             {% if app.user %}
                 <nav class="md-topbar__nav">
@@ -53,6 +68,7 @@
                     <span>{{ app.user.displayName }}</span>
                     <a href="{{ path('app_logout') }}">{{ 'nav.sign_out'|trans }}</a>
                 </div>
+            {% endif %}
             {% endif %}
         </header>
         <main class="md-page">

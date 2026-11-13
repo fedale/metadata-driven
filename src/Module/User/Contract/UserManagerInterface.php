@@ -61,6 +61,19 @@ interface UserManagerInterface
     public function members(string $tenantId): array;
 
     /**
+     * Makes the user an operator of the installation, or no longer: the console of the
+     * installation (part B of docs/internal/tenant-admin-ui-plan.md). From the command line only.
+     *
+     * @throws UserException unknown user
+     */
+    public function setOperator(string $email, bool $operator): void;
+
+    /**
+     * @return list<string> the emails of the operators, sorted
+     */
+    public function operators(): array;
+
+    /**
      * Invites someone to a tenant: whoever the email belongs to accepts with acceptInvitation().
      * The same whether the email has an account or not: nothing of the account is told.
      *

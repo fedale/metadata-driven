@@ -30,7 +30,13 @@ interface InvitationRepository
 
     public function markAccepted(string $id, \DateTimeImmutable $at): void;
 
-    public function recordFailure(string $id): void;
+    /**
+     * Takes one of the invitation's tries, before the password is checked, in one statement:
+     * concurrent requests can't take more than are left.
+     *
+     * @return bool false when none is left (the invitation is burned)
+     */
+    public function takeAttempt(string $id, int $maxAttempts): bool;
 
     /**
      * @return bool false when the tenant has no such invitation

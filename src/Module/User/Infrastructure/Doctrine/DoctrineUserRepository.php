@@ -24,6 +24,11 @@ final class DoctrineUserRepository implements UserRepository
         $this->entityManager->flush();
     }
 
+    public function operators(): array
+    {
+        return $this->entityManager->getRepository(User::class)->findBy(['isOperator' => true], ['email' => 'ASC']);
+    }
+
     public function findByEmail(string $email): ?User
     {
         return $this->entityManager->getRepository(User::class)->findOneBy(['email' => mb_strtolower(trim($email))]);

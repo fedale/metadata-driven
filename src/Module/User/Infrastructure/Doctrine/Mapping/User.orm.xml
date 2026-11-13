@@ -13,6 +13,11 @@
         <field name="email" length="180"/>
         <field name="passwordHash" length="255"/>
         <field name="isActive" type="boolean"/>
+        <field name="isOperator" type="boolean" column="is_operator">
+            <options>
+                <option name="default">0</option>
+            </options>
+        </field>
         <field name="createdAt" type="datetime_immutable"/>
         <field name="lastLoginAt" type="datetime_immutable" nullable="true"/>
 
