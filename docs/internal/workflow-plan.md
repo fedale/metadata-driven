@@ -1,6 +1,6 @@
 # Plan: workflows
 
-Status: **proposed**, not started. Discussed with the user on 2026-11-13. "Declarative rules and
+Status: **agreed**, not started. Discussed with the user on 2026-11-13. "Declarative rules and
 automations" of the roadmap ([status.md](status.md), "An app in a package", point d): when
 something happens, run a series of actions, configured without code.
 
@@ -206,18 +206,15 @@ One branch each, reviewed before the next.
    notifications (with email sending), quotas per plan, export and import (as JSON, inactive on
    import), templates carrying workflows.
 
-## Open decisions (for the user)
+## Decisions on the open points (user, 2026-11-13)
 
-1. **After-triggers before Messenger** (phase 1): right after the commit, in the same request
-   (recommended: simple, visible at once; the background comes in phase 4), or wait for
-   Messenger and have before-triggers only in phase 1.
-2. **The limits' defaults**: 50 steps per run, 200 records per search, 100 runs a minute per
-   tenant, runs kept 30 days (recommended as written).
-3. **Who sees the runs**: `admin.workflows` only (recommended: runs hold records' data), or
-   anyone who may read the trigger's object.
-4. **A workflow's author leaving**: a role-acting step checked against its author at each run
-   stops when the author can no longer give that role (recommended: safe, and visible as a failed
-   run), or the role is fixed at activation by whoever activated it.
+6. **After-triggers in phase 1** run right after the write's transaction commits, in the same
+   request; the background comes with Messenger in phase 4.
+7. **The limits' defaults**: 50 steps per run, 200 records per search or iterator, 100 runs a
+   minute per tenant, runs kept 30 days; all configurable.
+8. **The runs are seen by `admin.workflows` only**: they hold records' data.
+9. **A role-acting step is checked against its author at each run**: when the author can no longer
+   give that role, the step stops, and the run fails, visibly.
 
 ## Not in scope
 
