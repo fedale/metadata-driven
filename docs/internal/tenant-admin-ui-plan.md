@@ -234,7 +234,9 @@ console.md (`tenant:operator:*`), access.md (operators), status.md.
 - `HostTenantListener`: `<app.tenant.console_label>.<base host>` (`console` by default) runs in the
   landlord's session, with the request attribute `OperatorConsole::REQUEST_ATTRIBUTE`. The
   console's paths are under **`/console`** (`OperatorConsole::PATH_PREFIX`): only they, `/login`,
-  `/logout` and the profiler answer on its host (`/` redirects to `/console`), and `/console` is a
+  `/logout`, `/account`, the profiler and `/assets/` (AssetMapper serves the styles and scripts
+  through the application in development; left out at first, the console had no styles) answer
+  on its host (`/` redirects to `/console`), and `/console` is a
   404 on every tenant's host. `security.yaml`: `^/console` needs `ROLE_OPERATOR`.
 - `UserProvider`, on the console's host: active operators only, with `ROLE_OPERATOR` alone and no
   tenant. Revoking the flag signs the console session out at its next request.

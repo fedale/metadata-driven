@@ -60,6 +60,21 @@ final class OperatorConsoleTest extends WebTestCase
         self::assertSelectorTextContains('main', 'default');
     }
 
+    /**
+     * Its pages have their styles and scripts: in development AssetMapper serves them through
+     * the application, under /assets/.
+     */
+    public function testTheConsoleServesItsAssets(): void
+    {
+        $crawler = $this->client->request('GET', '/login', server: ['HTTP_HOST' => 'console.localhost']);
+        $stylesheet = (string) $crawler->filter('link[rel="stylesheet"]')->first()->attr('href');
+        self::assertStringStartsWith('/assets/', $stylesheet);
+
+        $this->client->request('GET', $stylesheet, server: ['HTTP_HOST' => 'console.localhost']);
+
+        self::assertResponseIsSuccessful();
+    }
+
     public function testTheConsoleAndTheTenantsKeepToTheirHosts(): void
     {
         $this->client->request('GET', '/console', server: ['HTTP_HOST' => 'localhost']);
