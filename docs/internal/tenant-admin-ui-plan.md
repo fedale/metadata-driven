@@ -1,7 +1,7 @@
 # Plan: tenants and members in the admin UI
 
-Status: **agreed**; part A implemented on branch `tenant_admin_members` (2026-11-13), waiting for
-the user's review; part B to plan in detail. Discussed with the user on 2026-11-13. Builds on [multi-tenancy-plan.md](multi-tenancy-plan.md), whose
+Status: **agreed**; part A done (branch `tenant_admin_members`, committed); part B planned and
+agreed (2026-11-13), to build on branch `tenant_admin_operator`. Discussed with the user on 2026-11-13. Builds on [multi-tenancy-plan.md](multi-tenancy-plan.md), whose
 "Not in scope" left the admin UI out: until now tenants and memberships are managed from the
 console only (decision 4 of that plan).
 
@@ -11,7 +11,13 @@ console only (decision 4 of that plan).
    may sign in there and with which roles. No new security decision is needed: it is the
    tenant's own admin, behind the tenant's own permissions.
 2. **The operator's console later** (part B). Who may enter it: **a flag on the user**, an
-   operator, set from the console; the console on a host of its own, `admin.<base host>`.
+   operator, set from the console; the console on a host of its own.
+3. **The console's host is `console.<base host>`**, not `admin.<base host>`: a tenant's own admin
+   is at `/admin`, and the two would be confused.
+4. **No second factor for now**: sign-in throttling and the reserved host now; a second factor
+   later, as a feature of its own for every user (enrolment, recovery codes).
+5. **A tenant can be deleted from the console** too, confirmed by typing its slug, as
+   `tenant:delete`; the default tenant can't.
 
 ## Part A: the members page
 
@@ -43,12 +49,15 @@ roles are the tenant's RBAC items of type role, its super admin role included.
 - **No lockout.** Your own row can't be changed at all: neither your roles nor your membership.
   Another admin does it. Simpler than working out which of your roles keeps `admin.members`
   through the role hierarchy, and as safe.
-- **No escalation** (found by the automated security review, 2026-11-13). You give and take only
-  the roles you hold, directly or through the hierarchy (`AccessCheckerInterface::holds()`; the
-  super admin holds them all): the others a member has are shown, not offered, and kept when you
-  save. You can't remove a member holding a role you don't. Without this, `admin.members` would
-  be the power to make any account, one of your own included, super admin. A forged request
-  outside these rules is a 403.
+- **No escalation** (found by the automated security review, 2026-11-13, in two rounds). You give
+  and take only the roles you hold, directly or through the hierarchy
+  (`AccessCheckerInterface::holds()`; the super admin holds them all). A member holding a role you
+  don't is out of your reach: no roles form, no removal, and no adding back once removed (a
+  removed member keeps their roles in the tenant). Without this, `admin.members` would be the
+  power to make any account, one of your own included, super admin, or to take from those above.
+  A forged request outside these rules is a 403.
+- **Existing accounts are revealed**: the review flagged it too. Kept, as the user's to decide:
+  see "Accounts are global" above.
 - **Accounts are global**, so adding an existing account by email tells the admin that the email
   has an account, and shows the name of its profile. That is how inviting by email works
   anywhere: the email is what the admin already knows. Nothing else of the account (its other
@@ -73,7 +82,7 @@ refused, one with `admin.members` only let in. A removed member's session ending
   member named by the first 12 hex of the SHA-256 of their email), `templates/admin/members.html.twig`,
   the **Members** link of the top bar and of the admin's index; deptrac lets Admin use the User
   contract.
-- Tests: `AdminMemberControllerTest` (8, one for the escalation). A test reading the RBAC assignments after a change
+- Tests: `AdminMemberControllerTest` (10, three for the escalations). A test reading the RBAC assignments after a change
   follows the redirect first: the bundle keeps what it read during a request in memory.
 
 ### Documentation
@@ -81,16 +90,76 @@ refused, one with `admin.members` only let in. A removed member's session ending
 access.md (the page, next to the commands), admin.md (the admin's pages), multi-tenancy.md
 ("Not yet" loses the members), status.md.
 
-## Part B: the operator's console (later)
+## Part B: the operator's console
 
-Sketched here, planned in detail when part A is done.
+Planned in detail on 2026-11-13, branch `tenant_admin_operator` (from `tenant_admin_members`),
+with decisions 3 to 5 above.
 
-- `app_user.is_operator`, set and cleared from the console (`tenant:operator:grant|revoke
-  <email>`); no page grants it.
-- The console answers on `admin.<base host>`: the slug `admin` is reserved (`tenant:create`
-  refuses it), and the request runs in the landlord's session.
-- Pages: the tenants (list, create, suspend, resume, delete), a tenant's members, the template
-  indexes offered to every tenant. Each the counterpart of a `tenant:*` command, through the
-  same services.
-- To decide then: whether an operator signs in there with their ordinary account and password
-  (the flag on top), and whether the console needs a second factor.
+### Who is an operator
+
+- `app_user.is_operator`, false by default, a property of the domain `User`. Set and cleared from
+  the console only: `tenant:operator:grant <email>`, `tenant:operator:revoke <email>`,
+  `tenant:operator:list`. No page grants it, so a stolen operator session can't make more
+  operators.
+- An operator signs in with their ordinary account and password. The flag adds the console; it
+  gives nothing inside a tenant (decision 3 of the multi-tenancy plan stands: inside a tenant an
+  operator is a member with a role, or nobody).
+
+### Where the console is
+
+- On its own host, `<label>.<base host>`, the label `console` (`app.tenant.console_label`). The
+  label is **reserved**: `tenant:create` refuses it as a slug, and so does a list of others no
+  tenant should take (`admin`, `www`, `api`, `mail`, `static`).
+- `HostTenantListener` recognises that host before looking up a tenant: the request runs in the
+  landlord's session (`TenantSwitcher::landlord()`), and gets a request attribute saying so.
+- Only the console's routes answer there (`/` redirects to `/tenants`, plus `/login`,
+  `/logout`); every tenant route is a 404 on it, and every console route a 404 on a tenant's host.
+
+### Signing in
+
+- The same firewall and sign-in page. `UserProvider`, on the console's host, finds only active
+  operators (anyone else fails like a wrong password), and gives them `ROLE_OPERATOR`;
+  `access_control` requires it for the console's paths.
+- The `SecurityUser` of a console session has no tenant, so phase 3's binding keeps it apart from
+  every tenant's sessions, and a tenant's session from it. Revoking the flag signs the session out
+  at its next request (the user is loaded again, and `isEqualTo()` compares the role).
+
+### Pages
+
+Each the counterpart of a `tenant:*` command, through the same services:
+
+| Page | Does |
+|---|---|
+| `/tenants` | The tenants: slug, name, status, members, objects; links to each |
+| `/tenants/new` | Create: slug, name, first admin (an existing account, or a new one with an initial password), a template from the indexes offered to every tenant |
+| `/tenants/{slug}` | Suspend or resume; delete (decision 5); its members: add an account, remove one, give or take its super admin role |
+| `/indexes` | The template indexes offered to every tenant (`tenant:template:repo`) |
+
+### How the pages reach the services
+
+The console is a module's UI (a new `Operator` module, or the Admin module's), which may use the
+shared layer's ports but not its infrastructure. New ports in `src/Shared/Tenant/`:
+
+- `TenantAdministration`: create, suspend, resume, delete (`TenantProvisioner` implements it).
+- `TenantSessions::within(Tenant, callable)`: runs work in a tenant's session and comes back to
+  the landlord's, for the steps that are a tenant's (its permissions, its first admin's role,
+  its template). `tenant:create` then uses the same services instead of running commands.
+
+### Safety
+
+- **Sign-in throttling** (`symfony/rate-limiter`, `login_throttling` in security.yaml): 5 tries a
+  minute per address and email, for every sign-in, tenants' included, which have none today.
+- Every form with its CSRF token; deletion confirmed by typing the slug, as the command.
+- Every action of the console in the log (`app.operator` channel): who, what, which tenant.
+
+### Tests
+
+Functional, on the console's host and a tenant's: a non-operator refused at sign-in, an operator
+let in; the console's routes 404 on a tenant's host and the tenant's on the console's; each page's
+action (create with an admin, suspend, resume, delete, members, indexes); a revoked flag signing
+out; a reserved slug refused; the throttling after five tries.
+
+### Documentation
+
+multi-tenancy.md (the console, the operators, production: the console's host in DNS and TLS),
+console.md (`tenant:operator:*`), access.md (operators), status.md.
