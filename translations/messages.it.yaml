@@ -2,9 +2,71 @@
 nav:
     records: Dati
     admin: Amministrazione
+    members: Membri
+    roles: Ruoli
     language: Lingua
     tenants: Spazi di lavoro
+    account: Il mio account
     sign_out: Esci
+console:
+    title: Console
+    tenants: Tenant
+    indexes: Indici dei template
+    indexes_intro: 'Offerti a tutti i tenant, accanto ai loro; nessun tenant li rimuove.'
+    new: Nuovo tenant
+    create: Crea
+    slug: Slug
+    slug_help: 'La prima parte del suo indirizzo: lettere minuscole, cifre e trattini.'
+    name: Nome
+    admin_email: Primo admin
+    admin_email_help: 'Facoltativo: riceve un invito, e il ruolo di super admin quando lo accetta.'
+    created: 'Tenant %slug% creato.'
+    status: Stato
+    members: Membri
+    objects: Oggetti
+    active: attivo
+    suspended_status: sospeso
+    suspend: Sospendi
+    resume: Riattiva
+    suspended: 'Tenant %slug% sospeso: il suo indirizzo risponde 404, i dati restano.'
+    resumed: 'Tenant %slug% di nuovo attivo.'
+    super_admin: Super admin
+    give_admin: Rendi super admin
+    take_admin: Togli super admin
+    no_members: 'Ancora nessun membro: invita un admin.'
+    invite_admin: Invita un admin
+    invite_admin_intro: 'Riceve il ruolo di super admin di questo tenant quando accetta il link.'
+    delete: Elimina il tenant
+    delete_intro: 'Dati, ruoli, definizioni, membri e file vengono eliminati per sempre.'
+    confirm: Di nuovo lo slug
+    confirm_help: 'Scrivi lo slug per confermare.'
+    not_confirmed: 'Non confermato: non è stato eliminato nulla.'
+    deleted: 'Tenant %slug% eliminato.'
+account:
+    title: Il mio account
+    name: Nome
+    first_name: Nome
+    last_name: Cognome
+    save_name: Salva
+    renamed: Nome salvato.
+    password: Password
+    password_intro: 'Quando cambia, le tue sessioni altrove, su altri dispositivi e altri spazi di lavoro, si chiudono.'
+    current_password: Password attuale
+    new_password: Nuova password
+    new_password_help: 'Almeno 12 caratteri.'
+    repeat_password: Di nuovo la nuova password
+    passwords_differ: 'Le due nuove password sono diverse.'
+    change_password: Cambia la password
+    password_changed: 'Password cambiata: le altre sessioni sono state chiuse.'
+invitation:
+    title: Entra in questo spazio di lavoro
+    intro: 'Sei stato invitato come %email%. Se hai un account, inserisci la sua password; altrimenti scegli una password e il tuo nome.'
+    password: Password
+    password_help: 'Almeno 12 caratteri per un account nuovo.'
+    first_name: Nome
+    last_name: Cognome
+    submit: Entra
+    welcome: Benvenuto.
 login:
     title: Accedi
     email: Email
@@ -124,6 +186,53 @@ admin:
     views: Viste
     translations: Traduzioni
     templates: Template
+    roles:
+        title: Ruoli
+        intro: 'Cosa concede ogni ruolo di questo spazio di lavoro. I ruoli si assegnano dalla pagina dei membri.'
+        permissions: Permessi
+        holders: Membri
+        contains: 'Contiene %roles% (da riga di comando).'
+        new: Nuovo ruolo
+        new_intro: 'A un ruolo puoi dare solo permessi che hai tu.'
+        name: Nome
+        name_help: 'ROLE_ e lettere maiuscole, cifre o trattini bassi: ROLE_PET_READER.'
+        description: Descrizione
+        created: 'Ruolo %name% creato.'
+        saved: 'Ruolo %name% salvato.'
+        deleted: 'Ruolo %name% eliminato.'
+        delete_confirm: 'Eliminare il ruolo %name%?'
+        administration: Amministrazione
+        action:
+            read: lettura
+            create: creazione
+            update: modifica
+            delete: eliminazione
+        permission:
+            admin_metadata: 'Oggetti, campi e viste'
+            admin_members: Membri
+            admin_roles: Ruoli
+    members:
+        title: Membri
+        intro: 'Chi può accedere a questo spazio di lavoro, e con quali dei suoi ruoli. Gli account sono comuni a tutti gli spazi: una email, una password.'
+        email: Email
+        email_help: 'Riceverà un link da accettare: con la password del suo account se ne ha uno, oppure creandone uno.'
+        roles: Ruoli
+        last_login: Ultimo accesso
+        you: tu
+        add: Invita qualcuno
+        add_intro: 'Un invito dura 7 giorni. L''applicazione non invia email: comunica tu il link.'
+        add_submit: Invita
+        invited: 'Invito per %email% creato.'
+        invitation_link: 'Comunica questo link: viene mostrato una sola volta.'
+        invitations: Inviti in sospeso
+        invited_by: Invitato da
+        expires: Scade
+        revoke: Revoca
+        revoke_confirm: 'Il link inviato a %email% smetterà di funzionare. Revocare?'
+        invitation_revoked: Invito revocato.
+        roles_saved: 'Ruoli di %name% salvati.'
+        removed: '%name% non può più accedere qui.'
+        remove_confirm: '%name% non potrà più accedere qui. I suoi ruoli restano, inutilizzati. Rimuovere?'
     template_heading: Template
     machine_name: Nome tecnico
     name: Nome

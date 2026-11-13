@@ -1,0 +1,14 @@
+framework:
+    rate_limiter:
+        # The passwords tried on invitations, per account, whatever the invitation: new
+        # invitations give no more guesses (UserManager::acceptInvitation()).
+        invitation_password:
+            policy: sliding_window
+            limit: 5
+            interval: '15 minutes'
+        # The current password asked to change it, per account: a session left open is no way
+        # to guess it (UserManager::changePassword()).
+        password_change:
+            policy: sliding_window
+            limit: 5
+            interval: '15 minutes'

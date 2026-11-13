@@ -27,6 +27,28 @@ any DNS.
 | `TENANT_BASE_HOST` | `localhost` | The host the tenants' hosts end with |
 | `TENANT_DEFAULT` | `default` | The tenant of the base host, of any other host, and of a command without `--tenant`. Empty: every request names its tenant, and a command without `--tenant` works for none |
 
+## The console
+
+Operators manage the tenants from the **console of the installation**, at
+`https://console.<base host>` (`console.localhost` in development), with their ordinary account:
+
+```bash
+symfony console tenant:operator grant olga@example.com    # olga may enter the console
+symfony console tenant:operator                          # the operators
+symfony console tenant:operator revoke olga@example.com  # her console session ends
+```
+
+- **Tenants**: the list (members, objects, status), a new one (its slug, its name, and its first
+  admin, invited: they accept the link on the tenant's host, with their account or a new one, and
+  hold its super admin role), suspend or resume, delete (typing the slug back; never the default
+  tenant).
+- **A tenant's members**: give or take the super admin role, remove, invite another admin.
+- **Template indexes** offered to every tenant.
+
+The console is no tenant: an operator has no power inside a tenant unless they're a member there,
+with a role. Only operators sign in there, and only the command line makes operators. The slug
+`console`, and `admin`, `www`, `api`, `mail`, `static`, are reserved: no tenant takes them.
+
 ## Creating and managing tenants
 
 ```bash
@@ -69,6 +91,10 @@ fails at the end when one of them did.
 A user is one email and one password for the whole installation. A **membership** lets them sign
 in to a tenant:
 
+A tenant's admins manage its members on the **Members** page of the admin (`/admin/members`):
+invite someone by email (they accept with a link, signing in or creating their account), tick
+their roles, remove them. From the console, where the operator adds an account at once:
+
 ```bash
 symfony console user:create anna@example.com --tenant=acme      # a new user, a member of acme
 symfony console tenant:member:add globex anna@example.com        # an existing user, now of globex too
@@ -77,7 +103,8 @@ symfony console tenant:member:remove globex anna@example.com     # her sessions 
 ```
 
 - Signing in to a tenant you're no member of fails like a wrong password.
-- You sign in to each tenant on its own: a session belongs to a host.
+- You sign in to each tenant on its own: a session, and a "keep me signed in" cookie, belong to
+  the tenant they were opened in, even when you're a member of several.
 - Roles and permissions belong to the tenant. An admin of `acme` has no rights in `globex`
   until someone gives them a role there.
 - A member of several tenants gets links to the others in the top bar.
@@ -116,7 +143,7 @@ never share a stored file. `tenant:delete` deletes the tenant's directory, and
 ## Running in production
 
 - **DNS and TLS.** Point a wildcard record, `*.example.com`, at the server, and serve a wildcard
-  certificate. Pass the `Host` header through any proxy. If you set Symfony's
+  certificate: it covers the console's host, `console.example.com`, too. Pass the `Host` header through any proxy. If you set Symfony's
   `framework.trusted_hosts`, allow the subdomains: `'^(.+\.)?example\.com$'`.
 - **The database role.** Connect the application as an ordinary role that owns the tables, not
   as a superuser. Row-level security, the database's own check that no tenant reads another's
@@ -137,14 +164,15 @@ never share a stored file. `tenant:delete` deletes the tenant's directory, and
 
 1. Back up the database and the file storage.
 2. Run the migrations: the installation becomes the `default` tenant, its users members of it,
-   its records where they were.
+   its records where they were. Everyone signed in is signed out once: their sessions predate
+   tenants.
 3. Run `symfony console tenant:files:move` once: it moves the stored files into the default
    tenant's directory. Until then they stay readable where they are.
 4. Set `TENANT_BASE_HOST`, then create the other tenants.
 
 ## Not yet
 
-- Managing tenants and memberships from the admin UI: the console only.
+- A second factor for signing in, operators included: planned for every user at once.
 - Signing up, and inviting a user to a tenant.
 - One sign-in for all the tenants a user belongs to: you sign in to each host.
 - `fedale/rbac-bundle`'s cache: off, because it keeps one set of roles for the whole

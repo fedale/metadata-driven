@@ -1,0 +1,52 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'admin.roles.title'|trans }} · {{ 'admin.title'|trans }}{% endblock %}
+
+{% block body %}
+    <h1>{{ 'admin.roles.title'|trans }}</h1>
+    <p class="gv-muted">{{ 'admin.roles.intro'|trans }}</p>
+
+    <table class="md-table">
+        <thead>
+            <tr>
+                <th scope="col">{{ 'admin.name'|trans }}</th>
+                <th scope="col">{{ 'admin.roles.permissions'|trans }}</th>
+                <th scope="col">{{ 'admin.roles.holders'|trans }}</th>
+                <th scope="col"><span class="md-visually-hidden">{{ 'admin.actions'|trans }}</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+                <tr>
+                    <td>
+                        <code>{{ row.name }}</code>
+                        {% if row.description %}<br><span class="gv-muted">{{ row.description }}</span>{% endif %}
+                    </td>
+                    <td>
+                        {{ row.permissions is empty ? '—' : row.permissions|join(', ') }}
+                        {% if row.roles is not empty %}<br><span class="gv-muted">{{ 'admin.roles.contains'|trans({'%roles%': row.roles|join(', ')}) }}</span>{% endif %}
+                    </td>
+                    <td>{{ row.holders }}</td>
+                    <td>
+                        {% if row.editable %}<a class="gv-btn" href="{{ path('admin_role_edit', {role: row.name}) }}">{{ 'admin.edit'|trans }}</a>{% endif %}
+                        {% if row.delete_form %}
+                            {{ form_start(row.delete_form, {attr: {'data-turbo-confirm': 'admin.roles.delete_confirm'|trans({'%name%': row.name})}}) }}
+                                <button type="submit" class="gv-btn">{{ 'admin.delete'|trans }}</button>
+                            {{ form_end(row.delete_form) }}
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <section class="md-admin__section">
+        <h2>{{ 'admin.roles.new'|trans }}</h2>
+        <p class="gv-muted">{{ 'admin.roles.new_intro'|trans }}</p>
+        {{ form_start(new_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+            {{ form_errors(new_form) }}
+            {{ form_rest(new_form) }}
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.create'|trans }}</button>
+        {{ form_end(new_form) }}
+    </section>
+{% endblock %}

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Module\User\Contract;
 
+use App\Module\User\Contract\Dto\Invitation;
+use App\Module\User\Contract\Dto\Member;
+use App\Module\User\Contract\Dto\Profile;
 use App\Module\User\Contract\Exception\UserException;
 
 interface UserManagerInterface
@@ -50,4 +53,93 @@ interface UserManagerInterface
      * @return list<string> the emails of the tenant's members, sorted
      */
     public function membersOf(string $tenantId): array;
+
+    /**
+     * The tenant's members, by name.
+     *
+     * @return list<Member>
+     */
+    public function members(string $tenantId): array;
+
+    /**
+     * @throws UserException unknown user
+     */
+    public function profile(string $email): Profile;
+
+    /**
+     * @throws UserException unknown user
+     */
+    public function rename(string $email, ?string $firstName, ?string $lastName): void;
+
+    /**
+     * Changes the user's password, once their current one is given: five tries a quarter of an
+     * hour. Every session and remember-me cookie of theirs ends (they hold the old hash); the
+     * caller signs the current one in again.
+     *
+     * @throws UserException unknown user, a wrong current password, too many tries, a new one too short
+     */
+    public function changePassword(string $email, string $currentPassword, string $newPassword): void;
+
+    /**
+     * Makes the user an operator of the installation, or no longer: the console of the
+     * installation (part B of docs/internal/tenant-admin-ui-plan.md). From the command line only.
+     *
+     * @throws UserException unknown user
+     */
+    public function setOperator(string $email, bool $operator): void;
+
+    /**
+     * @return list<string> the emails of the operators, sorted
+     */
+    public function operators(): array;
+
+    /**
+     * Invites someone to a tenant: whoever the email belongs to accepts with acceptInvitation().
+     * The same whether the email has an account or not: nothing of the account is told.
+     *
+     * One invitation per email is pending: the inviter's own replaces theirs; another inviter's
+     * is refused unless $replaceOthers (the operator, above every admin).
+     *
+     * @param bool $keepAssignments false: take the account's assignments in the tenant away on
+     *                              acceptance (its inviter doesn't hold them all)
+     *
+     * @return string the token of the invitation's link, shown once, never stored
+     *
+     * @throws UserException not an email address, a member, another inviter's pending invitation
+     */
+    public function invite(string $email, string $tenantId, string $invitedBy, bool $keepAssignments, bool $replaceOthers = false): string;
+
+    /**
+     * @return list<Invitation> the tenant's pending invitations, the newest first
+     */
+    public function invitations(string $tenantId): array;
+
+    /**
+     * @return bool false when the tenant has no such invitation
+     */
+    public function revokeInvitation(string $tenantId, string $id): bool;
+
+    /**
+     * A pending invitation of the tenant by its token: not accepted, not expired, not burned by
+     * too many wrong passwords. Null otherwise.
+     */
+    public function openInvitation(string $tenantId, string $token): ?Invitation;
+
+    /**
+     * Accepts an invitation: an existing account proves it with its password (a wrong one counts
+     * against the invitation), a new one is created with this password and name. Either way it
+     * becomes a member of the tenant.
+     *
+     * @return Invitation the invitation accepted
+     *
+     * @throws UserException no such invitation any more, a wrong password, a password too short
+     */
+    public function acceptInvitation(string $tenantId, string $token, string $password, ?string $firstName = null, ?string $lastName = null): Invitation;
+
+    /**
+     * The email of the account the given one names, as stored (trimmed, lower case), or null
+     * when no account has it, in any tenant or none: users are global. Check anything keyed by
+     * the email (the RBAC assignments) with this, never with the email as typed.
+     */
+    public function canonicalEmail(string $email): ?string;
 }

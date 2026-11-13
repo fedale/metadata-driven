@@ -29,6 +29,9 @@ parameters:
     # Empty, so that a session nobody pointed at a tenant sees none: only the tests set it, having
     # no request or command to name one.
     app.tenant.fallback: ''
+    # The console of the installation answers on <label>.<base host>, for the operators
+    # (tenant:operator grant); the label is no tenant's slug. Empty: no console.
+    app.tenant.console_label: 'console'
     # The RBAC role that passes every check (fedale_rbac.yaml); tenant:create gives it to a new
     # tenant's first admin. App\Module\Access\Contract\Permissions::SUPER_ADMIN_ROLE says the same.
     app.super_admin_role: 'ROLE_SUPER_ADMIN'

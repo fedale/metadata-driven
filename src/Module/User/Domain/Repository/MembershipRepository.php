@@ -33,4 +33,9 @@ interface MembershipRepository
      * @return list<string> the emails of the tenant's members, sorted
      */
     public function membersOf(string $tenantId): array;
+
+    /**
+     * @return list<array{email: string, first_name: string|null, last_name: string|null, last_login_at: string|null}> by name, then email
+     */
+    public function membersWithProfiles(string $tenantId): array;
 }

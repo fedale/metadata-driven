@@ -33,9 +33,10 @@ Users are global: one email, one password, one profile, whichever [tenants](mult
 they work in. A **membership** (`core.tenant_membership`) lets a user sign in to a tenant:
 
 - Signing in to a tenant you're no member of fails with the same error as a wrong password.
-- A session is per host, so per tenant: you sign in to each tenant on its own. The user is loaded
-  again on every request, so a session whose membership was removed, or one replayed on another
-  tenant's host, is signed out at its next request.
+- A session belongs to the tenant it was opened in: you sign in to each tenant on its own, even
+  when you're a member of several. The user is loaded again on every request, so a session whose
+  membership was removed, or one replayed on another tenant's host, is signed out at its next
+  request. A "keep me signed in" cookie, likewise, signs you in to its own tenant only.
 - Roles and permissions are per tenant: each tenant has its RBAC tables. Being an admin in one
   tenant gives nothing in another. Run `rbac:*` with `--tenant=<slug>` for a tenant other than the
   default one.
@@ -51,6 +52,46 @@ symfony console tenant:member:remove acme anna@example.com   # her sessions ther
 The `tenant:member:*` commands work for the tenant their first argument names. Removing a member
 leaves their roles in the tenant, unused until they're a member again.
 
+### Operators
+
+The operators of the installation sign in to its console, `console.<base host>`, to manage the
+tenants (see [Tenants](multi-tenancy.md#the-console)). `tenant:operator grant|revoke <email>`
+makes them, from the command line only; there they hold `ROLE_OPERATOR`, and nothing in any
+tenant they're no member of. Signing in, everywhere, is throttled: five tries a minute per address
+and email.
+
+### The members page — `/admin/members`
+
+The same, from the admin, for whoever holds `admin.members` (or the super admin role), in each
+tenant: linked from the top bar as **Members**.
+
+- **The members** of the tenant: name, email, roles, last sign-in. Members of other tenants
+  aren't listed.
+- **Invite someone** by email. You get a link, shown once, to pass on (the application sends no
+  email); it lasts 7 days, and pending invitations are listed, to revoke. Whoever opens it at
+  `/invitation/…` joins the tenant and is signed in: with the password of their account if the
+  email has one, or choosing a password (12 characters at least) and their name. Five wrong
+  passwords burn the invitation, and an account gets five tries a quarter of an hour whatever the
+  invitation, so inviting again gives no more guesses. One invitation per email at a time: your
+  new one replaces yours, another admin's must be revoked first; a member can't be invited.
+- **Roles**: a checkbox per role of the tenant, saved per member. Permissions assigned directly
+  with `rbac:assign` are left alone.
+- **Remove** a member: they can no longer sign in here, and their session ends at its next
+  request.
+- **Your own row can't be changed**: another admin changes your roles or removes you, so no one
+  locks themselves out.
+- **You give only what you have**: you can give and take only the roles you hold yourself
+  (a super admin holds them all). A member holding a role you don't, or a permission assigned
+  to them directly that you don't hold, is out of your reach: you
+  can't change their roles, remove them, or add them back once removed (a removed member keeps
+  their roles here). Managing members never makes anyone more powerful than the admin doing it.
+
+Accounts are shared by every tenant, so the page tells you nothing about the email you invite:
+the answer is the same whether it has an account or not, and no name shows until the invitation
+is accepted. Only opening the link yourself would show whether it asks for an existing password,
+and each try costs an invitation. A former member invited back by an admin who doesn't hold all
+they had here comes back without it.
+
 ### `user:create`
 
 ```
@@ -65,6 +106,18 @@ that exists already is refused: add that user to another tenant with `tenant:mem
 Any signed-in user picks their language in the top bar (`POST /account/locale`); no permission
 is needed.
 
+### My account — `/account`
+
+Every signed-in user, in any tenant and on the console, reaches their account from their name in
+the top bar:
+
+- **Name**: first and last name, the name shown everywhere (accounts are global: every tenant
+  sees the change).
+- **Password**: the current one, then the new one twice (12 characters at least). Five wrong
+  current passwords a quarter of an hour, then it waits: a session left open is no way to guess
+  it. Changing it ends every other session of the account, on other devices and in other tenants,
+  and its "keep me signed in" cookies; this one goes on.
+
 ## Permissions
 
 The application checks these RBAC items:
@@ -76,6 +129,8 @@ The application checks these RBAC items:
 | `record.<object>.update` | permission | Saving changes to records |
 | `record.<object>.delete` | permission | Deleting records |
 | `admin.metadata` | permission | The admin UI (objects, fields, search, tables) — not the records |
+| `admin.members` | permission | The members page, `/admin/members`: who may sign in to the tenant, with which roles |
+| `admin.roles` | permission | The roles page, `/admin/roles`: which permissions each role gives |
 | `ROLE_SUPER_ADMIN` | role | Everything, now and in the future |
 
 The four permissions of an object are created with it (by the admin or the console). `access:sync`
@@ -96,6 +151,27 @@ Where objects meet:
 - The grid UI settings modal changes the grids of every user: it needs `admin.metadata`.
 
 ## Roles
+
+### The roles page — `/admin/roles`
+
+Whoever holds `admin.roles` (or the super admin role) defines the tenant's roles from the admin,
+linked from the top bar as **Roles**: a new role (`ROLE_` and capitals, a description, its
+permissions, grouped by object), a role's permissions changed, a role deleted. Members get roles on
+[the members page](#the-members-page--adminmembers). Defining roles never gives more than you have:
+
+- a role gets only **permissions you hold**;
+- you change a role only when you hold every permission it gives, and everyone holding it
+  holds nothing you couldn't give yourself: members, and those who aren't (a removed member
+  keeps their roles; an invited admin gets theirs ahead of their account); through the hierarchy
+  too (a role contained in another counts as that one, its holders as its);
+- you delete a role only when, on top of that, no one holds it and no role contains it;
+- the super admin role is never changed here, and roles within roles stay the console's
+  (`rbac:child:add`, below): shown, not changed.
+
+On the members page you give a role you hold, or one all of whose permissions you hold: giving it
+then gives nothing you don't have. The super admin role only a super admin gives.
+
+### From the command line
 
 Roles are groups of permissions and of other roles, defined at runtime with the commands of the
 bundle — no code, no `security.yaml`:
@@ -130,7 +206,7 @@ Other commands of the bundle: `rbac:list-items`, `rbac:revoke`, `rbac:item:remov
 
 ## Not yet available
 
-- Managing users, roles and assignments from the admin UI (console only).
+- Defining roles, and managing users beyond the members of a tenant, from the admin UI (console only).
 - Permissions per field (hidden or read-only fields per role).
 - Rules on single records (e.g. "only the records I created"): the bundle supports them
   (`auth_rule`), the application does not use them yet.

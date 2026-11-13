@@ -3,9 +3,71 @@
 nav:
     records: Records
     admin: Admin
+    members: Members
+    roles: Roles
     language: Language
     tenants: Workspaces
+    account: My account
     sign_out: Sign out
+console:
+    title: Console
+    tenants: Tenants
+    indexes: Template indexes
+    indexes_intro: 'Offered to every tenant, next to its own; no tenant removes them.'
+    new: New tenant
+    create: Create
+    slug: Slug
+    slug_help: 'The first label of its address: lower case letters, digits and dashes.'
+    name: Name
+    admin_email: First admin
+    admin_email_help: 'Optional: they get an invitation, and the super admin role once they accept.'
+    created: 'Tenant %slug% created.'
+    status: Status
+    members: Members
+    objects: Objects
+    active: active
+    suspended_status: suspended
+    suspend: Suspend
+    resume: Resume
+    suspended: 'Tenant %slug% suspended: its address answers 404, its data stays.'
+    resumed: 'Tenant %slug% active again.'
+    super_admin: Super admin
+    give_admin: Make super admin
+    take_admin: Take super admin
+    no_members: 'No member yet: invite an admin.'
+    invite_admin: Invite an admin
+    invite_admin_intro: 'They get the super admin role of this tenant once they accept the link.'
+    delete: Delete the tenant
+    delete_intro: 'Its records, roles, definitions, members and files go, for good.'
+    confirm: Its slug again
+    confirm_help: 'Type the slug to confirm.'
+    not_confirmed: 'Not confirmed: nothing was deleted.'
+    deleted: 'Tenant %slug% deleted.'
+account:
+    title: My account
+    name: Name
+    first_name: First name
+    last_name: Last name
+    save_name: Save
+    renamed: Name saved.
+    password: Password
+    password_intro: 'Your sessions elsewhere, on other devices and other workspaces, end when it changes.'
+    current_password: Current password
+    new_password: New password
+    new_password_help: '12 characters at least.'
+    repeat_password: The new password again
+    passwords_differ: 'The two new passwords differ.'
+    change_password: Change the password
+    password_changed: 'Password changed: your other sessions have ended.'
+invitation:
+    title: Join this workspace
+    intro: 'You were invited, as %email%. If you have an account, enter its password; if not, choose a password, and your name.'
+    password: Password
+    password_help: '12 characters at least for a new account.'
+    first_name: First name
+    last_name: Last name
+    submit: Join
+    welcome: Welcome.
 login:
     title: Sign in
     email: Email
@@ -127,6 +189,53 @@ admin:
     views: Views
     translations: Translations
     templates: Templates
+    roles:
+        title: Roles
+        intro: 'What each role of this workspace gives. Members get roles on the members page.'
+        permissions: Permissions
+        holders: Members
+        contains: 'Contains %roles% (from the command line).'
+        new: New role
+        new_intro: 'You can give a role only permissions you hold yourself.'
+        name: Name
+        name_help: 'ROLE_ and capital letters, digits or underscores: ROLE_PET_READER.'
+        description: Description
+        created: 'Role %name% created.'
+        saved: 'Role %name% saved.'
+        deleted: 'Role %name% deleted.'
+        delete_confirm: 'Delete the role %name%?'
+        administration: Administration
+        action:
+            read: read
+            create: create
+            update: update
+            delete: delete
+        permission:
+            admin_metadata: 'Objects, fields and views'
+            admin_members: Members
+            admin_roles: Roles
+    members:
+        title: Members
+        intro: 'Who may sign in to this workspace, and with which of its roles. Accounts are shared by every workspace: one email, one password.'
+        email: Email
+        email_help: 'They get a link to accept: with the password of their account if they have one, or creating one.'
+        roles: Roles
+        last_login: Last sign-in
+        you: you
+        add: Invite someone
+        add_intro: 'An invitation lasts 7 days. The application sends no email: pass its link on.'
+        add_submit: Invite
+        invited: 'Invitation for %email% created.'
+        invitation_link: 'Pass this link on: it is shown once.'
+        invitations: Pending invitations
+        invited_by: Invited by
+        expires: Expires
+        revoke: Revoke
+        revoke_confirm: 'The link sent to %email% will stop working. Revoke it?'
+        invitation_revoked: Invitation revoked.
+        roles_saved: 'Roles of %name% saved.'
+        removed: '%name% can no longer sign in here.'
+        remove_confirm: '%name% will no longer be able to sign in here. Their roles stay, unused. Remove them?'
     template_heading: Template
     machine_name: Machine name
     name: Name

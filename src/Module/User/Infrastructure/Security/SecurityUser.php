@@ -11,11 +11,21 @@ use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * The user as Symfony Security sees it: a snapshot of the domain User, plus the roles
- * assigned in the RBAC tables.
+ * assigned in the RBAC tables, and the tenant it was loaded for.
+ *
+ * The tenant binds a session to it: this object is what the session keeps from the sign-in,
+ * compared on every request with the user loaded again for the request's tenant
+ * (isEqualTo()). It binds a remember-me cookie too, as a signature property (security.yaml).
  */
 final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInterface, EquatableInterface
 {
     public const string BASE_ROLE = 'ROLE_USER';
+
+    /**
+     * Not promoted, so that it has a default: a user kept by a session of before tenants is
+     * unserialized with null here, which no request's tenant equals.
+     */
+    private ?string $tenantId = null;
 
     /**
      * @param list<string> $assignedRoles
@@ -27,15 +37,17 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
         private readonly string $displayName,
         private readonly array $assignedRoles = [],
         private readonly ?string $locale = null,
+        ?string $tenantId = null,
     ) {
+        $this->tenantId = $tenantId;
     }
 
     /**
      * @param list<string> $assignedRoles
      */
-    public static function fromUser(User $user, array $assignedRoles): self
+    public static function fromUser(User $user, array $assignedRoles, ?string $tenantId = null): self
     {
-        return new self($user->getId()->toRfc4122(), $user->getEmail(), $user->getPasswordHash(), $user->getDisplayName(), $assignedRoles, $user->getLocale());
+        return new self($user->getId()->toRfc4122(), $user->getEmail(), $user->getPasswordHash(), $user->getDisplayName(), $assignedRoles, $user->getLocale(), $tenantId);
     }
 
     /**
@@ -61,6 +73,15 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
         return $this->id;
     }
 
+    /**
+     * The tenant the user was loaded for; empty without one (a command in the landlord's session).
+     * A remember-me signature property: a string.
+     */
+    public function getTenantId(): string
+    {
+        return $this->tenantId ?? '';
+    }
+
     public function getDisplayName(): string
     {
         return $this->displayName;
@@ -80,10 +101,13 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
      * password or changed roles sign the session out: the roles of a token are fixed at
      * sign-in, so a revoked role (ROLE_SUPER_ADMIN) would otherwise keep working until logout.
      * With a remember-me cookie the user is signed back in at once, with the new roles.
+     *
+     * Another tenant signs it out too: a session opened in one tenant, presented to another
+     * (a cookie copied to its host, or shared by a cookie_domain), even by a member of both.
      */
     public function isEqualTo(UserInterface $user): bool
     {
-        if (!$user instanceof self || $user->id !== $this->id || $user->passwordHash !== $this->passwordHash) {
+        if (!$user instanceof self || $user->id !== $this->id || $user->passwordHash !== $this->passwordHash || $user->tenantId !== $this->tenantId) {
             return false;
         }
         $roles = $this->getRoles();

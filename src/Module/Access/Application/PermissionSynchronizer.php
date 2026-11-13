@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Access\Application;
 
+use App\Module\Access\Contract\AccessSetupInterface;
 use App\Module\Access\Contract\Permissions;
 use App\Module\Access\Contract\RecordAction;
 use App\Module\Metadata\Contract\Event\ObjectDefinitionCreated;
@@ -20,7 +21,7 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * object, the admin permission and the super admin role. The permissions of an object follow
  * it: renamed with it (the roles and users holding them keep them), removed when it is purged.
  */
-final class PermissionSynchronizer
+final class PermissionSynchronizer implements AccessSetupInterface
 {
     public function __construct(
         private readonly RbacManagerInterface $rbac,
@@ -80,6 +81,8 @@ final class PermissionSynchronizer
     {
         return array_values(array_filter([
             $this->ensure(Permissions::ADMINISTER, AuthItemType::PERMISSION, 'Manage objects, fields, search and tables'),
+            $this->ensure(Permissions::MEMBERS, AuthItemType::PERMISSION, 'Manage the members of the tenant and their roles'),
+            $this->ensure(Permissions::ROLES, AuthItemType::PERMISSION, 'Define the roles of the tenant'),
             $this->ensure(Permissions::SUPER_ADMIN_ROLE, AuthItemType::ROLE, 'Every permission, now and future'),
         ]));
     }

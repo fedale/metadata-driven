@@ -28,14 +28,25 @@ security:
             logout:
                 path: app_logout
                 target: app_login
+            # Five tries a minute per address and email, in every tenant and on the console.
+            login_throttling:
+                max_attempts: 5
+                interval: '1 minute'
             remember_me:
                 secret: '%kernel.secret%'
                 lifetime: 1209600 # 2 weeks
+                # A cookie signs in to the tenant it was made in only (SecurityUser::getTenantId()),
+                # and stops working when the password changes.
+                signature_properties: ['password', 'tenantId']
 
     # Signing in is required everywhere; what a user may do is decided by the RBAC
     # permissions, checked by the controllers (App\Module\Access).
     access_control:
         - { path: ^/login$, roles: PUBLIC_ACCESS }
+        # An invitation's link: its token is the credential (InvitationController).
+        - { path: ^/invitation/, roles: PUBLIC_ACCESS }
+        # The console of the installation, on its own host (HostTenantListener): its operators.
+        - { path: ^/console, roles: ROLE_OPERATOR }
         # The grid UI settings (fedale/gridview-bundle) apply to every user: administrators only.
         - { path: ^/gridview/_settings, allow_if: "is_granted('ROLE_SUPER_ADMIN') or is_granted('admin.metadata')" }
         - { path: ^/, roles: ROLE_USER }

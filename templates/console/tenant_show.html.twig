@@ -1,0 +1,81 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ tenant.name }} · {{ 'console.title'|trans }}{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('console_index') }}">&larr; {{ 'console.tenants'|trans }}</a></p>
+    <div class="md-page__header">
+        <h1>{{ tenant.name }}</h1>
+        {{ form_start(status_form) }}
+            <button type="submit" class="gv-btn">{{ (tenant.active ? 'console.suspend' : 'console.resume')|trans }}</button>
+        {{ form_end(status_form) }}
+    </div>
+    <p>
+        <a href="{{ url }}">{{ url }}</a> ·
+        {{ (tenant.active ? 'console.active' : 'console.suspended_status')|trans }} ·
+        <code>{{ tenant.dataSchema }}</code>, <code>{{ tenant.rbacSchema }}</code>
+    </p>
+
+    {% for link in app.flashes('invitation') %}
+        <div class="md-flash md-flash--success" role="status">
+            <p>{{ 'admin.members.invitation_link'|trans }}</p>
+            <input type="text" class="gv-form-control" value="{{ link }}" readonly aria-label="{{ 'admin.members.invitation_link'|trans }}">
+        </div>
+    {% endfor %}
+
+    <section class="md-admin__section">
+        <h2>{{ 'console.members'|trans }}</h2>
+        {% if rows is empty %}
+            <p class="gv-muted">{{ 'console.no_members'|trans }}</p>
+        {% else %}
+            <table class="md-table">
+                <thead>
+                    <tr>
+                        <th scope="col">{{ 'admin.name'|trans }}</th>
+                        <th scope="col">{{ 'admin.members.email'|trans }}</th>
+                        <th scope="col">{{ 'console.super_admin'|trans }}</th>
+                        <th scope="col"><span class="md-visually-hidden">{{ 'admin.actions'|trans }}</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                        <tr>
+                            <td>{{ row.member.displayName }}</td>
+                            <td>{{ row.member.email }}</td>
+                            <td>
+                                {{ form_start(row.admin_form) }}
+                                    <button type="submit" class="gv-btn">{{ (row.admin ? 'console.take_admin' : 'console.give_admin')|trans }}</button>
+                                {{ form_end(row.admin_form) }}
+                            </td>
+                            <td>
+                                {{ form_start(row.remove_form, {attr: {'data-turbo-confirm': 'admin.members.remove_confirm'|trans({'%name%': row.member.displayName})}}) }}
+                                    <button type="submit" class="gv-btn">{{ 'admin.remove'|trans }}</button>
+                                {{ form_end(row.remove_form) }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </section>
+
+    <section class="md-admin__section">
+        <h2>{{ 'console.invite_admin'|trans }}</h2>
+        <p class="gv-muted">{{ 'console.invite_admin_intro'|trans }}</p>
+        {{ form_start(invite_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+            {{ form_rest(invite_form) }}
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.members.add_submit'|trans }}</button>
+        {{ form_end(invite_form) }}
+    </section>
+
+    {% if not is_default %}
+        <section class="md-admin__section">
+            <h2>{{ 'console.delete'|trans }}</h2>
+            <p class="gv-muted">{{ 'console.delete_intro'|trans }}</p>
+            {{ form_start(delete_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+                {{ form_rest(delete_form) }}
+                <button type="submit" class="gv-btn">{{ 'console.delete'|trans }}</button>
+            {{ form_end(delete_form) }}
+        </section>
+    {% endif %}
+{% endblock %}

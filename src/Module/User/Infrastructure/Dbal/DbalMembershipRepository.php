@@ -53,6 +53,22 @@ final class DbalMembershipRepository implements MembershipRepository
         return $ids;
     }
 
+    public function membersWithProfiles(string $tenantId): array
+    {
+        /** @var list<array{email: string, first_name: string|null, last_name: string|null, last_login_at: string|null}> $rows */
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT u.email, p.first_name, p.last_name, u.last_login_at
+               FROM core.tenant_membership m
+               JOIN core.app_user u ON u.id = m.user_id
+               LEFT JOIN core.app_user_profile p ON p.user_id = u.id
+              WHERE m.tenant_id = ?
+              ORDER BY lower(coalesce(nullif(trim(concat(p.first_name, \' \', p.last_name)), \'\'), u.email)), u.email',
+            [$tenantId],
+        );
+
+        return $rows;
+    }
+
     public function membersOf(string $tenantId): array
     {
         /** @var list<string> $emails */

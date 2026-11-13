@@ -10,6 +10,7 @@ use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\ApplicationTester;
+use Symfony\Component\Process\Process;
 
 /**
  * The tenant:* commands, phase 4 of the multi-tenancy plan.
@@ -91,15 +92,53 @@ final class TenantLifecycleCommandsTest extends KernelTestCase
     }
 
     /**
-     * The other processes don't see this test's transaction: the default tenant only.
+     * tenant:run starts processes of their own, which don't see this test's transaction: the
+     * tenants are created, and deleted, by processes too, committed.
      */
-    public function testACommandRunsForEveryTenantInAProcessOfItsOwn(): void
+    public function testACommandRunsForEachTenantInAProcessOfItsOwn(): void
     {
-        $this->command(['command' => 'tenant:run', '--all' => true, 'command-line' => ['metadata:list']]);
-        self::assertStringContainsString('Done for 1 tenants.', $this->console->getDisplay());
+        $suffix = bin2hex(random_bytes(3));
+        $slugs = ['run-a-'.$suffix, 'run-b-'.$suffix];
+        try {
+            foreach ($slugs as $slug) {
+                $this->process(['tenant:create', $slug]);
+            }
+            // A model in the first one only: each run must see its own tenant's.
+            $this->process(['metadata:object:create', 'gadget', 'Gadget', 'Gadgets', '--tenant='.$slugs[0]]);
 
+            $this->command(['command' => 'tenant:run', '--only' => $slugs, 'command-line' => ['metadata:list']]);
+
+            $display = $this->console->getDisplay();
+            self::assertStringContainsString('Done for 2 tenants.', $display);
+            [$first, $second] = explode($slugs[1], substr($display, (int) strpos($display, $slugs[0])), 2);
+            self::assertStringContainsString('gadget', $first);
+            self::assertStringNotContainsString('gadget', $second);
+        } finally {
+            foreach ($slugs as $slug) {
+                $this->process(['tenant:delete', $slug, '--confirm='.$slug], mustSucceed: false);
+            }
+        }
+    }
+
+    public function testACommandRunForAnUnknownTenantIsRefused(): void
+    {
         self::assertSame(1, $this->console->run(['command' => 'tenant:run', '--only' => ['initech'], 'command-line' => ['metadata:list']], ['interactive' => false]));
         self::assertStringContainsString('There is no tenant "initech".', $this->console->getDisplay());
+    }
+
+    /**
+     * A command in a process of its own: its changes are committed, outside this test's
+     * transaction.
+     *
+     * @param list<string> $arguments
+     */
+    private function process(array $arguments, bool $mustSucceed = true): void
+    {
+        $process = new Process([\PHP_BINARY, self::getContainer()->getParameter('kernel.project_dir').'/bin/console', ...$arguments, '--env=test', '--no-interaction']);
+        $process->run();
+        if ($mustSucceed) {
+            self::assertTrue($process->isSuccessful(), $process->getOutput().$process->getErrorOutput());
+        }
     }
 
     /**

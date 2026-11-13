@@ -14,6 +14,9 @@ class User
 {
     private string $email;
     private bool $isActive = true;
+
+    /** May enter the console of the installation, its tenants' and operators' (set from the command line). */
+    private bool $isOperator = false;
     private ?UserProfile $profile = null;
     private \DateTimeImmutable $createdAt;
     private ?\DateTimeImmutable $lastLoginAt = null;
@@ -56,6 +59,21 @@ class User
     public function recordLogin(\DateTimeImmutable $at): void
     {
         $this->lastLoginAt = $at;
+    }
+
+    public function grantOperator(): void
+    {
+        $this->isOperator = true;
+    }
+
+    public function revokeOperator(): void
+    {
+        $this->isOperator = false;
+    }
+
+    public function isOperator(): bool
+    {
+        return $this->isOperator;
     }
 
     public function deactivate(): void

@@ -370,6 +370,8 @@ a:hover { color: var(--gv-color-link-hover); }
 /* ── Admin ─────────────────────────────────────────────────────────── */
 
 .md-admin__section { margin-top: 2rem; }
+/* A member's roles: the checkboxes in a row, the save button after them. */
+.md-member-roles { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem 1rem; }
 /* Translations: key and source take what they need, the input the rest. */
 .md-translations td:first-child { width: 1%; white-space: nowrap; }
 .md-translations td:nth-child(2) { width: 40%; }

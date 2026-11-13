@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Tenant;
 
 use App\Shared\Tenant\Tenant;
+use App\Shared\Tenant\TenantSessions;
 use App\Shared\Tenant\TenantSwitched;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
@@ -21,7 +22,7 @@ use Symfony\Contracts\Service\ResetInterface;
  * Between two requests of a worker, reset() goes back to the baseline: a request that names no
  * tenant (a 404 before anything runs) can't read the previous one's.
  */
-final class TenantSwitcher implements ResetInterface
+final class TenantSwitcher implements ResetInterface, TenantSessions
 {
     public function __construct(
         private readonly Connection $connection,
@@ -32,6 +33,24 @@ final class TenantSwitcher implements ResetInterface
         #[Autowire('%app.tenant.fallback%')]
         private readonly string $fallback,
     ) {
+    }
+
+    public function within(Tenant $tenant, callable $work): mixed
+    {
+        $previous = $this->current->tenant();
+        $landlord = $this->state->isLandlord();
+        $this->switchTo($tenant);
+        try {
+            return $work();
+        } finally {
+            if (null !== $previous) {
+                $this->switchTo($previous);
+            } elseif ($landlord) {
+                $this->landlord();
+            } else {
+                $this->leave();
+            }
+        }
     }
 
     /**
