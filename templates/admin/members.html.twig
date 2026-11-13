@@ -27,7 +27,6 @@
                         {% if row.roles_form %}
                             {{ form_start(row.roles_form, {attr: {class: 'md-member-roles'}}) }}
                                 {{ form_widget(row.roles_form.roles) }}
-                                {% if row.other_roles is not empty %}<span class="gv-muted" title="{{ 'admin.members.other_roles'|trans }}">{{ row.other_roles|join(', ') }}</span>{% endif %}
                                 <button type="submit" class="gv-btn">{{ 'admin.save'|trans }}</button>
                             {{ form_end(row.roles_form) }}
                         {% else %}

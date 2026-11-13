@@ -136,7 +136,7 @@ admin:
         password_help: 'Solo per un account nuovo, almeno 12 caratteri: comunicala alla persona.'
         password_needed: 'Nessun account ha ancora questa email: indica una password iniziale.'
         roles: Ruoli
-        other_roles: 'Ruoli che non hai: li assegna o li toglie un altro admin.'
+        holds_more: '%email% ha qui un ruolo che tu non hai: lo riaggiunge un altro admin.'
         last_login: Ultimo accesso
         you: tu
         add: Aggiungi un membro

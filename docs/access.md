@@ -69,9 +69,9 @@ tenant: linked from the top bar as **Members**.
 - **Your own row can't be changed**: another admin changes your roles or removes you, so no one
   locks themselves out.
 - **You give only what you have**: you can give and take only the roles you hold yourself
-  (a super admin holds them all). A member's other roles are shown, and kept, and you can't
-  remove a member holding a role you don't. Managing members never makes anyone more powerful
-  than the admin doing it.
+  (a super admin holds them all). A member holding a role you don't is out of your reach: you
+  can't change their roles, remove them, or add them back once removed (a removed member keeps
+  their roles here). Managing members never makes anyone more powerful than the admin doing it.
 
 Accounts are shared by every tenant, so adding an existing email tells you it has an account, and
 shows the name of its profile; nothing else about it (its other tenants, its roles there).

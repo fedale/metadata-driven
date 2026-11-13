@@ -32,9 +32,10 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  * a URL, and an id of its own for each row's forms.
  *
  * No way to more power: an admin gives and takes only the roles they hold themselves (the super
- * admin holds them all), and leaves alone a member holding a role they don't: neither their
- * roles nor their membership change. Else the right to manage members would be the right to
- * make anyone, an account of one's own included, super admin.
+ * admin holds them all), and leaves alone a member holding a role they don't: their roles and
+ * membership don't change, and once removed (their roles stay) they aren't added back. Else the
+ * right to manage members would be the right to make anyone, an account of one's own included,
+ * super admin, or to take from those above.
  */
 #[Route('/admin/members', name: 'admin_member_')]
 final class AdminMemberController extends AbstractController
@@ -68,6 +69,13 @@ final class AdminMemberController extends AbstractController
         $email = self::text($form, 'email');
         try {
             if ($this->users->exists($email)) {
+                // A member removed keeps their roles here: adding them back must not give back
+                // one the admin doesn't hold.
+                if (!$this->outranks($email)) {
+                    $this->addFlash('error', $this->translator->trans('admin.members.holds_more', ['%email%' => $email]));
+
+                    return $this->redirectToRoute('admin_member_index', [], Response::HTTP_SEE_OTHER);
+                }
                 $added = $this->users->addToTenant($email, $this->tenant->id());
                 $this->addFlash('success', $this->translator->trans($added ? 'admin.members.added' : 'admin.members.already', ['%email%' => $email]));
             } else {
@@ -94,6 +102,9 @@ final class AdminMemberController extends AbstractController
         $this->denyUnlessAllowed();
         $member = $this->memberOr404($key);
         $this->denyIfYourself($member);
+        if (!$this->outranks($member->email)) {
+            throw $this->createAccessDeniedException('This member holds a role you don\'t: another admin changes their roles.');
+        }
         // Every role a choice here, so that a forged one is refused below rather than dropped.
         $form = $this->rolesForm($member, array_keys($this->roles->roles()))->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
@@ -103,9 +114,8 @@ final class AdminMemberController extends AbstractController
             if ([] !== array_diff($submitted, $grantable)) {
                 throw $this->createAccessDeniedException('You may give only the roles you hold.');
             }
-            // The roles they hold that you don't stay theirs.
-            $kept = array_diff($this->roles->rolesOf($member->email), $grantable);
-            $this->roles->setRoles($member->email, array_values(array_unique([...$submitted, ...$kept])));
+            // You outrank them: every role they hold is one you may take.
+            $this->roles->setRoles($member->email, $submitted);
             $this->addFlash('success', $this->translator->trans('admin.members.roles_saved', ['%name%' => $member->displayName]));
         }
 
@@ -118,7 +128,7 @@ final class AdminMemberController extends AbstractController
         $this->denyUnlessAllowed();
         $member = $this->memberOr404($key);
         $this->denyIfYourself($member);
-        if (!$this->outranks($member)) {
+        if (!$this->outranks($member->email)) {
             throw $this->createAccessDeniedException('This member holds a role you don\'t: another admin removes them.');
         }
         $form = $this->removeForm($member)->handleRequest($request);
@@ -144,12 +154,11 @@ final class AdminMemberController extends AbstractController
             $rows[] = [
                 'member' => $member,
                 'roles' => $roles,
-                // Shown as text next to the checkboxes: theirs, not yours to change.
-                'other_roles' => array_values(array_diff($roles, $grantable)),
                 'yourself' => $yourself,
-                // Your own roles and membership are another admin's to change: no lockout.
-                'roles_form' => $yourself || [] === $grantable ? null : $this->rolesForm($member, $grantable)->createView(),
-                'remove_form' => $yourself || !$this->outranks($member) ? null : $this->removeForm($member)->createView(),
+                // Your own row is another admin's to change (no lockout), and so is the row of
+                // a member holding a role you don't (no escalation, nor taking from above).
+                'roles_form' => $yourself || [] === $grantable || !$this->outranks($member->email) ? null : $this->rolesForm($member, $grantable)->createView(),
+                'remove_form' => $yourself || !$this->outranks($member->email) ? null : $this->removeForm($member)->createView(),
             ];
         }
 
@@ -220,11 +229,12 @@ final class AdminMemberController extends AbstractController
     }
 
     /**
-     * Whether you hold every role the member holds: then you may remove them.
+     * Whether you hold every role the user holds in this tenant: then you may change their roles,
+     * remove them, or add them back.
      */
-    private function outranks(Member $member): bool
+    private function outranks(string $email): bool
     {
-        return [] === array_diff($this->roles->rolesOf($member->email), $this->grantable());
+        return [] === array_diff($this->roles->rolesOf($email), $this->grantable());
     }
 
     private function memberOr404(string $key): Member

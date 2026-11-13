@@ -145,6 +145,50 @@ final class AdminMemberControllerTest extends WebTestCase
         self::assertContains('boss@example.com', $this->members());
     }
 
+    /**
+     * Removing a member keeps their roles: re-adding them must not be a way to give back what the
+     * admin doesn't hold.
+     */
+    public function testDoesNotReAddAMemberHoldingARoleTheAdminDoesNot(): void
+    {
+        $rbac = self::getContainer()->get(RbacManagerInterface::class);
+        $rbac->addItem('ROLE_HR', AuthItemType::ROLE);
+        self::signIn($this->client, 'mallory@example.com', [Permissions::SUPER_ADMIN_ROLE]);
+        self::getContainer()->get(UserManagerInterface::class)->removeFromTenant('mallory@example.com', $this->tenant('default')->id);
+        $rbac->addChild('ROLE_HR', Permissions::MEMBERS);
+        self::signIn($this->client, 'hr@example.com', ['ROLE_HR']);
+
+        $this->client->request('GET', '/admin/members');
+        $this->client->submitForm('Add', ['add_member[email]' => 'mallory@example.com']);
+        $this->client->followRedirect();
+
+        self::assertSelectorExists('.md-flash--error');
+        self::assertNotContains('mallory@example.com', $this->members());
+    }
+
+    /**
+     * Nor taking from a member above you what you could give to one below.
+     */
+    public function testLeavesTheRolesOfAMemberAboveTheAdminAlone(): void
+    {
+        $rbac = self::getContainer()->get(RbacManagerInterface::class);
+        $rbac->addItem('ROLE_HR', AuthItemType::ROLE);
+        self::signIn($this->client, 'boss@example.com', [Permissions::SUPER_ADMIN_ROLE, 'ROLE_HR']);
+        $rbac->addChild('ROLE_HR', Permissions::MEMBERS);
+        self::signIn($this->client, 'hr@example.com', ['ROLE_HR']);
+
+        $crawler = $this->client->request('GET', '/admin/members');
+        self::assertCount(0, $crawler->filter(\sprintf('form[name="roles_%s"]', self::key('boss@example.com'))));
+        $token = $crawler->filter('form[name^="remove_"] input[name$="[_token]"], form[name^="roles_"] input[name$="[_token]"]')->count();
+        self::assertSame(0, $token, 'No member below HR here: no form at all.');
+
+        $this->client->request('POST', \sprintf('/admin/members/%s/roles', self::key('boss@example.com')), [
+            'roles_'.self::key('boss@example.com') => ['roles' => []],
+        ]);
+        self::assertResponseStatusCodeSame(403);
+        self::assertSame(['ROLE_HR', 'ROLE_SUPER_ADMIN'], $this->rolesOf('boss@example.com'));
+    }
+
     public function testNeedsThePermissionToManageMembers(): void
     {
         self::signIn($this->client, 'editor@example.com', [Permissions::ADMINISTER]);

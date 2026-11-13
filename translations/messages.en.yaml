@@ -139,7 +139,7 @@ admin:
         password_help: 'For a new account only, 12 characters at least: pass it on to them.'
         password_needed: 'No account has this email yet: give it an initial password.'
         roles: Roles
-        other_roles: 'Roles you do not hold: another admin gives or takes them.'
+        holds_more: '%email% holds a role here you do not: another admin adds them back.'
         last_login: Last sign-in
         you: you
         add: Add a member
