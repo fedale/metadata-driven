@@ -31,7 +31,7 @@
                         <a href="{{ path('console_indexes') }}">{{ 'console.indexes'|trans }}</a>
                     </nav>
                     <div class="md-topbar__user">
-                        <span>{{ app.user.displayName }}</span>
+                        <a href="{{ path('app_account') }}" title="{{ 'nav.account'|trans }}">{{ app.user.displayName }}</a>
                         <a href="{{ path('app_logout') }}">{{ 'nav.sign_out'|trans }}</a>
                     </div>
                 {% endif %}
@@ -65,7 +65,7 @@
                             {% endfor %}
                         </nav>
                     {% endif %}
-                    <span>{{ app.user.displayName }}</span>
+                    <a href="{{ path('app_account') }}" title="{{ 'nav.account'|trans }}">{{ app.user.displayName }}</a>
                     <a href="{{ path('app_logout') }}">{{ 'nav.sign_out'|trans }}</a>
                 </div>
             {% endif %}

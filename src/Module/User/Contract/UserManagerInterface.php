@@ -6,6 +6,7 @@ namespace App\Module\User\Contract;
 
 use App\Module\User\Contract\Dto\Invitation;
 use App\Module\User\Contract\Dto\Member;
+use App\Module\User\Contract\Dto\Profile;
 use App\Module\User\Contract\Exception\UserException;
 
 interface UserManagerInterface
@@ -59,6 +60,25 @@ interface UserManagerInterface
      * @return list<Member>
      */
     public function members(string $tenantId): array;
+
+    /**
+     * @throws UserException unknown user
+     */
+    public function profile(string $email): Profile;
+
+    /**
+     * @throws UserException unknown user
+     */
+    public function rename(string $email, ?string $firstName, ?string $lastName): void;
+
+    /**
+     * Changes the user's password, once their current one is given: five tries a quarter of an
+     * hour. Every session and remember-me cookie of theirs ends (they hold the old hash); the
+     * caller signs the current one in again.
+     *
+     * @throws UserException unknown user, a wrong current password, too many tries, a new one too short
+     */
+    public function changePassword(string $email, string $currentPassword, string $newPassword): void;
 
     /**
      * Makes the user an operator of the installation, or no longer: the console of the

@@ -1,0 +1,27 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'account.title'|trans }}{% endblock %}
+
+{% block body %}
+    <h1>{{ 'account.title'|trans }}</h1>
+    <p class="gv-muted">{{ email }}</p>
+
+    <section class="md-admin__section">
+        <h2>{{ 'account.name'|trans }}</h2>
+        {{ form_start(name_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+            {{ form_errors(name_form) }}
+            {{ form_rest(name_form) }}
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'account.save_name'|trans }}</button>
+        {{ form_end(name_form) }}
+    </section>
+
+    <section class="md-admin__section">
+        <h2>{{ 'account.password'|trans }}</h2>
+        <p class="gv-muted">{{ 'account.password_intro'|trans }}</p>
+        {{ form_start(password_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+            {{ form_errors(password_form) }}
+            {{ form_rest(password_form) }}
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'account.change_password'|trans }}</button>
+        {{ form_end(password_form) }}
+    </section>
+{% endblock %}

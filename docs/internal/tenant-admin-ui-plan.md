@@ -270,3 +270,33 @@ console.md (`tenant:operator:*`), access.md (operators), status.md.
   signing out, the throttling). The limiters' cache is cleared before and after the tests that
   fill it: it outlives a test.
 
+## Part C: my account (2026-11-13)
+
+Asked by the user with part D, the email sending (invitations by email, a password reset) left
+for later. `/account`, linked from the user's name in the top bar, in every tenant and on the
+console (`HostTenantListener` lets `/account` through there):
+
+- the name (`UserManagerInterface::profile()`, `rename()`, the `Profile` DTO);
+- the password: the current one, the new one twice (12 characters at least),
+  `changePassword()`, limited by the `password_change` rate limiter (five tries a quarter of an
+  hour per account, the try taken before the check). The new hash ends every other session
+  (`SecurityUser::isEqualTo()`) and remember-me cookie (a signature property); the current
+  session is signed in again (`Security::login()`).
+
+Branch `user_profile`, from `tenant_admin_invitation_fix`. Tests: `AccountControllerTest` (5).
+
+## Part D: roles from the admin (2026-11-13, planned)
+
+A tenant's admins define its roles from the admin, not only from the console (`rbac:*`).
+`/admin/roles`, behind a new permission, `admin.roles`. Rules decided before writing it, after
+the members page's reviews, so that defining roles is no way to more power:
+
+- a role gets only permissions **you hold**;
+- you edit a role only when you hold every permission it has;
+- you delete a role only when no member holds it;
+- the super admin role is never edited from the admin;
+- the role hierarchy (a role within a role) stays the console's (`rbac:child:add`): shown, not
+  edited.
+
+Branch `tenant_roles_ui`, from `user_profile`.
+

@@ -106,6 +106,18 @@ that exists already is refused: add that user to another tenant with `tenant:mem
 Any signed-in user picks their language in the top bar (`POST /account/locale`); no permission
 is needed.
 
+### My account — `/account`
+
+Every signed-in user, in any tenant and on the console, reaches their account from their name in
+the top bar:
+
+- **Name**: first and last name, the name shown everywhere (accounts are global: every tenant
+  sees the change).
+- **Password**: the current one, then the new one twice (12 characters at least). Five wrong
+  current passwords a quarter of an hour, then it waits: a session left open is no way to guess
+  it. Changing it ends every other session of the account, on other devices and in other tenants,
+  and its "keep me signed in" cookies; this one goes on.
+
 ## Permissions
 
 The application checks these RBAC items:

@@ -56,7 +56,8 @@ final class HostTenantListener
 
                 return;
             }
-            if (!$console && !\in_array($path, ['/login', '/logout'], true) && !str_starts_with($path, '/_')) {
+            // The operator's own account (global, as every account) answers there too.
+            if (!$console && !\in_array($path, ['/login', '/logout', '/account'], true) && !str_starts_with($path, '/_')) {
                 throw new NotFoundHttpException(\sprintf('No page "%s" on the console.', $path));
             }
             $request->attributes->set(OperatorConsole::REQUEST_ATTRIBUTE, true);

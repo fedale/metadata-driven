@@ -5,6 +5,7 @@ nav:
     members: Membri
     language: Lingua
     tenants: Spazi di lavoro
+    account: Il mio account
     sign_out: Esci
 console:
     title: Console
@@ -40,6 +41,22 @@ console:
     confirm_help: 'Scrivi lo slug per confermare.'
     not_confirmed: 'Non confermato: non è stato eliminato nulla.'
     deleted: 'Tenant %slug% eliminato.'
+account:
+    title: Il mio account
+    name: Nome
+    first_name: Nome
+    last_name: Cognome
+    save_name: Salva
+    renamed: Nome salvato.
+    password: Password
+    password_intro: 'Quando cambia, le tue sessioni altrove, su altri dispositivi e altri spazi di lavoro, si chiudono.'
+    current_password: Password attuale
+    new_password: Nuova password
+    new_password_help: 'Almeno 12 caratteri.'
+    repeat_password: Di nuovo la nuova password
+    passwords_differ: 'Le due nuove password sono diverse.'
+    change_password: Cambia la password
+    password_changed: 'Password cambiata: le altre sessioni sono state chiuse.'
 invitation:
     title: Entra in questo spazio di lavoro
     intro: 'Sei stato invitato come %email%. Se hai un account, inserisci la sua password; altrimenti scegli una password e il tuo nome.'

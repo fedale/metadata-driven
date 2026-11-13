@@ -6,6 +6,7 @@ namespace App\Module\User\Application;
 
 use App\Module\User\Contract\Dto\Invitation;
 use App\Module\User\Contract\Dto\Member;
+use App\Module\User\Contract\Dto\Profile;
 use App\Module\User\Contract\UserManagerInterface;
 use App\Module\User\Domain\Exception\InvalidUser;
 use App\Module\User\Domain\Model\User;
@@ -41,6 +42,7 @@ final class UserManager implements UserManagerInterface
         private readonly PasswordHasherFactoryInterface $hashers,
         // config/packages/rate_limiter.yaml
         private readonly RateLimiterFactoryInterface $invitationPasswordLimiter,
+        private readonly RateLimiterFactoryInterface $passwordChangeLimiter,
         #[Autowire('%kernel.enabled_locales%')]
         private readonly array $enabledLocales,
     ) {
@@ -105,6 +107,38 @@ final class UserManager implements UserManagerInterface
                 null === $row['last_login_at'] ? null : new \DateTimeImmutable($row['last_login_at']),
             );
         }, $this->memberships->membersWithProfiles($tenantId));
+    }
+
+    public function profile(string $email): Profile
+    {
+        $user = $this->user($email);
+
+        return new Profile($user->getEmail(), $user->getProfile()?->getFirstName(), $user->getProfile()?->getLastName());
+    }
+
+    public function rename(string $email, ?string $firstName, ?string $lastName): void
+    {
+        $user = $this->user($email);
+        ($user->getProfile() ?? new UserProfile(Uuid::v7(), $user))->rename($firstName, $lastName);
+        $this->users->save($user);
+    }
+
+    public function changePassword(string $email, string $currentPassword, string $newPassword): void
+    {
+        $user = $this->user($email);
+        // The try taken before the check: concurrent requests can't make more.
+        if (!$this->passwordChangeLimiter->create($user->getEmail())->consume()->isAccepted()) {
+            throw InvalidUser::tooManyTries();
+        }
+        $hasher = $this->hashers->getPasswordHasher(PasswordAuthenticatedUserInterface::class);
+        if (!$hasher->verify($user->getPasswordHash(), $currentPassword)) {
+            throw InvalidUser::wrongPassword();
+        }
+        if (mb_strlen($newPassword) < self::MIN_PASSWORD_LENGTH) {
+            throw InvalidUser::passwordTooShort(self::MIN_PASSWORD_LENGTH);
+        }
+        $user->changePasswordHash($hasher->hash($newPassword));
+        $this->users->save($user);
     }
 
     public function setOperator(string $email, bool $operator): void
