@@ -14,6 +14,11 @@ interface InvitationRepository
     public function add(Invitation $invitation, string $tenantId, string $tokenHash): void;
 
     /**
+     * Deletes the tenant's pending invitations of an email: one at a time per email.
+     */
+    public function removePendingOf(string $tenantId, string $email): void;
+
+    /**
      * @return list<Invitation> not accepted, not expired, not burned; the newest first
      */
     public function pending(string $tenantId, \DateTimeImmutable $now, int $maxFailures): array;

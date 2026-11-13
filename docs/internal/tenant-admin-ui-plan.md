@@ -127,7 +127,22 @@ As built: `Version20261113100000`; `UserManagerInterface::invite()`, `invitation
 signed in at the request after the acceptance, not during it: fedale/rbac-bundle keeps the
 assignments it read during a request (`MemoizedAssignmentStorage`, with no reset), so a user
 loaded right after `revokeAll()` would carry the roles just taken, and be signed out at the next
-request for it. Tests: `AdminMemberControllerTest` (14).
+request for it. Tests: `AdminMemberControllerTest` (17).
+
+Hardened after the automated security review's fourth round (2026-11-13):
+
+- **An account's password can't be guessed through invitations**: five wrong ones burn an
+  invitation, and the account gets five tries a quarter of an hour across every invitation
+  (`invitation_password` rate limiter, config/packages/rate_limiter.yaml, keyed by the
+  account's email), so inviting again gives no more guesses. One pending invitation per email and
+  tenant: a new one replaces it. The password is checked for every existing account, a member's
+  too, since the next step signs the account in.
+- **A member can't be invited** (`InvalidUser::alreadyMember`): it would only be a way to take
+  their assignments away. Their membership is no secret to the tenant's admins. Someone who
+  became a member meanwhile keeps everything when accepting.
+- `symfony/rate-limiter` is now required; sign-in throttling (`login_throttling`, five tries a
+  minute) came with it, ahead of part B. In the tests the limiters' cache (`cache.rate_limiter`,
+  on disk, since a request reboots the kernel) is cleared before each test that relies on it.
 
 ## Part B: the operator's console
 

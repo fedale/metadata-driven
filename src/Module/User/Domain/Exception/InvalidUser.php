@@ -36,6 +36,16 @@ final class InvalidUser extends UserException
         return new self('This is not the password of the account.');
     }
 
+    public static function tooManyTries(): self
+    {
+        return new self('Too many tries with this account\'s password: wait a quarter of an hour.');
+    }
+
+    public static function alreadyMember(string $email): self
+    {
+        return new self(\sprintf('%s is a member already.', $email));
+    }
+
     public static function invitationNotFound(): self
     {
         return new self('This invitation is no longer valid: ask for another one.');

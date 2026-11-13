@@ -16,6 +16,7 @@ use App\Module\User\Domain\Repository\UserRepository;
 use App\Shared\Tenant\CurrentTenant;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -38,6 +39,8 @@ final class UserManager implements UserManagerInterface
         private readonly InvitationRepository $invitations,
         private readonly CurrentTenant $tenant,
         private readonly PasswordHasherFactoryInterface $hashers,
+        // config/packages/rate_limiter.yaml
+        private readonly RateLimiterFactoryInterface $invitationPasswordLimiter,
         #[Autowire('%kernel.enabled_locales%')]
         private readonly array $enabledLocales,
     ) {
@@ -106,10 +109,19 @@ final class UserManager implements UserManagerInterface
 
     public function invite(string $email, string $tenantId, string $invitedBy, bool $keepAssignments): string
     {
+        $email = User::normalizeEmail($email);
+        // Inviting a member would only be a way to touch what they have here; their membership
+        // is no secret to the tenant's admins.
+        $user = $this->users->findByEmail($email);
+        if (null !== $user && $this->memberships->isMember($tenantId, $user->getId())) {
+            throw InvalidUser::alreadyMember($email);
+        }
+        // One pending invitation per email: a new one replaces it.
+        $this->invitations->removePendingOf($tenantId, $email);
         $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
         $now = new \DateTimeImmutable();
         $this->invitations->add(
-            new Invitation(Uuid::v7()->toRfc4122(), User::normalizeEmail($email), $invitedBy, $now, $now->modify(self::INVITATION_LIFETIME), $keepAssignments),
+            new Invitation(Uuid::v7()->toRfc4122(), $email, $invitedBy, $now, $now->modify(self::INVITATION_LIFETIME), $keepAssignments),
             $tenantId,
             hash('sha256', $token),
         );
@@ -139,10 +151,24 @@ final class UserManager implements UserManagerInterface
         if (null === $user) {
             $this->createUser($invitation->email, $password, $firstName, $lastName);
             $user = $this->users->findByEmail($invitation->email) ?? throw InvalidUser::notFound($invitation->email);
-        } elseif (!$this->hashers->getPasswordHasher(PasswordAuthenticatedUserInterface::class)->verify($user->getPasswordHash(), $password)) {
-            $this->invitations->recordFailure($invitation->id);
+        } else {
+            // Counted per account, whatever the invitation: inviting again gives no more
+            // guesses. Always checked, a member's included: the next step signs the account in.
+            $limiter = $this->invitationPasswordLimiter->create($user->getEmail());
+            // consume(0) asks for nothing, and is always accepted: what is left is the answer.
+            if (0 === $limiter->consume(0)->getRemainingTokens()) {
+                throw InvalidUser::tooManyTries();
+            }
+            if (!$this->hashers->getPasswordHasher(PasswordAuthenticatedUserInterface::class)->verify($user->getPasswordHash(), $password)) {
+                $limiter->consume();
+                $this->invitations->recordFailure($invitation->id);
 
-            throw InvalidUser::wrongPassword();
+                throw InvalidUser::wrongPassword();
+            }
+            // A member already (added meanwhile): nothing of theirs is taken away.
+            if ($this->memberships->isMember($tenantId, $user->getId())) {
+                $invitation = new Invitation($invitation->id, $invitation->email, $invitation->invitedBy, $invitation->createdAt, $invitation->expiresAt, true);
+            }
         }
         $this->memberships->add($tenantId, $user->getId());
         $this->invitations->markAccepted($invitation->id, new \DateTimeImmutable());

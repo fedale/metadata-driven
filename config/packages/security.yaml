@@ -28,6 +28,10 @@ security:
             logout:
                 path: app_logout
                 target: app_login
+            # Five tries a minute per address and email, in every tenant and on the console.
+            login_throttling:
+                max_attempts: 5
+                interval: '1 minute'
             remember_me:
                 secret: '%kernel.secret%'
                 lifetime: 1209600 # 2 weeks
