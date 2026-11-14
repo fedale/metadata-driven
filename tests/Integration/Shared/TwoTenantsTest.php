@@ -18,6 +18,11 @@ use App\Tests\Support\CreatesTenants;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\DriverException;
 use Doctrine\DBAL\Exception\NotNullConstraintViolationException;
+use Fedale\RbacBundle\Contract\AssignmentStorageInterface;
+use Fedale\RbacBundle\Contract\ItemStorageInterface;
+use Fedale\RbacBundle\Contract\RbacManagerInterface;
+use Fedale\RbacBundle\Contract\TenantContextInterface;
+use Fedale\RbacBundle\Enum\AuthItemType;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\ApplicationTester;
@@ -72,6 +77,34 @@ final class TwoTenantsTest extends KernelTestCase
 
         $this->switchTo('default');
         self::assertNotFalse($this->connection->fetchOne("SELECT 1 FROM auth_item WHERE name = 'report.read'"));
+    }
+
+    /**
+     * fedale/rbac-bundle reads every tenant's assignments in its 'global' tenant (tables per
+     * tenant): its memo of them must still tell the tenants apart, through RbacTenantContext.
+     */
+    public function testAUsersRolesFollowTheTenantInOneProcess(): void
+    {
+        $container = self::getContainer();
+        $rbac = $container->get(RbacManagerInterface::class);
+        $assignments = $container->get(AssignmentStorageInterface::class);
+        $rbac->addItem('ROLE_REPORTER', AuthItemType::ROLE);
+        $rbac->assign('anna@example.com', 'ROLE_REPORTER');
+        self::assertSame(['ROLE_REPORTER'], $assignments->getAssignments('anna@example.com'));
+
+        $globex = self::createTenant($container, 'globex', 'Globex');
+        self::useTenant($container, $globex);
+        self::assertSame($globex->id, $container->get(TenantContextInterface::class)->getTenantId());
+        self::assertSame([], $assignments->getAssignments('anna@example.com'));
+        self::assertNull($container->get(ItemStorageInterface::class)->getItem('ROLE_REPORTER'));
+
+        $this->switchTo('default');
+        self::assertSame(['ROLE_REPORTER'], $assignments->getAssignments('anna@example.com'));
+        self::assertNotNull($container->get(ItemStorageInterface::class)->getItem('ROLE_REPORTER'));
+
+        $container->get(TenantSwitcher::class)->landlord();
+        self::assertSame(TenantContextInterface::GLOBAL, $container->get(TenantContextInterface::class)->getTenantId());
+        self::assertSame([], $assignments->getAssignments('anna@example.com'));
     }
 
     public function testTheLandlordsSessionReadsAndWritesNoTenantsRows(): void

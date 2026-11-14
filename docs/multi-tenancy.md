@@ -159,6 +159,9 @@ never share a stored file. `tenant:delete` deletes the tenant's directory, and
   bare domain, or empty if the bare domain should answer 404.
 - **Migrations and caches** work across tenants: run `doctrine:migrations:migrate` once, as
   before; it is not a per-tenant command.
+- **Several web servers** must share the cache of roles and permissions (the `rbac.cache` pool,
+  `config/packages/cache.yaml`), e.g. on Redis: a role changed on one server deletes its tenant's
+  key there only, and a pool of each server's own would keep the old roles on the others.
 
 ## Upgrading an installation from before tenants
 
@@ -175,8 +178,6 @@ never share a stored file. `tenant:delete` deletes the tenant's directory, and
 - A second factor for signing in, operators included: planned for every user at once.
 - Signing up, and inviting a user to a tenant.
 - One sign-in for all the tenants a user belongs to: you sign in to each host.
-- `fedale/rbac-bundle`'s cache: off, because it keeps one set of roles for the whole
-  installation. Roles are read from the database on every request.
 - Moving a tenant to a database of its own.
 
 How it works inside (the schemas, the session's tenant, row-level security) is in

@@ -28,7 +28,8 @@ final class TenantProvisioner implements TenantAdministration
     private const string SLUG = '/^[a-z0-9][a-z0-9-]{0,62}$/';
 
     /**
-     * fedale/rbac-bundle's tables, as migration Version20261021040733 created them, in the
+     * fedale/rbac-bundle's tables, as migration Version20261021040733 created them and
+     * Version20261114100000 changed them (auth_assignment.tenant_id, bundle 1.2), in the
      * schema %1$s. When the bundle's mapping changes, a migration changes every tenant's
      * schema, and this with it.
      */
@@ -40,8 +41,8 @@ final class TenantProvisioner implements TenantAdministration
         'CREATE TABLE %1$s.auth_item_child (parent VARCHAR(64) NOT NULL, child VARCHAR(64) NOT NULL, PRIMARY KEY (parent, child))',
         'CREATE INDEX IDX_1611424D3D8E604F ON %1$s.auth_item_child (parent)',
         'CREATE INDEX IDX_1611424D22B35429 ON %1$s.auth_item_child (child)',
-        'CREATE TABLE %1$s.auth_assignment (user_id VARCHAR(255) NOT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, item_name VARCHAR(64) NOT NULL, PRIMARY KEY (item_name, user_id))',
-        'CREATE INDEX idx_auth_assignment_user ON %1$s.auth_assignment (user_id)',
+        'CREATE TABLE %1$s.auth_assignment (user_id VARCHAR(255) NOT NULL, tenant_id VARCHAR(64) DEFAULT \'global\' NOT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, item_name VARCHAR(64) NOT NULL, PRIMARY KEY (item_name, user_id, tenant_id))',
+        'CREATE INDEX idx_auth_assignment_user ON %1$s.auth_assignment (user_id, tenant_id)',
         'CREATE INDEX IDX_2EC0490E96133AFD ON %1$s.auth_assignment (item_name)',
         'ALTER TABLE %1$s.auth_assignment ADD CONSTRAINT FK_2EC0490E96133AFD FOREIGN KEY (item_name) REFERENCES %1$s.auth_item (name) ON DELETE CASCADE NOT DEFERRABLE',
         'ALTER TABLE %1$s.auth_item ADD CONSTRAINT FK_313DC5AADE72171 FOREIGN KEY (rule_name) REFERENCES %1$s.auth_rule (name) ON DELETE SET NULL NOT DEFERRABLE',

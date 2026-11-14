@@ -202,7 +202,8 @@ until logout. A user signed in with "remember me" is signed back in at once, wit
 the others sign in again. Assignments are keyed by the user's email.
 
 Other commands of the bundle: `rbac:list-items`, `rbac:revoke`, `rbac:item:remove`,
-`rbac:child:remove`, `rbac:cache:clear` (after editing the `auth_*` tables by hand).
+`rbac:child:remove`, `rbac:cache:clear` (after editing the `auth_*` tables by hand; it clears the
+cache of the command's tenant, so `--tenant=<slug>` for another one).
 
 ## Not yet available
 

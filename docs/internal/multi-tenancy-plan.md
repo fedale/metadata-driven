@@ -1,8 +1,8 @@
 # Plan: multi-tenancy
 
 Status: **done**, the seven phases merged into `main` on 2026-11-12 (`Merge branch
-'multi_tenancy_phase7'`), and the follow-ups of 2026-11-13 below. Left: `fedale/rbac-bundle` with
-a `tenant_id` (on standby), and what "Not in scope" lists. Discussed with the user on 2026-11-12, who chose the model (shared
+'multi_tenancy_phase7'`), the follow-ups of 2026-11-13 and `fedale/rbac-bundle` 1.2 (2026-11-14,
+"RBAC" below). Left: what "Not in scope" lists. Discussed with the user on 2026-11-12, who chose the model (shared
 definitions with a `tenant_id`, records in a schema per tenant), global users, and the decisions
 below.
 
@@ -44,7 +44,7 @@ core                         shared
   setting, setting_scoped    tenant_id already there (fedale/setting-bundle)
   doctrine_migration_versions
 
-t_<id>                       per tenant, until step 3 (below) is done
+t_<id>_rbac                  per tenant (see "RBAC")
   auth_assignment, auth_item, auth_item_child, auth_rule
 
 t_<id>_data                  per tenant: c_<object>, l_<object>__<field>
@@ -54,14 +54,14 @@ Alternatives considered and set aside: a database per tenant (queries across ten
 connection each), and a pair of schemas per tenant with everything in it (no `tenant_id`
 anywhere, but no global users and every migration run once per tenant).
 
-### RBAC, on standby
+### RBAC
 
-`fedale/rbac-bundle` has no tenants: `auth_item` has `name` as its primary key, and permission
-names (`record.account.create`) collide across tenants. Adding `tenant_id` to it is a breaking
-change of the bundle (composite keys, its queries, its cache) and is **on standby** (user,
+`fedale/rbac-bundle` had no tenants: `auth_item` has `name` as its primary key, and permission
+names (`record.account.create`) collide across tenants. Adding `tenant_id` to it was a breaking
+change of the bundle (composite keys, its queries, its cache) and was put **on standby** (user,
 2026-11-12).
 
-Until then its four tables live in a schema per tenant, `t_<id>`. The bundle names them
+Its four tables live in a schema per tenant, `t_<id>_rbac`. The bundle names them
 unqualified, and the app never names them, so the `search_path` of the tenant switch
 (`core, t_<id>, public`) sends the bundle to the current tenant's tables with no change to it:
 they are no longer in `core`, so the lookup goes on to `t_<id>`. `core` stays first because
@@ -71,7 +71,33 @@ unqualified, so a qualified name is never found).
 `auth_assignment.user_id` is a string with no foreign key, so it holds the id of a global user:
 the same person may be an admin in one tenant and a plain user in another.
 
-When the bundle gets its `tenant_id`, the tables move into `core` and `t_<id>` disappears.
+**Bundle 1.2 (2026-11-14): the schemas per tenant stay.** The user gave the bundle tenants in
+two setups: tables per tenant, where a `TenantContextInterface` of the app only keys the cache
+and the graphs in memory per tenant, and shared tables with assignments per tenant
+(`tenancy.scoped_assignments`). This app is the first, so the tables do **not** move into
+`core`: each tenant keeps its own roles and permissions, which the shared setup couldn't give
+(one set of roles for every tenant). What it took, on branch `rbac_tenancy`:
+
+- `RbacTenantContext` (`tenancy.context`), from `ConnectionCurrentTenant`: the tenant's id, or
+  `global` with no tenant (no tenant id is ever `global`); the cache on again, in a pool of its
+  own, `rbac.cache`, in memory in the tests (dama/doctrine-test-bundle opens their
+  transactions below DBAL, where the bundle's guard against caching inside a transaction doesn't
+  see them).
+- `Version20261114100000`: `auth_assignment.tenant_id` (`VARCHAR(64) NOT NULL DEFAULT
+  'global'`, in the primary key and in `idx_auth_assignment_user`) in every tenant's RBAC
+  schema and in `no_tenant_rbac`, renamed from `landlord_rbac` (it serves the sessions of no
+  tenant, not only the landlord's; `global_rbac` was set aside, `global` being the bundle's
+  name for assignments valid in every tenant); `TenantProvisioner::RBAC_DDL` with it. Every
+  assignment of the app stays in `global`.
+- Three fixes of the bundle found on the way, in 1.2.1: the memo of assignments keyed by the
+  tables' tenant too (with tables per tenant it is always read in `global`, so a process
+  switching tenant, `tenant:create` or a test, got the previous tenant's roles); the graphs,
+  rules and role hierarchy kept in memory reset after every write of the management API and
+  on `kernel.reset` (they only lost their pool key: a request adding a role, or a worker, kept
+  the old graph); `GRAPH_TENANT` declared.
+- `isGranted(ROLE_*)` goes through the bundle's `RbacRoleVoter` now; nothing changed for the
+  app (the suite passes unchanged).
+- Tests: `TwoTenantsTest::testAUsersRolesFollowTheTenantInOneProcess`.
 
 ## Decisions (user, 2026-11-12)
 
@@ -375,12 +401,9 @@ Found by checking the plan against the code once merged, done on branch
 - **The host lookup stays uncached** (above).
 - This plan and status.md brought up to date.
 
-Later, once `fedale/rbac-bundle` has tenants: its tables move into `core` and `t_<id>` goes
-away.
 
 ## Not in scope
 
-- `fedale/rbac-bundle` with a `tenant_id` (on standby, above).
 - A landlord admin UI (tenants are managed from the console), self-service sign-up, invitations,
   billing, plans and quotas.
 - A single sign-in shared across tenant hosts.
