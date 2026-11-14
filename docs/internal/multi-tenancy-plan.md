@@ -89,7 +89,7 @@ and the graphs in memory per tenant, and shared tables with assignments per tena
   tenant, not only the landlord's; `global_rbac` was set aside, `global` being the bundle's
   name for assignments valid in every tenant); `TenantProvisioner::RBAC_DDL` with it. Every
   assignment of the app stays in `global`.
-- Three fixes of the bundle found on the way, in 1.2.1: the memo of assignments keyed by the
+- Three fixes of the bundle found on the way, released as 1.2.1 (required, `^1.2.1`): the memo of assignments keyed by the
   tables' tenant too (with tables per tenant it is always read in `global`, so a process
   switching tenant, `tenant:create` or a test, got the previous tenant's roles); the graphs,
   rules and role hierarchy kept in memory reset after every write of the management API and

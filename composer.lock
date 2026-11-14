@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4ed17b08d338d6d3abf6ad561a58f47b",
+    "content-hash": "f9e0a8fcb01649583442162143a0ae08",
     "packages": [
         {
             "name": "composer/semver",
@@ -1338,16 +1338,16 @@
         },
         {
             "name": "fedale/rbac-bundle",
-            "version": "1.1.0",
+            "version": "1.2.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/fedale/rbac-bundle.git",
-                "reference": "588718f987d504a5a925bf5a56460d80d5a26118"
+                "reference": "82c75eba858f949859923994270c782f3dee54d8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/fedale/rbac-bundle/zipball/588718f987d504a5a925bf5a56460d80d5a26118",
-                "reference": "588718f987d504a5a925bf5a56460d80d5a26118",
+                "url": "https://api.github.com/repos/fedale/rbac-bundle/zipball/82c75eba858f949859923994270c782f3dee54d8",
+                "reference": "82c75eba858f949859923994270c782f3dee54d8",
                 "shasum": ""
             },
             "require": {
@@ -1379,7 +1379,7 @@
             "type": "symfony-bundle",
             "extra": {
                 "branch-alias": {
-                    "dev-main": "1.0-dev"
+                    "dev-main": "1.2-dev"
                 }
             },
             "autoload": {
@@ -1405,9 +1405,9 @@
             ],
             "support": {
                 "issues": "https://github.com/fedale/rbac-bundle/issues",
-                "source": "https://github.com/fedale/rbac-bundle/tree/1.1.0"
+                "source": "https://github.com/fedale/rbac-bundle/tree/1.2.1"
             },
-            "time": "2026-11-06T08:31:38+00:00"
+            "time": "2026-11-14T09:59:06+00:00"
         },
         {
             "name": "fedale/setting-bundle",
