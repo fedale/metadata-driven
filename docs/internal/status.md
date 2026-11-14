@@ -282,7 +282,8 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   db-test`) and `tenant:files:move` once on an installation from before. `fedale/rbac-bundle` 1.2
   with tenants (tables per tenant, its cache on again per tenant, `landlord_rbac` renamed
   `no_tenant_rbac`): branch `rbac_tenancy`, 2026-11-14, waiting for the bundle's 1.2.1 (three
-  fixes found on the way, its branch `tenant_memo`) before `composer update fedale/rbac-bundle`.
+  fixes found on the way, its branch `tenant_memo`) before `composer require fedale/rbac-bundle:^1.2.1`
+  (`composer.json` still says `^1.1`: the lock has 1.1.0, and the branch runs on the linked bundle).
 - **Tenants and members in the admin UI**: done, see
   [tenant-admin-ui-plan.md](tenant-admin-ui-plan.md); merged into `main` on 2026-11-13, not yet
   tested by hand by the user (no email is sent: invitation links are shown on the page). The
