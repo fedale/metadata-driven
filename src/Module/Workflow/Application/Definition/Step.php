@@ -6,13 +6,15 @@ namespace App\Module\Workflow\Application\Definition;
 
 /**
  * One step of a workflow: its key (its output's name on the data chain), its type, its options
- * as written ({{ … }} paths unresolved), and for an if, its branches.
+ * as written ({{ … }} paths unresolved), for an if its branches, for an iterator the steps run
+ * once per item.
  */
 final readonly class Step
 {
     /**
      * @param array<string, mixed> $options
      * @param list<Branch>         $branches
+     * @param list<Step>           $steps    an iterator's
      */
     public function __construct(
         public string $key,
@@ -20,7 +22,27 @@ final readonly class Step
         public array $options,
         public array $branches = [],
         public ?Condition $when = null,
+        public array $steps = [],
     ) {
+    }
+
+    /**
+     * A search's tests, as written.
+     *
+     * @return list<array{field: string, op: string, value?: mixed}>
+     */
+    public function where(): array
+    {
+        $where = [];
+        foreach (\is_array($this->options['where'] ?? null) ? $this->options['where'] : [] as $test) {
+            if (\is_array($test) && \is_string($test['field'] ?? null) && \is_string($test['op'] ?? null)) {
+                $where[] = \array_key_exists('value', $test)
+                    ? ['field' => $test['field'], 'op' => $test['op'], 'value' => $test['value']]
+                    : ['field' => $test['field'], 'op' => $test['op']];
+            }
+        }
+
+        return $where;
     }
 
     public function string(string $option): ?string

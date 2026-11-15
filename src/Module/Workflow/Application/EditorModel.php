@@ -19,7 +19,7 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class EditorModel
 {
-    private const array STEP_OPTIONS = ['object' => '', 'id' => '', 'match' => '', 'message' => '', 'act_as' => '', 'emit_events' => false];
+    private const array STEP_OPTIONS = ['object' => '', 'id' => '', 'match' => '', 'message' => '', 'act_as' => '', 'emit_events' => false, 'items' => '', 'sort' => '', 'direction' => '', 'limit' => ''];
 
     /**
      * @return array<string, mixed>|null null when the YAML cannot be read
@@ -102,9 +102,21 @@ final class EditorModel
             'type' => $type->value,
             ...self::STEP_OPTIONS,
             'values' => [],
+            'where' => [],
             'when' => StepType::Filter === $type ? self::newCondition() : null,
             'branches' => StepType::If === $type ? [['when' => self::newCondition(), 'steps' => []], ['when' => null, 'steps' => []]] : [],
+            'steps' => [],
         ];
+    }
+
+    /**
+     * A new test of a search: on a field of its object.
+     *
+     * @return array{field: string, op: string, value: string}
+     */
+    public static function newWhere(): array
+    {
+        return ['field' => 'id', 'op' => 'eq', 'value' => ''];
     }
 
     /**
@@ -140,6 +152,7 @@ final class EditorModel
                     foreach (\is_array($step['branches'] ?? null) ? $step['branches'] : [] as $branch) {
                         $walk(\is_array($branch) ? ($branch['steps'] ?? []) : []);
                     }
+                    $walk($step['steps'] ?? []);
                 }
             }
         };
@@ -198,11 +211,17 @@ final class EditorModel
             foreach (self::STEP_OPTIONS as $option => $default) {
                 $options[$option] = \is_bool($default) ? true === ($step[$option] ?? false) : self::text($step[$option] ?? '');
             }
+            $where = [];
+            foreach (\is_array($step['where'] ?? null) ? $step['where'] : [] as $test) {
+                $where[] = \is_array($test) ? self::testFrom($test) : self::newWhere();
+            }
             $model[] = [
                 'key' => self::text($step['key'] ?? ''),
                 'type' => self::text($step['type'] ?? ''),
                 ...$options,
                 'values' => $values,
+                'where' => $where,
+                'steps' => self::stepsFrom($step['steps'] ?? []),
                 'when' => \array_key_exists('when', $step) ? self::conditionFrom($step['when']) : null,
                 'branches' => array_values(array_map(
                     static fn (mixed $branch): array => [
@@ -243,6 +262,9 @@ final class EditorModel
                         \is_array($step['branches'] ?? null) ? $step['branches'] : [],
                     ))],
                     'emit_events' => true === ($step['emit_events'] ?? false) ? $out + ['emit_events' => true] : $out,
+                    'where' => [] === ($where = self::whereTo($step['where'] ?? [])) ? $out : $out + ['where' => $where],
+                    'steps' => $out + ['steps' => self::stepsTo(\is_array($step['steps'] ?? null) ? $step['steps'] : [])],
+                    'limit' => '' === self::text($step['limit'] ?? '') ? $out : $out + ['limit' => self::typed(self::text($step['limit'] ?? ''))],
                     default => '' === self::text($step[$option] ?? '') ? $out : $out + [$option => self::text($step[$option] ?? '')],
                 };
             }
@@ -311,6 +333,27 @@ final class EditorModel
         }, \is_array($condition['tests'] ?? null) ? $condition['tests'] : []));
 
         return 1 === \count($tests) ? $tests[0] : [('any' === ($condition['join'] ?? 'all') ? 'any' : 'all') => $tests];
+    }
+
+    /**
+     * A search's tests, the rows with no field left out.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function whereTo(mixed $rows): array
+    {
+        $where = [];
+        foreach (\is_array($rows) ? $rows : [] as $row) {
+            if (!\is_array($row) || '' === $field = self::text($row['field'] ?? '')) {
+                continue;
+            }
+            $op = self::text($row['op'] ?? 'eq');
+            $where[] = \in_array($op, ['empty', 'not_empty'], true)
+                ? ['field' => $field, 'op' => $op]
+                : ['field' => $field, 'op' => $op, 'value' => self::typed(self::text($row['value'] ?? ''))];
+        }
+
+        return $where;
     }
 
     /**

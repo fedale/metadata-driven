@@ -67,6 +67,58 @@ As planned, with these choices made on the way:
 - `max_executed_steps` is checked before every step of every run, record triggers included; it is
   reached only with the iterator (2b).
 
-## 2b and 2c
+## 2b: search records and the iterator
 
-To be detailed when 2a is merged.
+Decisions (user, 2026-11-15): a `filter` inside an iterator skips the item, as a `continue`
+(outside one it still ends the run); a search finding more records than its limit takes the
+first ones in its order, and says how many there are in all.
+
+```yaml
+- key: open
+  type: search_records
+  object: invoice
+  where:                              # optional: all must hold
+    - { field: customer, op: eq, value: '{{ $trigger.record.id }}' }
+    - { field: paid_on, op: empty }
+  sort: due_on                        # optional, a field; else the oldest first
+  direction: desc                     # optional: asc (the default) or desc
+  limit: 50                           # optional: at most app.workflow.max_records (200)
+  act_as: ROLE_ACCOUNTANT             # optional, as for a write
+- key: each
+  type: iterator
+  items: '{{ open.records }}'         # a list: each item in turn as {{ each.item }}, {{ each.index }}
+  steps:
+    - { key: reminder, type: create_record, object: reminder, values: { invoice: '{{ each.item.id }}' } }
+```
+
+- **search_records**: `where` is a list of tests on the object's fields (`id` included), with the
+  operators of the conditions; values may hold `{{ … }}`, checked against the field's type before
+  the query (a date as `2026-12-31`, a number, `true`/`false`, an id), so that a wrong value fails
+  the step, not the transaction. Many-to-many, file and password fields cannot be searched on.
+  Output: `records` (each with its `id` and fields, no password), `count` (returned), `total` (in
+  all), `first` (the first record, or null). It reads: it needs `record.<object>.read`, as whoever
+  triggered the event (and its activator) or as the role of its `act_as`, as a write does.
+- **iterator**: `items` is one `{{ path }}` to a list (records, ids, …), at most
+  `app.workflow.max_records` items or the step fails; its `steps` run once per item, reading
+  `<key>.item` and `<key>.index`; the steps after it read `<key>.count` (the items run), never the
+  steps inside it. Iterators nest. A `filter` inside skips the item; a `refuse` or a failure ends
+  the run, as anywhere. The executed steps count against `app.workflow.max_executed_steps`.
+- **Validation**: the fields of `where` and `sort` exist and may be searched; `<key>.item.<field>`
+  is checked when `items` is a search's `records`; the steps inside an iterator count against the
+  50 of a definition.
+- **The Record contract**: `RecordFinderInterface::search(object, filters, sort, descending,
+  limit)`, filters as `RecordFilter` (field, operator, value), a `RecordSearchResult` back; SQL in
+  `DbalRecordStore`, the identifiers from the metadata, the values bound and cast to the column's
+  type.
+- **Editors**: the visual editor gets both (the tests of `where` as rows; the iterator's steps
+  indented under it, as a branch's); the picker offers their outputs.
+
+### Done (2026-11-15, branch `workflow_search_iterator`)
+
+As planned. On the way: the search's SQL went into `DbalRecordStore` (the grid's source has
+neither `empty` nor its operators on every type); `neq` and `not_contains` keep the empty values,
+as the conditions do; `sort` may also be `id`.
+
+## 2c: a grid's selection
+
+To be detailed when 2b is merged.

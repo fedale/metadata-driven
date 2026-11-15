@@ -14,6 +14,7 @@ use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordLabel;
 use App\Module\Record\Contract\Dto\RecordOutput;
+use App\Module\Record\Contract\Dto\RecordSearchResult;
 use App\Module\Record\Contract\Dto\ReferencingGroup;
 use App\Module\Record\Contract\Event\RecordWriteAction;
 use App\Module\Record\Contract\Event\RecordWriting;
@@ -207,6 +208,11 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         }
 
         return $records;
+    }
+
+    public function search(string $objectName, array $filters, ?string $sortField = null, bool $descending = false, int $limit = 50): RecordSearchResult
+    {
+        return $this->store->search($this->metadata->getObject($objectName), $filters, $sortField, $descending, $limit);
     }
 
     public function latest(string $objectName, int $limit = 50): array

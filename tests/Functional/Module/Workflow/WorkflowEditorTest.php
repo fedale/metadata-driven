@@ -99,6 +99,33 @@ final class WorkflowEditorTest extends WebTestCase
         self::assertStringContainsString("options:\n        - cat\n        - dog", (string) self::getContainer()->get(WorkflowManager::class)->activeVersion($workflow)?->getSource());
     }
 
+    public function testBuildsASearchAndAnIteratorOverItsRecords(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        $editor = $this->editor()
+            ->call('removeStep', ['at' => 'steps.0'])
+            ->call('addStep', ['at' => 'steps', 'type' => 'search_records'])
+            ->set('model.steps.0.object', 'pet')
+            ->call('addWhere', ['at' => 'steps.0'])
+            ->set('model.steps.0.where.0.field', 'name')
+            ->set('model.steps.0.where.0.op', 'not_empty')
+            ->set('model.steps.0.limit', '20')
+            ->call('addStep', ['at' => 'steps', 'type' => 'iterator'])
+            ->set('model.steps.1.items', '{{ search_records_1.records }}')
+            ->call('addStep', ['at' => 'steps.1.steps', 'type' => 'filter'])
+            ->set('model.steps.1.steps.0.when.tests.0.field', 'iterator_1.item.name')
+            ->set('model.steps.1.steps.0.when.tests.0.op', 'not_empty');
+        self::assertStringContainsString('data-model="model.steps.1.steps.0.key" value="filter_1"', (string) $editor->render());
+
+        $editor->call('activate');
+        self::assertSame(303, $editor->response()->getStatusCode());
+        $workflow = self::getContainer()->get(WorkflowRepository::class)->findByName('Welcome');
+        self::assertNotNull($workflow);
+        $source = (string) self::getContainer()->get(WorkflowManager::class)->activeVersion($workflow)?->getSource();
+        self::assertStringContainsString('limit: 20', $source);
+        self::assertStringContainsString("items: '{{ search_records_1.records }}'", $source);
+    }
+
     public function testShowsTheProblemsOfTheDraftByStep(): void
     {
         self::signInAsSuperAdmin($this->client);

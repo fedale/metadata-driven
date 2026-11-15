@@ -11,6 +11,7 @@ use App\Module\Access\Contract\WorkspaceRolesInterface;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * Checks what a definition names, when a version is activated: the objects and fields, each
@@ -30,10 +31,15 @@ final class DefinitionValidator
     /** @var array<string, list<string>> */
     private array $errors = [];
 
+    /** @var array<string, string> iterator key => the object of the records it runs on, when known */
+    private array $itemObjects = [];
+
     public function __construct(
         private readonly MetadataRegistryInterface $metadata,
         private readonly AccessCheckerInterface $access,
         private readonly WorkspaceRolesInterface $roles,
+        #[Autowire('%app.workflow.max_records%')]
+        private readonly int $maxRecords = 200,
     ) {
     }
 
@@ -43,6 +49,7 @@ final class DefinitionValidator
     public function validate(Definition $definition): void
     {
         $this->errors = [];
+        $this->itemObjects = [];
         $trigger = $definition->trigger;
         $object = $this->object($trigger->object, 'trigger.object');
         if (null !== $object) {
@@ -74,6 +81,10 @@ final class DefinitionValidator
                 }
                 $this->steps($branch->steps, $at.'.branches.'.$b.'.steps', $definition, $trigger, $before);
             }
+            if (StepType::Iterator === $step->type) {
+                // Its steps read its item; the steps after it, its count only.
+                $this->steps($step->steps, $at.'.steps', $definition, $trigger, [...$before, $step->key]);
+            }
             $before[] = $step->key;
         }
     }
@@ -100,6 +111,19 @@ final class DefinitionValidator
                 }
             }
             $this->paths($value, $path.'.values.'.$field, $definition, $trigger, $before);
+        }
+        if (StepType::SearchRecords === $step->type && null !== $target) {
+            $this->search($step, $path, $target, $definition, $trigger, $before);
+        }
+        if (StepType::Iterator === $step->type && null !== $items = $step->string('items')) {
+            $this->paths($items, $path.'.items', $definition, $trigger, $before);
+            // Over a search's records: its item's fields are that object's.
+            $source = 1 === preg_match('/^\{\{\s*([a-z][a-z0-9_]*)\.records\s*\}\}$/', $items, $match)
+                ? array_values(array_filter($definition->allSteps(), static fn (Step $other): bool => $other->key === $match[1] && StepType::SearchRecords === $other->type))[0] ?? null
+                : null;
+            if (null !== $source && null !== $object = $source->string('object')) {
+                $this->itemObjects[$step->key] = $object;
+            }
         }
         foreach (['id', 'message'] as $option) {
             if (null !== $step->string($option)) {
@@ -132,9 +156,9 @@ final class DefinitionValidator
                 }
             }
         }
-        if (null === $step->actAs() && $step->type->writes() && null !== $target) {
+        if (null === $step->actAs() && ($step->type->writes() || $step->type->reads()) && null !== $target) {
             // As whoever triggered the event: the person activating must hold it too, or they
-            // would write through the users who do (no way to more power).
+            // would write (or read) through the users who do (no way to more power).
             foreach (self::actions($step->type) as $action) {
                 $permission = Permissions::record($target->name, $action);
                 if (!$this->access->holds($permission)) {
@@ -201,6 +225,12 @@ final class DefinitionValidator
 
             return;
         }
+        if (isset($this->itemObjects[$root], $segments[2]) && 'item' === $segments[1] && 'id' !== $segments[2]) {
+            $object = $this->metadata->getObject($this->itemObjects[$root]);
+            if (!isset($object->fields[$segments[2]])) {
+                $this->error($at, \sprintf('Object "%s" has no field "%s".', $object->name, $segments[2]));
+            }
+        }
         if ('$trigger' !== $root || !isset($segments[1])) {
             return;
         }
@@ -228,6 +258,41 @@ final class DefinitionValidator
     }
 
     /**
+     * A search's tests and sort: fields it may search on; its values' paths; its limit.
+     *
+     * @param list<string> $before
+     */
+    private function search(Step $step, string $path, ObjectDefinitionDto $object, Definition $definition, ?ObjectDefinitionDto $trigger, array $before): void
+    {
+        foreach ($step->where() as $i => $test) {
+            $this->searchable($object, $test['field'], $path.'.where.'.$i.'.field');
+            if (\array_key_exists('value', $test)) {
+                $this->paths($test['value'], $path.'.where.'.$i.'.value', $definition, $trigger, $before);
+            }
+        }
+        if (null !== $sort = $step->string('sort')) {
+            $this->searchable($object, $sort, $path.'.sort');
+        }
+        $limit = $step->options['limit'] ?? null;
+        if (\is_int($limit) && $limit > $this->maxRecords) {
+            $this->error($path.'.limit', \sprintf('At most %d records.', $this->maxRecords));
+        }
+    }
+
+    private function searchable(ObjectDefinitionDto $object, string $name, string $path): void
+    {
+        if ('id' === $name) {
+            return;
+        }
+        $field = $object->fields[$name] ?? null;
+        if (null === $field) {
+            $this->error($path, \sprintf('Object "%s" has no field "%s".', $object->name, $name));
+        } elseif (!$field->storesColumn() || null !== $field->fileList() || \in_array($field->type, ['file', 'password'], true)) {
+            $this->error($path, \sprintf('A search cannot test or sort on "%s": a many-to-many, file or password field.', $name));
+        }
+    }
+
+    /**
      * The record actions a step that writes needs: an upsert creates or updates.
      *
      * @return list<RecordAction>
@@ -239,6 +304,7 @@ final class DefinitionValidator
             StepType::UpdateRecord => [RecordAction::Update],
             StepType::DeleteRecord => [RecordAction::Delete],
             StepType::UpsertRecord => [RecordAction::Create, RecordAction::Update],
+            StepType::SearchRecords => [RecordAction::Read],
             default => [],
         };
     }

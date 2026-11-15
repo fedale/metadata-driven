@@ -446,6 +446,16 @@ admin:
         type_upsert_record: Create or update a record
         type_set_values: Set values
         type_refuse: Refuse
+        type_search_records: 'Search records'
+        type_iterator: 'For each'
+        sort: 'Sort on'
+        direction: 'Order'
+        direction_asc: 'ascending'
+        direction_desc: 'descending'
+        limit: 'At most'
+        where: 'Records where all hold:'
+        items: 'Items (a list)'
+        for_each: 'For each item: {{ %key%.item }}'
         key: Key
         object: Object
         record_id: Record id

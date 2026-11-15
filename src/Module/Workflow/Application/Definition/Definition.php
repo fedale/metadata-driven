@@ -53,6 +53,7 @@ final readonly class Definition
             foreach ($step->branches as $branch) {
                 $all = [...$all, ...$this->allSteps($branch->steps)];
             }
+            $all = [...$all, ...$this->allSteps($step->steps)];
         }
 
         return $all;
@@ -75,6 +76,9 @@ final readonly class Definition
             }
             if (null !== $step->when) {
                 $array['when'] = $step->when->toArray();
+            }
+            if (StepType::Iterator === $step->type) {
+                $array['steps'] = self::steps($step->steps);
             }
 
             return $array;

@@ -91,6 +91,8 @@ the step's output), a `type`, and its options.
 | `upsert_record` | `object`, `match` (a unique field), `values` (with the one matched) | Updates the record whose field holds the value, or creates one |
 | `set_values` | `values` | Before a write only: changes the values written |
 | `refuse` | `message` | Before a write, refuses it; after one, ends the run as failed |
+| `search_records` | `object`, `where` (tests, all of which hold), `sort`, `direction` (`asc`, `desc`), `limit`; `act_as` | Reads the records of an object: the first ones in its order (see [Search and iterator](#search-and-iterator)) |
+| `iterator` | `items` (one `{{ path }}` to a list), `steps` | Runs its steps once per item |
 
 The four steps that write records also take `act_as` (see [Permissions](#permissions)) and
 `emit_events`: `false` by default, so that the records a workflow writes start no workflow; `true`
@@ -158,6 +160,41 @@ steps:
 - **The run**: as an after-run, its steps in one transaction, all or nothing; a `refuse` keeps
   nothing either, its message shown. `set_values` has nothing to change: refused.
 
+### Search and iterator
+
+```yaml
+- key: open
+  type: search_records
+  object: invoice
+  where:
+    - { field: customer, op: eq, value: '{{ $trigger.record.id }}' }
+    - { field: paid_on, op: empty }
+  sort: due_on
+  limit: 50
+- key: each
+  type: iterator
+  items: '{{ open.records }}'
+  steps:
+    - { key: overdue, type: filter, when: { field: each.item.due_on, op: lt, value: '{{ $today }}' } }
+    - { key: reminder, type: create_record, object: reminder, values: { invoice: '{{ each.item.id }}' } }
+```
+
+- **search_records** tests the fields of its object (`id` too), with the operators of the
+  conditions; every test must hold. Each field compares as its type: a number as a number, a date
+  as `2026-12-31`, `true`/`false`, an id; text as written, `contains` and the like ignoring case. A
+  value that does not fit its field fails the step before the search runs. Many-to-many, file and
+  password fields cannot be searched on. Without `sort`, the oldest records first. It returns the
+  first `limit` records (at most `app.workflow.max_records`, the default), and outputs `records`
+  (each with its `id` and fields, never a password), `count` (returned), `total` (found in all:
+  more than `count` when the limit cut them) and `first` (the first record, or null). It reads as
+  a write writes: the permission `record.<object>.read`, as whoever triggered the event, or as the
+  role of its `act_as`.
+- **iterator** runs its `steps` once per item of `items` (a list: a search's `records`, a
+  many-to-many field's ids…, at most `app.workflow.max_records` items), each reading
+  `<key>.item` and `<key>.index` (from 0). A `filter` that does not hold **skips the item**; a
+  `refuse` or a failure ends the run. The steps after it read `<key>.count`, never the steps inside
+  it. Iterators nest; every step they run counts against `app.workflow.max_executed_steps`.
+
 A step that writes outputs the record as written (`{{ reminder.id }}`); an `if`, the branch it
 took; a filter, whether it passed. A step reads only the steps run before it on every way there:
 not the steps of another branch.
@@ -183,6 +220,8 @@ No way to more power, as the members and roles pages hold to:
   needs an `act_as`.
 - `set_values` changes what someone else writes: the person who activated the workflow must hold
   that write too (create or update the trigger's object), on activation and at each run.
+- A **search** reads as a write writes: `record.<object>.read`, as whoever triggered the event
+  (and its activator), or as the role of its `act_as`.
 - Conditions and `refuse` need no permission: they can only stop a write, never give more.
 
 Defining workflows and seeing their runs needs `admin.workflows`. A run holds the data of the
@@ -195,6 +234,7 @@ records it ran on, whatever object: give `admin.workflows` to whoever may see th
 | `app.workflow.max_depth` | `3` | The longest chain of runs started by one another's writes (`emit_events`) |
 | `app.workflow.runs_per_minute` | `100` | The runs a workspace may start a minute; beyond, a write a before-workflow guards is refused, the other runs fail |
 | `app.workflow.max_executed_steps` | `1000` | The steps one run may execute; beyond, the run fails (a definition holds 50 at most) |
+| `app.workflow.max_records` | `200` | The records one search reads, the items one iterator runs on |
 | `app.workflow.runs_keep_days` | `30` | How long the runs are kept |
 
 A run is **completed**, **failed** (an after-run or a manual run that could not finish: nothing
@@ -213,10 +253,11 @@ rolled back. The steps run are counted per workspace and day.
 | The definition | `DefinitionParser` (structure, every problem by its path), `DefinitionValidator` (objects, fields, paths, roles, on activation), stored compiled as JSON (`core.workflow_version.definition`) next to the YAML as written (`source`) |
 | The engine | `WorkflowEngine` listens to both events, reads the active versions (`ActiveWorkflows`, once per request), runs the steps over a `DataChain`, checks each write's permission (`AccessCheckerInterface::roleGives()`, `userCanGrant()`), and stores each run once its transaction ended (`RunStore`, DBAL) |
 | The tables | `core.workflow`, `core.workflow_version` (ORM); `core.workflow_run`, `core.workflow_run_step`, `core.workflow_usage` (DBAL); each with its `workspace_id` and row-level security |
+| Search | `RecordFinderInterface::search()` (Record contract, `RecordFilter`, `RecordSearchResult`), its SQL in `DbalRecordStore`: identifiers from the metadata, values checked then bound and cast to the column's type |
 | Manual runs | `ManualRuns` (who may run what, the answers checked), `WorkflowEngine::runManual()`; on a record's page through the Record contract's `RecordActionsInterface` (`WorkflowRecordActions`), the form at `/w/<workflow id>/run/<record id>` (`ManualRunController`); `workflow:run` |
 | The admin | `WorkflowAdminController`, `WorkflowManager` (which creates and removes the run permission, `AccessSetupInterface::ensurePermission()`) |
 
 ## Not yet
 
-Manual workflows on a grid's selection, search and iterator steps (phase 2); the system admin's workflows on platform events (phase 3); the background,
+Manual workflows on a grid's selection (phase 2); the system admin's workflows on platform events (phase 3); the background,
 HTTP requests, waits (phase 4); states (phase 5). See [the plan](internal/workflow-plan.md).

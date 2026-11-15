@@ -155,6 +155,25 @@ final class WorkflowEditor extends AbstractController
         $this->setAt($at.'.branches', $branches);
     }
 
+    /**
+     * $at: a search, "steps.0".
+     */
+    #[LiveAction]
+    public function addWhere(#[LiveArg] string $at): void
+    {
+        $where = $this->listAt($at.'.where');
+        $where[] = EditorModel::newWhere();
+        $this->setAt($at.'.where', $where);
+    }
+
+    #[LiveAction]
+    public function removeWhere(#[LiveArg] string $at, #[LiveArg] int $index): void
+    {
+        $where = $this->listAt($at.'.where');
+        array_splice($where, $index, 1);
+        $this->setAt($at.'.where', $where);
+    }
+
     #[LiveAction]
     public function addInput(): void
     {

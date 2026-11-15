@@ -44,6 +44,22 @@ final class PathCatalogTest extends KernelTestCase
         self::assertSame(['$trigger.object', '$trigger.action', '$trigger.record.id', '$trigger.record.name', '$trigger.record.owner', '$trigger.input.name'], $paths['trigger']);
     }
 
+    public function testASearchAndAnIteratorOfferTheirRecords(): void
+    {
+        self::createRelatedObjects(self::getContainer());
+        $paths = self::getContainer()->get(PathCatalog::class)->paths((new DefinitionParser())->parse(<<<'YAML'
+            trigger: { on: manual, object: person, label: Pets }
+            steps:
+              - { key: pets, type: search_records, object: pet }
+              - { key: each, type: iterator, items: '{{ pets.records }}', steps: [{ key: no, type: refuse, message: no }] }
+            YAML));
+
+        self::assertSame([
+            'pets' => ['pets.records', 'pets.count', 'pets.total', 'pets.first.id', 'pets.first.name', 'pets.first.owner'],
+            'each' => ['each.item', 'each.item.id', 'each.item.name', 'each.item.owner', 'each.index', 'each.count'],
+        ], $paths['steps']);
+    }
+
     public function testWithoutADefinitionTheRootsOnly(): void
     {
         $paths = self::getContainer()->get(PathCatalog::class)->paths(null);
