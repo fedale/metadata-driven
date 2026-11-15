@@ -19,8 +19,8 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:object:unique`](#metadataobjectunique) | Make a set of fields unique together, or no longer |
 | [`metadata:view:save`](#metadataviewsave) | Create or replace a view: an HTML layout of the record form, or the YAML columns of the record grid |
 | [`metadata:view:delete`](#metadataviewdelete) | Delete a view |
-| [`metadata:form:save`](#metadataformsave) | Create or replace a composite form from its YAML definition |
-| [`metadata:form:delete`](#metadataformdelete) | Delete a composite form (its records stay) |
+| [`metadata:form:save`](#metadataformsave) | Create or replace a form from its YAML definition |
+| [`metadata:form:delete`](#metadataformdelete) | Delete a form (its records stay) |
 | [`metadata:translation:set`](#metadatatranslationset) | Translate a text of the metadata into a language, or define a text of your own |
 | [`metadata:translation:list`](#metadatatranslationlist) | List the translation keys, with their texts in a language |
 | [`metadata:rename`](#metadatarename) | Give an object, or one of its fields, a new machine name |
@@ -29,7 +29,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:list`](#metadatalist) | List the objects, or the fields of one object, and what is archived |
 | [`metadata:files:gc`](#metadatafilesgc) | Delete the stored files no record references any more |
 | [`record:import`](#recordimport) | Import the rows of a CSV file into an object, all or nothing |
-| [`metadata:template:export`](#metadatatemplateexport) | Write objects, their fields and views, composite forms and their translations as a template |
+| [`metadata:template:export`](#metadatatemplateexport) | Write objects, their fields and views, forms and their translations as a template |
 | [`metadata:template:validate`](#metadatatemplatevalidate) | Check that a template follows the format, without installing it |
 | [`metadata:template:install`](#metadatatemplateinstall) | Install a template: its objects and their tables, fields, views, forms and translations, all or nothing |
 | [`metadata:template:list`](#metadatatemplatelist) | List the templates installed, with their versions |
@@ -368,8 +368,8 @@ its grid to a column per field, until another view is marked as default.
 
 ## `metadata:form:save`
 
-Create a composite form, or replace the definition of an existing one (see
-[Composite forms](forms.md) for the definition).
+Create a form, or replace the definition of an existing one (see
+[Forms](forms.md) for the definition).
 
 ```
 metadata:form:save <name> <file>
@@ -431,7 +431,7 @@ default one.
 
 Give an object, or one of its fields, a new machine name. Its table or column is renamed (the
 records stay), and so is everything named after it: relations, conditions, cascades, views,
-composite forms, translations, permissions. See [Renaming](lifecycle.md#renaming).
+forms, translations, permissions. See [Renaming](lifecycle.md#renaming).
 
 ```
 metadata:rename [--field=FIELD] <object> <new-name>
@@ -443,7 +443,7 @@ symfony console metadata:rename person town --field=city
 ```
 
 The definitions written by hand that were rewritten are listed after the success message: a YAML
-one (grid view, composite form) loses its comments.
+one (grid view, form) loses its comments.
 
 ## `metadata:archive`
 
@@ -498,7 +498,7 @@ With an object, every field with its type, label, required and unique flags and 
 
 ## `metadata:template:export`
 
-Write objects, with their fields and views, composite forms and their translations as a
+Write objects, with their fields and views, forms and their translations as a
 template: a directory of YAML documents (see [Templates](templates.md)).
 
 ```
@@ -511,7 +511,7 @@ metadata:template:export <name> <release> <directory> [--object=OBJECT]... [--fo
 | `release` | Its version, `major.minor.patch` (`1.0.0`) |
 | `directory` | A new or empty directory to write it into |
 | `--object` | An object to export, with its fields and views (repeatable) |
-| `--form` | A composite form to export; its objects must be exported too, or belong to another installed template (repeatable) |
+| `--form` | A form to export; its objects must be exported too, or belong to another installed template (repeatable) |
 | `--label`, `--description` | The title (default: from the name) and a line about the template |
 | `--license` | An SPDX identifier, such as `MIT` (default `proprietary`) |
 | `--seed` | Export the records of an object as a seed: `object`, or `object:key` to name its key field (default: its first unique field). Repeatable |

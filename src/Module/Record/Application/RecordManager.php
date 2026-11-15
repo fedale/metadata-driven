@@ -44,7 +44,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     public const string CONFLICT_MESSAGE = 'This record conflicts with an existing one, please try again.';
     public const string FOREIGN_FILE_MESSAGE = 'One of the files is not a file of this record.';
     public const string FOREIGN_SINGLE_FILE_MESSAGE = 'This file is not the file of this record.';
-    // The same message as an unknown row of a composite form.
+    // The same message as an unknown row of a form.
     public const string UNKNOWN_ROW_MESSAGE = 'This row does not belong to the record.';
     public const string SET_BY_RECORD_MESSAGE = 'This field is set by the record.';
     public const string LINKED_TWICE_MESSAGE = 'This record is already linked.';
@@ -172,7 +172,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         foreach (array_reverse($this->store->referencingIds($object, $object->field($fieldName), $targetId)) as $id) {
             $record = $this->store->find($object, $id);
             if (null !== $record) {
-                // A composite form's rows: they carry their own junction rows, as their form edits them.
+                // A form's rows: they carry their own junction rows, as their form edits them.
                 $records[] = $this->withRows($object, $record);
             }
         }

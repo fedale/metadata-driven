@@ -37,24 +37,24 @@ interface MetadataManagerInterface
 
     /**
      * Gives an object a new machine name: its table, the relations pointing at it, the
-     * composite forms naming it, its translations and its permissions follow.
+     * forms naming it, its translations and its permissions follow.
      *
-     * @return list<string> the definitions written by hand that were rewritten (composite forms)
+     * @return list<string> the definitions written by hand that were rewritten (forms)
      */
     public function renameObject(string $objectName, string $newName): array;
 
     /**
      * Gives a field a new machine name: its column, what names it in the metadata (label and
-     * searched fields, conditions, cascades), the views of its object, the composite forms and
+     * searched fields, conditions, cascades), the views of its object, the forms and
      * its translations follow.
      *
-     * @return list<string> the definitions written by hand that were rewritten (views, composite forms)
+     * @return list<string> the definitions written by hand that were rewritten (views, forms)
      */
     public function renameField(string $objectName, string $fieldName, string $newName): array;
 
     /**
      * Takes an object out of the application; its table and records stay. Refused while the
-     * metadata uses it (a relation, a composite form): the message lists every use.
+     * metadata uses it (a relation, a form): the message lists every use.
      */
     public function archiveObject(string $objectName): void;
 
@@ -62,7 +62,7 @@ interface MetadataManagerInterface
 
     /**
      * Takes a field out of the application; its column and values stay. Refused while the
-     * metadata uses it (a view, a composite form, a condition, a cascade).
+     * metadata uses it (a view, a form, a condition, a cascade).
      */
     public function archiveField(string $objectName, string $fieldName): void;
 
@@ -133,7 +133,7 @@ interface MetadataManagerInterface
     public function deleteView(string $objectName, ViewKind $kind, string $name): void;
 
     /**
-     * Creates a composite form, or replaces the definition of an existing one. Every error of
+     * Creates a form, or replaces the definition of an existing one. Every error of
      * the definition is reported at once, under the "definition" input.
      *
      * @param string $definition YAML: label, object, fields, service_fields, sections

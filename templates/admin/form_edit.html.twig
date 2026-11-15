@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% set heading = definition ? definition.label : 'admin.composite.new'|trans %}
+{% set heading = definition ? definition.label : 'admin.form.new'|trans %}
 
 {% block title %}{{ heading }} · {{ 'admin.forms'|trans }}{% endblock %}
 
@@ -9,7 +9,7 @@
     <h1>{{ heading }}{% if definition %} <span class="gv-muted">· <code>{{ definition.name }}</code></span>{% endif %}</h1>
 
     {% if definition %}
-        <p><a href="{{ path('composite_new', {form: definition.name}) }}">{{ 'admin.composite.open_form'|trans }}</a></p>
+        <p><a href="{{ path('form_new', {form: definition.name}) }}">{{ 'admin.form.open_form'|trans }}</a></p>
     {% endif %}
 
     <div class="md-admin__columns">
@@ -21,22 +21,22 @@
             {{ form_end(form) }}
 
             {% if delete_form is defined %}
-                {{ form_start(delete_form, {attr: {class: 'md-delete-form', 'data-turbo-confirm': 'admin.composite.delete_confirm'|trans({'%name%': definition.name})}}) }}
+                {{ form_start(delete_form, {attr: {class: 'md-delete-form', 'data-turbo-confirm': 'admin.form.delete_confirm'|trans({'%name%': definition.name})}}) }}
                     <button type="submit" class="gv-btn gv-btn-danger">{{ 'admin.delete'|trans }}</button>
                 {{ form_end(delete_form) }}
             {% endif %}
         </section>
 
         <section class="md-admin__section">
-            <h2>{{ 'admin.composite.languages'|trans }}</h2>
+            <h2>{{ 'admin.form.languages'|trans }}</h2>
             <p class="gv-muted">
-                {{ 'admin.composite.languages_help'|trans({'%translations%': path('admin_translation_index')|e, '%texts%': path('admin_text_index')|e})|raw }}
+                {{ 'admin.form.languages_help'|trans({'%translations%': path('admin_translation_index')|e, '%texts%': path('admin_text_index')|e})|raw }}
             </p>
         </section>
 
         <section class="md-admin__section">
-            <h2>{{ 'admin.composite.objects_relations'|trans }}</h2>
-            <p class="gv-muted">{{ 'admin.composite.objects_relations_help'|trans|raw }}</p>
+            <h2>{{ 'admin.form.objects_relations'|trans }}</h2>
+            <p class="gv-muted">{{ 'admin.form.objects_relations_help'|trans|raw }}</p>
             <dl class="md-facts">
                 {% for object in objects %}
                     <dt><code>{{ object.name }}</code></dt>

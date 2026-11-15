@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Metadata\Contract\Dto;
 
 /**
- * When a composite form asks a service field: every time its record is saved, or only when the
+ * When a form asks a service field: every time its record is saved, or only when the
  * record is created ("I accept the terms" once, at sign-up).
  */
 enum ServiceFieldAsk: string

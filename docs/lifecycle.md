@@ -25,7 +25,7 @@ Renaming an **object** renames everything named after it:
   constraints;
 - the relation and `many_to_many` fields pointing at it, in every object (`target`), and the
   `many_to_many` fields going through it (`through`);
-- the composite forms naming it (`object:`);
+- the forms naming it (`object:`);
 - its translations (`object.<name>.*`, `field.<name>.*`, `option.<name>.*`, ...);
 - its permissions `record.<name>.*`: the roles and users holding them keep them.
 
@@ -39,7 +39,7 @@ Renaming a **field** renames everything naming it:
 - the `many_to_many` fields going through its object (`throughSource`, `throughTarget`);
 - the views of its object: the `{field}` tokens of a form view, the columns, `{field}` tokens and
   sort of a grid view;
-- the composite forms: `fields`, `required`, the `{field}` tokens of a `layout`, and `via`;
+- the forms: `fields`, `required`, the `{field}` tokens of a `layout`, and `via`;
 - its translations (`field.<object>.<field>`, its options, its inverse title, its pattern message).
 
 The search indexes and the unique-together indexes are built again under the new names. The table then matches the metadata: the
@@ -47,11 +47,11 @@ The search indexes and the unique-together indexes are built again under the new
 
 ### The definitions written by hand
 
-Views and composite forms are written by hand, so the rename rewrites them, and says which ones it
-rewrote ("Rewritten to name the new one: grid view "list", composite form "registration"").
+Views and forms are written by hand, so the rename rewrites them, and says which ones it
+rewrote ("Rewritten to name the new one: grid view "list", form "registration"").
 
 - A **form view** (HTML) keeps its text: only its `{field}` tokens change.
-- A **grid view** or a **composite form** (YAML) is read, changed and written again, then compiled
+- A **grid view** or a **form** (YAML) is read, changed and written again, then compiled
   like when it is saved. Its content is the same, but **its comments and formatting are lost**.
   A definition that does not name the old name is not touched.
 
@@ -81,21 +81,21 @@ index is dropped: it holds no data).
 first. Archiving an object is refused while:
 
 - a relation or `many_to_many` field of another object points at it, or goes through it;
-- a composite form has a node on it.
+- a form has a node on it.
 
 Archiving a field is refused while:
 
 - another field is shown depending on it (a [condition](field-types.md#conditions));
 - a relation depends on it, or filters through it (a cascade);
 - a view of its object places it: a `{field}` token, a grid column, a sort;
-- a composite form names it in `fields`, `required`, a `layout` or `via`. A node without
+- a form names it in `fields`, `required`, a `layout` or `via`. A node without
   `fields` shows every field: the archived one simply leaves it;
 - a `many_to_many` field goes through it (`throughSource`, `throughTarget`);
 - it is part of a set unique together: archiving it would silently drop a rule on the data
   (`metadata:object:unique <object> <fields> --remove` first).
 
 > Refused: Field "account.active" cannot be archived, it is still used: field "lastname" is shown
-> depending on it; composite form "registration", (root): fields. Remove these uses first.
+> depending on it; form "registration", (root): fields. Remove these uses first.
 
 An object of the system cannot be archived nor renamed.
 

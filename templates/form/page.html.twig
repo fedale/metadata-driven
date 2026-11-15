@@ -1,13 +1,13 @@
 {% extends 'base.html.twig' %}
-{% import 'record/_composite.html.twig' as composite %}
+{% import 'form/_node.html.twig' as nodes %}
 
 {#
-    A composite form as a sheet: a header with the way back and the actions, an index of its
+    A form as a sheet: a header with the way back and the actions, an index of its
     parts on the side, then the parts as numbered cards: the fields of the root record first,
     then each section of the root.
 #}
 {% set root = definition.root %}
-{# Only a new composite offers "Save and new": it saves, then opens an empty form again. #}
+{# Only a new form offers "Save and new": it saves, then opens an empty form again. #}
 {% set can_save_new = id is null and can_save %}
 {% set back = can_list ? path('record_index', {object: object.name}) : path('app_home') %}
 {% set parts = [{id: 'part-root', title: object.labelSingular, description: root.description, many: false}] %}
@@ -18,7 +18,7 @@
 {% block title %}{{ definition.label }}{% endblock %}
 
 {% block body %}
-    {{ form_start(form, {attr: {class: 'md-sheet', novalidate: 'novalidate', id: 'composite-form', 'data-controller': can('admin.metadata') ? 'machine-names' : false}}) }}
+    {{ form_start(form, {attr: {class: 'md-sheet', novalidate: 'novalidate', id: 'form-sheet', 'data-controller': can('admin.metadata') ? 'machine-names' : false}}) }}
         {{ include('record/_sheet_header.html.twig', {
             crumb: object.labelPlural, crumb_url: can_list ? back : null, title: definition.label,
             back: back, can_save: can_save, can_save_new: can_save_new,
@@ -58,10 +58,10 @@
                             </div>
                         </header>
                         {% if loop.first %}
-                            {{ composite.node(form, root, can_save, true) }}
+                            {{ nodes.node(form, root, can_save, true) }}
                         {% else %}
                             {% set section = root.sections[loop.index0 - 1] %}
-                            {{ composite.section_body(form.sections[section.name], section, can_save) }}
+                            {{ nodes.section_body(form.sections[section.name], section, can_save) }}
                         {% endif %}
                     </section>
                 {% endfor %}

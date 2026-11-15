@@ -76,9 +76,9 @@ for later.
 | Incoming webhook | a request to a URL of its own (with the REST API of the roadmap) | 6 |
 
 **When record events fire.** At the end of the write that made them, **once per record**:
-a composite form writing an account, its profile and its phones gives three events, after the
-whole composite form is written, never in the middle. Through `RecordManager` (`create()`,
-`update()`, `delete()`): every write goes there (forms, composite forms, imports, templates'
+a form writing an account, its profile and its phones gives three events, after the
+whole form is written, never in the middle. Through `RecordManager` (`create()`,
+`update()`, `delete()`): every write goes there (forms, forms, imports, templates'
 seeds), and so does a delete's cascade, one event per record deleted. No event exists today: the
 Record module starts dispatching them (its contract), the Workflow module listens.
 

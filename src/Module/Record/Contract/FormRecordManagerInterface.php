@@ -5,16 +5,16 @@ declare(strict_types=1);
 namespace App\Module\Record\Contract;
 
 use App\Module\Metadata\Contract\Exception\FormDefinitionNotFound;
-use App\Module\Record\Contract\Dto\CompositeNodeInput;
-use App\Module\Record\Contract\Dto\CompositeRecord;
-use App\Module\Record\Contract\Exception\CompositeValidationFailed;
+use App\Module\Record\Contract\Dto\FormNodeInput;
+use App\Module\Record\Contract\Dto\FormRecord;
+use App\Module\Record\Contract\Exception\FormValidationFailed;
 use App\Module\Record\Contract\Exception\RecordNotFound;
 
 /**
- * Reads and writes the records of a composite form: a root record and, through the form's
+ * Reads and writes the records of a form: a root record and, through the form's
  * sections, the records related to it.
  */
-interface CompositeRecordManagerInterface
+interface FormRecordManagerInterface
 {
     /**
      * Validates the whole input first (every record, the service fields, the row counts), then
@@ -25,13 +25,13 @@ interface CompositeRecordManagerInterface
      * @return string the id of the root record
      *
      * @throws FormDefinitionNotFound
-     * @throws RecordNotFound            the root record (or a row's record) does not exist
-     * @throws CompositeValidationFailed
+     * @throws RecordNotFound         the root record (or a row's record) does not exist
+     * @throws FormValidationFailed
      */
-    public function save(string $formName, ?string $rootId, CompositeNodeInput $input): string;
+    public function save(string $formName, ?string $rootId, FormNodeInput $input): string;
 
     /**
      * @throws FormDefinitionNotFound
      */
-    public function read(string $formName, string $rootId): ?CompositeRecord;
+    public function read(string $formName, string $rootId): ?FormRecord;
 }

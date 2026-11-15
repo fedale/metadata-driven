@@ -35,7 +35,7 @@ final class AdminLifecycleControllerTest extends WebTestCase
         $this->client->submit($crawler->filter('form[name="rename"]')->form(['rename[name]' => 'person']));
         self::assertResponseRedirects('/admin/objects/person', 303);
         $this->client->followRedirect();
-        self::assertSelectorTextContains('.md-flash--success', 'Object "profile" is now "person", with its table. Rewritten to name the new one: composite form "registration"');
+        self::assertSelectorTextContains('.md-flash--success', 'Object "profile" is now "person", with its table. Rewritten to name the new one: form "registration"');
         self::assertSelectorTextContains('h1', 'person');
 
         $crawler = $this->client->request('GET', '/admin/objects/person/fields/city');
@@ -52,11 +52,11 @@ final class AdminLifecycleControllerTest extends WebTestCase
 
     public function testArchivesAndRestoresAFieldAndAnObject(): void
     {
-        // Listed by the composite form: refused, with the uses listed.
+        // Listed by the form: refused, with the uses listed.
         $crawler = $this->client->request('GET', '/admin/objects/account/fields/lastname');
         $this->client->submit($crawler->filter('form[name="archive"]')->form());
         $this->client->followRedirect();
-        self::assertSelectorTextContains('.md-flash--error', 'Field "account.lastname" cannot be archived, it is still used: composite form "registration", (root): fields.');
+        self::assertSelectorTextContains('.md-flash--error', 'Field "account.lastname" cannot be archived, it is still used: form "registration", (root): fields.');
 
         $crawler = $this->client->request('GET', '/admin/objects/profile/fields/birthdate');
         $this->client->submit($crawler->filter('form[name="archive"]')->form());

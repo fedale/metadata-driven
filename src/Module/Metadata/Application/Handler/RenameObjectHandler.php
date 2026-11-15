@@ -20,7 +20,7 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Renames an object and everything named after it, in one transaction: the relations pointing
- * at it, the composite forms naming it, its translations; the listeners of
+ * at it, the forms naming it, its translations; the listeners of
  * ObjectDefinitionRenamed rename its table and its permissions.
  */
 final class RenameObjectHandler

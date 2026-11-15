@@ -12,7 +12,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'metadata:form:delete', description: 'Delete a composite form (its records stay)')]
+#[AsCommand(name: 'metadata:form:delete', description: 'Delete a form (its records stay)')]
 final class DeleteFormConsoleCommand
 {
     public function __construct(

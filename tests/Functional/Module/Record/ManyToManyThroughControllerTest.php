@@ -133,7 +133,7 @@ final class ManyToManyThroughControllerTest extends WebTestCase
         self::assertSelectorTextContains('[data-gv-field="tags"]', 'Added and removed as records of Person tags.');
     }
 
-    public function testACompositeFormEditsTheRowsToo(): void
+    public function testAFormEditsTheRowsToo(): void
     {
         [$vip, $press] = [$this->create('tag', 'VIP'), $this->create('tag', 'Press')];
         self::getContainer()->get(MetadataManagerInterface::class)->saveForm('person_card', "label: Person card\nobject: person\nfields: [name, tags]\n");
@@ -142,18 +142,18 @@ final class ManyToManyThroughControllerTest extends WebTestCase
         self::assertResponseIsSuccessful();
         self::assertCount(1, $crawler->filter('[data-gv-field="tags"] .gv-collection'));
         $owner = ['id' => '', 'values' => ['tag' => $vip, 'role' => 'owner']];
-        $this->post('/f/person_card/new', $crawler, 'composite', ['values' => ['name' => 'Ada', 'tags' => [$owner, ['id' => '', 'values' => ['role' => 'guest']]]]]);
+        $this->post('/f/person_card/new', $crawler, 'form', ['values' => ['name' => 'Ada', 'tags' => [$owner, ['id' => '', 'values' => ['role' => 'guest']]]]]);
         self::assertResponseStatusCodeSame(422);
         self::assertSelectorTextContains('.gv-collection__row:nth-child(2)', 'This value is required.');
 
-        $this->post('/f/person_card/new', $crawler, 'composite', ['values' => ['name' => 'Ada', 'tags' => [$owner, ['id' => '', 'values' => ['tag' => $press, 'role' => 'guest']]]]]);
+        $this->post('/f/person_card/new', $crawler, 'form', ['values' => ['name' => 'Ada', 'tags' => [$owner, ['id' => '', 'values' => ['tag' => $press, 'role' => 'guest']]]]]);
         self::assertResponseRedirects();
         $ada = self::getContainer()->get(RecordFinderInterface::class)->latest('person')[0]->id;
         self::assertSame([[$vip, 'owner'], [$press, 'guest']], $this->rows($ada));
 
         // Editing shows the rows of the record.
         $crawler = $this->client->request('GET', \sprintf('/f/person_card/%s/edit', $ada));
-        self::assertSame('owner', $crawler->filter('input[name="composite[values][tags][0][values][role]"]')->attr('value'));
+        self::assertSame('owner', $crawler->filter('input[name="form[values][tags][0][values][role]"]')->attr('value'));
     }
 
     public function testTheGridListsAndFiltersTheLinks(): void

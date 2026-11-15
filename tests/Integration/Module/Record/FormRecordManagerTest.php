@@ -8,30 +8,30 @@ use App\Module\Metadata\Contract\Dto\FormNodeMode;
 use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
-use App\Module\Record\Contract\CompositeRecordManagerInterface;
-use App\Module\Record\Contract\Dto\CompositeNodeInput;
-use App\Module\Record\Contract\Dto\CompositeRecord;
+use App\Module\Record\Contract\Dto\FormNodeInput;
+use App\Module\Record\Contract\Dto\FormRecord;
 use App\Module\Record\Contract\Dto\RecordInput;
-use App\Module\Record\Contract\Exception\CompositeValidationFailed;
+use App\Module\Record\Contract\Exception\FormValidationFailed;
+use App\Module\Record\Contract\FormRecordManagerInterface;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
 use App\Tests\Support\CreatesRegistrationForm;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
- * A composite form (account, profile, phones, qualifications) against the real database.
+ * A form (account, profile, phones, qualifications) against the real database.
  */
-final class CompositeRecordManagerTest extends KernelTestCase
+final class FormRecordManagerTest extends KernelTestCase
 {
     use CreatesRegistrationForm;
 
-    private CompositeRecordManagerInterface $forms;
+    private FormRecordManagerInterface $forms;
     private RecordFinderInterface $finder;
 
     protected function setUp(): void
     {
         self::createRegistrationForm(self::getContainer());
-        $this->forms = self::getContainer()->get(CompositeRecordManagerInterface::class);
+        $this->forms = self::getContainer()->get(FormRecordManagerInterface::class);
         $this->finder = self::getContainer()->get(RecordFinderInterface::class);
     }
 
@@ -61,8 +61,8 @@ final class CompositeRecordManagerTest extends KernelTestCase
         self::assertSame('Milano', $profile->record->get('city'));
         self::assertSame($id, $profile->record->get('account'));
         $phones = self::rows($profile, 'phones');
-        self::assertSame(['333 123 4567', '02 123456'], array_map(static fn (CompositeRecord $phone): mixed => $phone->record->get('number'), $phones));
-        self::assertSame(['mobile', 'home'], array_map(static fn (CompositeRecord $phone): mixed => $phone->record->get('type'), $phones));
+        self::assertSame(['333 123 4567', '02 123456'], array_map(static fn (FormRecord $phone): mixed => $phone->record->get('number'), $phones));
+        self::assertSame(['mobile', 'home'], array_map(static fn (FormRecord $phone): mixed => $phone->record->get('type'), $phones));
         // The empty qualification row was skipped.
         self::assertCount(1, self::rows($saved, 'qualifications'));
     }
@@ -79,7 +79,7 @@ final class CompositeRecordManagerTest extends KernelTestCase
         try {
             $this->forms->save('registration', null, $input);
             self::fail('The form must be refused.');
-        } catch (CompositeValidationFailed $e) {
+        } catch (FormValidationFailed $e) {
             self::assertSame(['This value is not a valid email address.'], $e->errors['values.email']);
             self::assertSame(['This value is required.'], $e->errors['values.firstname']);
             self::assertSame(['This box must be checked.'], $e->errors['service.terms']);
@@ -95,7 +95,7 @@ final class CompositeRecordManagerTest extends KernelTestCase
         try {
             $this->forms->save('registration', null, $this->registration(profile: ['city' => '']));
             self::fail('The city is required by the form.');
-        } catch (CompositeValidationFailed $e) {
+        } catch (FormValidationFailed $e) {
             self::assertSame(['This value is required.'], $e->errors['sections.profile.values.city']);
         }
 
@@ -114,7 +114,7 @@ final class CompositeRecordManagerTest extends KernelTestCase
         $id = $this->forms->save('registration', null, $this->registration(profile: ['gender' => 'm', 'city' => '']));
         self::assertNull(self::one($this->read($id), 'profile')->record->get('city'));
 
-        $this->expectException(CompositeValidationFailed::class);
+        $this->expectException(FormValidationFailed::class);
         $this->forms->save('registration', null, $this->registration(account: ['username' => 'anna', 'email' => 'anna@example.com'], profile: ['gender' => 'f', 'city' => '']));
     }
 
@@ -126,12 +126,12 @@ final class CompositeRecordManagerTest extends KernelTestCase
         [$mobile, $home] = self::rows(self::one($saved, 'profile'), 'phones');
 
         // Keep the mobile (changed), drop the home phone, add an office one; password left empty.
-        $this->forms->save('registration', $id, new CompositeNodeInput(
+        $this->forms->save('registration', $id, new FormNodeInput(
             values: ['firstname' => 'Mario Luigi', 'password' => ''],
             service: ['terms' => true],
-            sections: ['profile' => new CompositeNodeInput(values: ['city' => 'Torino'], sections: ['phones' => [
-                0 => new CompositeNodeInput(id: $mobile->record->id, values: ['number' => '333 765 4321']),
-                5 => new CompositeNodeInput(values: ['number' => '011 555 555', 'type' => 'office']),
+            sections: ['profile' => new FormNodeInput(values: ['city' => 'Torino'], sections: ['phones' => [
+                0 => new FormNodeInput(id: $mobile->record->id, values: ['number' => '333 765 4321']),
+                5 => new FormNodeInput(values: ['number' => '011 555 555', 'type' => 'office']),
             ]])],
         ));
 
@@ -140,7 +140,7 @@ final class CompositeRecordManagerTest extends KernelTestCase
         self::assertSame('Mario Luigi', $saved->record->get('firstname'));
         $profile = self::one($saved, 'profile');
         self::assertSame('Torino', $profile->record->get('city'));
-        self::assertSame(['333 765 4321', '011 555 555'], array_map(static fn (CompositeRecord $phone): mixed => $phone->record->get('number'), self::rows($profile, 'phones')));
+        self::assertSame(['333 765 4321', '011 555 555'], array_map(static fn (FormRecord $phone): mixed => $phone->record->get('number'), self::rows($profile, 'phones')));
         self::assertNull($this->finder->find('phone', $home->record->id));
     }
 
@@ -159,26 +159,26 @@ final class CompositeRecordManagerTest extends KernelTestCase
         try {
             $this->forms->save('registration', null, $this->registration(terms: false));
             self::fail('The form must be refused.');
-        } catch (CompositeValidationFailed $e) {
+        } catch (FormValidationFailed $e) {
             self::assertSame(['This box must be checked.'], $e->errors['service.terms']);
             self::assertSame(['This value is required.'], $e->errors['sections.qualifications.0.service.earned']);
         }
         $input = $this->registration();
         $qualifications = $input->sections['qualifications'];
         self::assertIsArray($qualifications);
-        $qualifications[0] = new CompositeNodeInput(values: $qualifications[0]->values, service: ['earned' => true]);
-        $id = $this->forms->save('registration', null, new CompositeNodeInput(values: $input->values, service: $input->service, sections: ['qualifications' => $qualifications] + $input->sections));
+        $qualifications[0] = new FormNodeInput(values: $qualifications[0]->values, service: ['earned' => true]);
+        $id = $this->forms->save('registration', null, new FormNodeInput(values: $input->values, service: $input->service, sections: ['qualifications' => $qualifications] + $input->sections));
         [$qualification] = self::rows($this->read($id), 'qualifications');
 
         // Editing it asks neither again, but a row added meanwhile is new: it is asked "earned".
-        $edit = static fn (bool $earned): CompositeNodeInput => new CompositeNodeInput(
+        $edit = static fn (bool $earned): FormNodeInput => new FormNodeInput(
             values: ['password' => ''],
-            sections: ['qualifications' => [0 => new CompositeNodeInput(id: $qualification->record->id, values: ['year' => 2020]), 4 => new CompositeNodeInput(values: ['title' => 'Physics', 'year' => 2021], service: $earned ? ['earned' => true] : [])]],
+            sections: ['qualifications' => [0 => new FormNodeInput(id: $qualification->record->id, values: ['year' => 2020]), 4 => new FormNodeInput(values: ['title' => 'Physics', 'year' => 2021], service: $earned ? ['earned' => true] : [])]],
         );
         try {
             $this->forms->save('registration', $id, $edit(false));
             self::fail('The new row must be refused.');
-        } catch (CompositeValidationFailed $e) {
+        } catch (FormValidationFailed $e) {
             self::assertSame(['sections.qualifications.4.service.earned'], array_keys($e->errors));
         }
         $this->forms->save('registration', $id, $edit(true));
@@ -202,7 +202,7 @@ final class CompositeRecordManagerTest extends KernelTestCase
         try {
             $this->forms->save('registration', null, $input);
             self::fail('The form must be refused.');
-        } catch (CompositeValidationFailed $e) {
+        } catch (FormValidationFailed $e) {
             self::assertArrayHasKey('sections.profile.sections.phones.7.values.number', $e->errors);
         }
     }
@@ -233,7 +233,7 @@ final class CompositeRecordManagerTest extends KernelTestCase
         }
     }
 
-    private function read(string $id): CompositeRecord
+    private function read(string $id): FormRecord
     {
         $record = $this->forms->read('registration', $id);
         self::assertNotNull($record);
@@ -241,18 +241,18 @@ final class CompositeRecordManagerTest extends KernelTestCase
         return $record;
     }
 
-    private static function one(CompositeRecord $parent, string $section): CompositeRecord
+    private static function one(FormRecord $parent, string $section): FormRecord
     {
         $record = $parent->sections[$section] ?? null;
-        self::assertInstanceOf(CompositeRecord::class, $record);
+        self::assertInstanceOf(FormRecord::class, $record);
 
         return $record;
     }
 
     /**
-     * @return list<CompositeRecord>
+     * @return list<FormRecord>
      */
-    private static function rows(CompositeRecord $parent, string $section): array
+    private static function rows(FormRecord $parent, string $section): array
     {
         $rows = $parent->sections[$section] ?? null;
         self::assertIsArray($rows);
@@ -265,22 +265,22 @@ final class CompositeRecordManagerTest extends KernelTestCase
      * @param array<string, mixed>                  $profile
      * @param array<int, array<string, mixed>>|null $phones
      */
-    private function registration(array $account = [], bool $terms = true, array $profile = [], ?array $phones = null): CompositeNodeInput
+    private function registration(array $account = [], bool $terms = true, array $profile = [], ?array $phones = null): FormNodeInput
     {
         $phones ??= [['number' => '333 123 4567'], ['number' => '02 123456', 'type' => 'home']];
 
-        return new CompositeNodeInput(
+        return new FormNodeInput(
             values: $account + ['username' => 'mario', 'email' => 'mario@example.com', 'firstname' => 'Mario', 'lastname' => 'Rossi', 'password' => 'secret123', 'active' => true],
             service: ['terms' => $terms],
             sections: [
-                'profile' => new CompositeNodeInput(
+                'profile' => new FormNodeInput(
                     values: $profile + ['gender' => 'm', 'city' => 'Milano', 'zipcode' => '20121'],
-                    sections: ['phones' => array_map(static fn (array $phone): CompositeNodeInput => new CompositeNodeInput(values: $phone + ['prefix' => '+39', 'type' => 'mobile']), $phones)],
+                    sections: ['phones' => array_map(static fn (array $phone): FormNodeInput => new FormNodeInput(values: $phone + ['prefix' => '+39', 'type' => 'mobile']), $phones)],
                 ),
                 'qualifications' => [
-                    new CompositeNodeInput(values: ['title' => 'Computer engineering', 'year' => 2019]),
+                    new FormNodeInput(values: ['title' => 'Computer engineering', 'year' => 2019]),
                     // Left as the form shows it: skipped.
-                    new CompositeNodeInput(values: ['title' => '', 'year' => '']),
+                    new FormNodeInput(values: ['title' => '', 'year' => '']),
                 ],
             ],
         );

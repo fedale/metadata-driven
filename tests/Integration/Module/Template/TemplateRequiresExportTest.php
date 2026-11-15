@@ -95,7 +95,7 @@ final class TemplateRequiresExportTest extends KernelTestCase
         $this->assertRefused(['person'], 'Object "person" points at "province.zone" (province.dependsVia), which was added here to an object of acme/places');
     }
 
-    public function testExportsACompositeFormOverARequiredObject(): void
+    public function testExportsAFormOverARequiredObject(): void
     {
         $this->person();
         self::getContainer()->get(MetadataManagerInterface::class)->saveForm('residents', "label: Residents\nobject: region\nsections:\n  - { name: people, label: People, object: person, via: region, mode: many }\n");

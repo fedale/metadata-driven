@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Metadata\Contract\Dto;
 
 /**
- * How many records of its object a node of a composite form holds.
+ * How many records of its object a node of a form holds.
  */
 enum FormNodeMode: string
 {

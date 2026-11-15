@@ -7,7 +7,7 @@ from `fedale/gridview-bundle`, the runtime settings from `fedale/setting-bundle`
 
 | Schema | Holds | Managed by |
 |---|---|---|
-| `core` | The tenant registry (`core.tenant`) and who may sign in to each tenant (`core.tenant_membership`); object, field, view and composite form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the templates installed (`core.template_installation`) and the ids of items in templates (`core.template_item`), the settings of `fedale/setting-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
+| `core` | The tenant registry (`core.tenant`) and who may sign in to each tenant (`core.tenant_membership`); object, field, view and form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the templates installed (`core.template_installation`) and the ids of items in templates (`core.template_item`), the settings of `fedale/setting-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
 | a tenant's data schema (`data` for the first tenant) | One table per object, `c_<object>`, holding the records, and one link table per many-to-many field, `l_<object>__<field>` | The Schema module, from the tenant's metadata |
 | a tenant's RBAC schema (`rbac` for the first tenant) | The tables of `fedale/rbac-bundle` (`auth_*`): the tenant's roles, permissions and assignments | Created with the tenant |
 | `landlord_rbac` | The same tables, empty: the RBAC tables of a session with no tenant (the landlord's, the console's), where the bundle finds tables and no permission | Migrations |
@@ -134,12 +134,12 @@ template catalog uses it too (see [Templates](templates.md)). It depends on `sym
 
 | Module | Responsibility | Depends on (contracts) |
 |---|---|---|
-| Metadata | Object, field, view and composite form definitions, their translations, the cached registry and its localized variant, the `metadata:*` commands | — |
+| Metadata | Object, field, view and form definitions, their translations, the cached registry and its localized variant, the `metadata:*` commands | — |
 | FieldType | The field types: settings, columns, conversion, constraints, widgets | Metadata |
 | Schema | Turns definitions into DDL: tables, indexes, foreign keys, trigram and unique-together indexes; `schema:sync` | Metadata, FieldType, Search |
 | Validation | One validator for every record write, built from the metadata | Metadata, FieldType |
 | Search | Search handlers and the search configuration of objects | Metadata, FieldType |
-| Record | Record storage, the write pipeline, delete rules, lookups, the grid source, forms (with their view layout), composite forms and pages, the download of the files of the records (`/files/{id}`), CSV imports (`record:import`) | Metadata, FieldType, Validation, Search, Access, File |
+| Record | Record storage, the write pipeline, delete rules, lookups, the grid source, record forms (with their view layout), forms and their pages, the download of the files of the records (`/files/{id}`), CSV imports (`record:import`) | Metadata, FieldType, Validation, Search, Access, File |
 | Admin | The no-code builder at `/admin`, on `MetadataManagerInterface` | Metadata, FieldType, Schema |
 | User | Users and their profiles (with their language), sign-in (Symfony Security), `user:create` | — |
 | Access | The permissions of objects and admin, checked through `fedale/rbac-bundle`; `access:sync` | Metadata |
@@ -175,7 +175,7 @@ metadata:field:create pet owner relation …
 Inside a transaction the registry reads the definitions from the database, so the schema sync sees
 the uncommitted change; the cache is only refreshed once the change is committed.
 
-The cache keys of the metadata (the snapshot of the objects, the composite forms, the
+The cache keys of the metadata (the snapshot of the objects, the forms, the
 translations) carry the **metadata revision** and the **instance's id**, the current tenant's
 row of `core.metadata_state`, read once per request (`MetadataRevision`). Triggers on the
 metadata tables bump the revision of the tenant whose rows changed, in the transaction of every
@@ -205,7 +205,7 @@ link tables with their object's table, and renames and drops them with the field
 a field going through a junction object has none.
 
 A rename goes the same way: `RenameObjectHandler` / `RenameFieldHandler` save the definitions,
-rewrite the views and composite forms naming the old name (compiled again against the renamed
+rewrite the views and forms naming the old name (compiled again against the renamed
 definitions, which the registry reads from the database), then dispatch `ObjectDefinitionRenamed`
 / `FieldDefinitionRenamed`; the Schema module renames the table, columns, indexes and constraints,
 the Access module the permissions. See [Renaming and archiving](lifecycle.md).
@@ -233,7 +233,7 @@ The application follows the CSS grammar of fedale/gridview-bundle, whose stylesh
 | Prefix | What | Where |
 |---|---|---|
 | `gv-` | Generic components: form rows, labels, controls and errors (the bundle's form theme, `gv_form_theme.html.twig`, set for every form in `config/packages/twig.yaml`), the required marker and note, buttons (`gv-btn`), the switch, the segmented choice, the password meter and eye, repeatable rows (`gv-collection`) | fedale/gridview-bundle: `_forms.scss` and its Stimulus controllers, see its guide `19_form-components.md` |
-| `md-` | Components of this application only: page, top bar, flash messages, admin, composite form sections, view layouts | `assets/styles/app.css` |
+| `md-` | Components of this application only: page, top bar, flash messages, admin, form sections, view layouts | `assets/styles/app.css` |
 
 Both follow `block__element--modifier`, and every colour and size comes from the bundle's
 `--gv-*` design tokens, defined on `<body data-gv-scope>`: the grid's theme, its dark mode and its

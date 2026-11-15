@@ -7,7 +7,7 @@ namespace App\Module\Metadata\Domain\Model;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * A composite form: one form over a root object and the objects related to it.
+ * A form: one form over a root object and the objects related to it.
  *
  * The definition is kept twice: as written (YAML, comments included, shown back to the
  * editor) and compiled (checked against the objects, normalized, read by the pages).

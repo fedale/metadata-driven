@@ -13,7 +13,7 @@ use App\Module\Metadata\Domain\Model\FormDefinition;
 use App\Module\Metadata\Domain\Repository\FormDefinitionRepository;
 
 /**
- * Builds the composite forms of the snapshot from storage, without any caching.
+ * Builds the forms of the snapshot from storage, without any caching.
  */
 final class FormSnapshotLoader
 {

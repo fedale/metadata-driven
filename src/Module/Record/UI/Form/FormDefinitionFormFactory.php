@@ -8,22 +8,22 @@ use App\Module\Metadata\Contract\Dto\FormDefinitionDto;
 use App\Module\Metadata\Contract\Dto\FormNodeDto;
 use App\Module\Metadata\Contract\Dto\FormNodeMode;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
-use App\Module\Record\Contract\Dto\CompositeNodeInput;
-use App\Module\Record\Contract\Dto\CompositeRecord;
-use App\Module\Record\Contract\Exception\CompositeValidationFailed;
+use App\Module\Record\Contract\Dto\FormNodeInput;
+use App\Module\Record\Contract\Dto\FormRecord;
+use App\Module\Record\Contract\Exception\FormValidationFailed;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 
 /**
- * Builds the form of a composite form definition, and converts between its data and the
- * records: CompositeRecord → form data → CompositeNodeInput.
+ * Builds the form of a form definition, and converts between its data and the
+ * records: FormRecord → form data → FormNodeInput.
  *
  * The data of a node: ['id' => ?string, 'values' => [...], 'service' => [...],
  * 'sections' => [name => node data, or a list of row node data]].
  */
-final class CompositeFormFactory
+final class FormDefinitionFormFactory
 {
     public function __construct(
         private readonly FormFactoryInterface $formFactory,
@@ -37,9 +37,9 @@ final class CompositeFormFactory
     /**
      * @return FormInterface<array<string, mixed>>
      */
-    public function create(FormDefinitionDto $form, ?CompositeRecord $record, bool $readOnly = false): FormInterface
+    public function create(FormDefinitionDto $form, ?FormRecord $record, bool $readOnly = false): FormInterface
     {
-        return $this->formFactory->createNamed('composite', CompositeNodeType::class, $this->data($form->root, $record), [
+        return $this->formFactory->createNamed('form', FormNodeType::class, $this->data($form->root, $record), [
             'node' => $form->root,
             'label' => false,
             'disabled' => $readOnly,
@@ -52,16 +52,16 @@ final class CompositeFormFactory
      *
      * @return array<string, mixed>
      */
-    public function data(FormNodeDto $node, ?CompositeRecord $record): array
+    public function data(FormNodeDto $node, ?FormRecord $record): array
     {
         $sections = [];
         foreach ($node->sections as $section) {
             $current = $record?->sections[$section->name] ?? null;
             if (FormNodeMode::One === $section->mode) {
-                $sections[$section->name] = $this->data($section, $current instanceof CompositeRecord ? $current : null);
+                $sections[$section->name] = $this->data($section, $current instanceof FormRecord ? $current : null);
                 continue;
             }
-            $rows = array_map(fn (CompositeRecord $row): array => $this->data($section, $row), \is_array($current) ? $current : []);
+            $rows = array_map(fn (FormRecord $row): array => $this->data($section, $row), \is_array($current) ? $current : []);
             while (\count($rows) < $section->min) {
                 $rows[] = $this->data($section, null);
             }
@@ -81,9 +81,9 @@ final class CompositeFormFactory
     }
 
     /**
-     * The submitted data of a node as the input of the composite record manager.
+     * The submitted data of a node as the input of the form record manager.
      */
-    public function input(FormNodeDto $node, mixed $data): CompositeNodeInput
+    public function input(FormNodeDto $node, mixed $data): FormNodeInput
     {
         $data = \is_array($data) ? $data : [];
         $sections = [];
@@ -112,7 +112,7 @@ final class CompositeFormFactory
         /** @var array<string, mixed> $service keyed by service field name */
         $service = \is_array($data['service'] ?? null) ? $data['service'] : [];
 
-        return new CompositeNodeInput(\is_string($id) && '' !== $id ? $id : null, $values, $service, $sections);
+        return new FormNodeInput(\is_string($id) && '' !== $id ? $id : null, $values, $service, $sections);
     }
 
     /**
@@ -123,7 +123,7 @@ final class CompositeFormFactory
      *
      * @param FormInterface<T> $form
      */
-    public function addErrors(FormInterface $form, CompositeValidationFailed $failure): void
+    public function addErrors(FormInterface $form, FormValidationFailed $failure): void
     {
         foreach ($failure->errors as $path => $messages) {
             $target = RecordFormFactory::errorTarget($form, $path);

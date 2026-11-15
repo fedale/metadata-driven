@@ -37,7 +37,7 @@ code, the commands, the admin UI and the documentation.
 | **Virtual column** | A grid column joining several fields, with no column of its own in the table |
 | **Renderer** | How a grid cell is drawn (a link, a badge, a thumbnail...) |
 | **Token** | A placeholder in a layout: `{field}` for a field, `{section}` for a section of a form, `{t:name}` for a translated text |
-| **Form** | One page writing a record **and the records related to it** in one transaction, defined in YAML (see [Composite forms](forms.md)). Opened at `/f/<form>` |
+| **Form** | One page writing a record **and the records related to it** in one transaction, defined in YAML (see [Forms](forms.md)). Opened at `/f/<form>` |
 | **Root** | The record a form is about, and the part of the form writing it |
 | **Section** | A part of a form writing the records of another object related to the root or to an outer section: one record, or a repeatable list (`mode: many`) |
 | **Service field** | A field of a form that is checked and then dropped: no column stores it (a "I accept the terms" box) |
@@ -89,7 +89,7 @@ code, the commands, the admin UI and the other guides still say:
 | Here | Still in use |
 |---|---|
 | record | record and row |
-| form | composite form |
+| form | form |
 | package, package item, package source | template, template item, template source (`metadata:template:*`, `core.template_*`, the repositories `metadata-driven-templates` and `metadata-driven-template-format`) |
 | system, system admin | landlord, operator (`tenant:operator`) |
 | workspace, workspace membership | tenant, tenant membership (`core.tenant*`, `tenant:*`, `--tenant`, the guide multi-tenancy.md) |

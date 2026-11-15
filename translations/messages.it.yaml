@@ -306,8 +306,8 @@ admin:
         table_skipped: 'Differenze lasciate di proposito (distruttive; le applica solo <code>schema:sync --allow-destructive</code>):'
         table_up_to_date: La tabella era già aggiornata.
         table_synced: '{1}1 modifica applicata alla tabella.|]1,Inf[%count% modifiche applicate alla tabella.'
-        rename_help: 'Lettere minuscole, cifre e trattini bassi singoli. La tabella, le relazioni che puntano qui, i moduli composti, le traduzioni e i permessi si adeguano; i link alle vecchie pagine smettono di funzionare.'
-        archive_help: 'Toglie l''oggetto dall''applicazione: pagine, griglie e moduli. La tabella e i record restano, e si può ripristinare dall''elenco degli oggetti. Rifiutato finché una relazione o un modulo composto lo usa.'
+        rename_help: 'Lettere minuscole, cifre e trattini bassi singoli. La tabella, le relazioni che puntano qui, i moduli, le traduzioni e i permessi si adeguano; i link alle vecchie pagine smettono di funzionare.'
+        archive_help: 'Toglie l''oggetto dall''applicazione: pagine, griglie e moduli. La tabella e i record restano, e si può ripristinare dall''elenco degli oggetti. Rifiutato finché una relazione o un modulo lo usa.'
         archive_confirm: 'Archiviare %objects%? I loro record restano.'
         archive_button: 'Archivia %objects%'
         renamed: 'L''oggetto "%old%" ora si chiama "%new%", con la sua tabella.'
@@ -344,8 +344,8 @@ admin:
         save_condition: Salva la condizione
         condition_saved: Condizione salvata.
         always_applies: Il campo si applica sempre.
-        rename_help: 'Lettere minuscole, cifre e trattini bassi singoli. La colonna, le viste, i moduli composti, le condizioni, le cascate e le traduzioni si adeguano.'
-        archive_help: 'Toglie il campo da moduli, griglie e validazione. La colonna e i valori restano, e si può ripristinare dalla pagina dell''oggetto. Rifiutato finché una vista, un modulo composto, una condizione o una cascata lo usa.'
+        rename_help: 'Lettere minuscole, cifre e trattini bassi singoli. La colonna, le viste, i moduli, le condizioni, le cascate e le traduzioni si adeguano.'
+        archive_help: 'Toglie il campo da moduli, griglie e validazione. La colonna e i valori restano, e si può ripristinare dalla pagina dell''oggetto. Rifiutato finché una vista, un modulo, una condizione o una cascata lo usa.'
         archive_confirm: 'Archiviare il campo %field%? I suoi valori restano.'
         archive_button: 'Archivia %field%'
         renamed: 'Il campo "%old%" ora si chiama "%new%", con la sua colonna.'
@@ -375,7 +375,7 @@ admin:
         created: 'Vista "%name%" creata.'
         saved: Vista salvata.
         deleted: 'Vista "%name%" eliminata.'
-    composite:
+    form:
         intro: 'Un modulo scrive in una volta un record e i record collegati: un profilo, i suoi telefoni, i titoli di studio di un account...'
         new: Nuovo modulo
         empty: Ancora nessun modulo.
@@ -401,7 +401,7 @@ admin:
         key: Chiave
         original: '%language% (originale)'
         change_original: 'Cambia il testo in %language%'
-        texts_intro: 'Testi tuoi, non legati ai metadati, per i layout: un token <code>{t:nome}</code> in una vista di modulo, in un modulo composto o nell''intestazione di una griglia mostra il testo con quel nome nella lingua dell''utente. Ogni testo si scrive qui in tutte le lingue; quello in %original% è obbligatorio e compare dove manca un altro. Svuotalo per rimuovere il testo, quando nessun token lo usa più.'
+        texts_intro: 'Testi tuoi, non legati ai metadati, per i layout: un token <code>{t:nome}</code> in una vista di modulo, in un modulo o nell''intestazione di una griglia mostra il testo con quel nome nella lingua dell''utente. Ogni testo si scrive qui in tutte le lingue; quello in %original% è obbligatorio e compare dove manca un altro. Svuotalo per rimuovere il testo, quando nessun token lo usa più.'
         no_texts: Ancora nessun testo.
         required_language: '%language% (obbligatorio)'
         optional_language: '%language% (facoltativo)'

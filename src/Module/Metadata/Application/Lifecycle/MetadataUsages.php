@@ -54,7 +54,7 @@ final class MetadataUsages
                 }
             }
             if ([] !== $paths) {
-                $usages[] = \sprintf('composite form "%s" (%s)', $form->name, implode(', ', $paths));
+                $usages[] = \sprintf('form "%s" (%s)', $form->name, implode(', ', $paths));
             }
         }
 
@@ -111,7 +111,7 @@ final class MetadataUsages
                     'via' => $node->via === $fieldName,
                 ]));
                 if ([] !== $how) {
-                    $usages[] = \sprintf('composite form "%s", %s: %s', $form->name, $path, implode(', ', $how));
+                    $usages[] = \sprintf('form "%s", %s: %s', $form->name, $path, implode(', ', $how));
                 }
             }
         }

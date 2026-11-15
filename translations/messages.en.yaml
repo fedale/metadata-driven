@@ -309,8 +309,8 @@ admin:
         table_skipped: 'Differences kept on purpose (destructive; only <code>schema:sync --allow-destructive</code> applies them):'
         table_up_to_date: The table was already up to date.
         table_synced: '{1}1 change applied to the table.|]1,Inf[%count% changes applied to the table.'
-        rename_help: 'Lowercase letters, digits and single underscores. The table, the relations pointing here, the composite forms, the translations and the permissions follow; the links to the old pages stop working.'
-        archive_help: 'Takes the object out of the application: its pages, grids and forms. The table and the records are kept, and it can be restored from the list of objects. Refused while a relation or a composite form uses it.'
+        rename_help: 'Lowercase letters, digits and single underscores. The table, the relations pointing here, the forms, the translations and the permissions follow; the links to the old pages stop working.'
+        archive_help: 'Takes the object out of the application: its pages, grids and forms. The table and the records are kept, and it can be restored from the list of objects. Refused while a relation or a form uses it.'
         archive_confirm: 'Archive %objects%? Their records are kept.'
         archive_button: 'Archive %objects%'
         renamed: 'Object "%old%" is now "%new%", with its table.'
@@ -347,8 +347,8 @@ admin:
         save_condition: Save condition
         condition_saved: Condition saved.
         always_applies: The field always applies.
-        rename_help: 'Lowercase letters, digits and single underscores. The column, the views, the composite forms, the conditions, the cascades and the translations follow.'
-        archive_help: 'Takes the field out of the forms, the grids and the validation. The column and its values are kept, and it can be restored from the page of the object. Refused while a view, a composite form, a condition or a cascade uses it.'
+        rename_help: 'Lowercase letters, digits and single underscores. The column, the views, the forms, the conditions, the cascades and the translations follow.'
+        archive_help: 'Takes the field out of the forms, the grids and the validation. The column and its values are kept, and it can be restored from the page of the object. Refused while a view, a form, a condition or a cascade uses it.'
         archive_confirm: 'Archive the field %field%? Its values are kept.'
         archive_button: 'Archive %field%'
         renamed: 'Field "%old%" is now "%new%", with its column.'
@@ -378,7 +378,7 @@ admin:
         created: 'View "%name%" created.'
         saved: View saved.
         deleted: 'View "%name%" deleted.'
-    composite:
+    form:
         intro: 'A form writes a record and the records related to it at once: a profile, its phones, the qualifications of an account...'
         new: New form
         empty: No forms yet.
@@ -404,7 +404,7 @@ admin:
         key: Key
         original: '%language% (original)'
         change_original: 'Change the %language% text'
-        texts_intro: 'Texts of your own, not tied to the metadata, for the layouts: a <code>{t:name}</code> token in a form view, a composite form or a grid heading shows the text of that name in the language of the user. Each text is written here in every language; the %original% one is required and shows wherever another is missing. Empty it to remove the text, once no token places it.'
+        texts_intro: 'Texts of your own, not tied to the metadata, for the layouts: a <code>{t:name}</code> token in a form view, a form or a grid heading shows the text of that name in the language of the user. Each text is written here in every language; the %original% one is required and shows wherever another is missing. Empty it to remove the text, once no token places it.'
         no_texts: No texts yet.
         required_language: '%language% (required)'
         optional_language: '%language% (optional)'

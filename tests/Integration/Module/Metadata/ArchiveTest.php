@@ -73,8 +73,8 @@ final class ArchiveTest extends KernelTestCase
         self::createRegistrationForm(self::getContainer());
         $this->manager->configureFieldCondition('account', 'lastname', 'active', ['true']);
 
-        $this->assertRefused(fn () => $this->manager->archiveField('account', 'active'), 'Field "account.active" cannot be archived, it is still used: field "lastname" is shown depending on it; composite form "registration", (root): fields.');
-        $this->assertRefused(fn () => $this->manager->archiveObject('profile'), 'Object "profile" cannot be archived, it is still used: relation field "phone.profile" points at it; composite form "registration" (profile).');
+        $this->assertRefused(fn () => $this->manager->archiveField('account', 'active'), 'Field "account.active" cannot be archived, it is still used: field "lastname" is shown depending on it; form "registration", (root): fields.');
+        $this->assertRefused(fn () => $this->manager->archiveObject('profile'), 'Object "profile" cannot be archived, it is still used: relation field "phone.profile" points at it; form "registration" (profile).');
         self::assertTrue($this->metadata->getObject('account')->hasField('active'));
     }
 

@@ -1,6 +1,7 @@
 # Plan: renaming the vocabulary
 
-Status: **agreed** (2026-11-15); phase 1 is next.
+Status: **agreed** (2026-11-15). Phase 1 done on branch `composite_form_rename` (2026-11-15),
+waiting for the user's review.
 The names are recorded in [../glossary.md](../glossary.md); this plan brings the code, the
 database, the commands, the admin UI, the guides and the package format in line with it.
 
@@ -45,7 +46,7 @@ database, the commands, the admin UI, the guides and the package format in line 
 
 ## Phases
 
-### Phase 1: composite form → form
+### Phase 1: composite form → form (done)
 
 About 36 files in `src`, 10 in `tests`.
 
@@ -55,6 +56,12 @@ About 36 files in `src`, 10 in `tests`.
 - Translation keys `admin.composite.*` → `admin.form.*`, in `translations/` (both languages).
 - Guides: forms.md (title "Forms"), admin.md, console.md, views.md, templates.md, i18n.md (its
   key table: "Section of a composite form").
+- Done: also `CompositeRecord*` → `FormRecord*`, `CompositeNodeInput` → `FormNodeInput`,
+  `CompositeValidationFailed` → `FormValidationFailed`, `CompositeFormFactory` →
+  `FormDefinitionFormFactory`, `CompositeNodeType` → `FormNodeType`, the Twig function
+  `composite_form_layout()` → `form_node_layout()`, the templates `record/composite.html.twig`,
+  `record/_composite.html.twig` → `form/page.html.twig`, `form/_node.html.twig`, the HTML form
+  name `composite[...]` → `form[...]`, the CSS classes `md-composite__*` → `md-form-section*`.
 
 ### Phase 2: landlord, operator → system, system admin
 

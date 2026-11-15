@@ -23,7 +23,7 @@ use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * Turns the YAML definition of a composite form into its compiled form, checked against the
+ * Turns the YAML definition of a form into its compiled form, checked against the
  * objects: every object, field and relation it names must exist and fit together.
  *
  * Every error is collected, prefixed with the path of its node ("profile.phones"), and

@@ -14,7 +14,7 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Creates a composite form, or replaces the definition of an existing one.
+ * Creates a form, or replaces the definition of an existing one.
  */
 final class SaveFormHandler
 {

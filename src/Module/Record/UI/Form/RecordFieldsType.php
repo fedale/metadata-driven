@@ -10,7 +10,7 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
- * Some fields of a record, as a form of their own: the "values" of a composite form node.
+ * Some fields of a record, as a form of their own: the "values" of a form node.
  *
  * @extends AbstractType<array<string, mixed>>
  */

@@ -133,8 +133,8 @@ Things that are not obvious from a single file, and that are easy to break.
   are sortable by default: a column that must not sort needs `sortable(false)`. Grid views are at
   `/o/<object>/grid/<name>` because the bundle owns `?view=`; YAML compiled by `GridViewCompiler`,
   cells rendered by `CellRendererInterface` implementations.
-- **Composite forms**: YAML compiled by `FormDefinitionCompiler` into JSONB
-  (`core.metadata_form`); `CompositeRecordManager` checks the whole tree first, then writes it in
+- **Forms** (called composite forms until 2026-11-15): YAML compiled by `FormDefinitionCompiler`
+  into JSONB (`core.metadata_form`); `FormRecordManager` checks the whole tree first, then writes it in
   one transaction. The compiler refuses a `fields` list that omits a field the object requires.
 - **Lifecycle**: archive is refused while the item is used anywhere; `MetadataUsages` lists the
   uses.
@@ -272,10 +272,10 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   word per concept; on 2026-11-15, after comparing the app with Drupal, Directus and Twenty CRM
   (the closest), object, field, record and view stay. Renamed: composite form → form, landlord /
   operator → system / system admin, tenant → workspace, template → package (the repositories
-  too). Only the glossary uses the new names so far (its "Not yet" lists the old ones). The
-  rename is agreed, in six phases, in [vocabulary-rename-plan.md](vocabulary-rename-plan.md):
-  no aliases for the old commands and URLs; phase 1 (composite form → form) is next; phases 2
-  and 3 after `rbac_tenancy` is merged.
+  too). The glossary's "Not yet" lists the old names still in use. The rename is agreed, in six
+  phases, in [vocabulary-rename-plan.md](vocabulary-rename-plan.md), with no aliases for the old
+  commands and URLs. Phase 1 (composite form → form): done on branch `composite_form_rename`
+  (2026-11-15), waiting for the user's review; phases 2 and 3 after `rbac_tenancy` is merged.
 - **CSV import**, (C) only: imports of very large files in the background, with Messenger. (A)
   and (B) are done (see "Done").
 - Admin UI in Italian: still English are the error messages of the metadata and the templates

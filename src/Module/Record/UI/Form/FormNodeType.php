@@ -18,22 +18,22 @@ use Symfony\Component\Form\FormEvents;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
- * One node of a composite form: "values" (the fields of its record), "service" (its service
+ * One node of a form: "values" (the fields of its record), "service" (its service
  * fields), "sections" (one child per section: a node, or a collection of row nodes) and, for a
  * row, its hidden record "id".
  *
- * The data is an array of that shape; see CompositeFormFactory.
+ * The data is an array of that shape; see FormDefinitionFormFactory.
  *
  * @extends AbstractType<array<string, mixed>>
  */
-final class CompositeNodeType extends AbstractType
+final class FormNodeType extends AbstractType
 {
     public function __construct(
         // The labels in the user's language.
         #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
         private readonly RecordFormFactory $forms,
-        private readonly CompositeFormFactory $composite,
+        private readonly FormDefinitionFormFactory $factory,
     ) {
     }
 
@@ -69,7 +69,7 @@ final class CompositeNodeType extends AbstractType
                     'error_bubbling' => false,
                     // Distinct per section: a row's prototype holds the prototypes of its own sections.
                     'prototype_name' => '__'.$section->name.'__',
-                    'prototype_data' => $this->composite->data($section, null),
+                    'prototype_data' => $this->factory->data($section, null),
                 ]);
             }
             $builder->add($sections);
@@ -108,7 +108,7 @@ final class CompositeNodeType extends AbstractType
 
     public function configureOptions(OptionsResolver $resolver): void
     {
-        // Errors stay where the composite record manager puts them (a row, a section).
+        // Errors stay where the form record manager puts them (a row, a section).
         $resolver
             ->setDefault('error_bubbling', false)
             ->setRequired('node')
