@@ -190,6 +190,13 @@ version must be v2 (the pull request check refuses a `template.yaml`). The catal
 `package_source.url`). The repository is renamed on GitHub by the user (no `gh` here), who opens
 and merges the catalog's pull request.
 
+## After the plan (2026-11-15)
+
+- **"row"**: the guides were read through; every "row" left is a physical row, a line of a CSV
+  file or a line on a page, none a record. The glossary says so, and its "Not yet" is gone.
+- **A virtual column's `template`** (the text of a grid view's virtual column) keeps its name:
+  the user's choice. The glossary records it as the one "template" left.
+
 ## Risks
 
 - Phase 3 touches the session, the security and every `core` table: test the sign-in, the
