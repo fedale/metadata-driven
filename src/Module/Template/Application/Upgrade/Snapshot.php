@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Module\Template\Application\Upgrade;
 
-use Fedale\TemplateFormat\Document;
-use Fedale\TemplateFormat\DocumentKind;
-use Fedale\TemplateFormat\Format;
-use Fedale\TemplateFormat\Package;
-use Fedale\TemplateFormat\SeedRecords;
+use Fedale\PackageFormat\Document;
+use Fedale\PackageFormat\DocumentKind;
+use Fedale\PackageFormat\Format;
+use Fedale\PackageFormat\Package;
+use Fedale\PackageFormat\SeedRecords;
 
 /**
  * What an installation records of its template: the base the next upgrade compares against.
@@ -28,7 +28,8 @@ final class Snapshot
      */
     public static function of(Package $owned, Package $template, SeedRecords $seedRecords, array $fingerprints = []): array
     {
-        $snapshot = [$template->manifest->path => self::document($template->manifest)];
+        // The manifest under its v2 name, whatever the format the package was read from.
+        $snapshot = [Format::MANIFEST => self::document($template->manifest)];
         foreach ($owned->documents as $document) {
             $snapshot[$document->path] = self::document($document);
         }
@@ -65,7 +66,7 @@ final class Snapshot
                 $spec = ['records' => $entry['records']] + array_diff_key($spec, ['source' => true]);
             }
             $document = new Document($kind, $entry['id'], $spec, (string) $path);
-            if (DocumentKind::Template === $kind) {
+            if (DocumentKind::Package === $kind) {
                 $manifest = $document;
             } else {
                 $documents[] = $document;

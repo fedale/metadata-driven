@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use Fedale\TemplateFormat\Archive;
-use Fedale\TemplateFormat\Document;
-use Fedale\TemplateFormat\DocumentCodec;
-use Fedale\TemplateFormat\PackageDirectory;
-use Fedale\TemplateFormat\TemplateIndex;
+use Fedale\PackageFormat\Archive;
+use Fedale\PackageFormat\Document;
+use Fedale\PackageFormat\DocumentCodec;
+use Fedale\PackageFormat\Format;
+use Fedale\PackageFormat\PackageDirectory;
+use Fedale\PackageFormat\RepositoryIndex;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -50,10 +51,11 @@ trait PublishesPlacesAndPeople
         $manifest = (new PackageDirectory($codec))->read($copy)->manifest;
         $spec = ['version' => $version] + $manifest->spec;
         if (null !== $requires) {
-            $spec['requires'] = ['format' => 'metadata-driven/v1'] + $requires;
+            $spec['requires'] = ['format' => Format::VERSION] + $requires;
         }
         $name ??= $manifest->id;
-        file_put_contents($copy.'/template.yaml', $codec->encode(new Document($manifest->kind, $name, $spec, $manifest->path)));
+        // Written back in v2, where the manifest was: template.yaml for the v1 fixture (places).
+        file_put_contents($copy.'/'.$manifest->path, $codec->encode(new Document($manifest->kind, $name, $spec, $manifest->path)));
         $archive = $copy.'.tar.gz';
         (new Archive())->pack($copy, $archive);
 
@@ -64,6 +66,6 @@ trait PublishesPlacesAndPeople
 
     private function serveFixtures(): void
     {
-        FakeTemplateServer::serve(self::INDEX, (string) json_encode(['format' => TemplateIndex::FORMAT, 'templates' => $this->entries]));
+        FakeTemplateServer::serve(self::INDEX, (string) json_encode(['format' => RepositoryIndex::FORMAT, 'templates' => $this->entries]));
     }
 }

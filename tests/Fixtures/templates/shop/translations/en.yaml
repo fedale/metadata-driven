@@ -1,4 +1,4 @@
-format: metadata-driven/v1
+format: metadata-driven/v2
 kind: Translations
 id: acme.translations.en
 spec:

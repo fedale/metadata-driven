@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Template\Application\Source;
 
-use Fedale\TemplateFormat\IndexEntry;
+use Fedale\PackageFormat\IndexEntry;
 
 /**
  * A version of a template found in an index.

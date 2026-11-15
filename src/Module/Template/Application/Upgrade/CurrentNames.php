@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Module\Template\Application\Upgrade;
 
 use App\Module\Template\Application\RequiredItems;
-use Fedale\TemplateFormat\DocumentKind;
-use Fedale\TemplateFormat\FieldTypes\FieldTypeCatalog;
-use Fedale\TemplateFormat\FieldTypes\ReferenceKind;
-use Fedale\TemplateFormat\Package;
+use Fedale\PackageFormat\DocumentKind;
+use Fedale\PackageFormat\FieldTypes\FieldTypeCatalog;
+use Fedale\PackageFormat\FieldTypes\ReferenceKind;
+use Fedale\PackageFormat\Package;
 
 /**
  * The names the template's items have on the instance, by id, kept up to date while an

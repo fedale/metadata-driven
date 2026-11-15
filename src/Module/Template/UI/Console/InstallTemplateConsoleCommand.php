@@ -9,7 +9,7 @@ use App\Module\Template\Application\Source\PackageLocator;
 use App\Module\Template\Application\TemplateInstaller;
 use App\Module\Template\Domain\Exception\InstallRefused;
 use App\Module\Template\Domain\Exception\TemplateSourceFailed;
-use Fedale\TemplateFormat\InvalidPackage;
+use Fedale\PackageFormat\InvalidPackage;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;

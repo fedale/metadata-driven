@@ -16,9 +16,9 @@ use App\Module\Template\Application\Upgrade\Snapshot;
 use App\Module\Template\Domain\Exception\InstallRefused;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
 use App\Tests\Support\ExampleTemplate;
-use Fedale\TemplateFormat\Document;
-use Fedale\TemplateFormat\DocumentKind;
-use Fedale\TemplateFormat\Package;
+use Fedale\PackageFormat\Document;
+use Fedale\PackageFormat\DocumentKind;
+use Fedale\PackageFormat\Package;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -32,7 +32,7 @@ final class TemplateRequiresTest extends KernelTestCase
 {
     public function testRefusesATemplateWhoseRequirementIsNotInstalled(): void
     {
-        $this->assertRefused(ExampleTemplate::people(), 'template.yaml: spec.requires.acme/places: acme/places is required: it must be installed');
+        $this->assertRefused(ExampleTemplate::people(), 'package.yaml: spec.requires.acme/places: acme/places is required: it must be installed');
 
         self::assertFalse(self::getContainer()->get(MetadataRegistryInterface::class)->hasObject('person'));
     }
@@ -41,7 +41,7 @@ final class TemplateRequiresTest extends KernelTestCase
     {
         $this->install(self::withManifest(ExampleTemplate::places(), static fn (array $spec): array => ['version' => '2.0.0'] + $spec));
 
-        $this->assertRefused(ExampleTemplate::people(), 'template.yaml: spec.requires.acme/places: acme/places 2.0.0 does not fit ^1.0.');
+        $this->assertRefused(ExampleTemplate::people(), 'package.yaml: spec.requires.acme/places: acme/places 2.0.0 does not fit ^1.0.');
     }
 
     public function testInstallsOnTopOfTheTemplateItRequires(): void

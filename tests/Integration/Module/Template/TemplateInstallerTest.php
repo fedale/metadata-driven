@@ -18,12 +18,12 @@ use App\Module\Template\Domain\Exception\InvalidExport;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
 use App\Tests\Support\ExampleTemplate;
 use App\Tests\Support\RemovesDirectories;
-use Fedale\TemplateFormat\Document;
-use Fedale\TemplateFormat\DocumentKind;
-use Fedale\TemplateFormat\Package;
-use Fedale\TemplateFormat\PackageChecker;
-use Fedale\TemplateFormat\PackageDirectory;
-use Fedale\TemplateFormat\SeedRecords;
+use Fedale\PackageFormat\Document;
+use Fedale\PackageFormat\DocumentKind;
+use Fedale\PackageFormat\Package;
+use Fedale\PackageFormat\PackageChecker;
+use Fedale\PackageFormat\PackageDirectory;
+use Fedale\PackageFormat\SeedRecords;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -216,7 +216,7 @@ final class TemplateInstallerTest extends KernelTestCase
     public function testAStepTheAppRefusesRollsEverythingBack(): void
     {
         // A layout placing a text nobody defined: the app refuses the view.
-        $package = self::changed(ExampleTemplate::package(), 'views/product.form.main.yaml', static fn (array $spec): array => ['template' => '<p>{t:missing}</p>'] + $spec);
+        $package = self::changed(ExampleTemplate::package(), 'views/product.form.main.yaml', static fn (array $spec): array => ['source' => '<p>{t:missing}</p>'] + $spec);
 
         $this->assertRefused($package, 'views/product.form.main.yaml: spec: ');
         self::assertFalse(self::getContainer()->get(MetadataRegistryInterface::class)->hasObject('category'));
@@ -228,8 +228,8 @@ final class TemplateInstallerTest extends KernelTestCase
         self::getContainer()->get(MetadataManagerInterface::class)->createObject('tag', 'Tag', 'Tags');
         $this->assertRefused(ExampleTemplate::package(), 'objects/tag.yaml: spec.name: This instance already has an object "tag".');
 
-        $requires = self::changed(ExampleTemplate::package(), 'template.yaml', static fn (array $spec): array => ['requires' => ['format' => 'metadata-driven/v1', 'acme/geo-italy' => '^1.0']] + $spec);
-        $this->assertRefused($requires, 'template.yaml: spec.requires.acme/geo-italy: acme/geo-italy is required: it must be installed');
+        $requires = self::changed(ExampleTemplate::package(), 'package.yaml', static fn (array $spec): array => ['requires' => ['format' => 'metadata-driven/v2', 'acme/geo-italy' => '^1.0']] + $spec);
+        $this->assertRefused($requires, 'package.yaml: spec.requires.acme/geo-italy: acme/geo-italy is required: it must be installed');
 
         $invalid = self::changed(ExampleTemplate::package(), 'objects/product.yaml', static fn (array $spec): array => ['plural' => ''] + $spec);
         $this->assertRefused($invalid, 'objects/product.yaml: spec.plural: Minimum string length is 1, found 0');

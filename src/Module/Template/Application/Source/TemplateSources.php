@@ -8,14 +8,14 @@ use App\Module\Template\Domain\Exception\TemplateSourceFailed;
 use App\Module\Template\Domain\Model\TemplateSource;
 use App\Module\Template\Domain\Repository\TemplateSourceRepository;
 use App\Shared\Workspace\CurrentWorkspace;
-use Fedale\TemplateFormat\Archive;
-use Fedale\TemplateFormat\Constraint;
-use Fedale\TemplateFormat\Format;
-use Fedale\TemplateFormat\IndexEntry;
-use Fedale\TemplateFormat\InvalidIndex;
-use Fedale\TemplateFormat\InvalidPackage;
-use Fedale\TemplateFormat\Signature;
-use Fedale\TemplateFormat\TemplateIndex;
+use Fedale\PackageFormat\Archive;
+use Fedale\PackageFormat\Constraint;
+use Fedale\PackageFormat\Format;
+use Fedale\PackageFormat\IndexEntry;
+use Fedale\PackageFormat\InvalidIndex;
+use Fedale\PackageFormat\InvalidPackage;
+use Fedale\PackageFormat\RepositoryIndex;
+use Fedale\PackageFormat\Signature;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpClient\NoPrivateNetworkHttpClient;
@@ -140,10 +140,10 @@ final class TemplateSources
     /**
      * @throws TemplateSourceFailed
      */
-    public function index(string $url): TemplateIndex
+    public function index(string $url): RepositoryIndex
     {
         try {
-            return TemplateIndex::fromJson($this->fetch($url, self::MAX_INDEX_BYTES), $url);
+            return RepositoryIndex::fromJson($this->fetch($url, self::MAX_INDEX_BYTES), $url);
         } catch (InvalidIndex $e) {
             throw new TemplateSourceFailed($e->getMessage(), 0, $e);
         }
@@ -211,7 +211,7 @@ final class TemplateSources
         [$index, $read] = $found[0];
         $entry = null === $version ? $read->latest($name) : $read->find($name, $version);
         if (null === $entry) {
-            throw new TemplateSourceFailed(null === $version ? \sprintf('%s offers no version of %s for format %s that is not yanked.', $index['name'], $name, Format::VERSION) : \sprintf('%s offers no version %s of %s.', $index['name'], $version, $name));
+            throw new TemplateSourceFailed(null === $version ? \sprintf('%s offers no version of %s for format %s that is not yanked.', $index['name'], $name, implode(' or ', Format::READS)) : \sprintf('%s offers no version %s of %s.', $index['name'], $version, $name));
         }
 
         return new LocatedTemplate($index['name'], $index['url'], $entry, $index['key']);
@@ -259,7 +259,7 @@ final class TemplateSources
         [$index, $read] = $found[0];
         $fitting = array_values(array_filter(
             $read->versions($name),
-            static fn (IndexEntry $entry): bool => !$entry->yanked && Format::VERSION === ($entry->requires['format'] ?? null) && $constraint->allows($entry->version),
+            static fn (IndexEntry $entry): bool => !$entry->yanked && \in_array($entry->requires['format'] ?? null, Format::READS, true) && $constraint->allows($entry->version),
         ));
         if ([] === $fitting) {
             throw new TemplateSourceFailed(\sprintf('%s offers no version of %s that fits %s and is not yanked.', $index['name'], $name, $constraint));
@@ -281,8 +281,8 @@ final class TemplateSources
         if (null !== $located->publicKey && !Signature::verify($entry, $located->publicKey)) {
             throw new TemplateSourceFailed(\sprintf('%s %s is not signed with the key of %s: it was not downloaded.', $entry->name, $entry->version, $located->source));
         }
-        if (Format::VERSION !== ($entry->requires['format'] ?? null)) {
-            throw new TemplateSourceFailed(\sprintf('%s %s is of format %s; this instance reads %s.', $entry->name, $entry->version, $entry->requires['format'] ?? '?', Format::VERSION));
+        if (!\in_array($entry->requires['format'] ?? null, Format::READS, true)) {
+            throw new TemplateSourceFailed(\sprintf('%s %s is of format %s; this instance reads %s.', $entry->name, $entry->version, $entry->requires['format'] ?? '?', implode(' or ', Format::READS)));
         }
         $content = $this->fetch($entry->url, $this->maxDownloadMb * 1_000_000);
         if (!hash_equals($entry->sha256, hash('sha256', $content))) {

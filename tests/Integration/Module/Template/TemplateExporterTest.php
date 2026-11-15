@@ -10,11 +10,11 @@ use App\Module\Template\Application\Command\ExportTemplateCommand;
 use App\Module\Template\Application\TemplateExporter;
 use App\Module\Template\Contract\Exception\TemplateException;
 use App\Tests\Support\RemovesDirectories;
-use Fedale\TemplateFormat\Document;
-use Fedale\TemplateFormat\DocumentKind;
-use Fedale\TemplateFormat\Package;
-use Fedale\TemplateFormat\PackageChecker;
-use Fedale\TemplateFormat\PackageDirectory;
+use Fedale\PackageFormat\Document;
+use Fedale\PackageFormat\DocumentKind;
+use Fedale\PackageFormat\Package;
+use Fedale\PackageFormat\PackageChecker;
+use Fedale\PackageFormat\PackageDirectory;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -229,7 +229,7 @@ final class TemplateExporterTest extends KernelTestCase
         ksort($documents);
 
         self::assertNotEmpty($documents);
-        self::assertSame(DocumentKind::Template, $package->manifest->kind);
+        self::assertSame(DocumentKind::Package, $package->manifest->kind);
 
         return $documents;
     }

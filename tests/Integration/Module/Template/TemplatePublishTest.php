@@ -48,7 +48,7 @@ final class TemplatePublishTest extends KernelTestCase
         self::assertStringContainsString('Copied into '.$this->catalog.'/templates/acme/shop/1.0.0.', $output);
         self::assertStringContainsString('git checkout -b add_acme_shop_1_0_0 main', $output);
         self::assertStringContainsString('git commit -m "Add acme/shop 1.0.0"', $output);
-        foreach (['template.yaml', 'objects/product.yaml', 'seeds/products.csv', 'files/products/oslo.png', 'README.md'] as $file) {
+        foreach (['package.yaml', 'objects/product.yaml', 'seeds/products.csv', 'files/products/oslo.png', 'README.md'] as $file) {
             self::assertFileEquals($source.'/'.$file, $target.'/'.$file);
         }
     }
@@ -116,7 +116,7 @@ final class TemplatePublishTest extends KernelTestCase
 
     public function testRefusesARequirementTheCatalogDoesNotHave(): void
     {
-        $refused = 'template.yaml: spec.requires.acme/places: The catalog has no version of acme/places that fits ^1.0 and is not yanked: publish it first, in a pull request of its own.';
+        $refused = 'package.yaml: spec.requires.acme/places: The catalog has no version of acme/places that fits ^1.0 and is not yanked: publish it first, in a pull request of its own.';
 
         $output = $this->command(['directory' => ExampleTemplate::PEOPLE], 1);
         self::assertStringContainsString($refused, $output);
@@ -147,7 +147,7 @@ final class TemplatePublishTest extends KernelTestCase
     {
         $target = $this->directory.'/source-'.$version.$suffix;
         self::copyOf(ExampleTemplate::DIRECTORY, $target);
-        $manifest = $target.'/template.yaml';
+        $manifest = $target.'/package.yaml';
         file_put_contents($manifest, str_replace('version: 1.0.0', 'version: '.$version, (string) file_get_contents($manifest)));
 
         return $target;

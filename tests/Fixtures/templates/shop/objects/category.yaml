@@ -1,4 +1,4 @@
-format: metadata-driven/v1
+format: metadata-driven/v2
 kind: Object
 id: acme.category
 spec:

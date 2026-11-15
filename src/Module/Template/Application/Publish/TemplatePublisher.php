@@ -6,15 +6,15 @@ namespace App\Module\Template\Application\Publish;
 
 use App\Module\Template\Application\Upgrade\Snapshot;
 use App\Module\Template\Domain\Exception\PublishRefused;
-use Fedale\TemplateFormat\Constraint;
-use Fedale\TemplateFormat\Format;
-use Fedale\TemplateFormat\InvalidPackage;
-use Fedale\TemplateFormat\Package;
-use Fedale\TemplateFormat\PackageChecker;
-use Fedale\TemplateFormat\PackageDirectory;
-use Fedale\TemplateFormat\Problem;
-use Fedale\TemplateFormat\Versions\ItemStates;
-use Fedale\TemplateFormat\Versions\VersionCheck;
+use Fedale\PackageFormat\Constraint;
+use Fedale\PackageFormat\Format;
+use Fedale\PackageFormat\InvalidPackage;
+use Fedale\PackageFormat\Package;
+use Fedale\PackageFormat\PackageChecker;
+use Fedale\PackageFormat\PackageDirectory;
+use Fedale\PackageFormat\Problem;
+use Fedale\PackageFormat\Versions\ItemStates;
+use Fedale\PackageFormat\Versions\VersionCheck;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
@@ -123,16 +123,16 @@ final readonly class TemplatePublisher
                 $required[] = $found;
             } elseif (null === $found) {
                 $missing[] = $name;
-                $problems[] = \sprintf('%s: spec.requires.%s: The catalog has no version of %s that fits %s and is not yanked: publish it first, in a pull request of its own.', Format::MANIFEST, $name, $name, $constraint);
+                $problems[] = \sprintf('%s: spec.requires.%s: The catalog has no version of %s that fits %s and is not yanked: publish it first, in a pull request of its own.', $package->manifest->path, $name, $name, $constraint);
             }
         }
         $problems = [...$problems, ...array_map(strval(...), array_values(array_filter(
             $this->checker->check($package, $required),
-            static fn (Problem $problem): bool => !(Format::MANIFEST === $problem->path && \in_array(substr($problem->at, \strlen('spec.requires.')), $missing, true)),
+            static fn (Problem $problem): bool => !($package->manifest->path === $problem->path && \in_array(substr($problem->at, \strlen('spec.requires.')), $missing, true)),
         )))];
         $cycle = $this->cycle($catalog, $yanked, $package, [$package->name()], []);
         if (null !== $cycle) {
-            $problems[] = \sprintf('%s: spec.requires: These templates would require each other: %s. None of them could be installed.', Format::MANIFEST, $cycle);
+            $problems[] = \sprintf('%s: spec.requires: These templates would require each other: %s. None of them could be installed.', $package->manifest->path, $cycle);
         }
 
         return $problems;

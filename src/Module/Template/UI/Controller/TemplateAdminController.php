@@ -17,7 +17,7 @@ use App\Module\Template\Domain\Exception\InstallRefused;
 use App\Module\Template\Domain\Exception\TemplateSourceFailed;
 use App\Module\Template\Domain\Exception\UpgradeRefused;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
-use Fedale\TemplateFormat\InvalidPackage;
+use Fedale\PackageFormat\InvalidPackage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;

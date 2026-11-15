@@ -14,9 +14,9 @@ use App\Tests\Support\ExampleTemplate;
 use App\Tests\Support\FakeTemplateServer;
 use App\Tests\Support\PublishesTemplates;
 use App\Tests\Support\RemovesDirectories;
-use Fedale\TemplateFormat\Archive;
-use Fedale\TemplateFormat\Signature;
-use Fedale\TemplateFormat\TemplateIndex;
+use Fedale\PackageFormat\Archive;
+use Fedale\PackageFormat\RepositoryIndex;
+use Fedale\PackageFormat\Signature;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -152,7 +152,7 @@ final class TemplateSourcesTest extends KernelTestCase
 
         $this->command('metadata:template:pack', ['directory' => ExampleTemplate::DIRECTORY, 'archive' => $this->directory.'/acme-shop-1.0.0.tar.gz', '--index' => $this->directory.'/index.json', '--sign' => $this->directory.'/acme.key']);
 
-        $entry = TemplateIndex::fromJson((string) file_get_contents($this->directory.'/index.json'), self::INDEX)->find('acme/shop', '1.0.0');
+        $entry = RepositoryIndex::fromJson((string) file_get_contents($this->directory.'/index.json'), self::INDEX)->find('acme/shop', '1.0.0');
         self::assertNotNull($entry);
         self::assertTrue(Signature::verify($entry, $publicKey));
         self::assertStringContainsString('a key is never overwritten', $this->command('metadata:template:keygen', ['file' => $this->directory.'/acme.key'], 1));
@@ -193,7 +193,7 @@ final class TemplateSourcesTest extends KernelTestCase
         self::assertStringContainsString('give the secret key (--sign)', $this->command('metadata:template:yank', ['index' => $this->directory.'/index.json', 'name' => 'acme/shop', 'version' => '1.0.0'], 1));
         $this->command('metadata:template:yank', ['index' => $this->directory.'/index.json', 'name' => 'acme/shop', 'version' => '1.0.0', '--sign' => $this->directory.'/acme.key']);
 
-        $entry = TemplateIndex::fromJson((string) file_get_contents($this->directory.'/index.json'), self::INDEX)->find('acme/shop', '1.0.0');
+        $entry = RepositoryIndex::fromJson((string) file_get_contents($this->directory.'/index.json'), self::INDEX)->find('acme/shop', '1.0.0');
         self::assertTrue($entry?->yanked);
         self::assertTrue(Signature::verify($entry, $keys['public']));
     }
@@ -202,7 +202,7 @@ final class TemplateSourcesTest extends KernelTestCase
     {
         $this->command('metadata:template:pack', ['directory' => ExampleTemplate::DIRECTORY, 'archive' => $this->directory.'/acme-shop-1.0.0.tar.gz', '--index' => $this->directory.'/index.json']);
 
-        $index = TemplateIndex::fromJson((string) file_get_contents($this->directory.'/index.json'), self::INDEX);
+        $index = RepositoryIndex::fromJson((string) file_get_contents($this->directory.'/index.json'), self::INDEX);
         $entry = $index->find('acme/shop', '1.0.0');
         self::assertSame('https://templates.acme.example/acme-shop-1.0.0.tar.gz', $entry?->url);
         self::assertSame(hash_file('sha256', $this->directory.'/acme-shop-1.0.0.tar.gz'), $entry->sha256);

@@ -1,5 +1,5 @@
-format: metadata-driven/v1
-kind: Template
+format: metadata-driven/v2
+kind: Package
 id: acme/shop
 spec:
   version: 1.0.0
@@ -7,7 +7,7 @@ spec:
   description: Products, their categories and their tags.
   license: MIT
   requires:
-    format: metadata-driven/v1
+    format: metadata-driven/v2
   resources:
     - objects/*.yaml
     - forms/*.yaml

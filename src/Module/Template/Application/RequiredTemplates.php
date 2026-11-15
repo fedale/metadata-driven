@@ -11,10 +11,10 @@ use App\Module\Template\Domain\Model\ItemKind;
 use App\Module\Template\Domain\Model\TemplateInstallation;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
 use App\Module\Template\Domain\Repository\TemplateItemRepository;
-use Fedale\TemplateFormat\Constraint;
-use Fedale\TemplateFormat\DocumentKind;
-use Fedale\TemplateFormat\Package;
-use Fedale\TemplateFormat\SeedRecords;
+use Fedale\PackageFormat\Constraint;
+use Fedale\PackageFormat\DocumentKind;
+use Fedale\PackageFormat\Package;
+use Fedale\PackageFormat\SeedRecords;
 
 /**
  * The templates a template requires (spec.requires), as installed here: what the format's

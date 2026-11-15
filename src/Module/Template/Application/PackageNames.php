@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Module\Template\Application;
 
-use Fedale\TemplateFormat\DocumentKind;
-use Fedale\TemplateFormat\Package;
+use Fedale\PackageFormat\DocumentKind;
+use Fedale\PackageFormat\Package;
 
 /**
  * The names the app will give a template's objects and fields, by id: inside the app items

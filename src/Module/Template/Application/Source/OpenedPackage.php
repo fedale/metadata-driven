@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Template\Application\Source;
 
-use Fedale\TemplateFormat\Package;
+use Fedale\PackageFormat\Package;
 
 final readonly class OpenedPackage
 {

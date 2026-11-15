@@ -29,15 +29,16 @@ use App\Module\Template\Domain\Repository\PersistenceReset;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
 use App\Module\Template\Domain\Repository\TemplateItemRepository;
 use App\Shared\Transaction\TransactionRunner;
-use Fedale\TemplateFormat\DocumentKind;
-use Fedale\TemplateFormat\FieldTypes\FieldTypeCatalog;
-use Fedale\TemplateFormat\FieldTypes\ReferenceKind;
-use Fedale\TemplateFormat\Package;
-use Fedale\TemplateFormat\PackageChecker;
-use Fedale\TemplateFormat\SeedRecords;
-use Fedale\TemplateFormat\Versions\ItemState;
-use Fedale\TemplateFormat\Versions\ItemStates;
-use Fedale\TemplateFormat\Versions\VersionCheck;
+use Fedale\PackageFormat\DocumentKind;
+use Fedale\PackageFormat\FieldTypes\FieldTypeCatalog;
+use Fedale\PackageFormat\FieldTypes\ReferenceKind;
+use Fedale\PackageFormat\Format;
+use Fedale\PackageFormat\Package;
+use Fedale\PackageFormat\PackageChecker;
+use Fedale\PackageFormat\SeedRecords;
+use Fedale\PackageFormat\Versions\ItemState;
+use Fedale\PackageFormat\Versions\ItemStates;
+use Fedale\PackageFormat\Versions\VersionCheck;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Yaml\Yaml;
 
@@ -267,7 +268,7 @@ final class TemplateUpgrader
      */
     private static function stepDescriptions(array $steps): array
     {
-        return array_map(static fn (array $step): string => \sprintf('template.yaml: migration %s: copy_values %s to %s', $step['version'], $step['from'], $step['to']), $steps);
+        return array_map(static fn (array $step): string => \sprintf('%s: migration %s: copy_values %s to %s', Format::MANIFEST, $step['version'], $step['from'], $step['to']), $steps);
     }
 
     /**
@@ -456,7 +457,7 @@ final class TemplateUpgrader
         foreach ($steps as $step) {
             $from = $theirs['field:'.$step['from']] ?? $base['field:'.$step['from']] ?? null;
             $to = $theirs['field:'.$step['to']] ?? null;
-            $where = \sprintf('template.yaml: spec.migrations.%s: copy_values %s to %s: ', $step['version'], $step['from'], $step['to']);
+            $where = \sprintf('%s: spec.migrations.%s: copy_values %s to %s: ', Format::MANIFEST, $step['version'], $step['from'], $step['to']);
             if (null === $from || null === $to) {
                 $problems[] = $where.'both fields must be fields of the template.';
             } elseif (self::value($from)['object'] !== self::value($to)['object']) {
@@ -481,7 +482,7 @@ final class TemplateUpgrader
             try {
                 $this->records->update($record->id, new RecordInput($object, [$to => $record->values[$from] ?? null]));
             } catch (RecordValidationFailed $e) {
-                throw UpgradeRefused::at('template.yaml', \sprintf('migration %s', $step['version']), \sprintf('record %s of "%s": %s', $record->id, $object, $e->getMessage()));
+                throw UpgradeRefused::at(Format::MANIFEST, \sprintf('migration %s', $step['version']), \sprintf('record %s of "%s": %s', $record->id, $object, $e->getMessage()));
             }
         }
     }
@@ -568,7 +569,7 @@ final class TemplateUpgrader
             $names->object(self::string($new['object'])),
             ViewKind::from(self::string($new['kind'])),
             self::string($new['name']),
-            self::string($new['template']),
+            self::string($new['source']),
             true === $new['default'],
         ));
         if (null === $old) {

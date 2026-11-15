@@ -22,13 +22,13 @@ use App\Module\Template\Domain\Repository\PersistenceReset;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
 use App\Module\Template\Domain\Repository\TemplateItemRepository;
 use App\Shared\Transaction\TransactionRunner;
-use Fedale\TemplateFormat\Document;
-use Fedale\TemplateFormat\DocumentKind;
-use Fedale\TemplateFormat\FieldTypes\FieldTypeCatalog;
-use Fedale\TemplateFormat\FieldTypes\ReferenceKind;
-use Fedale\TemplateFormat\Package;
-use Fedale\TemplateFormat\PackageChecker;
-use Fedale\TemplateFormat\SeedRecords;
+use Fedale\PackageFormat\Document;
+use Fedale\PackageFormat\DocumentKind;
+use Fedale\PackageFormat\FieldTypes\FieldTypeCatalog;
+use Fedale\PackageFormat\FieldTypes\ReferenceKind;
+use Fedale\PackageFormat\Package;
+use Fedale\PackageFormat\PackageChecker;
+use Fedale\PackageFormat\SeedRecords;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Yaml\Yaml;
 
@@ -259,7 +259,7 @@ final class TemplateInstaller
                 $names->object(self::string($view->spec['object'] ?? null)),
                 ViewKind::from(self::string($view->spec['kind'] ?? null)),
                 self::string($view->spec['name'] ?? null),
-                self::string($view->spec['template'] ?? null),
+                self::string($view->spec['source'] ?? null),
                 true === ($view->spec['default'] ?? false),
             ));
             $items[] = $this->item($package, ItemKind::View, $view->id, $localId);

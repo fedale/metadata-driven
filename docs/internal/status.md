@@ -12,8 +12,8 @@ Last updated: 2026-11-14.
   enough. To work on one, clone it next to this repository and `composer link ../<repo>`
   (the composer-link plugin, installed globally; see getting-started.md, "Working on the
   bundles"). All the repositories are under `git@github.com:fedale/<repo>.git`, cloned under
-  the name of their repository (the format: `../metadata-driven-template-format`, the name of
-  its package too); use SSH remotes.
+  the name of their repository (the format: `../metadata-driven-package-format`, the name of
+  its package too; a clone made before 2026-11-15 may be `../template-format`); use SSH remotes.
 - Then follow [../getting-started.md](../getting-started.md) (`make up`, `make db`, `make assets`).
 - The dev database is not in git. The "registration" model built on the original machine (objects
   `account`, `profile`, `phone`, `qualification`, `region`, `province`, `municipality` loaded from
@@ -162,9 +162,10 @@ Things that are not obvious from a single file, and that are easy to break.
   `FileCell` (Record UI) draws them. `FieldTypeInterface::isSortable()` (false
   for `file` and `many_to_many`) decides sorting, searching and virtual columns, in the default
   grid, the grid view compiler and the grid source alike.
-- **Templates**: the format is `fedale/metadata-driven-template-format` (Packagist;
-  `../metadata-driven-template-format` linked to work on it, its own `composer qa`; namespace
-  `Fedale\TemplateFormat`): only `symfony/yaml` and `opis/json-schema`. A change to the format
+- **Templates**: the format is `fedale/metadata-driven-package-format` (Packagist, from 2.0;
+  until 1.2 `fedale/metadata-driven-template-format`; `../metadata-driven-package-format` linked
+  to work on it, its own `composer qa`; namespace `Fedale\PackageFormat`). Format v2 since
+  2026-11-15 (`package.yaml`, kind `Package`, a view's `source`); v1 is still read. Only `symfony/yaml` and `opis/json-schema`. A change to the format
   is made there, with its tests. It describes the field types on its own (`Resources/field-types.v1.json`):
   **a new field type or setting must be added there too**, or
   `FieldTypeCatalogMatchesTheAppTest` fails; and to `translations/field_types.it.yaml`, or
@@ -282,9 +283,13 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   Phase 2 merged into `main` on 2026-11-15. Phase 3 (tenant → workspace: `core.workspace*`,
   the `workspace_id` columns, `app.workspace_id`, `no_workspace_rbac`, the `workspace:*` commands
   and `--workspace`, `/console/workspaces/...`, the env vars `WORKSPACE_BASE_HOST` and
-  `WORKSPACE_DEFAULT`, the guide workspaces.md; migration `Version20261115110000`): done on
-  branch `workspace_rename` (2026-11-15), waiting for the user's review. The entries of this file
-  written before 2026-11-15 still say "tenant".
+  `WORKSPACE_DEFAULT`, the guide workspaces.md; migration `Version20261115110000`): merged into
+  `main` on 2026-11-15. The entries of this file written before 2026-11-15 still say "tenant".
+  Phase 4 (package format v2, the library renamed `fedale/metadata-driven-package-format` 2.0.0,
+  namespace `Fedale\PackageFormat`; the installations' snapshots converted by
+  `Version20261115120000`): the library on its branch `package_format`, the app on
+  `package_format_v2` (2026-11-15), the app linked to the local library until 2.0.0 is released
+  and on Packagist.
 - **CSV import**, (C) only: imports of very large files in the background, with Messenger. (A)
   and (B) are done (see "Done").
 - Admin UI in Italian: still English are the error messages of the metadata and the templates
