@@ -22,10 +22,11 @@ use App\Shared\Tenant\Tenant;
 final class TenantSessionSql
 {
     /**
-     * Empty RBAC tables (migration Version20261113130000) for the sessions of no tenant, in their
-     * search_path: fedale/rbac-bundle finds tables there, and they grant nothing.
+     * Empty RBAC tables (migration Version20261113130000, renamed by Version20261114100000) for
+     * the sessions of no tenant, in their search_path: fedale/rbac-bundle finds tables there, and
+     * they grant nothing.
      */
-    public const string NO_TENANT_RBAC = 'landlord_rbac';
+    public const string NO_TENANT_RBAC = 'no_tenant_rbac';
 
     private const string UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
     private const string SLUG = '/^[a-z0-9][a-z0-9-]{0,62}$/';

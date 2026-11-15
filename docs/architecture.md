@@ -10,7 +10,7 @@ from `fedale/gridview-bundle`, the runtime settings from `fedale/setting-bundle`
 | `core` | The tenant registry (`core.tenant`) and who may sign in to each tenant (`core.tenant_membership`); object, field, view and form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the templates installed (`core.template_installation`) and the ids of items in templates (`core.template_item`), the settings of `fedale/setting-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
 | a tenant's data schema (`data` for the first tenant) | One table per object, `c_<object>`, holding the records, and one link table per many-to-many field, `l_<object>__<field>` | The Schema module, from the tenant's metadata |
 | a tenant's RBAC schema (`rbac` for the first tenant) | The tables of `fedale/rbac-bundle` (`auth_*`): the tenant's roles, permissions and assignments | Created with the tenant |
-| `landlord_rbac` | The same tables, empty: the RBAC tables of a session with no tenant (the landlord's, the console's), where the bundle finds tables and no permission | Migrations |
+| `no_tenant_rbac` | The same tables, empty: the RBAC tables of a session with no tenant (the landlord's, the console's), where the bundle finds tables and no permission | Migrations |
 
 Every session's `search_path` starts with `core`, so the tables whose mapping names no schema
 (Doctrine's migration table, the settings) are found there; then comes the current tenant's
@@ -78,8 +78,13 @@ guide says how to use and deploy them. Under the hood (see also
   only the members of the request's tenant, at sign-in and on every request; the
   `SecurityUser` it loads holds that tenant, so the session and the remember-me cookie are bound
   to it (see [Users and tenants](access.md#users-and-tenants)).
-- `fedale/rbac-bundle`'s cache is off: it keeps the roles and permissions under one key for the
-  whole installation. It comes back once the bundle knows about tenants.
+- `fedale/rbac-bundle` (1.2) is told the current tenant by `RbacTenantContext`
+  (`tenancy.context` in `fedale_rbac.yaml`): its cache keeps each tenant's roles and permissions
+  under a key of their own (`fedale_rbac.items.<tenant id>`, in the `rbac.cache` pool), and so
+  do its graphs in memory. It needs nothing else, since each tenant has its own tables: every
+  assignment stays in the bundle's `global` tenant (`auth_assignment.tenant_id`, its default),
+  and `scoped_assignments`, for tables shared by every tenant, stays off. A session with no
+  tenant is `global` to the bundle, and reads the empty tables of `no_tenant_rbac`.
 - `DeclareTenantSchemaListener` brings the schema tools in line (the unmapped column, the RBAC
   tables, the tenants' schemas), so `migrations:diff` stays empty.
 

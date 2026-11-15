@@ -10,8 +10,16 @@ fedale_rbac:
     inject_assigned_roles: false
     provider: doctrine
 
-    # No cache: it keeps the roles and permissions under one key for the whole installation,
-    # and each tenant has its own (in its RBAC schema, see docs/architecture.md, "Tenants").
-    # Back once the bundle knows about tenants.
+    # Each tenant has its own auth_* tables, in its RBAC schema (see docs/architecture.md,
+    # "Tenants"): the context only tells the bundle which tenant they are, so that its cache
+    # and its graphs in memory are kept per tenant. No scoped_assignments: that is for tables
+    # shared by every tenant.
+    tenancy:
+        context: App\Shared\Infrastructure\Tenant\RbacTenantContext
+
+    # The roles and permissions of each tenant under its own key (fedale_rbac.items.<tenant id>).
+    # Nothing read inside an open transaction is cached. The tests' pool is in memory (cache.yaml):
+    # their transactions, rolled back, are opened where the bundle doesn't see them.
     cache:
-        enabled: false
+        enabled: true
+        pool: rbac.cache

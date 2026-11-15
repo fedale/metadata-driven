@@ -19,6 +19,8 @@ framework:
             # Compiled metadata snapshot, autowired as TagAwareCacheInterface $metadataCache
             metadata.cache:
                 tags: true
+            # fedale/rbac-bundle's roles and permissions, per tenant (fedale_rbac.yaml)
+            rbac.cache: ~
 
 when@test:
     framework:
@@ -28,3 +30,7 @@ when@test:
                 metadata.cache:
                     adapter: cache.adapter.array
                     tags: true
+                # The same for the RBAC graphs. The bundle caches nothing inside a transaction, but
+                # dama/doctrine-test-bundle opens the tests' own below DBAL, where it doesn't see it.
+                rbac.cache:
+                    adapter: cache.adapter.array

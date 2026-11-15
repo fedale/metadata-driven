@@ -1501,6 +1501,10 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         ttl?: int|Param, // Default: null
  *     },
  *     provider?: scalar|Param|null, // Default: "doctrine"
+ *     tenancy?: array{
+ *         context?: scalar|Param|null, // Default: null
+ *         scoped_assignments?: bool|Param, // Default: false
+ *     },
  * }
  * @psalm-type TwigExtraConfig = array{
  *     cache?: bool|array{

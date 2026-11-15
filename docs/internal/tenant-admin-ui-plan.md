@@ -254,7 +254,8 @@ console.md (`tenant:operator:*`), access.md (operators), status.md.
   from their own admin, `/admin/templates`; the Admin module may not use the Template module);
   `tenant:create` still runs the commands, not the new ports; the console's actions are logged
   through the framework's PSR logger, Monolog not being installed (adding it is the user's call).
-- **Empty RBAC tables for no tenant**, `landlord_rbac` (`Version20261113130000`), in the
+- **Empty RBAC tables for no tenant**, `landlord_rbac` (`Version20261113130000`; renamed
+  `no_tenant_rbac` on 2026-11-14, see multi-tenancy-plan.md), in the
   `search_path` of the landlord's session and of a session with no tenant
   (`TenantSessionSql::NO_TENANT_RBAC`): fedale/rbac-bundle's voter looks every attribute up in
   `auth_item`, and on the console, where no tenant's tables are, it failed on an undefined table
