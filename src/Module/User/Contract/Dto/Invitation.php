@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Module\User\Contract\Dto;
 
 /**
- * An invitation to a tenant, pending: the email as the admin typed it (normalized), never
+ * An invitation to a workspace, pending: the email as the admin typed it (normalized), never
  * anything of the account it may name.
  */
 final readonly class Invitation
 {
     /**
-     * @param bool $keepAssignments false: the account's assignments in the tenant are taken away
+     * @param bool $keepAssignments false: the account's assignments in the workspace are taken away
      *                              on acceptance (its inviter doesn't hold them all)
      */
     public function __construct(

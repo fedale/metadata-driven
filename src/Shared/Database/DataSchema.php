@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Shared\Database;
 
 /**
- * The naming of what lives in a tenant's data schema, the PostgreSQL schema holding the record
- * tables generated from its metadata. Each tenant has one, named by core.tenant.data_schema
- * ({@see \App\Shared\Tenant\CurrentTenant::dataSchema()}); the first tenant's is "data".
+ * The naming of what lives in a workspace's data schema, the PostgreSQL schema holding the record
+ * tables generated from its metadata. Each workspace has one, named by core.workspace.data_schema
+ * ({@see \App\Shared\Workspace\CurrentWorkspace::dataSchema()}); the first workspace's is "data".
  * Static tables live in the "core" schema ({@see CoreSchema}) and are managed by Doctrine migrations.
  *
  * The naming is shared by the module building the tables (Schema) and the one reading and

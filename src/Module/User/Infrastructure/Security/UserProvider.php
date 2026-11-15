@@ -6,8 +6,8 @@ namespace App\Module\User\Infrastructure\Security;
 
 use App\Module\User\Domain\Repository\MembershipRepository;
 use App\Module\User\Domain\Repository\UserRepository;
-use App\Shared\Tenant\CurrentTenant;
-use App\Shared\Tenant\SystemConsole;
+use App\Shared\Workspace\CurrentWorkspace;
+use App\Shared\Workspace\SystemConsole;
 use Fedale\RbacBundle\Security\AssignmentRolesProvider;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
@@ -21,10 +21,10 @@ use Symfony\Component\Security\Core\User\UserProviderInterface;
  * Loads active users by email, with the roles assigned to them in the RBAC tables (read on
  * every request: when they changed, SecurityUser::isEqualTo() signs the session out).
  *
- * Users are global, so only the members of the request's tenant are found: signing in to
- * another tenant fails as a wrong password does, and since the session's user is loaded again
- * on every request (refreshUser()), a session replayed on another tenant's host, or one whose
- * membership was removed, is signed out. The roles are the tenant's: its RBAC schema is first
+ * Users are global, so only the members of the request's workspace are found: signing in to
+ * another workspace fails as a wrong password does, and since the session's user is loaded again
+ * on every request (refreshUser()), a session replayed on another workspace's host, or one whose
+ * membership was removed, is signed out. The roles are the workspace's: its RBAC schema is first
  * after core in the session's search_path.
  *
  * On the system console only its system admins are found, with ROLE_SYSTEM_ADMIN alone:
@@ -37,7 +37,7 @@ final class UserProvider implements UserProviderInterface, PasswordUpgraderInter
     public function __construct(
         private readonly UserRepository $users,
         private readonly MembershipRepository $memberships,
-        private readonly CurrentTenant $tenant,
+        private readonly CurrentWorkspace $workspace,
         private readonly AssignmentRolesProvider $roles,
         private readonly RequestStack $requests,
     ) {
@@ -47,7 +47,7 @@ final class UserProvider implements UserProviderInterface, PasswordUpgraderInter
     {
         $user = $this->users->findByEmail($identifier);
         // The system console (its own host, the system session): its system admins
-        // only, and no tenant's roles, which have no RBAC tables there. Read per request: this
+        // only, and no workspace's roles, which have no RBAC tables there. Read per request: this
         // service outlives one in a worker.
         if (true === $this->requests->getMainRequest()?->attributes->get(SystemConsole::REQUEST_ATTRIBUTE)) {
             if (null === $user || !$user->isActive() || !$user->isSystemAdmin()) {
@@ -60,10 +60,10 @@ final class UserProvider implements UserProviderInterface, PasswordUpgraderInter
             return SecurityUser::fromUser($user, [SystemConsole::ROLE]);
         }
 
-        // No tenant (a command in the system session): any active user, as before tenants.
+        // No workspace (a command in the system session): any active user, as before workspaces.
         if (null === $user || !$user->isActive()
-            || ($this->tenant->isSelected() && !$this->memberships->isMember($this->tenant->id(), $user->getId()))) {
-            // Same error for unknown, deactivated and other tenants' users: no account enumeration.
+            || ($this->workspace->isSelected() && !$this->memberships->isMember($this->workspace->id(), $user->getId()))) {
+            // Same error for unknown, deactivated and other workspaces' users: no account enumeration.
             $exception = new UserNotFoundException();
             $exception->setUserIdentifier($identifier);
 
@@ -73,7 +73,7 @@ final class UserProvider implements UserProviderInterface, PasswordUpgraderInter
         return SecurityUser::fromUser(
             $user,
             array_values($this->roles->getRolesFor($user->getEmail())),
-            $this->tenant->isSelected() ? $this->tenant->id() : null,
+            $this->workspace->isSelected() ? $this->workspace->id() : null,
         );
     }
 

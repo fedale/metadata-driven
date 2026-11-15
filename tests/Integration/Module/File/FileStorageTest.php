@@ -8,7 +8,7 @@ use App\Module\File\Contract\Exception\FileException;
 use App\Module\File\Contract\Exception\FileNotFound;
 use App\Module\File\Contract\FileStorageInterface;
 use App\Module\File\Infrastructure\StorageKeys;
-use App\Shared\Tenant\CurrentTenant;
+use App\Shared\Workspace\CurrentWorkspace;
 use League\Flysystem\FilesystemOperator;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
@@ -122,7 +122,7 @@ final class FileStorageTest extends KernelTestCase
         $stored = self::getContainer()->get(FileStorageInterface::class)->store($this->file('gone'), 'gone.txt');
         /** @var FilesystemOperator $bytes */
         $bytes = self::getContainer()->get('record_files.storage');
-        $bytes->delete(StorageKeys::content(self::getContainer()->get(CurrentTenant::class)->id(), $stored->sha256));
+        $bytes->delete(StorageKeys::content(self::getContainer()->get(CurrentWorkspace::class)->id(), $stored->sha256));
 
         $this->expectException(FileNotFound::class);
         $this->expectExceptionMessage('is missing from the storage.');

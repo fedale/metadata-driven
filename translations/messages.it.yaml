@@ -5,22 +5,22 @@ nav:
     members: Membri
     roles: Ruoli
     language: Lingua
-    tenants: Spazi di lavoro
+    workspaces: Spazi di lavoro
     account: Il mio account
     sign_out: Esci
 console:
     title: Console
-    tenants: Tenant
+    workspaces: Spazi di lavoro
     indexes: Indici dei template
-    indexes_intro: 'Offerti a tutti i tenant, accanto ai loro; nessun tenant li rimuove.'
-    new: Nuovo tenant
+    indexes_intro: 'Offerti a tutti gli spazi di lavoro, accanto ai loro; nessuno spazio di lavoro li rimuove.'
+    new: Nuovo spazio di lavoro
     create: Crea
     slug: Slug
     slug_help: 'La prima parte del suo indirizzo: lettere minuscole, cifre e trattini.'
     name: Nome
     admin_email: Primo admin
     admin_email_help: 'Facoltativo: riceve un invito, e il ruolo di super admin quando lo accetta.'
-    created: 'Tenant %slug% creato.'
+    created: 'Spazio di lavoro %slug% creato.'
     status: Stato
     members: Membri
     objects: Oggetti
@@ -28,20 +28,20 @@ console:
     suspended_status: sospeso
     suspend: Sospendi
     resume: Riattiva
-    suspended: 'Tenant %slug% sospeso: il suo indirizzo risponde 404, i dati restano.'
-    resumed: 'Tenant %slug% di nuovo attivo.'
+    suspended: 'Spazio di lavoro %slug% sospeso: il suo indirizzo risponde 404, i dati restano.'
+    resumed: 'Spazio di lavoro %slug% di nuovo attivo.'
     super_admin: Super admin
     give_admin: Rendi super admin
     take_admin: Togli super admin
     no_members: 'Ancora nessun membro: invita un admin.'
     invite_admin: Invita un admin
-    invite_admin_intro: 'Riceve il ruolo di super admin di questo tenant quando accetta il link.'
-    delete: Elimina il tenant
+    invite_admin_intro: 'Riceve il ruolo di super admin di questo spazio di lavoro quando accetta il link.'
+    delete: Elimina lo spazio di lavoro
     delete_intro: 'Dati, ruoli, definizioni, membri e file vengono eliminati per sempre.'
     confirm: Di nuovo lo slug
     confirm_help: 'Scrivi lo slug per confermare.'
     not_confirmed: 'Non confermato: non è stato eliminato nulla.'
-    deleted: 'Tenant %slug% eliminato.'
+    deleted: 'Spazio di lavoro %slug% eliminato.'
 account:
     title: Il mio account
     name: Nome

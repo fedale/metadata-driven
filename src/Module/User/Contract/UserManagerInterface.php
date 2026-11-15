@@ -13,8 +13,8 @@ interface UserManagerInterface
 {
     /**
      * Creates an active user with its profile. The email is the login, stored lowercase. Users
-     * are global: the new one is a member of the current tenant, if one is selected, and of no
-     * other (addToTenant()).
+     * are global: the new one is a member of the current workspace, if one is selected, and of no
+     * other (addToWorkspace()).
      *
      * @return string the id of the new user
      *
@@ -31,35 +31,35 @@ interface UserManagerInterface
     public function changeLocale(string $email, ?string $locale): void;
 
     /**
-     * Lets a user sign in to a tenant, whose roles then apply to them there.
+     * Lets a user sign in to a workspace, whose roles then apply to them there.
      *
      * @return bool false when they were a member already
      *
      * @throws UserException unknown user
      */
-    public function addToTenant(string $email, string $tenantId): bool;
+    public function addToWorkspace(string $email, string $workspaceId): bool;
 
     /**
-     * Takes a user out of a tenant: they can no longer sign in there, and a session of theirs
-     * there ends at its next request. Their roles in the tenant stay, unused.
+     * Takes a user out of a workspace: they can no longer sign in there, and a session of theirs
+     * there ends at its next request. Their roles in the workspace stay, unused.
      *
      * @return bool false when they were no member
      *
      * @throws UserException unknown user
      */
-    public function removeFromTenant(string $email, string $tenantId): bool;
+    public function removeFromWorkspace(string $email, string $workspaceId): bool;
 
     /**
-     * @return list<string> the emails of the tenant's members, sorted
+     * @return list<string> the emails of the workspace's members, sorted
      */
-    public function membersOf(string $tenantId): array;
+    public function membersOf(string $workspaceId): array;
 
     /**
-     * The tenant's members, by name.
+     * The workspace's members, by name.
      *
      * @return list<Member>
      */
-    public function members(string $tenantId): array;
+    public function members(string $workspaceId): array;
 
     /**
      * @throws UserException unknown user
@@ -94,51 +94,51 @@ interface UserManagerInterface
     public function systemAdmins(): array;
 
     /**
-     * Invites someone to a tenant: whoever the email belongs to accepts with acceptInvitation().
+     * Invites someone to a workspace: whoever the email belongs to accepts with acceptInvitation().
      * The same whether the email has an account or not: nothing of the account is told.
      *
      * One invitation per email is pending: the inviter's own replaces theirs; another inviter's
      * is refused unless $replaceOthers (the system admin, above every admin).
      *
-     * @param bool $keepAssignments false: take the account's assignments in the tenant away on
+     * @param bool $keepAssignments false: take the account's assignments in the workspace away on
      *                              acceptance (its inviter doesn't hold them all)
      *
      * @return string the token of the invitation's link, shown once, never stored
      *
      * @throws UserException not an email address, a member, another inviter's pending invitation
      */
-    public function invite(string $email, string $tenantId, string $invitedBy, bool $keepAssignments, bool $replaceOthers = false): string;
+    public function invite(string $email, string $workspaceId, string $invitedBy, bool $keepAssignments, bool $replaceOthers = false): string;
 
     /**
-     * @return list<Invitation> the tenant's pending invitations, the newest first
+     * @return list<Invitation> the workspace's pending invitations, the newest first
      */
-    public function invitations(string $tenantId): array;
+    public function invitations(string $workspaceId): array;
 
     /**
-     * @return bool false when the tenant has no such invitation
+     * @return bool false when the workspace has no such invitation
      */
-    public function revokeInvitation(string $tenantId, string $id): bool;
+    public function revokeInvitation(string $workspaceId, string $id): bool;
 
     /**
-     * A pending invitation of the tenant by its token: not accepted, not expired, not burned by
+     * A pending invitation of the workspace by its token: not accepted, not expired, not burned by
      * too many wrong passwords. Null otherwise.
      */
-    public function openInvitation(string $tenantId, string $token): ?Invitation;
+    public function openInvitation(string $workspaceId, string $token): ?Invitation;
 
     /**
      * Accepts an invitation: an existing account proves it with its password (a wrong one counts
      * against the invitation), a new one is created with this password and name. Either way it
-     * becomes a member of the tenant.
+     * becomes a member of the workspace.
      *
      * @return Invitation the invitation accepted
      *
      * @throws UserException no such invitation any more, a wrong password, a password too short
      */
-    public function acceptInvitation(string $tenantId, string $token, string $password, ?string $firstName = null, ?string $lastName = null): Invitation;
+    public function acceptInvitation(string $workspaceId, string $token, string $password, ?string $firstName = null, ?string $lastName = null): Invitation;
 
     /**
      * The email of the account the given one names, as stored (trimmed, lower case), or null
-     * when no account has it, in any tenant or none: users are global. Check anything keyed by
+     * when no account has it, in any workspace or none: users are global. Check anything keyed by
      * the email (the RBAC assignments) with this, never with the email as typed.
      */
     public function canonicalEmail(string $email): ?string;

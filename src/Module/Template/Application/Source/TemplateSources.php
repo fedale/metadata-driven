@@ -7,7 +7,7 @@ namespace App\Module\Template\Application\Source;
 use App\Module\Template\Domain\Exception\TemplateSourceFailed;
 use App\Module\Template\Domain\Model\TemplateSource;
 use App\Module\Template\Domain\Repository\TemplateSourceRepository;
-use App\Shared\Tenant\CurrentTenant;
+use App\Shared\Workspace\CurrentWorkspace;
 use Fedale\TemplateFormat\Archive;
 use Fedale\TemplateFormat\Constraint;
 use Fedale\TemplateFormat\Format;
@@ -47,7 +47,7 @@ final class TemplateSources
 
     public function __construct(
         private readonly TemplateSourceRepository $sources,
-        private readonly CurrentTenant $tenant,
+        private readonly CurrentWorkspace $workspace,
         HttpClientInterface $http,
         private readonly Archive $archive,
         #[Autowire('%env(default::TEMPLATE_CATALOG_URL)%')]
@@ -68,7 +68,7 @@ final class TemplateSources
 
     /**
      * @return list<array{name: string, url: string, key: string|null, shared: bool}> the catalog
-     *                                                                                first; shared: offered to every tenant (the catalog, those of tenant:template:repo)
+     *                                                                                first; shared: offered to every workspace (the catalog, those of workspace:template:repo)
      *
      * @throws TemplateSourceFailed the catalog is configured without its key
      */
@@ -131,8 +131,8 @@ final class TemplateSources
     public function remove(string $name): void
     {
         $source = $this->sources->findByName($name) ?? throw new TemplateSourceFailed(\sprintf('No index is named "%s".', $name));
-        if ($this->tenant->isSelected() && $this->sources->isShared($source)) {
-            throw new TemplateSourceFailed(\sprintf('"%s" is offered to every tenant: only the system admin removes it (tenant:template:repo remove %s).', $name, $name));
+        if ($this->workspace->isSelected() && $this->sources->isShared($source)) {
+            throw new TemplateSourceFailed(\sprintf('"%s" is offered to every workspace: only the system admin removes it (workspace:template:repo remove %s).', $name, $name));
         }
         $this->sources->remove($source);
     }

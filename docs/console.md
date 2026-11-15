@@ -41,35 +41,35 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:template:publish`](#metadatatemplatepublish) | Prepare a template version for the central catalog: copied into a checkout of it, ready for a pull request |
 | [`metadata:template:upgrade`](#metadatatemplateupgrade) | Upgrade an installed template to a new version: only what it changed, what this instance changed kept |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
-| [`tenant:create`](#tenantcreate), [`tenant:list`](#tenantlist), [`tenant:suspend`, `tenant:resume`](#tenantsuspend-tenantresume), [`tenant:delete`](#tenantdelete), [`tenant:run`](#tenantrun) | Create, list, suspend, resume and delete tenants; run a command for several of them |
-| [`tenant:files:move`](#tenantfilesmove) | Move the files stored before tenants had directories into their tenant's directory, once |
-| `system:admin` | List, grant or revoke the system admins who may enter the system console — see [Tenants](multi-tenancy.md#the-system-console) |
-| `tenant:template:repo` | List, add or remove the template indexes offered to every tenant — see [Templates](templates.md#publishing-and-downloading) |
-| `user:create` | Create a user who can sign in, a member of the command's tenant — see [Users and permissions](access.md#usercreate) |
-| `tenant:member:add`, `tenant:member:remove`, `tenant:member:list` | Let a user sign in to a tenant, or no longer; list a tenant's members — see [Users and tenants](access.md#users-and-tenants) |
+| [`workspace:create`](#workspacecreate), [`workspace:list`](#workspacelist), [`workspace:suspend`, `workspace:resume`](#workspacesuspend-workspaceresume), [`workspace:delete`](#workspacedelete), [`workspace:run`](#workspacerun) | Create, list, suspend, resume and delete workspaces; run a command for several of them |
+| [`workspace:files:move`](#workspacefilesmove) | Move the files stored before workspaces had directories into their workspace's directory, once |
+| `system:admin` | List, grant or revoke the system admins who may enter the system console — see [Workspaces](workspaces.md#the-system-console) |
+| `workspace:template:repo` | List, add or remove the template indexes offered to every workspace — see [Templates](templates.md#publishing-and-downloading) |
+| `user:create` | Create a user who can sign in, a member of the command's workspace — see [Users and permissions](access.md#usercreate) |
+| `workspace:member:add`, `workspace:member:remove`, `workspace:member:list` | Let a user sign in to a workspace, or no longer; list a workspace's members — see [Users and workspaces](access.md#users-and-workspaces) |
 | `access:sync` | Create the permissions of every object, the admin permission and the super admin role — see [Users and permissions](access.md#permissions) |
 | `rbac:*` | Roles, permissions and assignments (`fedale/rbac-bundle`) — see [Users and permissions](access.md#roles) |
 
-## Which tenant a command works for
+## Which workspace a command works for
 
-Every command takes a global `--tenant=<slug>` option. The application's commands (`metadata:*`,
+Every command takes a global `--workspace=<slug>` option. The application's commands (`metadata:*`,
 `schema:sync`, `record:*`, `user:*`, `access:*`) and the bundles' `rbac:*` work for the default
-tenant, `default` unless `TENANT_DEFAULT` says otherwise, when you leave it out:
+workspace, `default` unless `WORKSPACE_DEFAULT` says otherwise, when you leave it out:
 
 ```bash
-symfony console metadata:list                   # the default tenant's objects
-symfony console metadata:list --tenant=acme     # tenant acme's
+symfony console metadata:list                   # the default workspace's objects
+symfony console metadata:list --workspace=acme     # workspace acme's
 ```
 
-The other commands (the migrations, Doctrine's, `cache:clear`) and the `tenant:*` commands work
-for no tenant, as the system, across all of them, unless `--tenant` names one. An unknown or suspended tenant stops the command:
-`There is no tenant "acme".` See [Architecture](architecture.md#tenants).
+The other commands (the migrations, Doctrine's, `cache:clear`) and the `workspace:*` commands work
+for no workspace, as the system, across all of them, unless `--workspace` names one. An unknown or suspended workspace stops the command:
+`There is no workspace "acme".` See [Architecture](architecture.md#workspaces).
 
 ## How the commands change the database
 
 The `metadata:*` commands that write a definition run in **one PostgreSQL transaction**: they save
 the definition in the `core` schema, then the Schema module applies the matching DDL to the record
-table in the tenant's data schema (`data` for the default tenant). If the DDL fails, the definition is rolled back too (PostgreSQL DDL is
+table in the workspace's data schema (`data` for the default workspace). If the DDL fails, the definition is rolled back too (PostgreSQL DDL is
 transactional), so metadata and tables never disagree. Every DDL statement applied is logged in
 `core.schema_change_log`.
 
@@ -755,20 +755,20 @@ Run it on a schedule, for example every night from cron:
 30 3 * * * cd /srv/app && php bin/console metadata:files:gc --no-interaction
 ```
 
-## Tenants
+## Workspaces
 
-The `tenant:*` commands manage the installation's [tenants](architecture.md#tenants). They run as
-the system: the tenant they work on is their first argument, not `--tenant`.
+The `workspace:*` commands manage the installation's [workspaces](architecture.md#workspaces). They run as
+the system: the workspace they work on is their first argument, not `--workspace`.
 
-### `tenant:create`
+### `workspace:create`
 
 ```
-tenant:create [--name=…] [--admin-email=…] [--admin-password=…] [--template=…] <slug>
+workspace:create [--name=…] [--admin-email=…] [--admin-password=…] [--template=…] <slug>
 ```
 
-Creates a tenant ready to use, at `http://<slug>.<TENANT_BASE_HOST>`:
+Creates a workspace ready to use, at `http://<slug>.<WORKSPACE_BASE_HOST>`:
 
-1. its row of `core.tenant` and its two schemas, `t_<id>_data` for its records and `t_<id>_rbac`
+1. its row of `core.workspace` and its two schemas, `t_<id>_data` for its records and `t_<id>_rbac`
    for its roles, named after its id rather than its slug;
 2. its permissions and super admin role (`access:sync`);
 3. with `--admin-email`, its first admin: an existing user becomes a member, a new one is created
@@ -777,66 +777,66 @@ Creates a tenant ready to use, at `http://<slug>.<TENANT_BASE_HOST>`:
 4. with `--template`, a template installed (`metadata:template:install`).
 
 ```bash
-symfony console tenant:create acme --name="Acme Corp" --admin-email=anna@example.com --template=fedale/registration
+symfony console workspace:create acme --name="Acme Corp" --admin-email=anna@example.com --template=fedale/registration
 ```
 
 The slug is lower case letters, digits and dashes, 63 at most. Steps 2 to 4 are the commands
-that do them for any tenant: when one fails, the tenant exists, and the command names the step
-to run again with `--tenant=acme`.
+that do them for any workspace: when one fails, the workspace exists, and the command names the step
+to run again with `--workspace=acme`.
 
-### `tenant:list`
+### `workspace:list`
 
-Every tenant: slug, name, status, members, objects, schemas.
+Every workspace: slug, name, status, members, objects, schemas.
 
-### `tenant:suspend`, `tenant:resume`
-
-```
-tenant:suspend <slug>
-tenant:resume <slug>
-```
-
-A suspended tenant answers 404 to every request, and its commands refuse to run. Its data stays
-as it is; `tenant:resume` brings it back.
-
-### `tenant:delete`
+### `workspace:suspend`, `workspace:resume`
 
 ```
-tenant:delete [--confirm=<slug>] <slug>
+workspace:suspend <slug>
+workspace:resume <slug>
 ```
 
-Deletes a tenant with its records, roles, definitions and members, once its slug is typed back
+A suspended workspace answers 404 to every request, and its commands refuse to run. Its data stays
+as it is; `workspace:resume` brings it back.
+
+### `workspace:delete`
+
+```
+workspace:delete [--confirm=<slug>] <slug>
+```
+
+Deletes a workspace with its records, roles, definitions and members, once its slug is typed back
 (or given to `--confirm`, without a terminal). It can't be undone: back the database up first.
-The directory of its files in the storage goes with it. The default tenant (`TENANT_DEFAULT`)
+The directory of its files in the storage goes with it. The default workspace (`WORKSPACE_DEFAULT`)
 can't be deleted.
 
-### `tenant:files:move`
+### `workspace:files:move`
 
 ```
-tenant:files:move [--dry-run]
+workspace:files:move [--dry-run]
 ```
 
-Run it once, after upgrading to tenants with a directory of their own in the file storage (see
+Run it once, after upgrading to workspaces with a directory of their own in the file storage (see
 [Architecture](architecture.md#schemas)). It copies the bytes of every file stored before, at the
-root of the storage, into its tenant's directory and points its row there; two tenants holding
+root of the storage, into its workspace's directory and points its row there; two workspaces holding
 the same bytes get a copy each. Then it deletes the root contents no row uses any more, and the
-root thumbnails, which are made again under the tenants on demand. A file whose bytes are
+root thumbnails, which are made again under the workspaces on demand. A file whose bytes are
 missing is left where it is, and listed. Running it again does nothing; `--dry-run` counts
 without changing anything.
 
-### `tenant:run`
+### `workspace:run`
 
 ```
-tenant:run (--all | --only=<slug>...) -- <command> [arguments]
+workspace:run (--all | --only=<slug>...) -- <command> [arguments]
 ```
 
-Runs a command for every active tenant, or for the ones you name, each in a process of its own:
+Runs a command for every active workspace, or for the ones you name, each in a process of its own:
 
 ```bash
-symfony console tenant:run --all -- metadata:template:upgrade fedale/registration
-symfony console tenant:run --only=acme --only=globex -- metadata:files:gc
+symfony console workspace:run --all -- metadata:template:upgrade fedale/registration
+symfony console workspace:run --only=acme --only=globex -- metadata:files:gc
 ```
 
-It carries on past a failure, prints each tenant's output under its slug, and fails when one of
+It carries on past a failure, prints each workspace's output under its slug, and fails when one of
 them did.
 
 ## `schema:sync`
@@ -902,6 +902,6 @@ changes, date).
 | `make test` | The test suite (starts the database and builds the styles first) |
 | `make qa` | All of the above checks |
 
-The `core` schema (definitions, logs, settings) is managed by Doctrine migrations; the tenants'
+The `core` schema (definitions, logs, settings) is managed by Doctrine migrations; the workspaces'
 data schemas (record tables) only by the commands above. Doctrine's schema tools ignore them, so
 `doctrine:migrations:diff` never proposes to drop a record table.

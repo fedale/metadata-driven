@@ -455,21 +455,21 @@ The new version's number must fit what it changed since the version installed:
 `objects/tag.yaml: field acme.tag.colour: an addition needs a new minor version, 1.0.1 is not
 one.` Who installs a minor version expects to lose nothing.
 
-## Templates and tenants
+## Templates and workspaces
 
-Every tenant installs and upgrades its templates on its own: an install creates the definitions
-in the tenant's rows and the record tables in its data schema, and the other tenants see none of
-it. Tenants may stay on different versions, each keeping its own changes.
+Every workspace installs and upgrades its templates on its own: an install creates the definitions
+in the workspace's rows and the record tables in its data schema, and the other workspaces see none of
+it. Workspaces may stay on different versions, each keeping its own changes.
 
 ```bash
-symfony console metadata:template:install fedale/registration --tenant=acme
-symfony console tenant:create globex --template=fedale/registration     # at creation
-symfony console tenant:run --all -- metadata:template:upgrade fedale/registration --strategy=keep
+symfony console metadata:template:install fedale/registration --workspace=acme
+symfony console workspace:create globex --template=fedale/registration     # at creation
+symfony console workspace:run --all -- metadata:template:upgrade fedale/registration --strategy=keep
 ```
 
-[`tenant:run`](console.md#tenantrun) upgrades every tenant in a process of its own and carries on
-past one that stops (a conflict, a field in the way): its output under the tenant's slug says
-what to resolve there, with `--tenant=<slug>`.
+[`workspace:run`](console.md#workspacerun) upgrades every workspace in a process of its own and carries on
+past one that stops (a conflict, a field in the way): its output under the workspace's slug says
+what to resolve there, with `--workspace=<slug>`.
 
 ## Publishing and downloading
 
@@ -529,10 +529,10 @@ symfony console metadata:template:upgrade acme/shop            # from the index 
   first.
 - **The template catalog** is an index too, looked into before the others, as `catalog` (see
   [below](#the-template-catalog)).
-- **Per tenant, or for every tenant.** `metadata:template:repo` manages the indexes of the
-  command's [tenant](architecture.md#tenants) (`--tenant=<slug>`). The system admin offers an index
-  to every tenant with `tenant:template:repo add …` (same arguments): each tenant then lists it
-  next to its own, marked "every tenant", and may not remove it. No two indexes a tenant sees
+- **Per workspace, or for every workspace.** `metadata:template:repo` manages the indexes of the
+  command's [workspace](architecture.md#workspaces) (`--workspace=<slug>`). The system admin offers an index
+  to every workspace with `workspace:template:repo add …` (same arguments): each workspace then lists it
+  next to its own, marked "every workspace", and may not remove it. No two indexes a workspace sees
   share a name.
 - `metadata:template:pack` writes reproducible archives: the same template gives the same
   archive and checksum, whatever the machine or the dates of its files.

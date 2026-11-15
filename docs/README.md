@@ -18,12 +18,12 @@ Objects are defined from the admin UI at `/admin` or from the console.
 | [Languages](i18n.md) | Translations of the labels, options and titles, `{t:name}` texts in layouts, the language of each user |
 | [Importing records](import.md) | CSV files into an object, all or nothing: the wizard of the records page (columns mapped, a check first) and `record:import` |
 | [Users and permissions](access.md) | Signing in, users, the permissions of every object, roles |
-| [Tenants](multi-tenancy.md) | Several customers on one installation, each with its own model, records, roles and files: hosts, the `tenant:*` commands, users in several tenants, production setup |
+| [Workspaces](workspaces.md) | Several customers on one installation, each with its own model, records, roles and files: hosts, the `workspace:*` commands, users in several workspaces, production setup |
 | [Renaming and archiving](lifecycle.md) | New machine names for objects and fields (table, columns and every reference follow), archiving with the data kept, restoring, purging for good |
 | [Templates](templates.md) | A model as a package of YAML documents: exporting objects, views, forms and translations, validating a template |
 | [Console commands](console.md) | Every command, its arguments and options, what it changes in the database |
 | [Field types](field-types.md) | The twelve field types, their settings, columns, validation and grid behaviour |
-| [Glossary](glossary.md) | The names of the parts of the application, one word per concept: objects, records, views, forms, packages, tenants |
+| [Glossary](glossary.md) | The names of the parts of the application, one word per concept: objects, records, views, forms, packages, workspaces |
 | [Architecture](architecture.md) | Modules and layers, the boundaries Deptrac enforces, how a definition becomes a table |
 
 ## At a glance

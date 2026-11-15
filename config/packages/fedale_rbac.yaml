@@ -10,14 +10,14 @@ fedale_rbac:
     inject_assigned_roles: false
     provider: doctrine
 
-    # Each tenant has its own auth_* tables, in its RBAC schema (see docs/architecture.md,
-    # "Tenants"): the context only tells the bundle which tenant they are, so that its cache
-    # and its graphs in memory are kept per tenant. No scoped_assignments: that is for tables
-    # shared by every tenant.
+    # Each workspace has its own auth_* tables, in its RBAC schema (see docs/architecture.md,
+    # "Workspaces"): the context only tells the bundle which workspace they are, so that its cache
+    # and its graphs in memory are kept per workspace. No scoped_assignments: that is for tables
+    # shared by every workspace.
     tenancy:
-        context: App\Shared\Infrastructure\Tenant\RbacTenantContext
+        context: App\Shared\Infrastructure\Workspace\RbacWorkspaceContext
 
-    # The roles and permissions of each tenant under its own key (fedale_rbac.items.<tenant id>).
+    # The roles and permissions of each workspace under its own key (fedale_rbac.items.<workspace id>).
     # Nothing read inside an open transaction is cached. The tests' pool is in memory (cache.yaml):
     # their transactions, rolled back, are opened where the bundle doesn't see them.
     cache:

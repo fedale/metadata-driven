@@ -12,10 +12,10 @@ final class Permissions
     /** The admin UI: objects, fields, search, tables. */
     public const string ADMINISTER = 'admin.metadata';
 
-    /** The members of the tenant: who may sign in, with which roles (/admin/members). */
+    /** The members of the workspace: who may sign in, with which roles (/admin/members). */
     public const string MEMBERS = 'admin.members';
 
-    /** The roles of the tenant: which permissions each gives (/admin/roles). */
+    /** The roles of the workspace: which permissions each gives (/admin/roles). */
     public const string ROLES = 'admin.roles';
 
     /** Short-circuits every check (fedale_rbac.super_admin_role). */

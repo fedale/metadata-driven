@@ -14,7 +14,7 @@ use App\Module\User\Domain\Model\UserProfile;
 use App\Module\User\Domain\Repository\InvitationRepository;
 use App\Module\User\Domain\Repository\MembershipRepository;
 use App\Module\User\Domain\Repository\UserRepository;
-use App\Shared\Tenant\CurrentTenant;
+use App\Shared\Workspace\CurrentWorkspace;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
@@ -38,7 +38,7 @@ final class UserManager implements UserManagerInterface
         private readonly UserRepository $users,
         private readonly MembershipRepository $memberships,
         private readonly InvitationRepository $invitations,
-        private readonly CurrentTenant $tenant,
+        private readonly CurrentWorkspace $workspace,
         private readonly PasswordHasherFactoryInterface $hashers,
         // config/packages/rate_limiter.yaml
         private readonly RateLimiterFactoryInterface $invitationPasswordLimiter,
@@ -63,8 +63,8 @@ final class UserManager implements UserManagerInterface
         $user = new User(Uuid::v7(), $email, $hash);
         new UserProfile(Uuid::v7(), $user, $firstName, $lastName);
         $this->users->save($user);
-        if ($this->tenant->isSelected()) {
-            $this->memberships->add($this->tenant->id(), $user->getId());
+        if ($this->workspace->isSelected()) {
+            $this->memberships->add($this->workspace->id(), $user->getId());
         }
 
         return $user->getId()->toRfc4122();
@@ -81,22 +81,22 @@ final class UserManager implements UserManagerInterface
         $this->users->save($user);
     }
 
-    public function addToTenant(string $email, string $tenantId): bool
+    public function addToWorkspace(string $email, string $workspaceId): bool
     {
-        return $this->memberships->add($tenantId, $this->user($email)->getId());
+        return $this->memberships->add($workspaceId, $this->user($email)->getId());
     }
 
-    public function removeFromTenant(string $email, string $tenantId): bool
+    public function removeFromWorkspace(string $email, string $workspaceId): bool
     {
-        return $this->memberships->remove($tenantId, $this->user($email)->getId());
+        return $this->memberships->remove($workspaceId, $this->user($email)->getId());
     }
 
-    public function membersOf(string $tenantId): array
+    public function membersOf(string $workspaceId): array
     {
-        return $this->memberships->membersOf($tenantId);
+        return $this->memberships->membersOf($workspaceId);
     }
 
-    public function members(string $tenantId): array
+    public function members(string $workspaceId): array
     {
         return array_map(static function (array $row): Member {
             $name = trim(($row['first_name'] ?? '').' '.($row['last_name'] ?? ''));
@@ -106,7 +106,7 @@ final class UserManager implements UserManagerInterface
                 '' !== $name ? $name : $row['email'],
                 null === $row['last_login_at'] ? null : new \DateTimeImmutable($row['last_login_at']),
             );
-        }, $this->memberships->membersWithProfiles($tenantId));
+        }, $this->memberships->membersWithProfiles($workspaceId));
     }
 
     public function profile(string $email): Profile
@@ -153,52 +153,52 @@ final class UserManager implements UserManagerInterface
         return array_map(static fn (User $user): string => $user->getEmail(), $this->users->systemAdmins());
     }
 
-    public function invite(string $email, string $tenantId, string $invitedBy, bool $keepAssignments, bool $replaceOthers = false): string
+    public function invite(string $email, string $workspaceId, string $invitedBy, bool $keepAssignments, bool $replaceOthers = false): string
     {
         $email = User::normalizeEmail($email);
         // Inviting a member would only be a way to touch what they have here; their membership
-        // is no secret to the tenant's admins.
+        // is no secret to the workspace's admins.
         $user = $this->users->findByEmail($email);
-        if (null !== $user && $this->memberships->isMember($tenantId, $user->getId())) {
+        if (null !== $user && $this->memberships->isMember($workspaceId, $user->getId())) {
             throw InvalidUser::alreadyMember($email);
         }
         // One pending invitation per email: a new one replaces the inviter's own. Another
         // inviter's stands until revoked (in the open, on the members page): replacing it would
         // be a way to change what it carries, or to take it over.
-        $pending = $this->invitations->pendingOf($tenantId, $email, new \DateTimeImmutable(), self::INVITATION_MAX_FAILURES);
+        $pending = $this->invitations->pendingOf($workspaceId, $email, new \DateTimeImmutable(), self::INVITATION_MAX_FAILURES);
         if (null !== $pending && $pending->invitedBy !== $invitedBy && !$replaceOthers) {
             throw InvalidUser::invitedByAnother($email, $pending->invitedBy);
         }
-        $this->invitations->removePendingOf($tenantId, $email);
+        $this->invitations->removePendingOf($workspaceId, $email);
         $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
         $now = new \DateTimeImmutable();
         $this->invitations->add(
             new Invitation(Uuid::v7()->toRfc4122(), $email, $invitedBy, $now, $now->modify(self::INVITATION_LIFETIME), $keepAssignments),
-            $tenantId,
+            $workspaceId,
             hash('sha256', $token),
         );
 
         return $token;
     }
 
-    public function invitations(string $tenantId): array
+    public function invitations(string $workspaceId): array
     {
-        return $this->invitations->pending($tenantId, new \DateTimeImmutable(), self::INVITATION_MAX_FAILURES);
+        return $this->invitations->pending($workspaceId, new \DateTimeImmutable(), self::INVITATION_MAX_FAILURES);
     }
 
-    public function revokeInvitation(string $tenantId, string $id): bool
+    public function revokeInvitation(string $workspaceId, string $id): bool
     {
-        return Uuid::isValid($id) && $this->invitations->remove($tenantId, $id);
+        return Uuid::isValid($id) && $this->invitations->remove($workspaceId, $id);
     }
 
-    public function openInvitation(string $tenantId, string $token): ?Invitation
+    public function openInvitation(string $workspaceId, string $token): ?Invitation
     {
-        return $this->invitations->findPending($tenantId, hash('sha256', $token), new \DateTimeImmutable(), self::INVITATION_MAX_FAILURES);
+        return $this->invitations->findPending($workspaceId, hash('sha256', $token), new \DateTimeImmutable(), self::INVITATION_MAX_FAILURES);
     }
 
-    public function acceptInvitation(string $tenantId, string $token, string $password, ?string $firstName = null, ?string $lastName = null): Invitation
+    public function acceptInvitation(string $workspaceId, string $token, string $password, ?string $firstName = null, ?string $lastName = null): Invitation
     {
-        $invitation = $this->openInvitation($tenantId, $token) ?? throw InvalidUser::invitationNotFound();
+        $invitation = $this->openInvitation($workspaceId, $token) ?? throw InvalidUser::invitationNotFound();
         $user = $this->users->findByEmail($invitation->email);
         if (null === $user) {
             $this->createUser($invitation->email, $password, $firstName, $lastName);
@@ -219,11 +219,11 @@ final class UserManager implements UserManagerInterface
                 throw InvalidUser::wrongPassword();
             }
             // A member already (added meanwhile): nothing of theirs is taken away.
-            if ($this->memberships->isMember($tenantId, $user->getId())) {
+            if ($this->memberships->isMember($workspaceId, $user->getId())) {
                 $invitation = new Invitation($invitation->id, $invitation->email, $invitation->invitedBy, $invitation->createdAt, $invitation->expiresAt, true);
             }
         }
-        $this->memberships->add($tenantId, $user->getId());
+        $this->memberships->add($workspaceId, $user->getId());
         $this->invitations->markAccepted($invitation->id, new \DateTimeImmutable());
 
         return $invitation;

@@ -19,7 +19,7 @@ framework:
             # Compiled metadata snapshot, autowired as TagAwareCacheInterface $metadataCache
             metadata.cache:
                 tags: true
-            # fedale/rbac-bundle's roles and permissions, per tenant (fedale_rbac.yaml)
+            # fedale/rbac-bundle's roles and permissions, per workspace (fedale_rbac.yaml)
             rbac.cache: ~
 
 when@test:

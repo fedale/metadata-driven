@@ -11,7 +11,7 @@ use App\Module\File\Domain\Exception\InvalidFile;
 use App\Module\File\Domain\Model\File;
 use App\Module\File\Domain\Repository\FileRepository;
 use App\Module\File\Infrastructure\StorageKeys;
-use App\Shared\Tenant\CurrentTenant;
+use App\Shared\Workspace\CurrentWorkspace;
 use League\Flysystem\FilesystemException;
 use League\Flysystem\FilesystemOperator;
 use Symfony\Component\DependencyInjection\Attribute\Target;
@@ -27,7 +27,7 @@ final class FlysystemFileStorage implements FileStorageInterface
         private readonly FilesystemOperator $storage,
         private readonly FileRepository $files,
         private readonly MimeTypesInterface $mimeTypes,
-        private readonly CurrentTenant $tenant,
+        private readonly CurrentWorkspace $workspace,
     ) {
     }
 
@@ -43,11 +43,11 @@ final class FlysystemFileStorage implements FileStorageInterface
         $mimeType = $this->mimeTypes->guessMimeType($path) ?? 'application/octet-stream';
         [$width, $height] = self::dimensions($path, $mimeType);
 
-        // The key is the tenant and the content, never the name: no path from the outside
-        // reaches the storage, and the same bytes uploaded twice to a tenant are stored once
+        // The key is the workspace and the content, never the name: no path from the outside
+        // reaches the storage, and the same bytes uploaded twice to a workspace are stored once
         // (StorageKeys). The bytes and the row are written under the lock of the content, so
         // the GC cannot delete bytes found here before the row is visible.
-        $key = StorageKeys::content($this->tenant->id(), $sha256);
+        $key = StorageKeys::content($this->workspace->id(), $sha256);
         $file = $this->files->underContentLock($key, function () use ($path, $key, $originalName, $mimeType, $size, $sha256, $width, $height): File {
             if (!$this->storage->fileExists($key)) {
                 $stream = fopen($path, 'r');

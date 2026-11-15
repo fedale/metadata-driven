@@ -62,7 +62,7 @@ code, the commands, the admin UI and the documentation.
 | Term | Meaning |
 |---|---|
 | **Instance** | One installation of the application, serving many workspaces |
-| **Workspace** | One customer of an instance, with its own model, records, roles and files, reached on its own host (`acme.<base host>`) (see [Tenants](multi-tenancy.md)) |
+| **Workspace** | One customer of an instance, with its own model, records, roles and files, reached on its own host (`acme.<base host>`) (see [Workspaces](workspaces.md)) |
 | **System** | The context with no workspace, working across all of them: the console commands run without `--workspace`, and the system console on `console.<base host>` |
 | **System admin** | A user allowed into the system console. A system admin has no power inside a workspace unless they are a member there, with a role |
 | **User** | One account (email, password, **profile**) shared by every workspace it belongs to |
@@ -89,6 +89,4 @@ code, the commands, the admin UI and the other guides still say:
 | Here | Still in use |
 |---|---|
 | record | record and row |
-| form | form |
 | package, package item, package source | template, template item, template source (`metadata:template:*`, `core.template_*`, the repositories `metadata-driven-templates` and `metadata-driven-template-format`) |
-| workspace, workspace membership | tenant, tenant membership (`core.tenant*`, `tenant:*`, `--tenant`, the guide multi-tenancy.md) |

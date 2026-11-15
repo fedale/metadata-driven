@@ -27,54 +27,54 @@ A user is two records, one-to-one:
 Passwords are hashed with Symfony's `auto` hasher and rehashed on sign-in when the algorithm or
 its cost changes; at least 12 characters. An unknown and a deactivated user get the same error.
 
-### Users and tenants
+### Users and workspaces
 
-Users are global: one email, one password, one profile, whichever [tenants](multi-tenancy.md)
-they work in. A **membership** (`core.tenant_membership`) lets a user sign in to a tenant:
+Users are global: one email, one password, one profile, whichever [workspaces](workspaces.md)
+they work in. A **membership** (`core.workspace_membership`) lets a user sign in to a workspace:
 
-- Signing in to a tenant you're no member of fails with the same error as a wrong password.
-- A session belongs to the tenant it was opened in: you sign in to each tenant on its own, even
+- Signing in to a workspace you're no member of fails with the same error as a wrong password.
+- A session belongs to the workspace it was opened in: you sign in to each workspace on its own, even
   when you're a member of several. The user is loaded again on every request, so a session whose
-  membership was removed, or one replayed on another tenant's host, is signed out at its next
-  request. A "keep me signed in" cookie, likewise, signs you in to its own tenant only.
-- Roles and permissions are per tenant: each tenant has its RBAC tables. Being an admin in one
-  tenant gives nothing in another. Run `rbac:*` with `--tenant=<slug>` for a tenant other than the
+  membership was removed, or one replayed on another workspace's host, is signed out at its next
+  request. A "keep me signed in" cookie, likewise, signs you in to its own workspace only.
+- Roles and permissions are per workspace: each workspace has its RBAC tables. Being an admin in one
+  workspace gives nothing in another. Run `rbac:*` with `--workspace=<slug>` for a workspace other than the
   default one.
-- A user who's a member of two tenants or more gets links to the others in the top bar.
+- A user who's a member of two workspaces or more gets links to the others in the top bar.
 
 ```bash
-symfony console tenant:member:add acme anna@example.com      # Anna may sign in to acme
-symfony console rbac:assign --tenant=acme anna@example.com ROLE_PET_READER
-symfony console tenant:member:list acme
-symfony console tenant:member:remove acme anna@example.com   # her sessions there end
+symfony console workspace:member:add acme anna@example.com      # Anna may sign in to acme
+symfony console rbac:assign --workspace=acme anna@example.com ROLE_PET_READER
+symfony console workspace:member:list acme
+symfony console workspace:member:remove acme anna@example.com   # her sessions there end
 ```
 
-The `tenant:member:*` commands work for the tenant their first argument names. Removing a member
-leaves their roles in the tenant, unused until they're a member again.
+The `workspace:member:*` commands work for the workspace their first argument names. Removing a member
+leaves their roles in the workspace, unused until they're a member again.
 
 ### System admins
 
 System admins sign in to the system console, `console.<base host>`, to manage the
-tenants (see [Tenants](multi-tenancy.md#the-system-console)). `system:admin grant|revoke <email>`
+workspaces (see [Workspaces](workspaces.md#the-system-console)). `system:admin grant|revoke <email>`
 makes them, from the command line only; there they hold `ROLE_SYSTEM_ADMIN`, and nothing in any
-tenant they're no member of. Signing in, everywhere, is throttled: five tries a minute per address
+workspace they're no member of. Signing in, everywhere, is throttled: five tries a minute per address
 and email.
 
 ### The members page — `/admin/members`
 
 The same, from the admin, for whoever holds `admin.members` (or the super admin role), in each
-tenant: linked from the top bar as **Members**.
+workspace: linked from the top bar as **Members**.
 
-- **The members** of the tenant: name, email, roles, last sign-in. Members of other tenants
+- **The members** of the workspace: name, email, roles, last sign-in. Members of other workspaces
   aren't listed.
 - **Invite someone** by email. You get a link, shown once, to pass on (the application sends no
   email); it lasts 7 days, and pending invitations are listed, to revoke. Whoever opens it at
-  `/invitation/…` joins the tenant and is signed in: with the password of their account if the
+  `/invitation/…` joins the workspace and is signed in: with the password of their account if the
   email has one, or choosing a password (12 characters at least) and their name. Five wrong
   passwords burn the invitation, and an account gets five tries a quarter of an hour whatever the
   invitation, so inviting again gives no more guesses. One invitation per email at a time: your
   new one replaces yours, another admin's must be revoked first; a member can't be invited.
-- **Roles**: a checkbox per role of the tenant, saved per member. Permissions assigned directly
+- **Roles**: a checkbox per role of the workspace, saved per member. Permissions assigned directly
   with `rbac:assign` are left alone.
 - **Remove** a member: they can no longer sign in here, and their session ends at its next
   request.
@@ -86,7 +86,7 @@ tenant: linked from the top bar as **Members**.
   can't change their roles, remove them, or add them back once removed (a removed member keeps
   their roles here). Managing members never makes anyone more powerful than the admin doing it.
 
-Accounts are shared by every tenant, so the page tells you nothing about the email you invite:
+Accounts are shared by every workspace, so the page tells you nothing about the email you invite:
 the answer is the same whether it has an account or not, and no name shows until the invitation
 is accepted. Only opening the link yourself would show whether it asks for an existing password,
 and each try costs an invitation. A former member invited back by an admin who doesn't hold all
@@ -99,23 +99,23 @@ user:create [--first-name=…] [--last-name=…] [--password=…] <email>
 ```
 
 Without `--password` the password is asked, hidden (prefer it: an option ends up in the shell
-history). The user becomes a member of the command's tenant (the default one, or
-`--tenant=<slug>`), and starts with no permission there: assign a role or a permission. An email
-that exists already is refused: add that user to another tenant with `tenant:member:add`.
+history). The user becomes a member of the command's workspace (the default one, or
+`--workspace=<slug>`), and starts with no permission there: assign a role or a permission. An email
+that exists already is refused: add that user to another workspace with `workspace:member:add`.
 
 Any signed-in user picks their language in the top bar (`POST /account/locale`); no permission
 is needed.
 
 ### My account — `/account`
 
-Every signed-in user, in any tenant and on the console, reaches their account from their name in
+Every signed-in user, in any workspace and on the console, reaches their account from their name in
 the top bar:
 
-- **Name**: first and last name, the name shown everywhere (accounts are global: every tenant
+- **Name**: first and last name, the name shown everywhere (accounts are global: every workspace
   sees the change).
 - **Password**: the current one, then the new one twice (12 characters at least). Five wrong
   current passwords a quarter of an hour, then it waits: a session left open is no way to guess
-  it. Changing it ends every other session of the account, on other devices and in other tenants,
+  it. Changing it ends every other session of the account, on other devices and in other workspaces,
   and its "keep me signed in" cookies; this one goes on.
 
 ## Permissions
@@ -129,7 +129,7 @@ The application checks these RBAC items:
 | `record.<object>.update` | permission | Saving changes to records |
 | `record.<object>.delete` | permission | Deleting records |
 | `admin.metadata` | permission | The admin UI (objects, fields, search, tables) — not the records |
-| `admin.members` | permission | The members page, `/admin/members`: who may sign in to the tenant, with which roles |
+| `admin.members` | permission | The members page, `/admin/members`: who may sign in to the workspace, with which roles |
 | `admin.roles` | permission | The roles page, `/admin/roles`: which permissions each role gives |
 | `ROLE_SUPER_ADMIN` | role | Everything, now and in the future |
 
@@ -154,7 +154,7 @@ Where objects meet:
 
 ### The roles page — `/admin/roles`
 
-Whoever holds `admin.roles` (or the super admin role) defines the tenant's roles from the admin,
+Whoever holds `admin.roles` (or the super admin role) defines the workspace's roles from the admin,
 linked from the top bar as **Roles**: a new role (`ROLE_` and capitals, a description, its
 permissions, grouped by object), a role's permissions changed, a role deleted. Members get roles on
 [the members page](#the-members-page--adminmembers). Defining roles never gives more than you have:
@@ -203,11 +203,11 @@ the others sign in again. Assignments are keyed by the user's email.
 
 Other commands of the bundle: `rbac:list-items`, `rbac:revoke`, `rbac:item:remove`,
 `rbac:child:remove`, `rbac:cache:clear` (after editing the `auth_*` tables by hand; it clears the
-cache of the command's tenant, so `--tenant=<slug>` for another one).
+cache of the command's workspace, so `--workspace=<slug>` for another one).
 
 ## Not yet available
 
-- Defining roles, and managing users beyond the members of a tenant, from the admin UI (console only).
+- Defining roles, and managing users beyond the members of a workspace, from the admin UI (console only).
 - Permissions per field (hidden or read-only fields per role).
 - Rules on single records (e.g. "only the records I created"): the bundle supports them
   (`auth_rule`), the application does not use them yet.

@@ -7,90 +7,90 @@ from `fedale/gridview-bundle`, the runtime settings from `fedale/setting-bundle`
 
 | Schema | Holds | Managed by |
 |---|---|---|
-| `core` | The tenant registry (`core.tenant`) and who may sign in to each tenant (`core.tenant_membership`); object, field, view and form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the templates installed (`core.template_installation`) and the ids of items in templates (`core.template_item`), the settings of `fedale/setting-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
-| a tenant's data schema (`data` for the first tenant) | One table per object, `c_<object>`, holding the records, and one link table per many-to-many field, `l_<object>__<field>` | The Schema module, from the tenant's metadata |
-| a tenant's RBAC schema (`rbac` for the first tenant) | The tables of `fedale/rbac-bundle` (`auth_*`): the tenant's roles, permissions and assignments | Created with the tenant |
-| `no_tenant_rbac` | The same tables, empty: the RBAC tables of a session with no tenant (the system's, the console's), where the bundle finds tables and no permission | Migrations |
+| `core` | The workspace registry (`core.workspace`) and who may sign in to each workspace (`core.workspace_membership`); object, field, view and form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the templates installed (`core.template_installation`) and the ids of items in templates (`core.template_item`), the settings of `fedale/setting-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
+| a workspace's data schema (`data` for the first workspace) | One table per object, `c_<object>`, holding the records, and one link table per many-to-many field, `l_<object>__<field>` | The Schema module, from the workspace's metadata |
+| a workspace's RBAC schema (`rbac` for the first workspace) | The tables of `fedale/rbac-bundle` (`auth_*`): the workspace's roles, permissions and assignments | Created with the workspace |
+| `no_workspace_rbac` | The same tables, empty: the RBAC tables of a session with no workspace (the system's, the console's), where the bundle finds tables and no permission | Migrations |
 
 Every session's `search_path` starts with `core`, so the tables whose mapping names no schema
-(Doctrine's migration table, the settings) are found there; then comes the current tenant's
+(Doctrine's migration table, the settings) are found there; then comes the current workspace's
 RBAC schema, where `fedale/rbac-bundle` finds its tables unqualified; then `public`, which holds
-no table, only the `pg_trgm` extension. The application sets the path itself (see "Tenants")
+no table, only the `pg_trgm` extension. The application sets the path itself (see "Workspaces")
 because `DATABASE_URL` can't: `pdo_pgsql` ignores the libpq `options` parameter, and the Symfony
 CLI replaces the URL with the one from the Docker container.
 
 Records are read and written with DBAL, never as ORM entities: their tables do not exist when the
 code is written.
 
-### Tenants
+### Workspaces
 
-The installation serves **tenants**, each with its own model, records, roles and files, created
-and managed with the [`tenant:*` commands](console.md#tenants); the [Tenants](multi-tenancy.md)
+The installation serves **workspaces**, each with its own model, records, roles and files, created
+and managed with the [`workspace:*` commands](console.md#workspaces); the [Workspaces](workspaces.md)
 guide says how to use and deploy them. Under the hood (see also
 [the plan](internal/multi-tenancy-plan.md)):
 
-- `core.tenant` registers them: a slug, a name, a `number` (for `fedale/setting-bundle`, whose
+- `core.workspace` registers them: a slug, a name, a `number` (for `fedale/setting-bundle`, whose
   tenant ids are integers), its data schema and its RBAC schema, and a status (`active` or
-  `suspended`). The installation's first tenant is `default`, with `data` and `rbac`.
-- The core tables whose rows belong to a tenant (the definitions, the schema change log, the
-  files, the templates: `TenantScope::TABLES`) carry a `tenant_id`. Unique names are unique per
-  tenant: two tenants may both have an `account` object.
-- **The current tenant is a setting of the PostgreSQL session**, `app.tenant_id`, with the
-  `search_path` that goes with it (`TenantSessionSql`). `TenantSwitcher` sets both, and forgets
-  what the previous tenant left in memory: the ORM's entities and, through `TenantSwitched`,
-  the metadata snapshot, the translations, the revision. `CurrentTenant` reads the session, so
+  `suspended`). The installation's first workspace is `default`, with `data` and `rbac`.
+- The core tables whose rows belong to a workspace (the definitions, the schema change log, the
+  files, the templates: `WorkspaceScope::TABLES`) carry a `workspace_id`. Unique names are unique per
+  workspace: two workspaces may both have an `account` object.
+- **The current workspace is a setting of the PostgreSQL session**, `app.workspace_id`, with the
+  `search_path` that goes with it (`WorkspaceSessionSql`). `WorkspaceSwitcher` sets both, and forgets
+  what the previous workspace left in memory: the ORM's entities and, through `WorkspaceSwitched`,
+  the metadata snapshot, the translations, the revision. `CurrentWorkspace` reads the session, so
   PHP and SQL can't disagree.
-- **A request** is for the tenant its host names, `<slug>.<base host>` (`HostTenantListener`,
+- **A request** is for the workspace its host names, `<slug>.<base host>` (`HostWorkspaceListener`,
   above the firewall): `acme.example.com`, or `acme.localhost` in development, which browsers
   resolve to 127.0.0.1 without any DNS. The base host itself, and any other host, is the
-  default tenant's. An unknown or suspended tenant is a 404.
-- **The system console** answers on `console.<base host>` (`app.tenant.console_label`),
+  default workspace's. An unknown or suspended workspace is a 404.
+- **The system console** answers on `console.<base host>` (`app.workspace.console_label`),
   in the system session, for the system admins only; its paths (`/console…`) answer nowhere
-  else. See [Tenants](multi-tenancy.md#the-system-console).
-- **A command** of the application or of a `fedale/*` bundle is for the tenant of its global
-  `--tenant=<slug>` option, the default tenant without it (`ConsoleTenantListener`). The other
-  commands (Doctrine's, the migrations, `cache:clear`) and the `tenant:*` commands run in the
-  system session, unless `--tenant` names a tenant.
-- **Without a tenant** (the system session), the ORM reads no tenant's rows, and an insert
-  fails on `NOT NULL`. A trigger fills in `tenant_id` on insert from the session (no model maps
-  the column), the ORM's `tenant` filter adds it to every read, and the DBAL queries on these
+  else. See [Workspaces](workspaces.md#the-system-console).
+- **A command** of the application or of a `fedale/*` bundle is for the workspace of its global
+  `--workspace=<slug>` option, the default workspace without it (`ConsoleWorkspaceListener`). The other
+  commands (Doctrine's, the migrations, `cache:clear`) and the `workspace:*` commands run in the
+  system session, unless `--workspace` names a workspace.
+- **Without a workspace** (the system session), the ORM reads no workspace's rows, and an insert
+  fails on `NOT NULL`. A trigger fills in `workspace_id` on insert from the session (no model maps
+  the column), the ORM's `workspace` filter adds it to every read, and the DBAL queries on these
   tables add it themselves.
 - Doctrine's filters apply to SELECTs only. A DQL `UPDATE` or `DELETE` on these tables would
-  reach every tenant's rows: write it in SQL with `TenantScope::CURRENT`, as
+  reach every workspace's rows: write it in SQL with `WorkspaceScope::CURRENT`, as
   `DoctrineTranslationRepository` does.
 - **Row-level security** is the safety net under those filters: a policy on each of these tables
-  lets a session with a tenant see and write that tenant's rows only,
-  a session without a tenant none, and the system session every tenant's. The system's is
-  an explicit mark, `app.system = 'on'`, set by `TenantSwitcher::system()` for the
-  migrations and the tenant commands, and remembered for a connection opened later
-  (`TenantSessionState`): a session that lost its tenant sees nothing, not everything. The policies apply
+  lets a session with a workspace see and write that workspace's rows only,
+  a session without a workspace none, and the system session every workspace's. The system's is
+  an explicit mark, `app.system = 'on'`, set by `WorkspaceSwitcher::system()` for the
+  migrations and the workspace commands, and remembered for a connection opened later
+  (`WorkspaceSessionState`): a session that lost its workspace sees nothing, not everything. The policies apply
   to the owner of the tables too (`FORCE`), but **not to a superuser or a role with
   `BYPASSRLS`**: connect the application as an ordinary role in production. The Docker database
   of development connects as a superuser, so there the filters work alone; the tests check the
   policies under a role of their own.
-- **Rows offered to every tenant**: `template_source` (`TenantScope::SHARED`) may have no
-  tenant, an index the system admin offers to all (`tenant:template:repo`, as the system). The
-  `tenant` filter and the policies let every tenant read such a row, and none write it.
-- `CurrentTenant` gives the tenant's id and data schema to the code that names record tables
+- **Rows offered to every workspace**: `template_source` (`WorkspaceScope::SHARED`) may have no
+  workspace, an index the system admin offers to all (`workspace:template:repo`, as the system). The
+  `workspace` filter and the policies let every workspace read such a row, and none write it.
+- `CurrentWorkspace` gives the workspace's id and data schema to the code that names record tables
   (the Schema and Record modules).
-- **Users are global**, with their profile; a membership (`core.tenant_membership`, the
-  system's, without row-level security) lets them sign in to a tenant. `UserProvider` finds
-  only the members of the request's tenant, at sign-in and on every request; the
-  `SecurityUser` it loads holds that tenant, so the session and the remember-me cookie are bound
-  to it (see [Users and tenants](access.md#users-and-tenants)).
-- `fedale/rbac-bundle` (1.2) is told the current tenant by `RbacTenantContext`
-  (`tenancy.context` in `fedale_rbac.yaml`): its cache keeps each tenant's roles and permissions
-  under a key of their own (`fedale_rbac.items.<tenant id>`, in the `rbac.cache` pool), and so
-  do its graphs in memory. It needs nothing else, since each tenant has its own tables: every
+- **Users are global**, with their profile; a membership (`core.workspace_membership`, the
+  system's, without row-level security) lets them sign in to a workspace. `UserProvider` finds
+  only the members of the request's workspace, at sign-in and on every request; the
+  `SecurityUser` it loads holds that workspace, so the session and the remember-me cookie are bound
+  to it (see [Users and workspaces](access.md#users-and-workspaces)).
+- `fedale/rbac-bundle` (1.2) is told the current workspace by `RbacWorkspaceContext`
+  (`tenancy.context` in `fedale_rbac.yaml`): its cache keeps each workspace's roles and permissions
+  under a key of their own (`fedale_rbac.items.<workspace id>`, in the `rbac.cache` pool), and so
+  do its graphs in memory. It needs nothing else, since each workspace has its own tables: every
   assignment stays in the bundle's `global` tenant (`auth_assignment.tenant_id`, its default),
-  and `scoped_assignments`, for tables shared by every tenant, stays off. A session with no
-  tenant is `global` to the bundle, and reads the empty tables of `no_tenant_rbac`.
-- `DeclareTenantSchemaListener` brings the schema tools in line (the unmapped column, the RBAC
-  tables, the tenants' schemas), so `migrations:diff` stays empty.
+  and `scoped_assignments`, for tables shared by every workspace, stays off. A session with no
+  workspace is `global` to the bundle, and reads the empty tables of `no_workspace_rbac`.
+- `DeclareWorkspaceSchemaListener` brings the schema tools in line (the unmapped column, the RBAC
+  tables, the workspaces' schemas), so `migrations:diff` stays empty.
 
-The settings: `TENANT_BASE_HOST` (default `localhost`) and `TENANT_DEFAULT` (default `default`;
-empty: every request must name its tenant, and the commands run without one unless they name it).
-`app.tenant.fallback` is the tenant every new connection starts in, before a request or a command
+The settings: `WORKSPACE_BASE_HOST` (default `localhost`) and `WORKSPACE_DEFAULT` (default `default`;
+empty: every request must name its workspace, and the commands run without one unless they name it).
+`app.workspace.fallback` is the workspace every new connection starts in, before a request or a command
 selects one: empty, except in the tests, which have neither.
 
 The bytes of stored files are in neither schema: they are in the `record_files` storage of
@@ -98,14 +98,14 @@ The bytes of stored files are in neither schema: they are in the `record_files` 
 the tests. The directory is the `RECORD_FILES_DIR` environment variable, `var/storage/files` of
 the project when it's not set.
 
-Each tenant has a directory of its own there, named after its id (`StorageKeys`):
-`<tenant id>/<aa>/<SHA-256>` for the contents, `<tenant id>/thumbnails/<size>/<SHA-256>.<format>`
-for the thumbnails. The same bytes are stored once per tenant, never shared between tenants, so
-no tenant learns what another stores, the GC of one tenant looks at its own directory and rows
-only, and `tenant:delete` deletes the directory with the tenant. Each row of `core.file` keeps the
-key it was stored under: the files stored before tenants had directories, at the root of the
+Each workspace has a directory of its own there, named after its id (`StorageKeys`):
+`<workspace id>/<aa>/<SHA-256>` for the contents, `<workspace id>/thumbnails/<size>/<SHA-256>.<format>`
+for the thumbnails. The same bytes are stored once per workspace, never shared between workspaces, so
+no workspace learns what another stores, the GC of one workspace looks at its own directory and rows
+only, and `workspace:delete` deletes the directory with the workspace. Each row of `core.file` keeps the
+key it was stored under: the files stored before workspaces had directories, at the root of the
 storage (`<aa>/<SHA-256>`), stay readable until
-[`tenant:files:move`](console.md#tenantfilesmove) moves them, once.
+[`workspace:files:move`](console.md#workspacefilesmove) moves them, once.
 
 In production, set `RECORD_FILES_DIR` to a directory that outlives the deploys, such as
 `/srv/metadata-driven/files`: a deploy that builds each release in a directory of its own (or a
@@ -181,9 +181,9 @@ Inside a transaction the registry reads the definitions from the database, so th
 the uncommitted change; the cache is only refreshed once the change is committed.
 
 The cache keys of the metadata (the snapshot of the objects, the forms, the
-translations) carry the **metadata revision** and the **instance's id**, the current tenant's
+translations) carry the **metadata revision** and the **instance's id**, the current workspace's
 row of `core.metadata_state`, read once per request (`MetadataRevision`). Triggers on the
-metadata tables bump the revision of the tenant whose rows changed, in the transaction of every
+metadata tables bump the revision of the workspace whose rows changed, in the transaction of every
 write, whatever makes it (the admin, the console, a template, a migration), so:
 
 - a change made on one server reaches every server at its next request, whatever cache each one
@@ -192,8 +192,8 @@ write, whatever makes it (the admin, the console, a template, a migration), so:
   pointed at another database). A copy of a database (`pg_dump` and restore) keeps the instance's
   id: give the copy a cache of its own, or a new id (`UPDATE core.metadata_state SET instance =
   gen_random_uuid()`);
-- two tenants never share cached metadata either: each has an instance id of its own, and a
-  change to one tenant's metadata leaves the other tenants' keys alone.
+- two workspaces never share cached metadata either: each has an instance id of its own, and a
+  change to one workspace's metadata leaves the other workspaces' keys alone.
 
 `MetadataChanged` still drops the cache of the server that made the change, early; elsewhere the
 stale items expire after a day. `core.metadata_state` is kept out of the ORM mapping

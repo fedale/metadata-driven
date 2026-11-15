@@ -6,22 +6,22 @@ nav:
     members: Members
     roles: Roles
     language: Language
-    tenants: Workspaces
+    workspaces: Workspaces
     account: My account
     sign_out: Sign out
 console:
     title: Console
-    tenants: Tenants
+    workspaces: Workspaces
     indexes: Template indexes
-    indexes_intro: 'Offered to every tenant, next to its own; no tenant removes them.'
-    new: New tenant
+    indexes_intro: 'Offered to every workspace, next to its own; no workspace removes them.'
+    new: New workspace
     create: Create
     slug: Slug
     slug_help: 'The first label of its address: lower case letters, digits and dashes.'
     name: Name
     admin_email: First admin
     admin_email_help: 'Optional: they get an invitation, and the super admin role once they accept.'
-    created: 'Tenant %slug% created.'
+    created: 'Workspace %slug% created.'
     status: Status
     members: Members
     objects: Objects
@@ -29,20 +29,20 @@ console:
     suspended_status: suspended
     suspend: Suspend
     resume: Resume
-    suspended: 'Tenant %slug% suspended: its address answers 404, its data stays.'
-    resumed: 'Tenant %slug% active again.'
+    suspended: 'Workspace %slug% suspended: its address answers 404, its data stays.'
+    resumed: 'Workspace %slug% active again.'
     super_admin: Super admin
     give_admin: Make super admin
     take_admin: Take super admin
     no_members: 'No member yet: invite an admin.'
     invite_admin: Invite an admin
-    invite_admin_intro: 'They get the super admin role of this tenant once they accept the link.'
-    delete: Delete the tenant
+    invite_admin_intro: 'They get the super admin role of this workspace once they accept the link.'
+    delete: Delete the workspace
     delete_intro: 'Its records, roles, definitions, members and files go, for good.'
     confirm: Its slug again
     confirm_help: 'Type the slug to confirm.'
     not_confirmed: 'Not confirmed: nothing was deleted.'
-    deleted: 'Tenant %slug% deleted.'
+    deleted: 'Workspace %slug% deleted.'
 account:
     title: My account
     name: Name

@@ -6,14 +6,14 @@ namespace App\Module\Admin\UI\Controller;
 
 use App\Module\Access\Contract\AccessSetupInterface;
 use App\Module\Access\Contract\Permissions;
-use App\Module\Access\Contract\TenantRolesInterface;
+use App\Module\Access\Contract\WorkspaceRolesInterface;
 use App\Module\User\Contract\Dto\Member;
 use App\Module\User\Contract\Exception\UserException;
 use App\Module\User\Contract\UserManagerInterface;
-use App\Shared\Tenant\Tenant;
-use App\Shared\Tenant\TenantAdministration;
-use App\Shared\Tenant\Tenants;
-use App\Shared\Tenant\TenantSessions;
+use App\Shared\Workspace\Workspace;
+use App\Shared\Workspace\WorkspaceAdministration;
+use App\Shared\Workspace\Workspaces;
+use App\Shared\Workspace\WorkspaceSessions;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -29,30 +29,30 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * The system console (docs/internal/tenant-admin-ui-plan.md, part B): its tenants,
- * for its system admins. On its own host, in the system session (HostTenantListener); every path
- * needs ROLE_SYSTEM_ADMIN (security.yaml). The counterpart of the tenant:* commands.
+ * The system console (docs/internal/tenant-admin-ui-plan.md, part B): its workspaces,
+ * for its system admins. On its own host, in the system session (HostWorkspaceListener); every path
+ * needs ROLE_SYSTEM_ADMIN (security.yaml). The counterpart of the workspace:* commands.
  *
- * A tenant's first admin, or another one, is invited: they accept the link on the tenant's host,
- * with their account or a new one, and hold the tenant's super admin role there. The system admin
+ * A workspace's first admin, or another one, is invited: they accept the link on the workspace's host,
+ * with their account or a new one, and hold the workspace's super admin role there. The system admin
  * chooses no one's password.
  */
 #[Route('/console', name: 'console_')]
 final class ConsoleController extends AbstractController
 {
     public function __construct(
-        private readonly TenantAdministration $administration,
-        private readonly Tenants $tenants,
-        private readonly TenantSessions $sessions,
+        private readonly WorkspaceAdministration $administration,
+        private readonly Workspaces $workspaces,
+        private readonly WorkspaceSessions $sessions,
         private readonly AccessSetupInterface $accessSetup,
-        private readonly TenantRolesInterface $roles,
+        private readonly WorkspaceRolesInterface $roles,
         private readonly UserManagerInterface $users,
         private readonly FormFactoryInterface $forms,
         private readonly TranslatorInterface $translator,
         private readonly LoggerInterface $logger,
-        #[Autowire('%app.tenant.base_host%')]
+        #[Autowire('%app.workspace.base_host%')]
         private readonly string $baseHost,
-        #[Autowire('%app.tenant.default%')]
+        #[Autowire('%app.workspace.default%')]
         private readonly string $default,
     ) {
     }
@@ -60,13 +60,13 @@ final class ConsoleController extends AbstractController
     #[Route('', name: 'index', methods: ['GET'])]
     public function index(): Response
     {
-        return $this->render('console/tenants.html.twig', ['overview' => $this->administration->overview()]);
+        return $this->render('console/workspaces.html.twig', ['overview' => $this->administration->overview()]);
     }
 
-    #[Route('/tenants/new', name: 'tenant_new', methods: ['GET', 'POST'])]
+    #[Route('/workspaces/new', name: 'workspace_new', methods: ['GET', 'POST'])]
     public function new(Request $request): Response
     {
-        $form = $this->forms->createNamedBuilder('new_tenant', FormType::class)
+        $form = $this->forms->createNamedBuilder('new_workspace', FormType::class)
             ->add('slug', TextType::class, ['label' => 'console.slug', 'help' => 'console.slug_help'])
             ->add('name', TextType::class, ['label' => 'console.name'])
             ->add('admin_email', EmailType::class, ['label' => 'console.admin_email', 'help' => 'console.admin_email_help', 'required' => false])
@@ -74,34 +74,34 @@ final class ConsoleController extends AbstractController
             ->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
             try {
-                $tenant = $this->administration->create(self::text($form, 'slug'), self::text($form, 'name'));
+                $workspace = $this->administration->create(self::text($form, 'slug'), self::text($form, 'name'));
             } catch (\InvalidArgumentException $e) {
                 $form->get('slug')->addError(new FormError($e->getMessage()));
             }
-            if (isset($tenant)) {
+            if (isset($workspace)) {
                 // Its permissions and super admin role, as access:sync makes them.
-                $this->sessions->within($tenant, fn () => $this->accessSetup->syncAll());
-                $this->log('created tenant', $tenant);
+                $this->sessions->within($workspace, fn () => $this->accessSetup->syncAll());
+                $this->log('created workspace', $workspace);
                 $email = self::text($form, 'admin_email');
                 if ('' !== $email) {
-                    $this->inviteAdmin($tenant, $email, $request);
+                    $this->inviteAdmin($workspace, $email, $request);
                 }
-                $this->addFlash('success', $this->translator->trans('console.created', ['%slug%' => $tenant->slug]));
+                $this->addFlash('success', $this->translator->trans('console.created', ['%slug%' => $workspace->slug]));
 
-                return $this->redirectToRoute('console_tenant_show', ['slug' => $tenant->slug], Response::HTTP_SEE_OTHER);
+                return $this->redirectToRoute('console_workspace_show', ['slug' => $workspace->slug], Response::HTTP_SEE_OTHER);
             }
         }
 
-        return $this->render('console/tenant_new.html.twig', ['form' => $form->createView()], new Response(status: $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
+        return $this->render('console/workspace_new.html.twig', ['form' => $form->createView()], new Response(status: $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
-    #[Route('/tenants/{slug}', name: 'tenant_show', methods: ['GET'])]
+    #[Route('/workspaces/{slug}', name: 'workspace_show', methods: ['GET'])]
     public function show(string $slug, Request $request): Response
     {
-        $tenant = $this->tenantOr404($slug);
-        $members = $this->users->members($tenant->id);
-        // Who holds the super admin role there: read in the tenant's session, its RBAC tables.
-        $admins = $this->sessions->within($tenant, fn (): array => array_values(array_filter(
+        $workspace = $this->workspaceOr404($slug);
+        $members = $this->users->members($workspace->id);
+        // Who holds the super admin role there: read in the workspace's session, its RBAC tables.
+        $admins = $this->sessions->within($workspace, fn (): array => array_values(array_filter(
             array_map(static fn (Member $member): string => $member->email, $members),
             fn (string $email): bool => \in_array(Permissions::SUPER_ADMIN_ROLE, $this->roles->rolesOf($email), true),
         )));
@@ -110,77 +110,77 @@ final class ConsoleController extends AbstractController
             $rows[] = [
                 'member' => $member,
                 'admin' => \in_array($member->email, $admins, true),
-                'admin_form' => $this->actionForm('admin_'.self::key($member), 'console_member_admin', $tenant, ['key' => self::key($member)])->createView(),
-                'remove_form' => $this->actionForm('remove_'.self::key($member), 'console_member_remove', $tenant, ['key' => self::key($member)])->createView(),
+                'admin_form' => $this->actionForm('admin_'.self::key($member), 'console_member_admin', $workspace, ['key' => self::key($member)])->createView(),
+                'remove_form' => $this->actionForm('remove_'.self::key($member), 'console_member_remove', $workspace, ['key' => self::key($member)])->createView(),
             ];
         }
 
-        return $this->render('console/tenant_show.html.twig', [
-            'tenant' => $tenant,
-            'url' => $this->tenantUrl($tenant, '/', $request),
-            'is_default' => $tenant->slug === $this->default,
+        return $this->render('console/workspace_show.html.twig', [
+            'workspace' => $workspace,
+            'url' => $this->workspaceUrl($workspace, '/', $request),
+            'is_default' => $workspace->slug === $this->default,
             'rows' => $rows,
-            'status_form' => $this->actionForm('status', 'console_tenant_status', $tenant)->createView(),
-            'invite_form' => $this->inviteForm($tenant)->createView(),
-            'delete_form' => $this->deleteForm($tenant)->createView(),
+            'status_form' => $this->actionForm('status', 'console_workspace_status', $workspace)->createView(),
+            'invite_form' => $this->inviteForm($workspace)->createView(),
+            'delete_form' => $this->deleteForm($workspace)->createView(),
         ]);
     }
 
-    #[Route('/tenants/{slug}/status', name: 'tenant_status', methods: ['POST'])]
+    #[Route('/workspaces/{slug}/status', name: 'workspace_status', methods: ['POST'])]
     public function status(string $slug, Request $request): Response
     {
-        $tenant = $this->tenantOr404($slug);
-        if ($this->isValidSubmission($this->actionForm('status', 'console_tenant_status', $tenant), $request)) {
-            $tenant->active ? $this->administration->suspend($tenant) : $this->administration->resume($tenant);
-            $this->log($tenant->active ? 'suspended tenant' : 'resumed tenant', $tenant);
-            $this->addFlash('success', $this->translator->trans($tenant->active ? 'console.suspended' : 'console.resumed', ['%slug%' => $tenant->slug]));
+        $workspace = $this->workspaceOr404($slug);
+        if ($this->isValidSubmission($this->actionForm('status', 'console_workspace_status', $workspace), $request)) {
+            $workspace->active ? $this->administration->suspend($workspace) : $this->administration->resume($workspace);
+            $this->log($workspace->active ? 'suspended workspace' : 'resumed workspace', $workspace);
+            $this->addFlash('success', $this->translator->trans($workspace->active ? 'console.suspended' : 'console.resumed', ['%slug%' => $workspace->slug]));
         }
 
-        return $this->redirectToRoute('console_tenant_show', ['slug' => $tenant->slug], Response::HTTP_SEE_OTHER);
+        return $this->redirectToRoute('console_workspace_show', ['slug' => $workspace->slug], Response::HTTP_SEE_OTHER);
     }
 
-    #[Route('/tenants/{slug}/delete', name: 'tenant_delete', methods: ['POST'])]
+    #[Route('/workspaces/{slug}/delete', name: 'workspace_delete', methods: ['POST'])]
     public function delete(string $slug, Request $request): Response
     {
-        $tenant = $this->tenantOr404($slug);
-        if ($tenant->slug === $this->default) {
-            throw $this->createAccessDeniedException('The default tenant can\'t be deleted.');
+        $workspace = $this->workspaceOr404($slug);
+        if ($workspace->slug === $this->default) {
+            throw $this->createAccessDeniedException('The default workspace can\'t be deleted.');
         }
-        $form = $this->deleteForm($tenant)->handleRequest($request);
+        $form = $this->deleteForm($workspace)->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
-            // Irreversible: confirmed by typing the slug back, as tenant:delete.
-            if (self::text($form, 'confirm') !== $tenant->slug) {
+            // Irreversible: confirmed by typing the slug back, as workspace:delete.
+            if (self::text($form, 'confirm') !== $workspace->slug) {
                 $this->addFlash('error', $this->translator->trans('console.not_confirmed'));
 
-                return $this->redirectToRoute('console_tenant_show', ['slug' => $tenant->slug], Response::HTTP_SEE_OTHER);
+                return $this->redirectToRoute('console_workspace_show', ['slug' => $workspace->slug], Response::HTTP_SEE_OTHER);
             }
-            $this->administration->delete($tenant);
-            $this->log('deleted tenant', $tenant);
-            $this->addFlash('success', $this->translator->trans('console.deleted', ['%slug%' => $tenant->slug]));
+            $this->administration->delete($workspace);
+            $this->log('deleted workspace', $workspace);
+            $this->addFlash('success', $this->translator->trans('console.deleted', ['%slug%' => $workspace->slug]));
         }
 
         return $this->redirectToRoute('console_index', [], Response::HTTP_SEE_OTHER);
     }
 
-    #[Route('/tenants/{slug}/invite', name: 'tenant_invite', methods: ['POST'])]
+    #[Route('/workspaces/{slug}/invite', name: 'workspace_invite', methods: ['POST'])]
     public function invite(string $slug, Request $request): Response
     {
-        $tenant = $this->tenantOr404($slug);
-        $form = $this->inviteForm($tenant)->handleRequest($request);
+        $workspace = $this->workspaceOr404($slug);
+        $form = $this->inviteForm($workspace)->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
-            $this->inviteAdmin($tenant, self::text($form, 'email'), $request);
+            $this->inviteAdmin($workspace, self::text($form, 'email'), $request);
         }
 
-        return $this->redirectToRoute('console_tenant_show', ['slug' => $tenant->slug], Response::HTTP_SEE_OTHER);
+        return $this->redirectToRoute('console_workspace_show', ['slug' => $workspace->slug], Response::HTTP_SEE_OTHER);
     }
 
-    #[Route('/tenants/{slug}/members/{key}/admin', name: 'member_admin', requirements: ['key' => '[0-9a-f]{12}'], methods: ['POST'])]
+    #[Route('/workspaces/{slug}/members/{key}/admin', name: 'member_admin', requirements: ['key' => '[0-9a-f]{12}'], methods: ['POST'])]
     public function toggleAdmin(string $slug, string $key, Request $request): Response
     {
-        $tenant = $this->tenantOr404($slug);
-        $member = $this->memberOr404($tenant, $key);
-        if ($this->isValidSubmission($this->actionForm('admin_'.$key, 'console_member_admin', $tenant, ['key' => $key]), $request)) {
-            $made = $this->sessions->within($tenant, function () use ($member): bool {
+        $workspace = $this->workspaceOr404($slug);
+        $member = $this->memberOr404($workspace, $key);
+        if ($this->isValidSubmission($this->actionForm('admin_'.$key, 'console_member_admin', $workspace, ['key' => $key]), $request)) {
+            $made = $this->sessions->within($workspace, function () use ($member): bool {
                 // The role exists even where access:sync never ran.
                 $this->accessSetup->syncAll();
                 $roles = $this->roles->rolesOf($member->email);
@@ -191,60 +191,60 @@ final class ConsoleController extends AbstractController
 
                 return !$admin;
             });
-            $this->log($made ? 'gave the super admin role' : 'took the super admin role', $tenant, $member->email);
+            $this->log($made ? 'gave the super admin role' : 'took the super admin role', $workspace, $member->email);
         }
 
-        return $this->redirectToRoute('console_tenant_show', ['slug' => $tenant->slug], Response::HTTP_SEE_OTHER);
+        return $this->redirectToRoute('console_workspace_show', ['slug' => $workspace->slug], Response::HTTP_SEE_OTHER);
     }
 
-    #[Route('/tenants/{slug}/members/{key}/remove', name: 'member_remove', requirements: ['key' => '[0-9a-f]{12}'], methods: ['POST'])]
+    #[Route('/workspaces/{slug}/members/{key}/remove', name: 'member_remove', requirements: ['key' => '[0-9a-f]{12}'], methods: ['POST'])]
     public function removeMember(string $slug, string $key, Request $request): Response
     {
-        $tenant = $this->tenantOr404($slug);
-        $member = $this->memberOr404($tenant, $key);
-        if ($this->isValidSubmission($this->actionForm('remove_'.$key, 'console_member_remove', $tenant, ['key' => $key]), $request)) {
-            $this->users->removeFromTenant($member->email, $tenant->id);
-            $this->log('removed member', $tenant, $member->email);
+        $workspace = $this->workspaceOr404($slug);
+        $member = $this->memberOr404($workspace, $key);
+        if ($this->isValidSubmission($this->actionForm('remove_'.$key, 'console_member_remove', $workspace, ['key' => $key]), $request)) {
+            $this->users->removeFromWorkspace($member->email, $workspace->id);
+            $this->log('removed member', $workspace, $member->email);
             $this->addFlash('success', $this->translator->trans('admin.members.removed', ['%name%' => $member->displayName]));
         }
 
-        return $this->redirectToRoute('console_tenant_show', ['slug' => $tenant->slug], Response::HTTP_SEE_OTHER);
+        return $this->redirectToRoute('console_workspace_show', ['slug' => $workspace->slug], Response::HTTP_SEE_OTHER);
     }
 
     /**
-     * An admin of the tenant, invited: they hold its super admin role once they accept.
+     * An admin of the workspace, invited: they hold its super admin role once they accept.
      */
-    private function inviteAdmin(Tenant $tenant, string $email, Request $request): void
+    private function inviteAdmin(Workspace $workspace, string $email, Request $request): void
     {
         $email = $this->users->canonicalEmail($email) ?? mb_strtolower(trim($email));
         try {
             // The system admin is above every admin: their invitation replaces a pending one.
-            $token = $this->users->invite($email, $tenant->id, $this->systemAdmin(), true, true);
+            $token = $this->users->invite($email, $workspace->id, $this->systemAdmin(), true, true);
         } catch (UserException $e) {
             $this->addFlash('error', $e->getMessage());
 
             return;
         }
         // The role is keyed by the email: theirs as soon as they accept, with an account or a new one.
-        $this->sessions->within($tenant, function () use ($email): void {
+        $this->sessions->within($workspace, function () use ($email): void {
             // The role exists even where access:sync never ran.
             $this->accessSetup->syncAll();
             $this->roles->setRoles($email, array_values(array_unique([...$this->roles->rolesOf($email), Permissions::SUPER_ADMIN_ROLE])));
         });
-        $this->log('invited an admin', $tenant, $email);
+        $this->log('invited an admin', $workspace, $email);
         $this->addFlash('success', $this->translator->trans('admin.members.invited', ['%email%' => $email]));
-        $this->addFlash('invitation', $this->tenantUrl($tenant, '/invitation/'.$token, $request));
+        $this->addFlash('invitation', $this->workspaceUrl($workspace, '/invitation/'.$token, $request));
     }
 
     /**
-     * The tenant's own address: <slug>.<base host>, the default tenant's the base host itself,
+     * The workspace's own address: <slug>.<base host>, the default workspace's the base host itself,
      * with the console's scheme and port.
      */
-    private function tenantUrl(Tenant $tenant, string $path, Request $request): string
+    private function workspaceUrl(Workspace $workspace, string $path, Request $request): string
     {
         $port = $request->getPort();
         $port = null === $port || \in_array($port, [80, 443], true) ? '' : ':'.$port;
-        $host = $tenant->slug === $this->default ? $this->baseHost : $tenant->slug.'.'.$this->baseHost;
+        $host = $workspace->slug === $this->default ? $this->baseHost : $workspace->slug.'.'.$this->baseHost;
 
         return \sprintf('%s://%s%s%s', $request->getScheme(), $host, $port, $path);
     }
@@ -254,41 +254,41 @@ final class ConsoleController extends AbstractController
      *
      * @return FormInterface<mixed>
      */
-    private function actionForm(string $name, string $route, Tenant $tenant, array $parameters = []): FormInterface
+    private function actionForm(string $name, string $route, Workspace $workspace, array $parameters = []): FormInterface
     {
         return $this->forms->createNamedBuilder($name, FormType::class, null, [
-            'action' => $this->generateUrl($route, ['slug' => $tenant->slug, ...$parameters]),
+            'action' => $this->generateUrl($route, ['slug' => $workspace->slug, ...$parameters]),
         ])->getForm();
     }
 
     /**
      * @return FormInterface<mixed>
      */
-    private function inviteForm(Tenant $tenant): FormInterface
+    private function inviteForm(Workspace $workspace): FormInterface
     {
         return $this->forms->createNamedBuilder('invite_admin', FormType::class, null, [
-            'action' => $this->generateUrl('console_tenant_invite', ['slug' => $tenant->slug]),
+            'action' => $this->generateUrl('console_workspace_invite', ['slug' => $workspace->slug]),
         ])->add('email', EmailType::class, ['label' => 'admin.members.email'])->getForm();
     }
 
     /**
      * @return FormInterface<mixed>
      */
-    private function deleteForm(Tenant $tenant): FormInterface
+    private function deleteForm(Workspace $workspace): FormInterface
     {
-        return $this->forms->createNamedBuilder('delete_tenant', FormType::class, null, [
-            'action' => $this->generateUrl('console_tenant_delete', ['slug' => $tenant->slug]),
+        return $this->forms->createNamedBuilder('delete_workspace', FormType::class, null, [
+            'action' => $this->generateUrl('console_workspace_delete', ['slug' => $workspace->slug]),
         ])->add('confirm', TextType::class, ['label' => 'console.confirm', 'help' => 'console.confirm_help'])->getForm();
     }
 
-    private function tenantOr404(string $slug): Tenant
+    private function workspaceOr404(string $slug): Workspace
     {
-        return $this->tenants->bySlug($slug) ?? throw $this->createNotFoundException(\sprintf('No tenant "%s".', $slug));
+        return $this->workspaces->bySlug($slug) ?? throw $this->createNotFoundException(\sprintf('No workspace "%s".', $slug));
     }
 
-    private function memberOr404(Tenant $tenant, string $key): Member
+    private function memberOr404(Workspace $workspace, string $key): Member
     {
-        foreach ($this->users->members($tenant->id) as $member) {
+        foreach ($this->users->members($workspace->id) as $member) {
             if (self::key($member) === $key) {
                 return $member;
             }
@@ -303,14 +303,14 @@ final class ConsoleController extends AbstractController
     }
 
     /**
-     * Every action of the console, logged: who, what, which tenant.
+     * Every action of the console, logged: who, what, which workspace.
      */
-    private function log(string $action, Tenant $tenant, ?string $email = null): void
+    private function log(string $action, Workspace $workspace, ?string $email = null): void
     {
-        $this->logger->notice('System admin {admin} {action} {tenant}{email}', [
+        $this->logger->notice('System admin {admin} {action} {workspace}{email}', [
             'admin' => $this->systemAdmin(),
             'action' => $action,
-            'tenant' => $tenant->slug,
+            'workspace' => $workspace->slug,
             'email' => null === $email ? '' : ' ('.$email.')',
         ]);
     }

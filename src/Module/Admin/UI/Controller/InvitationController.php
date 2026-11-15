@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Module\Admin\UI\Controller;
 
-use App\Module\Access\Contract\TenantRolesInterface;
+use App\Module\Access\Contract\WorkspaceRolesInterface;
 use App\Module\User\Contract\Exception\UserException;
 use App\Module\User\Contract\UserManagerInterface;
-use App\Shared\Tenant\CurrentTenant;
+use App\Shared\Workspace\CurrentWorkspace;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -25,7 +25,7 @@ use Symfony\Component\Security\Core\User\UserProviderInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * An invitation to the tenant of the host, opened by whoever got its link
+ * An invitation to the workspace of the host, opened by whoever got its link
  * (docs/internal/tenant-admin-ui-plan.md, part A2). Public: its token is the credential.
  *
  * The page is the same whether the email has an account or not: a password, and a name for a
@@ -42,8 +42,8 @@ final class InvitationController extends AbstractController
      */
     public function __construct(
         private readonly UserManagerInterface $users,
-        private readonly TenantRolesInterface $roles,
-        private readonly CurrentTenant $tenant,
+        private readonly WorkspaceRolesInterface $roles,
+        private readonly CurrentWorkspace $workspace,
         private readonly FormFactoryInterface $forms,
         private readonly TranslatorInterface $translator,
         private readonly Security $security,
@@ -55,14 +55,14 @@ final class InvitationController extends AbstractController
     #[Route('/invitation/{token}', name: 'invitation_show', requirements: ['token' => '[A-Za-z0-9_-]{43}'], methods: ['GET', 'POST'])]
     public function show(string $token, Request $request): Response
     {
-        $invitation = $this->users->openInvitation($this->tenant->id(), $token)
+        $invitation = $this->users->openInvitation($this->workspace->id(), $token)
             ?? throw $this->createNotFoundException('This invitation is no longer valid.');
 
         $form = $this->form()->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
             try {
                 $accepted = $this->users->acceptInvitation(
-                    $this->tenant->id(),
+                    $this->workspace->id(),
                     $token,
                     self::text($form, 'password'),
                     self::nullable($form, 'first_name'),

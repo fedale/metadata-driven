@@ -5,13 +5,13 @@ doctrine:
         # IMPORTANT: You MUST configure your server version,
         # either here or in the DATABASE_URL env var (see .env file)
         server_version: '17'
-        # Only core's tables are Doctrine's: hide the tenants' schemas from the schema tools
+        # Only core's tables are Doctrine's: hide the workspaces' schemas from the schema tools
         # (diff, validate). Their record tables are the Schema module's, their RBAC tables are
-        # made with each tenant. So are core.metadata_state, written by triggers only (migration
-        # Version20261107060749), and the system's tables, read with DBAL: core.tenant,
-        # core.tenant_membership, core.tenant_invitation. The comparison names core's tables with
-        # or without their schema, and a tenant's with theirs.
-        schema_filter: '~^(?!(core\.)?(metadata_state|tenant|tenant_membership|tenant_invitation)$)(core\.)?[^.]+$~'
+        # made with each workspace. So are core.metadata_state, written by triggers only (migration
+        # Version20261107060749), and the system's tables, read with DBAL: core.workspace,
+        # core.workspace_membership, core.workspace_invitation. The comparison names core's tables with
+        # or without their schema, and a workspace's with theirs.
+        schema_filter: '~^(?!(core\.)?(metadata_state|workspace|workspace_membership|workspace_invitation)$)(core\.)?[^.]+$~'
 
         profiling_collect_backtrace: '%kernel.debug%'
     orm:
@@ -20,10 +20,10 @@ doctrine:
         identity_generation_preferences:
             Doctrine\DBAL\Platforms\PostgreSQLPlatform: identity
         auto_mapping: true
-        # Every read of a tenant's table is restricted to the current tenant (see TenantScope).
+        # Every read of a workspace's table is restricted to the current workspace (see WorkspaceScope).
         filters:
-            tenant:
-                class: App\Shared\Infrastructure\Tenant\TenantFilter
+            workspace:
+                class: App\Shared\Infrastructure\Workspace\WorkspaceFilter
                 enabled: true
         # One XML mapping per module: Domain models stay free of Doctrine attributes.
         # The ORM is used only for static core tables; dynamic records go through DBAL.

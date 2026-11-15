@@ -11,8 +11,8 @@ use App\Module\Schema\Contract\Dto\SchemaPlan;
 use App\Module\Schema\Contract\SchemaSynchronizerInterface;
 use App\Module\Schema\Domain\Model\SchemaChangeLog;
 use App\Module\Schema\Domain\Repository\SchemaChangeLogRepository;
-use App\Shared\Tenant\CurrentTenant;
 use App\Shared\Transaction\TransactionRunner;
+use App\Shared\Workspace\CurrentWorkspace;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Schema\Comparator;
 use Doctrine\DBAL\Schema\ComparatorConfig;
@@ -32,7 +32,7 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
         private readonly UniqueTogetherIndexPlanner $uniqueTogetherIndexes,
         private readonly SchemaChangeLogRepository $logs,
         private readonly TransactionRunner $transactions,
-        private readonly CurrentTenant $tenant,
+        private readonly CurrentWorkspace $workspace,
     ) {
     }
 
@@ -40,7 +40,7 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
     {
         $object = $this->metadata->getObject($objectName);
         $desired = $this->tables->build($object);
-        $qualifiedName = $this->tenant->dataSchema().'.'.$object->tableName;
+        $qualifiedName = $this->workspace->dataSchema().'.'.$object->tableName;
         $platform = $this->connection->getDatabasePlatform();
         $schemaManager = $this->connection->createSchemaManager();
 
@@ -63,7 +63,7 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
 
         try {
             $actual = $this->withoutPlannedIndexes(
-                $schemaManager->introspectTableByUnquotedName($this->nonEmpty($object->tableName), $this->tenant->dataSchema()),
+                $schemaManager->introspectTableByUnquotedName($this->nonEmpty($object->tableName), $this->workspace->dataSchema()),
             );
         } catch (TableDoesNotExist) {
             return new SchemaPlan(
@@ -119,7 +119,7 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
         try {
             $actual = $this->connection->createSchemaManager()->introspectTableByUnquotedName(
                 $this->nonEmpty($desired->getObjectName()->getUnqualifiedName()->getValue()),
-                $this->tenant->dataSchema(),
+                $this->workspace->dataSchema(),
             );
         } catch (TableDoesNotExist) {
             return $platform->getCreateTableSQL($desired);
@@ -163,9 +163,9 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
         $q = $this->connection->quoteSingleIdentifier(...);
         $statements = [];
         if ($before->tableName !== $after->tableName) {
-            $statements[] = \sprintf('ALTER TABLE %s.%s RENAME TO %s', $this->tenant->dataSchema(), $q($before->tableName), $q($after->tableName));
+            $statements[] = \sprintf('ALTER TABLE %s.%s RENAME TO %s', $this->workspace->dataSchema(), $q($before->tableName), $q($after->tableName));
         }
-        $table = $this->tenant->dataSchema().'.'.$q($after->tableName);
+        $table = $this->workspace->dataSchema().'.'.$q($after->tableName);
         $columns = [];
         foreach ([...array_values($before->fields), ...array_values($before->archivedFields)] as $field) {
             $columns[$field->id] = $field->columnName;
@@ -190,13 +190,13 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
                 continue;
             }
             if ($previous['table'] !== $link['table']) {
-                $statements[] = \sprintf('ALTER TABLE %s.%s RENAME TO %s', $this->tenant->dataSchema(), $q($previous['table']), $q($link['table']));
+                $statements[] = \sprintf('ALTER TABLE %s.%s RENAME TO %s', $this->workspace->dataSchema(), $q($previous['table']), $q($link['table']));
             }
-            $statements = [...$statements, ...$this->renameNames($this->tenant->dataSchema().'.'.$q($link['table']), $previous, $link)];
+            $statements = [...$statements, ...$this->renameNames($this->workspace->dataSchema().'.'.$q($link['table']), $previous, $link)];
         }
 
         return $this->transactions->run(function () use ($after, $statements): SchemaPlan {
-            $plan = new SchemaPlan($after->name, $this->tenant->dataSchema().'.'.$after->tableName, false, $statements, []);
+            $plan = new SchemaPlan($after->name, $this->workspace->dataSchema().'.'.$after->tableName, false, $statements, []);
             $this->execute($plan);
             // The trigram and unique-together indexes hold no data and are named after the table
             // and the columns: the synchronization drops the old ones and builds them again under
@@ -209,7 +209,7 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
 
     public function dropTable(ObjectDefinitionDto $object): SchemaPlan
     {
-        $qualified = $this->tenant->dataSchema().'.'.$object->tableName;
+        $qualified = $this->workspace->dataSchema().'.'.$object->tableName;
         // Its link tables first: their foreign keys point at it.
         $statements = [];
         foreach ($this->tables->objectNames($object)['links'] as $link) {
@@ -226,9 +226,9 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
         if (!$field->storesColumn()) {
             // A field going through a junction object owns no table: the junction keeps its records.
             if (true === $field->manyToMany()?->goesThrough()) {
-                return new SchemaPlan($object->name, $this->tenant->dataSchema().'.'.$object->tableName, false, [], []);
+                return new SchemaPlan($object->name, $this->workspace->dataSchema().'.'.$object->tableName, false, [], []);
             }
-            $plan = new SchemaPlan($object->name, $this->tenant->dataSchema().'.'.$object->tableName, false, [
+            $plan = new SchemaPlan($object->name, $this->workspace->dataSchema().'.'.$object->tableName, false, [
                 $this->dropTableStatement($this->tables->linkNames($object, $field)['table']),
             ], []);
 
@@ -236,9 +236,9 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
         }
 
         // Its indexes and foreign key go with it.
-        $plan = new SchemaPlan($object->name, $this->tenant->dataSchema().'.'.$object->tableName, false, [\sprintf(
+        $plan = new SchemaPlan($object->name, $this->workspace->dataSchema().'.'.$object->tableName, false, [\sprintf(
             'ALTER TABLE %s.%s DROP COLUMN %s',
-            $this->tenant->dataSchema(),
+            $this->workspace->dataSchema(),
             $this->connection->quoteSingleIdentifier($object->tableName),
             $this->connection->quoteSingleIdentifier($field->columnName),
         )], []);
@@ -248,7 +248,7 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
 
     private function dropTableStatement(string $tableName): string
     {
-        return \sprintf('DROP TABLE %s.%s', $this->tenant->dataSchema(), $this->connection->quoteSingleIdentifier($tableName));
+        return \sprintf('DROP TABLE %s.%s', $this->workspace->dataSchema(), $this->connection->quoteSingleIdentifier($tableName));
     }
 
     /**
@@ -266,7 +266,7 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
         $statements = [];
         foreach ($new['indexes'] as $key => $name) {
             if (isset($old['indexes'][$key]) && $old['indexes'][$key] !== $name) {
-                $statements[] = \sprintf('ALTER INDEX %s.%s RENAME TO %s', $this->tenant->dataSchema(), $q($old['indexes'][$key]), $q($name));
+                $statements[] = \sprintf('ALTER INDEX %s.%s RENAME TO %s', $this->workspace->dataSchema(), $q($old['indexes'][$key]), $q($name));
             }
         }
         foreach ($new['constraints'] as $key => $name) {

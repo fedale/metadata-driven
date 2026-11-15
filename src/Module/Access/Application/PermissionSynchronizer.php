@@ -81,8 +81,8 @@ final class PermissionSynchronizer implements AccessSetupInterface
     {
         return array_values(array_filter([
             $this->ensure(Permissions::ADMINISTER, AuthItemType::PERMISSION, 'Manage objects, fields, search and tables'),
-            $this->ensure(Permissions::MEMBERS, AuthItemType::PERMISSION, 'Manage the members of the tenant and their roles'),
-            $this->ensure(Permissions::ROLES, AuthItemType::PERMISSION, 'Define the roles of the tenant'),
+            $this->ensure(Permissions::MEMBERS, AuthItemType::PERMISSION, 'Manage the members of the workspace and their roles'),
+            $this->ensure(Permissions::ROLES, AuthItemType::PERMISSION, 'Define the roles of the workspace'),
             $this->ensure(Permissions::SUPER_ADMIN_ROLE, AuthItemType::ROLE, 'Every permission, now and future'),
         ]));
     }

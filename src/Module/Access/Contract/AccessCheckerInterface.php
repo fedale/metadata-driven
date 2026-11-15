@@ -14,12 +14,12 @@ interface AccessCheckerInterface
     public function canAdminister(): bool;
 
     /**
-     * The members page: who may sign in to the tenant, with which roles.
+     * The members page: who may sign in to the workspace, with which roles.
      */
     public function canManageMembers(): bool;
 
     /**
-     * The roles page: which permissions each role of the tenant gives.
+     * The roles page: which permissions each role of the workspace gives.
      */
     public function canManageRoles(): bool;
 

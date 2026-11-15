@@ -279,6 +279,12 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   `is_system_admin`, the session setting `app.system` the row-level security policies read,
   migration `Version20261115100000`): done on branch `system_rename` (2026-11-15), waiting for
   the user's review. Run the migrations on an existing database (`make db`).
+  Phase 2 merged into `main` on 2026-11-15. Phase 3 (tenant → workspace: `core.workspace*`,
+  the `workspace_id` columns, `app.workspace_id`, `no_workspace_rbac`, the `workspace:*` commands
+  and `--workspace`, `/console/workspaces/...`, the env vars `WORKSPACE_BASE_HOST` and
+  `WORKSPACE_DEFAULT`, the guide workspaces.md; migration `Version20261115110000`): done on
+  branch `workspace_rename` (2026-11-15), waiting for the user's review. The entries of this file
+  written before 2026-11-15 still say "tenant".
 - **CSV import**, (C) only: imports of very large files in the background, with Messenger. (A)
   and (B) are done (see "Done").
 - Admin UI in Italian: still English are the error messages of the metadata and the templates
