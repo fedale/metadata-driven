@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Template\Application\Upgrade;
 
-use Fedale\TemplateFormat\Versions\ItemState;
+use Fedale\PackageFormat\Versions\ItemState;
 
 /**
  * The changes an upgrade brings, item by item, from the installed version (base), the new one

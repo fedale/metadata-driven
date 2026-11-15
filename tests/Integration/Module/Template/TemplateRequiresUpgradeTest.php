@@ -16,9 +16,9 @@ use App\Module\Template\Application\Upgrade\UpgradeReport;
 use App\Module\Template\Domain\Exception\UpgradeRefused;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
 use App\Tests\Support\ExampleTemplate;
-use Fedale\TemplateFormat\Document;
-use Fedale\TemplateFormat\DocumentKind;
-use Fedale\TemplateFormat\Package;
+use Fedale\PackageFormat\Document;
+use Fedale\PackageFormat\DocumentKind;
+use Fedale\PackageFormat\Package;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
@@ -67,7 +67,7 @@ final class TemplateRequiresUpgradeTest extends KernelTestCase
         $this->install(ExampleTemplate::places());
         $this->install(self::people('1.0.0'));
 
-        $this->assertRefused(self::people('1.1.0', birthRegion: true, requires: '^1.3'), 'template.yaml: spec.requires.acme/places: acme/places 1.2.0 does not fit ^1.3.');
+        $this->assertRefused(self::people('1.1.0', birthRegion: true, requires: '^1.3'), 'package.yaml: spec.requires.acme/places: acme/places 1.2.0 does not fit ^1.3.');
 
         self::assertFalse(self::getContainer()->get(MetadataRegistryInterface::class)->getObject('person')->hasField('birth_region'));
         self::assertSame('1.0.0', self::getContainer()->get(TemplateInstallationRepository::class)->findByName('acme/people')?->getVersion());
@@ -103,7 +103,7 @@ final class TemplateRequiresUpgradeTest extends KernelTestCase
             return $spec;
         });
 
-        $reasons = $this->assertRefused($places, 'acme/people 1.0.0, which requires acme/places: template.yaml: spec.requires.acme/places: acme/places 2.0.0 does not fit ^1.0.');
+        $reasons = $this->assertRefused($places, 'acme/people 1.0.0, which requires acme/places: package.yaml: spec.requires.acme/places: acme/places 2.0.0 does not fit ^1.0.');
         self::assertNotEmpty(array_filter($reasons, static fn (string $reason): bool => str_starts_with($reason, 'acme/people 1.0.0, which requires acme/places: objects/person.yaml') && str_contains($reason, 'acme.province.region')), implode("\n", $reasons));
         self::assertTrue(self::getContainer()->get(MetadataRegistryInterface::class)->getObject('province')->hasField('region'));
         // The admin's preview lists the same refusals.
@@ -157,7 +157,7 @@ final class TemplateRequiresUpgradeTest extends KernelTestCase
             $documents[] = new Document($document->kind, $document->id, $spec, $document->path);
         }
         $manifest = $people->manifest;
-        $spec = ['version' => $version, 'requires' => ['format' => 'metadata-driven/v1', 'acme/places' => $requires]] + $manifest->spec;
+        $spec = ['version' => $version, 'requires' => ['format' => 'metadata-driven/v2', 'acme/places' => $requires]] + $manifest->spec;
 
         return new Package(new Document($manifest->kind, $manifest->id, $spec, $manifest->path), $documents, $people->directory);
     }

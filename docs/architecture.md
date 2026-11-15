@@ -130,8 +130,9 @@ Code lives in `src/Module/<Module>/`, each module split into the same layers:
 A module only sees the `Contract` of the other modules. Two Deptrac rulesets enforce both rules
 (`make deptrac`): `deptrac.layers.yaml` and `deptrac.modules.yaml`.
 
-The template format is a library of its own, `fedale/metadata-driven-template-format`
-(`Fedale\TemplateFormat`, a repository of the same name, required from Packagist): documents, JSON
+The package format is a library of its own, `fedale/metadata-driven-package-format`
+(`Fedale\PackageFormat`, a repository of the same name, required from Packagist; until 1.2
+`fedale/metadata-driven-template-format`): documents, JSON
 Schemas, the field type catalog, the structural checks, packages as directories and as
 `.tar.gz` archives, signed indexes. The `Template` module is its only user in the app; the
 template catalog uses it too (see [Templates](templates.md)). It depends on `symfony/yaml` and

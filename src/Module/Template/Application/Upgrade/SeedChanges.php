@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Template\Application\Upgrade;
 
-use Fedale\TemplateFormat\Document;
+use Fedale\PackageFormat\Document;
 
 /**
  * The record changes SeedPlanner found: the rows to write, the records to delete, the conflicts.

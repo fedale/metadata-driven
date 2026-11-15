@@ -1,7 +1,6 @@
 # Plan: renaming the vocabulary
 
-Status: **agreed** (2026-11-15). Phases 1 and 2 merged into `main` (2026-11-15); phase 3 done on
-branch `workspace_rename` (2026-11-15), waiting for the user's review.
+Status: **agreed** (2026-11-15). Phases 1 to 4 merged into `main` (2026-11-15); phase 5 is next.
 The names are recorded in [../glossary.md](../glossary.md); this plan brings the code, the
 database, the commands, the admin UI, the guides and the package format in line with it.
 
@@ -113,7 +112,7 @@ schemas already made (`t_<id>_data`, `t_<id>_rbac`). The env vars `TENANT_BASE_H
 `TENANT_DEFAULT` are now `WORKSPACE_BASE_HOST` and `WORKSPACE_DEFAULT`. `workspace:template:repo`
 becomes `system:package:source` in phase 5.
 
-### Phase 4: package format v2
+### Phase 4: package format v2 (done)
 
 In the repository `metadata-driven-template-format`, renamed `metadata-driven-package-format` in
 phase 6.
@@ -126,6 +125,17 @@ phase 6.
   published and the snapshots of the installations (`core.template_installation.snapshot`) keep
   working. The app writes only v2.
 - A release of the library (v2 schemas next to v1), then the app requires it.
+
+Done, with the user's decisions of 2026-11-15: **one break**, the library renamed in this phase
+rather than in phase 6, `fedale/metadata-driven-package-format` 2.0.0 (namespace
+`Fedale\PackageFormat`, `TemplateIndex` → `RepositoryIndex`, `DocumentKind::Template` →
+`Package`; 2.0 because the repository's tags already run to 1.2.0). Then, asked by the user the
+same day, 2.1.0: the index keeps its format (`metadata-driven/index/v1`) and lists the packages
+under `packages` instead of `templates`, with no compatibility (the library has no other user);
+each version names its package format. The catalog's index follows in phase 6. The
+app's installations' snapshots are converted once by `Version20261115120000`. Not renamed yet:
+the key `template` of a grid view's virtual columns (a column's text pattern), another meaning
+of the word, not in this plan.
 
 ### Phase 5: template → package, in the app
 

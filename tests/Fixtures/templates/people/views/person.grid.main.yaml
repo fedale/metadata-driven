@@ -1,4 +1,4 @@
-format: metadata-driven/v1
+format: metadata-driven/v2
 kind: View
 id: acme.person.grid.main
 spec:
@@ -6,7 +6,7 @@ spec:
   kind: grid
   name: main
   default: true
-  template: |
+  source: |
     columns:
       - email
       - region

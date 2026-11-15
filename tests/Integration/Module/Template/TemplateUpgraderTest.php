@@ -16,9 +16,9 @@ use App\Module\Template\Application\Upgrade\UpgradeReport;
 use App\Module\Template\Domain\Exception\UpgradeRefused;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
 use App\Tests\Support\ExampleTemplate;
-use Fedale\TemplateFormat\Document;
-use Fedale\TemplateFormat\DocumentKind;
-use Fedale\TemplateFormat\Package;
+use Fedale\PackageFormat\Document;
+use Fedale\PackageFormat\DocumentKind;
+use Fedale\PackageFormat\Package;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -44,7 +44,7 @@ final class TemplateUpgraderTest extends KernelTestCase
 
                 return $spec;
             },
-            'views/product.form.main.yaml' => static fn (array $spec): array => ['template' => "<fieldset><legend>{t:identity}</legend>{name} {code}</fieldset>\n"] + $spec,
+            'views/product.form.main.yaml' => static fn (array $spec): array => ['source' => "<fieldset><legend>{t:identity}</legend>{name} {code}</fieldset>\n"] + $spec,
             'views/product.grid.main.yaml' => null,
             'translations/it.yaml' => static fn (array $spec): array => ['entries' => ['field.product.weight' => 'Peso'] + self::map($spec['entries'])] + $spec,
         ], '2.0.0'));
@@ -189,7 +189,7 @@ final class TemplateUpgraderTest extends KernelTestCase
 
         $report = $this->upgrade(new Package($manifest, $package->documents, $package->directory));
 
-        self::assertContains('template.yaml: migration 2.0.0: copy_values acme.product.sku to acme.product.reference', $report->applied);
+        self::assertContains('package.yaml: migration 2.0.0: copy_values acme.product.sku to acme.product.reference', $report->applied);
         foreach (self::getContainer()->get(RecordFinderInterface::class)->each('product') as $record) {
             self::assertSame($record->values['sku'], $record->values['reference']);
         }

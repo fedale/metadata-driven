@@ -1,4 +1,4 @@
-format: metadata-driven/v1
+format: metadata-driven/v2
 kind: View
 id: acme.product.form.main
 spec:
@@ -6,5 +6,5 @@ spec:
   kind: form
   name: main
   default: true
-  template: |
+  source: |
     <fieldset><legend>{t:identity}</legend>{name} {sku}</fieldset>

@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Module\Template\UI\Console;
 
-use Fedale\TemplateFormat\Archive;
-use Fedale\TemplateFormat\IndexEntry;
-use Fedale\TemplateFormat\InvalidIndex;
-use Fedale\TemplateFormat\InvalidPackage;
-use Fedale\TemplateFormat\PackageChecker;
-use Fedale\TemplateFormat\PackageDirectory;
-use Fedale\TemplateFormat\Problem;
-use Fedale\TemplateFormat\Signature;
-use Fedale\TemplateFormat\TemplateIndex;
+use Fedale\PackageFormat\Archive;
+use Fedale\PackageFormat\IndexEntry;
+use Fedale\PackageFormat\InvalidIndex;
+use Fedale\PackageFormat\InvalidPackage;
+use Fedale\PackageFormat\PackageChecker;
+use Fedale\PackageFormat\PackageDirectory;
+use Fedale\PackageFormat\Problem;
+use Fedale\PackageFormat\RepositoryIndex;
+use Fedale\PackageFormat\Signature;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
@@ -58,7 +58,7 @@ final class PackTemplateConsoleCommand
 
         if (null !== $index) {
             try {
-                $listed = is_file($index) ? TemplateIndex::fromJson((string) file_get_contents($index), '') : TemplateIndex::empty();
+                $listed = is_file($index) ? RepositoryIndex::fromJson((string) file_get_contents($index), '') : RepositoryIndex::empty();
             } catch (InvalidIndex $e) {
                 $io->error($e->getMessage());
 

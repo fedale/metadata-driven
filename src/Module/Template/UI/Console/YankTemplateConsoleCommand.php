@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Module\Template\UI\Console;
 
-use Fedale\TemplateFormat\IndexEntry;
-use Fedale\TemplateFormat\InvalidIndex;
-use Fedale\TemplateFormat\Signature;
-use Fedale\TemplateFormat\TemplateIndex;
+use Fedale\PackageFormat\IndexEntry;
+use Fedale\PackageFormat\InvalidIndex;
+use Fedale\PackageFormat\RepositoryIndex;
+use Fedale\PackageFormat\Signature;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
@@ -26,7 +26,7 @@ final class YankTemplateConsoleCommand
         #[Option('List the version again instead')] bool $undo = false,
     ): int {
         try {
-            $listed = TemplateIndex::fromJson(is_file($index) ? (string) file_get_contents($index) : '', '');
+            $listed = RepositoryIndex::fromJson(is_file($index) ? (string) file_get_contents($index) : '', '');
         } catch (InvalidIndex $e) {
             $io->error($e->getMessage());
 

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f9e0a8fcb01649583442162143a0ae08",
+    "content-hash": "8980dd4ce5be524a97ee468d2ab7353f",
     "packages": [
         {
             "name": "composer/semver",
@@ -1283,17 +1283,17 @@
             "time": "2026-11-02T05:56:09+00:00"
         },
         {
-            "name": "fedale/metadata-driven-template-format",
-            "version": "v1.2.0",
+            "name": "fedale/metadata-driven-package-format",
+            "version": "v2.1.0",
             "source": {
                 "type": "git",
-                "url": "https://github.com/fedale/metadata-driven-template-format.git",
-                "reference": "63708768b0cfe380370a0b4085d84c64301f2d21"
+                "url": "https://github.com/fedale/metadata-driven-package-format.git",
+                "reference": "85f80d326389ad437bd9f0cc91054aa6b72a6417"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/fedale/metadata-driven-template-format/zipball/63708768b0cfe380370a0b4085d84c64301f2d21",
-                "reference": "63708768b0cfe380370a0b4085d84c64301f2d21",
+                "url": "https://api.github.com/repos/fedale/metadata-driven-package-format/zipball/85f80d326389ad437bd9f0cc91054aa6b72a6417",
+                "reference": "85f80d326389ad437bd9f0cc91054aa6b72a6417",
                 "shasum": ""
             },
             "require": {
@@ -1311,30 +1311,30 @@
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-main": "1.2.x-dev"
+                    "dev-main": "2.1.x-dev"
                 }
             },
             "autoload": {
                 "psr-4": {
-                    "Fedale\\TemplateFormat\\": "src/"
+                    "Fedale\\PackageFormat\\": "src/"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
-            "description": "The metadata-driven template format: schemas, package reader, structural checks, archives, signed indexes",
+            "description": "The metadata-driven package format: schemas, package reader, structural checks, archives, signed indexes",
             "keywords": [
                 "Ed25519",
                 "json-schema",
                 "metadata-driven",
-                "templates"
+                "packages"
             ],
             "support": {
-                "issues": "https://github.com/fedale/metadata-driven-template-format/issues",
-                "source": "https://github.com/fedale/metadata-driven-template-format/tree/v1.2.0"
+                "issues": "https://github.com/fedale/metadata-driven-package-format/issues",
+                "source": "https://github.com/fedale/metadata-driven-package-format/tree/v2.1.0"
             },
-            "time": "2026-11-10T09:31:19+00:00"
+            "time": "2026-11-15T09:48:27+00:00"
         },
         {
             "name": "fedale/rbac-bundle",

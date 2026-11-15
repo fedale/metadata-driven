@@ -16,14 +16,14 @@ use App\Module\Template\Application\Command\ExportTemplateCommand;
 use App\Module\Template\Domain\Exception\InvalidExport;
 use App\Module\Template\Domain\Model\ItemKind;
 use App\Module\Template\Domain\Repository\TemplateItemRepository;
-use Fedale\TemplateFormat\Document;
-use Fedale\TemplateFormat\DocumentKind;
-use Fedale\TemplateFormat\FieldTypes\FieldOwner;
-use Fedale\TemplateFormat\FieldTypes\FieldTypeCatalog;
-use Fedale\TemplateFormat\FieldTypes\ReferenceKind;
-use Fedale\TemplateFormat\Format;
-use Fedale\TemplateFormat\Package;
-use Fedale\TemplateFormat\PackageChecker;
+use Fedale\PackageFormat\Document;
+use Fedale\PackageFormat\DocumentKind;
+use Fedale\PackageFormat\FieldTypes\FieldOwner;
+use Fedale\PackageFormat\FieldTypes\FieldTypeCatalog;
+use Fedale\PackageFormat\FieldTypes\ReferenceKind;
+use Fedale\PackageFormat\Format;
+use Fedale\PackageFormat\Package;
+use Fedale\PackageFormat\PackageChecker;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -197,7 +197,7 @@ final class TemplateExporter
         }
         $documents = [...$documents, ...$this->translationDocuments(Format::idPrefix($template), $objects, $forms)];
 
-        return new Package(new Document(DocumentKind::Template, $template, [], Format::MANIFEST), $documents);
+        return new Package(new Document(DocumentKind::Package, $template, [], Format::MANIFEST), $documents);
     }
 
     /**
@@ -286,7 +286,7 @@ final class TemplateExporter
             'default' => $view->isDefault,
             // As the app stores it: the sanitized HTML of a form view, the YAML of a grid view.
             // Both name fields by name, within their object.
-            'template' => $view->template,
+            'source' => $view->template,
         ], \sprintf('views/%s.%s.%s.yaml', $object->name, $view->kind->value, $view->name));
     }
 
@@ -476,7 +476,7 @@ final class TemplateExporter
             $spec['description'] = $command->description;
         }
 
-        return new Document(DocumentKind::Template, $command->name, $spec + [
+        return new Document(DocumentKind::Package, $command->name, $spec + [
             'license' => $command->license,
             'requires' => ['format' => Format::VERSION] + $requires,
             'resources' => array_map(static fn (string $directory): string => $directory.'/*.yaml', $directories),

@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use Fedale\TemplateFormat\DocumentCodec;
-use Fedale\TemplateFormat\Package;
-use Fedale\TemplateFormat\PackageDirectory;
+use Fedale\PackageFormat\DocumentCodec;
+use Fedale\PackageFormat\Package;
+use Fedale\PackageFormat\PackageDirectory;
 
 /**
  * The example template the install, upgrade and index tests start from (acme/shop 1.0.0): three
  * objects, a form, two views, translations and seeds with a file.
- * fedale/metadata-driven-template-format keeps a copy of its own for its unit tests.
+ * fedale/metadata-driven-package-format keeps a copy of its own for its unit tests.
  *
  * Two more for templates requiring templates: acme/places 1.2.0 (regions and provinces, seeded)
  * and acme/people 1.0.0, which requires acme/places ^1.0 and points at its objects.

@@ -589,7 +589,7 @@ metadata:template:upgrade <template> [--strategy=keep|overwrite] [--dry-run] [--
 | `--dry-run` | Go through the whole upgrade, then roll it back: nothing is changed |
 
 Lists the changes applied (`objects/product.yaml: change field acme.product.sku`,
-`seeds/product.yaml: update record OSL-01`, `template.yaml: migration 2.0.0: copy_values ...`),
+`seeds/product.yaml: update record OSL-01`, `package.yaml: migration 2.0.0: copy_values ...`),
 then the conflicts kept. Renames objects and fields, creates the new ones, changes labels, settings,
 conditions, search, record labels and unique sets, saves views and forms, sets translations,
 runs the migration steps, writes the records of new and `managed` seeds and deletes the ones

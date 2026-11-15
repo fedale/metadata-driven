@@ -14,8 +14,8 @@ use App\Module\Template\Application\Upgrade\TemplateUpgrader;
 use App\Module\Template\Application\Upgrade\UpgradeReport;
 use App\Module\Template\Domain\Exception\UpgradeRefused;
 use App\Tests\Support\ExampleTemplate;
-use Fedale\TemplateFormat\Document;
-use Fedale\TemplateFormat\Package;
+use Fedale\PackageFormat\Document;
+use Fedale\PackageFormat\Package;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**

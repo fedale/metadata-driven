@@ -14,9 +14,9 @@ use App\Module\Template\Application\TemplateInstaller;
 use App\Module\Template\Domain\Exception\InvalidExport;
 use App\Module\Template\Domain\Repository\TemplateItemRepository;
 use App\Tests\Support\ExampleTemplate;
-use Fedale\TemplateFormat\Document;
-use Fedale\TemplateFormat\Package;
-use Fedale\TemplateFormat\SeedRecords;
+use Fedale\PackageFormat\Document;
+use Fedale\PackageFormat\Package;
+use Fedale\PackageFormat\SeedRecords;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
@@ -37,7 +37,7 @@ final class TemplateRequiresExportTest extends KernelTestCase
 
         $package = $this->export(['person']);
 
-        self::assertSame(['format' => 'metadata-driven/v1', 'acme/places' => '^1.2'], $package->manifest->spec['requires']);
+        self::assertSame(['format' => 'metadata-driven/v2', 'acme/places' => '^1.2'], $package->manifest->spec['requires']);
         $person = self::document($package, 'objects/person.yaml');
         self::assertSame(['target' => 'acme.region'], self::settings($person, 'region'));
         self::assertSame(['target' => 'acme.province', 'dependsOn' => 'acme.person.region', 'dependsVia' => 'acme.province.region'], array_intersect_key(self::settings($person, 'province'), array_flip(['target', 'dependsOn', 'dependsVia'])));
@@ -54,7 +54,7 @@ final class TemplateRequiresExportTest extends KernelTestCase
         $package = $this->export(['person'], version: '1.1.0');
 
         // acme/people 1.0.0 requires acme/places ^1.0, which 1.2.0 fits: not narrowed to ^1.2.
-        self::assertSame(['format' => 'metadata-driven/v1', 'acme/places' => '^1.0'], $package->manifest->spec['requires']);
+        self::assertSame(['format' => 'metadata-driven/v2', 'acme/places' => '^1.0'], $package->manifest->spec['requires']);
     }
 
     public function testWritesTheRecordsOfTheRequiredSeedsByTheirKeys(): void

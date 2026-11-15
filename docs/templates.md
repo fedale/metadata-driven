@@ -22,7 +22,7 @@ This writes the template into `templates/shop`, a directory that must not exist 
 
 ```
 templates/shop/
-  template.yaml                      # the manifest: name, version, license, what it requires
+  package.yaml                       # the manifest: name, version, license, what it requires
   objects/category.yaml
   objects/product.yaml
   objects/tag.yaml
@@ -64,8 +64,8 @@ others](#exporting-a-template-that-requires-others)).
 Every file is a YAML document with the same four keys:
 
 ```yaml
-format: metadata-driven/v1        # the version of the format
-kind: Object                      # Template, Object, Form, View or Translations
+format: metadata-driven/v2        # the version of the format
+kind: Object                      # Package, Object, Form, View, Translations or Seed
 id: acme.product                  # the item's identity in the template
 spec:                             # the item, as its kind describes it
   name: product
@@ -96,7 +96,7 @@ spec:                             # the item, as its kind describes it
 - **Only what differs from the defaults.** A field's `required` and `unique` are written when
   true, its settings when they differ from their default: the file stays short enough to read
   and edit.
-- **Views and forms as the app stores them.** A form view's `template` is its HTML layout, a grid
+- **Views and forms as the app stores them.** A form view's `source` is its HTML layout, a grid
   view's is its YAML, both written as literal blocks; inside them, fields are named by name,
   within their object. A form's `definition` is the YAML it was saved with, `object`
   and `via` turned into ids (its comments are lost).
@@ -104,9 +104,15 @@ spec:                             # the item, as its kind describes it
   default language the metadata itself is the text), and the `{t:name}` texts the exported
   layouts use, in every language.
 
-The JSON Schema of each kind is in `vendor/fedale/metadata-driven-template-format/src/Resources/schema/v1/`:
+The JSON Schema of each kind is in `vendor/fedale/metadata-driven-package-format/src/Resources/schema/v2/`:
 point your editor at it for autocompletion. The settings of each field type are described in
-`vendor/fedale/metadata-driven-template-format/src/Resources/field-types.v1.json`.
+`vendor/fedale/metadata-driven-package-format/src/Resources/field-types.v1.json`.
+
+**Format v1 is still read.** Until 2026-11-15 the format was v1: the manifest was `template.yaml`,
+of kind `Template`, and a view's layout was its `template`. A template of format v1, from a
+directory or from an index, installs and upgrades as before: it is read as its v2 equivalent.
+Everything the app writes (an export, a pack) is v2. An index lists each version with the format
+it is written in, and offers the v1 and the v2 ones alike.
 
 ## Seeds
 
@@ -116,7 +122,7 @@ records of the instance. To load a CSV file into an object outside templates, us
 [`record:import`](console.md#recordimport). One `Seed` document per object, in `seeds/`:
 
 ```yaml
-format: metadata-driven/v1
+format: metadata-driven/v2
 kind: Seed
 id: acme.seed.category
 spec:
@@ -128,7 +134,7 @@ spec:
 ```
 
 ```yaml
-format: metadata-driven/v1
+format: metadata-driven/v2
 kind: Seed
 id: acme.seed.product
 spec:
@@ -249,7 +255,7 @@ version constraint:
 ```yaml
 spec:
   requires:
-    format: metadata-driven/v1
+    format: metadata-driven/v2
     fedale/geo-italy: ^1.0
 ```
 
@@ -338,8 +344,8 @@ first. Either way the install checks the requiring template against its requirem
 installed:
 
 ```
-template.yaml: spec.requires.fedale/geo-italy: fedale/geo-italy is required: it must be installed, or given to check against.
-template.yaml: spec.requires.fedale/geo-italy: fedale/geo-italy 2.0.0 does not fit ^1.0.
+package.yaml: spec.requires.fedale/geo-italy: fedale/geo-italy is required: it must be installed, or given to check against.
+package.yaml: spec.requires.fedale/geo-italy: fedale/geo-italy 2.0.0 does not fit ^1.0.
 ```
 
 The references are resolved through the ids recorded when the required template was installed,
@@ -359,7 +365,7 @@ Upgrades keep to the same rules, in both directions:
   constraint, an object or field they reference removed.
 
   ```
-  fedale/registration 1.0.0, which requires fedale/geo-italy: template.yaml: spec.requires.fedale/geo-italy: fedale/geo-italy 2.0.0 does not fit ^1.0.
+  fedale/registration 1.0.0, which requires fedale/geo-italy: package.yaml: spec.requires.fedale/geo-italy: fedale/geo-italy 2.0.0 does not fit ^1.0.
   ```
 
   Removing or renaming an item takes a major version anyway, so a requiring template with a
@@ -487,13 +493,16 @@ symfony console metadata:template:pack templates/shop acme-shop-1.0.0.tar.gz --i
 ```json
 {
   "format": "metadata-driven/index/v1",
-  "templates": {
+  "packages": {
     "acme/shop": {
-      "1.0.0": { "url": "acme-shop-1.0.0.tar.gz", "sha256": "…", "requires": { "format": "metadata-driven/v1" } }
+      "1.0.0": { "url": "acme-shop-1.0.0.tar.gz", "sha256": "…", "requires": { "format": "metadata-driven/v2" } }
     }
   }
 }
 ```
+
+Until 2026-11-15 the index listed the same under `templates`; such an index is not read any
+more: `pack` it again, or rename the key.
 
 ```bash
 # Who installs: add the index once, with the author's public key, then name templates

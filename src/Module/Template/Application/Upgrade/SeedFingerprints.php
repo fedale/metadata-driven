@@ -6,9 +6,9 @@ namespace App\Module\Template\Application\Upgrade;
 
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\RecordFinderInterface;
-use Fedale\TemplateFormat\Document;
-use Fedale\TemplateFormat\DocumentKind;
-use Fedale\TemplateFormat\Package;
+use Fedale\PackageFormat\Document;
+use Fedale\PackageFormat\DocumentKind;
+use Fedale\PackageFormat\Package;
 
 /**
  * A fingerprint of each record a seed wrote, by its key: what the record held then, in the

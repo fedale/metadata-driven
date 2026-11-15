@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use Fedale\TemplateFormat\Archive;
-use Fedale\TemplateFormat\IndexEntry;
-use Fedale\TemplateFormat\Signature;
-use Fedale\TemplateFormat\TemplateIndex;
+use Fedale\PackageFormat\Archive;
+use Fedale\PackageFormat\IndexEntry;
+use Fedale\PackageFormat\RepositoryIndex;
+use Fedale\PackageFormat\Signature;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -25,7 +25,7 @@ trait PublishesTemplates
     {
         $copy = $this->directory.'/shop-'.$version;
         (new Filesystem())->mirror(ExampleTemplate::DIRECTORY, $copy);
-        file_put_contents($copy.'/template.yaml', str_replace('version: 1.0.0', 'version: '.$version, (string) file_get_contents($copy.'/template.yaml')));
+        file_put_contents($copy.'/package.yaml', str_replace('version: 1.0.0', 'version: '.$version, (string) file_get_contents($copy.'/package.yaml')));
         if (null !== $tagLabel) {
             file_put_contents($copy.'/objects/tag.yaml', str_replace('label: Tag', 'label: '.$tagLabel, (string) file_get_contents($copy.'/objects/tag.yaml')));
         }
@@ -54,7 +54,7 @@ trait PublishesTemplates
             }
             $templates['acme/shop'][$version] = $entry;
         }
-        $index = (string) json_encode(['format' => TemplateIndex::FORMAT, 'templates' => $templates]);
+        $index = (string) json_encode(['format' => RepositoryIndex::FORMAT, 'packages' => $templates]);
         file_put_contents($this->directory.'/index.json', $index);
         FakeTemplateServer::serve(self::INDEX, $index);
     }

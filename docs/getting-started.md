@@ -6,7 +6,7 @@
 - Composer, the [Symfony CLI](https://symfony.com/download), Docker with Compose
 
 The bundles the app is built on (`fedale/gridview-bundle`, `fedale/setting-bundle`,
-`fedale/rbac-bundle`) and the template format (`fedale/metadata-driven-template-format`) come
+`fedale/rbac-bundle`) and the package format (`fedale/metadata-driven-package-format`) come
 from Packagist, in their released versions: `composer install` is enough.
 
 ## Run the app
@@ -67,8 +67,8 @@ version (`== 1.3.9999999.9999999-dev`), which no one else can install.
 
 The app's `main` requires released versions only: once a bundle change is merged there, tag a
 release of the bundle, then `composer update fedale/<bundle>` in the app. The format works the
-same way: package, repository and directory are all `metadata-driven-template-format`
-(`composer link ../metadata-driven-template-format`).
+same way: package, repository and directory are all `metadata-driven-package-format`
+(`composer link ../metadata-driven-package-format`).
 
 ## Build a model in five minutes
 

@@ -7,9 +7,9 @@ namespace App\Module\Template\Application\Source;
 use App\Module\Template\Application\Upgrade\Snapshot;
 use App\Module\Template\Domain\Exception\TemplateSourceFailed;
 use App\Module\Template\Domain\Repository\TemplateInstallationRepository;
-use Fedale\TemplateFormat\Constraint;
-use Fedale\TemplateFormat\InvalidPackage;
-use Fedale\TemplateFormat\PackageDirectory;
+use Fedale\PackageFormat\Constraint;
+use Fedale\PackageFormat\InvalidPackage;
+use Fedale\PackageFormat\PackageDirectory;
 
 /**
  * Opens the template a command names: a directory, or "vendor/name" ("vendor/name@1.2.0" for a
