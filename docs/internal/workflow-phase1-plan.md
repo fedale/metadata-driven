@@ -1,7 +1,6 @@
 # Plan: workflows, phase 1 in detail
 
-Status: **proposed** (2026-11-15), waiting for the user's answers to the open questions at the
-end. Phase 1 of [workflow-plan.md](workflow-plan.md) ("Record workflows"), which holds the
+Status: **agreed** (2026-11-15), in progress on branch `workflow_phase1_design`. Phase 1 of [workflow-plan.md](workflow-plan.md) ("Record workflows"), which holds the
 decisions already taken (2026-11-13) and the concepts; this page says how they fit the code as it
 is, and what is built, in which order.
 
@@ -207,7 +206,17 @@ runs kept 30 days.
 6. The guide `docs/workflows.md`, and admin.md, console.md, access.md, architecture.md, the
    glossary (workflow, version, run, step, trigger), status.md.
 
-## Open questions
+## Decisions (user, 2026-11-15)
+
+1. **YAML first**: the editor of phase 1 is YAML, as the forms and the grid views; the visual
+   editor (the ordered list of steps, the variable picker, "test" against a record) is phase 1b,
+   right after.
+2. **Imports trigger the workflows** of their object (one run per row, within the limits); a
+   package's **seeds don't**.
+3. **An after-run's data steps run in one transaction**: all of the run or nothing.
+4. **Several workflows on one event run in the order of the list** (`position`).
+
+## The questions, as they were asked
 
 1. **The editor of phase 1**: YAML, as the forms and the grid views are written today, with the
    visual editor (the ordered list of steps, the variable picker, "test" against a record) as a

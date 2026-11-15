@@ -1,7 +1,7 @@
 # Plan: workflows
 
 Status: **agreed**; phase 1 detailed in [workflow-phase1-plan.md](workflow-phase1-plan.md)
-(2026-11-15), waiting for the user's answers. Discussed with the user on 2026-11-13, before the
+(2026-11-15), agreed the same day. Discussed with the user on 2026-11-13, before the
 vocabulary rename of 2026-11-15 (the operator is now the system admin). "Declarative rules and
 automations" of the roadmap ([status.md](status.md), "An app in a package", point d): when
 something happens, run a series of actions, configured without code.

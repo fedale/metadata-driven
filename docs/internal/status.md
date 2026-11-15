@@ -335,8 +335,7 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   write), if/else and data steps, permissions per step (no way to more power), versions, runs,
   usage per tenant; then manual workflows, the system admin's (an app installed with every new
   workspace), the background with Messenger, states. Agreed on 2026-11-13. Phase 1 detailed in
-  [workflow-phase1-plan.md](workflow-phase1-plan.md) (2026-11-15), waiting for the user's answers
-  to its four open questions.
+  [workflow-phase1-plan.md](workflow-phase1-plan.md) (2026-11-15), agreed the same day; in progress.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`
