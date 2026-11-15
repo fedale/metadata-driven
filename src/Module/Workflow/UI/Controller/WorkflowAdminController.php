@@ -5,8 +5,15 @@ declare(strict_types=1);
 namespace App\Module\Workflow\UI\Controller;
 
 use App\Module\Access\Contract\AccessCheckerInterface;
+use App\Module\Access\Contract\RecordAction;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Record\Contract\RecordLookupInterface;
+use App\Module\Workflow\Application\Definition\Definition;
 use App\Module\Workflow\Application\Definition\DefinitionParser;
+use App\Module\Workflow\Application\Definition\DefinitionValidator;
+use App\Module\Workflow\Application\Engine\RunLog;
+use App\Module\Workflow\Application\Engine\WorkflowEngine;
+use App\Module\Workflow\Application\PathCatalog;
 use App\Module\Workflow\Application\RunQueries;
 use App\Module\Workflow\Application\WorkflowManager;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
@@ -15,6 +22,7 @@ use App\Module\Workflow\Domain\Model\Workflow;
 use App\Module\Workflow\Domain\Model\WorkflowVersion;
 use App\Module\Workflow\Domain\Repository\WorkflowRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
@@ -60,6 +68,10 @@ final class WorkflowAdminController extends AbstractController
         private readonly AccessCheckerInterface $access,
         private readonly FormFactoryInterface $forms,
         private readonly TranslatorInterface $translator,
+        private readonly PathCatalog $paths,
+        private readonly DefinitionValidator $validator,
+        private readonly WorkflowEngine $engine,
+        private readonly RecordLookupInterface $lookup,
     ) {
     }
 
@@ -97,7 +109,7 @@ final class WorkflowAdminController extends AbstractController
             }
         }
 
-        return $this->render('admin/workflow_edit.html.twig', $this->editorPage(null, $form, []));
+        return $this->render('admin/workflow_edit.html.twig', $this->editorPage(null, $form, [], self::parsed($this->text($form, 'definition'))));
     }
 
     #[Route('/{id}', name: 'edit', requirements: ['id' => self::UUID], methods: ['GET', 'POST'])]
@@ -107,29 +119,36 @@ final class WorkflowAdminController extends AbstractController
         $workflow = $this->workflowOr404($id);
         $active = $this->manager->activeVersion($workflow);
         $source = $this->manager->draft($workflow)?->getSource() ?? $active?->getSource() ?? self::EXAMPLE;
-        $form = $this->editor($workflow, $source)->handleRequest($request);
+        $definition = self::parsed($source);
+        $form = $this->editor($workflow, $source, $definition)->handleRequest($request);
         $problems = [];
+        $test = null;
 
         if ($form->isSubmitted() && $form->isValid()) {
             try {
                 $this->manager->describe($workflow, $this->text($form, 'name'), $this->text($form, 'description'));
-                $this->manager->saveDraft($workflow, $this->text($form, 'definition'));
-                $activate = $form->get('activate');
-                if ($activate instanceof SubmitButton && $activate->isClicked()) {
-                    $version = $this->manager->activate($workflow);
-                    $this->addFlash('success', $this->translator->trans('admin.workflow.activated', ['%number%' => $version->getNumber()]));
+                $draft = $this->manager->saveDraft($workflow, $this->text($form, 'definition'));
+                $definition = self::parsed($draft->getSource());
+                if (self::clicked($form, 'test')) {
+                    // Shown on the page, not redirected: the result is nowhere else.
+                    $test = $this->test($form, $workflow, $draft->getSource());
                 } else {
-                    $this->addFlash('success', $this->translator->trans('admin.workflow.draft_saved'));
-                }
+                    if (self::clicked($form, 'activate')) {
+                        $version = $this->manager->activate($workflow);
+                        $this->addFlash('success', $this->translator->trans('admin.workflow.activated', ['%number%' => $version->getNumber()]));
+                    } else {
+                        $this->addFlash('success', $this->translator->trans('admin.workflow.draft_saved'));
+                    }
 
-                return $this->redirectToRoute('admin_workflow_edit', ['id' => $id], Response::HTTP_SEE_OTHER);
+                    return $this->redirectToRoute('admin_workflow_edit', ['id' => $id], Response::HTTP_SEE_OTHER);
+                }
             } catch (InvalidWorkflowDefinition $e) {
                 $problems = $this->errors($form, $e);
             }
         }
 
         return $this->render('admin/workflow_edit.html.twig', [
-            ...$this->editorPage($workflow, $form, $problems),
+            ...$this->editorPage($workflow, $form, $problems, $definition, $test),
             'active' => $active,
             'draft' => $this->manager->draft($workflow),
             'deactivate_form' => $this->actionForm('deactivate', $workflow)->createView(),
@@ -258,6 +277,53 @@ final class WorkflowAdminController extends AbstractController
     }
 
     /**
+     * Checks the draft as an activation would, then runs it against the chosen record and rolls
+     * it back.
+     *
+     * @param FormInterface<mixed> $form
+     *
+     * @throws InvalidWorkflowDefinition
+     */
+    private function test(FormInterface $form, Workflow $workflow, string $source): ?RunLog
+    {
+        $definition = (new DefinitionParser())->parse($source);
+        $this->validator->validate($definition);
+        // The test shows the record's values: only to whoever may read them.
+        if (!$this->access->canRecords($definition->trigger->object, RecordAction::Read)) {
+            $form->get('test_record')->addError(new FormError($this->translator->trans('admin.workflow.test_cannot_read', ['%object%' => $definition->trigger->object])));
+
+            return null;
+        }
+        $record = $form->get('test_record')->getData();
+        if (!\is_string($record) || '' === $record) {
+            $form->get('test_record')->addError(new FormError($this->translator->trans('admin.workflow.test_choose')));
+
+            return null;
+        }
+
+        return $this->engine->dryRun($definition, $workflow->getName(), $record);
+    }
+
+    /**
+     * @param FormInterface<mixed> $form
+     */
+    private static function clicked(FormInterface $form, string $button): bool
+    {
+        $submit = $form->get($button);
+
+        return $submit instanceof SubmitButton && $submit->isClicked();
+    }
+
+    private static function parsed(string $source): ?Definition
+    {
+        try {
+            return (new DefinitionParser())->parse($source);
+        } catch (InvalidWorkflowDefinition) {
+            return null;
+        }
+    }
+
+    /**
      * What the version's trigger says, read back from its source: "person, created, after".
      */
     private function trigger(?WorkflowVersion $version): ?string
@@ -280,9 +346,16 @@ final class WorkflowAdminController extends AbstractController
      *
      * @return array<string, mixed>
      */
-    private function editorPage(?Workflow $workflow, FormInterface $form, array $problems): array
+    private function editorPage(?Workflow $workflow, FormInterface $form, array $problems, ?Definition $definition, ?RunLog $test = null): array
     {
-        return ['workflow' => $workflow, 'form' => $form, 'problems' => $problems, 'objects' => $this->metadata->allObjects()];
+        return [
+            'workflow' => $workflow,
+            'form' => $form,
+            'problems' => $problems,
+            'objects' => $this->metadata->allObjects(),
+            'paths' => $this->paths->paths($definition),
+            'test' => $test,
+        ];
     }
 
     /**
@@ -315,7 +388,7 @@ final class WorkflowAdminController extends AbstractController
     /**
      * @return FormInterface<mixed>
      */
-    private function editor(?Workflow $workflow, string $source): FormInterface
+    private function editor(?Workflow $workflow, string $source, ?Definition $definition = null): FormInterface
     {
         $builder = $this->forms->createNamedBuilder('workflow', FormType::class, [
             'name' => $workflow?->getName(),
@@ -329,7 +402,19 @@ final class WorkflowAdminController extends AbstractController
                 'attr' => ['rows' => 24, 'class' => 'md-code-input', 'spellcheck' => 'false'],
             ]);
         if (null !== $workflow) {
+            // Their labels only to whoever may read them.
+            $object = $definition?->trigger->object;
+            $records = null === $object || !$this->metadata->hasObject($object) || !$this->access->canRecords($object, RecordAction::Read) ? [] : $this->lookup->search($object, '', 50);
             $builder
+                ->add('test_record', ChoiceType::class, [
+                    'label' => 'admin.workflow.test_record',
+                    'required' => false,
+                    'placeholder' => '—',
+                    'choices' => array_combine(array_map(static fn ($record): string => $record->label.' · '.substr($record->id, 0, 8), $records), array_map(static fn ($record): string => $record->id, $records)),
+                    'choice_translation_domain' => false,
+                    'help' => 'admin.workflow.test_help',
+                ])
+                ->add('test', SubmitType::class, ['label' => 'admin.workflow.test'])
                 ->add('save', SubmitType::class, ['label' => 'admin.workflow.save_draft'])
                 ->add('activate', SubmitType::class, ['label' => 'admin.workflow.save_activate', 'attr' => ['class' => 'gv-btn gv-btn-primary']]);
         }

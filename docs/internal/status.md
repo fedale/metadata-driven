@@ -339,8 +339,11 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   done on branch `workflow_phase1_design` (2026-11-15), waiting for the user's review: the Record
   events (`RecordWriting`, `RecordWritten`, `TransactionRunner::whenDone()`), the Workflow module
   (`core.workflow*`, migration `Version20261115160000`), `admin.workflows` (run `access:sync`),
-  `/admin/workflows`, `workflow:runs:gc`; the guide [../workflows.md](../workflows.md). Next:
-  phase 1b, the visual editor.
+  `/admin/workflows`, `workflow:runs:gc`; the guide [../workflows.md](../workflows.md); merged
+  into `main` on 2026-11-15. Phase 1b planned in
+  [workflow-phase1b-plan.md](workflow-phase1b-plan.md): part 1 (the variable picker,
+  `PathCatalog`; the test on a record, `WorkflowEngine::dryRun()`) done on branch
+  `workflow_picker_test`, waiting for review; part 2, the visual editor (a Live Component), next.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`
