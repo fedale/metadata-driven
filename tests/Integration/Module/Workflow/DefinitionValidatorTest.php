@@ -87,6 +87,16 @@ final class DefinitionValidatorTest extends KernelTestCase
         self::assertSame(['steps.0.type' => ['You do not hold record.person.delete: a step acting as whoever triggered the event may not do what you cannot. Give it an act_as, a role you may give.']], $errors);
     }
 
+    public function testSetValuesChangesOnlyWhatItsActivatorMayWrite(): void
+    {
+        $errors = $this->errors(<<<'YAML'
+            trigger: { on: deleted, object: person, when: before }
+            steps: [{ key: city, type: set_values, values: { city: Torino } }]
+            YAML);
+
+        self::assertSame(['steps.0.type' => ['set_values changes the values being written: a delete writes none.']], $errors);
+    }
+
     private function validate(string $yaml): void
     {
         $access = $this->createStub(AccessCheckerInterface::class);

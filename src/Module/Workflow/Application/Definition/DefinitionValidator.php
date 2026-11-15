@@ -114,6 +114,24 @@ final class DefinitionValidator
                 $this->error($path.'.values', \sprintf('The value of "%s", the field it matches on, is required.', $match));
             }
         }
+        if (StepType::SetValues === $step->type && null !== $trigger) {
+            // It changes what someone else writes: the person activating must hold that write too.
+            $actions = match ($definition->trigger->on) {
+                TriggerEvent::Created => [RecordAction::Create],
+                TriggerEvent::Updated => [RecordAction::Update],
+                TriggerEvent::CreatedOrUpdated => [RecordAction::Create, RecordAction::Update],
+                TriggerEvent::Deleted => [],
+            };
+            if (TriggerEvent::Deleted === $definition->trigger->on) {
+                $this->error($path.'.type', 'set_values changes the values being written: a delete writes none.');
+            }
+            foreach ($actions as $action) {
+                $permission = Permissions::record($trigger->name, $action);
+                if (!$this->access->holds($permission)) {
+                    $this->error($path.'.type', \sprintf('You do not hold %s: a workflow of yours may not change what others write there.', $permission));
+                }
+            }
+        }
         if (null === $step->actAs() && $step->type->writes() && null !== $target) {
             // As whoever triggered the event: the person activating must hold it too, or they
             // would write through the users who do (no way to more power).

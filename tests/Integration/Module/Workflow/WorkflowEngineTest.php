@@ -166,6 +166,25 @@ final class WorkflowEngineTest extends KernelTestCase
         self::assertSame('owner@example.com, who activated it, no longer holds record.invoice.create.', $this->runs()[0]['error']);
     }
 
+    public function testSetValuesStopsOnceItsActivatorMayNoLongerWriteThere(): void
+    {
+        $this->signIn('owner@example.com');
+        $this->workflow('Stamp', "trigger: { on: created, object: invoice, when: before }\nsteps: [{ key: stamp, type: set_values, values: { number: STAMPED } }]");
+        $rbac = self::getContainer()->get(RbacManagerInterface::class);
+        $rbac->assign('clerk@example.com', 'ROLE_OWNER');
+        $this->signIn('clerk@example.com');
+        self::assertSame('STAMPED', $this->records->create(new RecordInput('invoice', ['number' => 'A1']))->get('number'));
+
+        // The owner demoted: the workflow guards the write, and what it can no longer do refuses it.
+        $rbac->revoke('owner@example.com', 'ROLE_OWNER');
+        try {
+            $this->records->create(new RecordInput('invoice', ['number' => 'A2']));
+            self::fail('Refused.');
+        } catch (RecordValidationFailed $e) {
+            self::assertSame(['' => ['The workflow "Stamp" could not run: owner@example.com, who activated it, no longer holds record.invoice.create.']], $e->errors);
+        }
+    }
+
     public function testARoleStepStopsOnceItsActivatorCanNoLongerGiveTheRole(): void
     {
         $this->signIn('owner@example.com');

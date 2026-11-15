@@ -230,6 +230,9 @@ What differs from the design above, and why:
   admin with `admin.workflows` could write, through the users who hold a permission, what they
   may not write themselves. The user's decision stands (the step acts as the triggerer); the rule
   "no way to more power" now holds for the author too.
+- **`set_values` needs its activator to hold the trigger's write** (create, update), on activation
+  and at each run; it is refused on a `deleted` trigger, where it would have failed at run time.
+  `refuse` and conditions need no permission: they only stop a write.
 - Left as decided (decision 8 of the plan): the runs, with the data of the records they ran on,
   are seen by `admin.workflows`, whatever the viewer may read of those objects.
 

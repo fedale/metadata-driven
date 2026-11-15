@@ -270,7 +270,7 @@ final class WorkflowEngine implements ResetInterface
         try {
             [$input, $output, $goOn] = match ($step->type) {
                 StepType::Filter => [null, ['passed' => $passed = null !== $step->when && $this->conditions->holds($step->when, $chain)], $passed],
-                StepType::SetValues => $this->setValues($step, $chain, $writing),
+                StepType::SetValues => $this->setValues($step, $chain, $writing, $run),
                 StepType::Refuse => $this->refuse($step, $chain, $run, null !== $writing),
                 default => $this->write($step, $chain, $run),
             };
@@ -305,10 +305,17 @@ final class WorkflowEngine implements ResetInterface
      *
      * @throws StepFailed
      */
-    private function setValues(Step $step, DataChain $chain, ?RecordWriting $writing): array
+    private function setValues(Step $step, DataChain $chain, ?RecordWriting $writing, RunLog $run): array
     {
-        if (null === $writing) {
-            throw new StepFailed('set_values runs before a write only.');
+        if (null === $writing || RecordWriteAction::Delete === $writing->action) {
+            throw new StepFailed('set_values runs before a create or an update only.');
+        }
+        // It changes what someone else writes: whoever activated the workflow must still hold
+        // that write too (the writer's own permission is checked where they write).
+        $permission = Permissions::record($writing->objectName, RecordWriteAction::Create === $writing->action ? RecordAction::Create : RecordAction::Update);
+        $activator = $run->workflow->activatedBy;
+        if (null === $activator || !$this->access->userCanGrant($activator, $permission)) {
+            throw new StepFailed(\sprintf('%s, who activated it, no longer holds %s.', $activator ?? 'No one', $permission));
         }
         $values = $chain->values($step->values());
         foreach ($values as $field => $value) {

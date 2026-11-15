@@ -131,7 +131,9 @@ No way to more power, as the members and roles pages hold to:
   member any more, their workflow's step stops, and the run fails, visibly.
 - **No one behind the event** (a command, an import from the command line): a step that writes
   needs an `act_as`.
-- Conditions, `set_values` and `refuse` need no permission.
+- `set_values` changes what someone else writes: the person who activated the workflow must hold
+  that write too (create or update the trigger's object), on activation and at each run.
+- Conditions and `refuse` need no permission: they can only stop a write, never give more.
 
 Defining workflows and seeing their runs needs `admin.workflows`. A run holds the data of the
 records it ran on, whatever object: give `admin.workflows` to whoever may see them.
