@@ -54,7 +54,7 @@ code, the commands, the admin UI and the documentation.
 | **Upgrade** | Installing a newer version over an installation; each **conflict** (an item changed both here and in the package) is settled by choosing which side stays |
 | **Requirement** | Another package a package needs, installed and upgraded with it |
 | **Index** | A signed JSON file listing packages and their versions, served by any web server; a **package source** is an index this instance is set to look into (a company's private one, a vendor's) |
-| **Catalog** | The public index of packages (`fedale/metadata-driven-templates`) |
+| **Catalog** | The public index of packages (`fedale/metadata-driven-packages`) |
 | **Yank** | Withdrawing a published version from an index: it is no longer picked as the newest, but can still be installed by naming it |
 
 ## Workspaces, people and access

@@ -643,7 +643,7 @@ signature covers the flag.
 ## `metadata:package:publish`
 
 ```
-metadata:package:publish <directory> [--catalog=../metadata-driven-templates] [--dry-run]
+metadata:package:publish <directory> [--catalog=../metadata-driven-packages] [--dry-run]
 ```
 
 Checks a package directory against a checkout of the package catalog as the catalog's pull

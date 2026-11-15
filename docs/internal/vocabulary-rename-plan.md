@@ -1,7 +1,7 @@
 # Plan: renaming the vocabulary
 
-Status: **agreed** (2026-11-15). Phases 1 to 4 merged into `main` (2026-11-15); phase 5 done on
-branch `package_rename`, waiting for the user's review.
+Status: **agreed** (2026-11-15). Phases 1 to 5 merged into `main` (2026-11-15); phase 6 done on
+branches, waiting for the catalog repository's rename and pull request.
 The names are recorded in [../glossary.md](../glossary.md); this plan brings the code, the
 database, the commands, the admin UI, the guides and the package format in line with it.
 
@@ -166,7 +166,7 @@ ran in the default workspace (only `workspace:*` commands ran as the system): th
 commands now run as the system too. Not renamed: a virtual column's `template` (out of this
 plan), Twig's templates, `@template` in PHPDoc, the catalog's repository (phase 6).
 
-### Phase 6: the catalog and the repositories
+### Phase 6: the catalog and the repositories (done, not published)
 
 - The catalog (`metadata-driven-templates`): `templates/` → `packages/`, `fedale/geo-italy` and
   `fedale/registration` converted to v2, packed, signed and published again; its CI and README.
@@ -179,6 +179,17 @@ plan), Twig's templates, `@template` in PHPDoc, the catalog's repository (phase 
   upgrades from) and `core.package_source.url` where they point at the old address; the
   default `PACKAGE_CATALOG_URL` and the production notes change; `composer link` paths and the
   setup notes of status.md follow.
+
+Done, with the user's decisions of 2026-11-15: the published versions (`fedale/geo-italy`
+1.0.0, `fedale/registration` 1.0.0) **stay in format v1**, byte-identical (checked: the archives
+built from `packages/` have the checksums of the ones published), since the catalog's own rule is
+that a published version never changes; the index lists them as `metadata-driven/v1`. A new
+version must be v2 (the pull request check refuses a `template.yaml`). The catalog becomes
+`fedale/metadata-driven-packages` (namespace `Fedale\PackageCatalog`), its sources move from
+`templates/` to `packages/`, its site to `fedale.github.io/metadata-driven-packages`. The app's
+`Version20261115150000` moves the stored addresses (`package_installation.source`,
+`package_source.url`). The repository is renamed on GitHub by the user (no `gh` here), who opens
+and merges the catalog's pull request.
 
 ## Risks
 
