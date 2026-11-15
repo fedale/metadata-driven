@@ -20,7 +20,7 @@ Objects are defined from the admin UI at `/admin` or from the console.
 | [Users and permissions](access.md) | Signing in, users, the permissions of every object, roles |
 | [Workspaces](workspaces.md) | Several customers on one installation, each with its own model, records, roles and files: hosts, the `workspace:*` commands, users in several workspaces, production setup |
 | [Renaming and archiving](lifecycle.md) | New machine names for objects and fields (table, columns and every reference follow), archiving with the data kept, restoring, purging for good |
-| [Workflows](workflows.md) | When something happens to a record, a series of steps: before the write (change or refuse it) or after it (write other records); YAML from `/admin/workflows`, with permissions, versions and runs |
+| [Workflows](workflows.md) | When something happens to a record, a series of steps: before the write (change or refuse it) or after it (write other records); or run by someone from a record's page (manual, with a form); YAML from `/admin/workflows`, with permissions, versions and runs |
 | [Packages](packages.md) | A model as a package of YAML documents: exporting objects, views, forms and translations, validating a package |
 | [Console commands](console.md) | Every command, its arguments and options, what it changes in the database |
 | [Field types](field-types.md) | The twelve field types, their settings, columns, validation and grid behaviour |

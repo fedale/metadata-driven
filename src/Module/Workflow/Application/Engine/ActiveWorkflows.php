@@ -18,6 +18,18 @@ interface ActiveWorkflows
     public function triggeredOn(string $object, Timing $when): array;
 
     /**
+     * The manual workflows of an object, in the order of the list.
+     *
+     * @return list<ActiveWorkflow>
+     */
+    public function manualOn(string $object): array;
+
+    /**
+     * A workflow's active version, whatever its trigger; null when it has none.
+     */
+    public function byId(string $workflowId): ?ActiveWorkflow;
+
+    /**
      * Forgets what was read: a version activated or deactivated.
      */
     public function forget(): void;

@@ -51,6 +51,22 @@ final class EditorModelTest extends TestCase
         self::assertSame(['overdue', 'reminder', 'deep', 'stop'], EditorModel::keys($model));
     }
 
+    public function testAManualTriggerKeepsItsLabelAndItsForm(): void
+    {
+        $source = <<<'YAML'
+            trigger: { on: manual, object: invoice, label: Remind, form: [{ name: tone, label: Tone, type: select, required: true, options: [kind, firm] }, { name: note, label: Note, type: text }] }
+            steps:
+              - { key: r, type: create_record, object: reminder, values: { note: '{{ $trigger.input.note }}' } }
+            YAML;
+        $model = EditorModel::fromSource($source);
+        self::assertNotNull($model);
+        self::assertSame(['name' => 'tone', 'label' => 'Tone', 'type' => 'select', 'required' => true, 'options' => 'kind, firm'], self::at($model, 'trigger.form.0'));
+
+        $parser = new DefinitionParser();
+        self::assertEquals($parser->parse($source), $parser->parse(EditorModel::toSource($model)));
+        self::assertStringNotContainsString('when:', EditorModel::toSource($model));
+    }
+
     public function testUnreadableYamlHasNoModel(): void
     {
         self::assertNull(EditorModel::fromSource("trigger: [\n"));

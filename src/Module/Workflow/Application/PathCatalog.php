@@ -6,6 +6,7 @@ namespace App\Module\Workflow\Application;
 
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Workflow\Application\Definition\Definition;
+use App\Module\Workflow\Application\Definition\FormInput;
 use App\Module\Workflow\Application\Definition\StepType;
 use App\Module\Workflow\Application\Definition\TriggerEvent;
 
@@ -36,7 +37,11 @@ final class PathCatalog
         if (\in_array($definition->trigger->on, [TriggerEvent::Updated, TriggerEvent::CreatedOrUpdated], true)) {
             $trigger = [...$trigger, '$trigger.before.id', ...array_map(static fn (string $field): string => '$trigger.before.'.$field, $this->fields($object))];
         }
-        $trigger[] = '$trigger.changed';
+        if ($definition->trigger->isManual()) {
+            $trigger = [...$trigger, ...array_map(static fn (FormInput $input): string => '$trigger.input.'.$input->name, $definition->trigger->form)];
+        } else {
+            $trigger[] = '$trigger.changed';
+        }
 
         $steps = [];
         foreach ($definition->allSteps() as $step) {

@@ -82,6 +82,7 @@ record:
     new: 'Nuovo: %object%'
     new_title: 'Nuovo: %object%'
     edit_title: 'Modifica: %object%'
+    actions: Esegui
     grid_views: Viste della griglia
     showing: 'Mostrati %shown% di %total%.'
     delete: Elimina
@@ -202,6 +203,8 @@ admin:
         deleted: 'Ruolo %name% eliminato.'
         delete_confirm: 'Eliminare il ruolo %name%?'
         administration: Amministrazione
+        workflows: Workflow
+        run_workflow: 'Esegui "%name%"'
         action:
             read: lettura
             create: creazione
@@ -452,6 +455,14 @@ admin:
         value: Valore
         add_value: + valore
         add_test: + condizione
+        button_label: 'Pulsante'
+        form_inputs: 'Form, chiesto prima dell''esecuzione: $trigger.input.<name>'
+        input_name: 'Nome'
+        input_label: 'Etichetta'
+        input_type: 'Tipo'
+        input_options: 'Opzioni'
+        input_required: 'obbligatorio'
+        add_input: '+ campo'
         add_branch: + ramo
         remove: Rimuovi
         join: Combina
@@ -469,6 +480,7 @@ admin:
         on_updated: modificato
         on_created_or_updated: creato o modificato
         on_deleted: eliminato
+        on_manual: 'eseguito da qualcuno (manuale)'
         when: Esegui
         when_before: prima della scrittura
         when_after: dopo la scrittura
@@ -595,3 +607,9 @@ admin:
         take: Prendi la nuova versione
         upgrade_button: 'Aggiorna alla %version%'
         upgrade_done: '%name% aggiornato dalla %from% alla %to%.'
+workflow:
+    run:
+        intro: 'Viene eseguito su questo record (%object%): prima le risposte.'
+        submit: Esegui
+        completed: '"%label%" eseguito.'
+        failed: '"%label%" non riuscito, nulla è stato salvato: %error%'

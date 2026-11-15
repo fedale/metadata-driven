@@ -1,8 +1,9 @@
 # Workflows
 
 A workflow runs a series of steps when something happens to a record: it checks or changes the
-record **before** it is written, or writes other records **after** it. It is defined in YAML
-from the admin, `/admin/workflows`, by whoever holds `admin.workflows`; no code.
+record **before** it is written, or writes other records **after** it. A **manual** workflow runs
+when someone asks, from a record's page or a command. It is defined in YAML from the admin,
+`/admin/workflows`, by whoever holds `admin.workflows`; no code.
 
 ```yaml
 # When an invoice's status changes: a reminder for the overdue ones.
@@ -59,10 +60,12 @@ steps:
 
 | Key | Value |
 |---|---|
-| `on` | `created`, `updated`, `created_or_updated`, `deleted` |
+| `on` | `created`, `updated`, `created_or_updated`, `deleted`; `manual` (see [Manual workflows](#manual-workflows)) |
 | `object` | The object whose records start it |
-| `when` | `before`: in the write's transaction, before it; `after`: once the write is committed |
+| `when` | `before`: in the write's transaction, before it; `after`: once the write is committed. Not for `manual` |
 | `fields` | `updated` and `created_or_updated` only: run on an update only when one of these fields changes |
+| `label` | `manual` only, required: the text of its button |
+| `form` | `manual` only: the inputs asked before it runs |
 
 **Before** a write, a workflow guards it: it may change the values (`set_values`, validated with
 the others) or refuse the write (`refuse`, its message shown to the user), and a step that fails
@@ -115,14 +118,45 @@ Each run holds its data, read by paths:
 
 | Path | Holds |
 |---|---|
-| `$trigger.object`, `$trigger.action` | The object, and `create`, `update` or `delete` |
-| `$trigger.record.<field>`, `$trigger.record.id` | The record: as about to be written before the write, as written after it, as it was for a delete. Never a password |
+| `$trigger.object`, `$trigger.action` | The object, and `create`, `update`, `delete` or `manual` |
+| `$trigger.record.<field>`, `$trigger.record.id` | The record: as about to be written before the write, as written after it, as it was for a delete, as it is for a manual run (none from a command without `--record`). Never a password |
+| `$trigger.input.<name>` | `manual` only: the answer to an input of its form |
 | `$trigger.before.<field>` | `updated` and `created_or_updated`: the record as it was before the update |
-| `$trigger.changed` | The fields the write changes |
-| `$user.email`, `$user.roles` | Whoever triggered the event; null from a command |
+| `$trigger.changed` | The fields the write changes; not for `manual` |
+| `$user.email`, `$user.roles` | Whoever triggered the event or ran the workflow; null from a command |
 | `$workspace.slug`, `$workspace.name` | The workspace |
 | `$now`, `$today` | The time (ISO 8601) and the date of the run |
 | `<key>.<…>`, `$last.<…>` | A step's output, by its key; the previous step's |
+### Manual workflows
+
+```yaml
+trigger:
+  on: manual
+  object: invoice
+  label: Send a reminder            # its button, on an invoice's page
+  form:                             # optional: asked first, read as $trigger.input.<name>
+    - { name: note, label: Note, type: text, required: true }
+    - { name: tone, label: Tone, type: select, options: [kind, firm] }
+steps:
+  - { key: reminder, type: create_record, object: reminder,
+      values: { invoice: '{{ $trigger.record.id }}', note: '{{ $trigger.input.note }}' } }
+```
+
+- **Where**: on a record's page, the **Run** menu lists the manual workflows of its object the
+  user may run. One without a form runs at once; one with a form opens it first. The result is a
+  message on the record's page, the error of a failed run in it. From the console:
+  [`workflow:run`](console.md#workflowrun).
+- **Who**: activating a manual version creates the permission `workflow.<workflow id>.run`, in the
+  *Workflows* group of the roles page (*Run "name"*, the workflow's name when it was first
+  activated). Only whoever holds it sees the button and may run it, on a record they may read;
+  the super admin holds it already. Its steps still check their own permissions (see
+  [Permissions](#permissions)). Activating a version on another trigger, or deleting the workflow,
+  removes the permission, from every role and user.
+- **The form**: each input has a `name`, a `label`, a `type` (`text`, `number`, `date` as
+  `2026-12-31`, `boolean`, `select` with its `options`) and may be `required`. The answers are
+  checked before the run starts; none is `null`, an unchecked boolean `false`.
+- **The run**: as an after-run, its steps in one transaction, all or nothing; a `refuse` keeps
+  nothing either, its message shown. `set_values` has nothing to change: refused.
 
 A step that writes outputs the record as written (`{{ reminder.id }}`); an `if`, the branch it
 took; a filter, whether it passed. A step reads only the steps run before it on every way there:
@@ -160,9 +194,11 @@ records it ran on, whatever object: give `admin.workflows` to whoever may see th
 |---|---|---|
 | `app.workflow.max_depth` | `3` | The longest chain of runs started by one another's writes (`emit_events`) |
 | `app.workflow.runs_per_minute` | `100` | The runs a workspace may start a minute; beyond, a write a before-workflow guards is refused, the other runs fail |
+| `app.workflow.max_executed_steps` | `1000` | The steps one run may execute; beyond, the run fails (a definition holds 50 at most) |
 | `app.workflow.runs_keep_days` | `30` | How long the runs are kept |
 
-A run is **completed**, **failed** (an after-run that could not finish: nothing of it stays), or
+A run is **completed**, **failed** (an after-run or a manual run that could not finish: nothing
+of it stays), or
 **refused** (a before-run that refused its write). A refused run is kept, though its write was
 rolled back. The steps run are counted per workspace and day.
 
@@ -177,10 +213,10 @@ rolled back. The steps run are counted per workspace and day.
 | The definition | `DefinitionParser` (structure, every problem by its path), `DefinitionValidator` (objects, fields, paths, roles, on activation), stored compiled as JSON (`core.workflow_version.definition`) next to the YAML as written (`source`) |
 | The engine | `WorkflowEngine` listens to both events, reads the active versions (`ActiveWorkflows`, once per request), runs the steps over a `DataChain`, checks each write's permission (`AccessCheckerInterface::roleGives()`, `userCanGrant()`), and stores each run once its transaction ended (`RunStore`, DBAL) |
 | The tables | `core.workflow`, `core.workflow_version` (ORM); `core.workflow_run`, `core.workflow_run_step`, `core.workflow_usage` (DBAL); each with its `workspace_id` and row-level security |
-| The admin | `WorkflowAdminController`, `WorkflowManager` |
+| Manual runs | `ManualRuns` (who may run what, the answers checked), `WorkflowEngine::runManual()`; on a record's page through the Record contract's `RecordActionsInterface` (`WorkflowRecordActions`), the form at `/w/<workflow id>/run/<record id>` (`ManualRunController`); `workflow:run` |
+| The admin | `WorkflowAdminController`, `WorkflowManager` (which creates and removes the run permission, `AccessSetupInterface::ensurePermission()`) |
 
 ## Not yet
 
-Manual workflows (a button on a record or a selection), search and iterator steps, forms asking
-for input (phase 2); the system admin's workflows on platform events (phase 3); the background,
+Manual workflows on a grid's selection, search and iterator steps (phase 2); the system admin's workflows on platform events (phase 3); the background,
 HTTP requests, waits (phase 4); states (phase 5). See [the plan](internal/workflow-plan.md).

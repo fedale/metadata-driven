@@ -15,6 +15,23 @@
             <button type="button" class="gv-btn md-sheet__machine-names" aria-pressed="false"
                     data-machine-names-target="toggle" data-action="machine-names#toggle">{{ 'form.machine_names'|trans }}</button>
         {% endif %}
+        {% if actions|default([]) is not empty %}
+            <details class="md-menu">
+                <summary class="gv-btn">{{ 'record.actions'|trans }}</summary>
+                <ul class="md-menu__items">
+                    {% for action in actions %}
+                        <li>
+                            {% if action.formName %}
+                                {# Posts its own form, rendered after the record's (record/form.html.twig). #}
+                                <button type="submit" form="md-action-{{ loop.index }}" formnovalidate>{{ action.label }}</button>
+                            {% else %}
+                                <a href="{{ action.url }}">{{ action.label }}</a>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </details>
+        {% endif %}
         <a class="gv-btn" href="{{ back }}">{{ 'form.cancel'|trans }}</a>
         {% if can_save %}
             <button type="submit" class="gv-btn gv-btn-primary">{{ 'form.save'|trans }}</button>

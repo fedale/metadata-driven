@@ -28,6 +28,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:purge`](#metadatapurge) | Delete an archived object or field for good, its data with it |
 | [`metadata:list`](#metadatalist) | List the objects, or the fields of one object, and what is archived |
 | [`metadata:files:gc`](#metadatafilesgc) | Delete the stored files no record references any more |
+| [`workflow:run`](#workflowrun) | Run a manual workflow, on a record or none, with the answers of its form |
 | [`workflow:runs:gc`](#workflowrunsgc) | Delete the runs of the workflows older than the days they are kept |
 | [`record:import`](#recordimport) | Import the rows of a CSV file into an object, all or nothing |
 | [`metadata:package:export`](#metadatapackageexport) | Write objects, their fields and views, forms and their translations as a package |
@@ -755,6 +756,25 @@ Run it on a schedule, for example every night from cron:
 ```
 30 3 * * * cd /srv/app && php bin/console metadata:files:gc --no-interaction
 ```
+
+## `workflow:run`
+
+Run a [manual workflow](workflows.md#manual-workflows) of the command's workspace, by its name or
+its id, as **no one**: its permission (`workflow.<id>.run`) is not checked, and its steps that
+write need an `act_as`, as for any event no one is behind. All or nothing, like a run from a
+record's page; the run is stored with the others.
+
+```
+workflow:run [--record=ID] [--input=NAME=VALUE]... <workflow>
+```
+
+| Option | Meaning |
+|---|---|
+| `--record` | The id of the record it runs on, of the trigger's object; without it, `$trigger.record` is null |
+| `--input` | An answer of its form, `name=value`, repeatable; checked as on the page (`--input due_on=2026-12-31`, `--input urgent=true`) |
+
+It exits with 1 when the run fails or may not start (no such workflow, an answer that will not
+do: each listed), 2 when an `--input` is not `name=value`.
 
 ## `workflow:runs:gc`
 

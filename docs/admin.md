@@ -109,10 +109,11 @@ the server: installing from a directory, packing and exporting are console comma
 
 ## Workflows — `/admin/workflows`
 
-For whoever holds `admin.workflows`: what runs when a record is written. The list sets the order
-in which the workflows of one event run; a workflow's page edits its draft in YAML and activates
-it once checked, every problem listed by its place in the definition; its versions and its runs
-are a link away. See [Workflows](workflows.md).
+For whoever holds `admin.workflows`: what runs when a record is written, or when someone runs it
+from a record's page (a manual workflow, its permission then given on the roles page). The list
+sets the order in which the workflows of one event run; a workflow's page edits its draft,
+visually or in YAML, and activates it once checked, every problem listed by its place in the
+definition; its versions and its runs are a link away. See [Workflows](workflows.md).
 
 ## Members — `/admin/members`
 

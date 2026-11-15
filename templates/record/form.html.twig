@@ -12,7 +12,7 @@
 
 {% block body %}
     {{ form_start(form, {attr: {class: 'md-sheet', novalidate: 'novalidate', 'data-controller': can('admin.metadata') ? 'machine-names' : false}}) }}
-        {{ include('record/_sheet_header.html.twig', {crumb: object.labelPlural, crumb_url: back, title: heading, back: back, can_save: can_save, can_save_new: can_save_new}) }}
+        {{ include('record/_sheet_header.html.twig', {crumb: object.labelPlural, crumb_url: back, title: heading, back: back, can_save: can_save, can_save_new: can_save_new, actions: actions|default([])}) }}
 
         <div class="md-sheet__parts md-sheet__parts--single">
             <section class="md-card">
@@ -25,6 +25,16 @@
             {{ include('record/_sheet_footer.html.twig', {back: back, can_save: can_save, can_save_new: can_save_new}) }}
         </div>
     {{ form_end(form) }}
+
+    {# The forms the action buttons of the header post: outside the record's form, which they
+       would submit otherwise (each button names its own with form=…). #}
+    {% for action in actions|default([]) %}
+        {% if action.formName %}
+            <form id="md-action-{{ loop.index }}" method="post" action="{{ action.url }}" hidden>
+                <input type="hidden" name="{{ action.formName }}[_token]" value="{{ csrf_token('submit') }}" data-controller="csrf-protection">
+            </form>
+        {% endif %}
+    {% endfor %}
 
     <div class="md-sheet__parts md-sheet__parts--single">
         {% for group in referencing|default([]) %}

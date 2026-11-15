@@ -11,6 +11,7 @@ use App\Module\Workflow\Application\Engine\ActiveWorkflows;
 use App\Shared\Database\WorkspaceScope;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
+use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
@@ -33,14 +34,52 @@ final class DbalActiveWorkflows implements ActiveWorkflows, ResetInterface
         if (isset($this->read[$key])) {
             return $this->read[$key];
         }
+
+        return $this->read[$key] = $this->select(
+            "v.definition -> 'trigger' ->> 'object' = ? AND v.definition -> 'trigger' ->> 'when' = ? AND v.definition -> 'trigger' ->> 'on' <> 'manual'",
+            [$object, $when->value],
+        );
+    }
+
+    public function manualOn(string $object): array
+    {
+        return $this->read[$object.'|manual'] ??= $this->select("v.definition -> 'trigger' ->> 'object' = ? AND v.definition -> 'trigger' ->> 'on' = 'manual'", [$object]);
+    }
+
+    public function byId(string $workflowId): ?ActiveWorkflow
+    {
+        if (!Uuid::isValid($workflowId)) {
+            return null;
+        }
+
+        return $this->select('w.id = ?', [$workflowId])[0] ?? null;
+    }
+
+    public function forget(): void
+    {
+        $this->read = [];
+    }
+
+    public function reset(): void
+    {
+        $this->forget();
+    }
+
+    /**
+     * @param list<string> $parameters
+     *
+     * @return list<ActiveWorkflow>
+     */
+    private function select(string $where, array $parameters): array
+    {
         $rows = $this->connection->fetchAllAssociative(\sprintf(
             "SELECT w.id, w.name, v.id AS version_id, v.activated_by, v.definition
              FROM core.workflow_version v JOIN core.workflow w ON w.id = v.workflow_id
-             WHERE v.status = 'active' AND v.workspace_id = %s
-               AND v.definition -> 'trigger' ->> 'object' = ? AND v.definition -> 'trigger' ->> 'when' = ?
+             WHERE v.status = 'active' AND v.workspace_id = %s AND %s
              ORDER BY w.position, w.name",
             WorkspaceScope::CURRENT,
-        ), [$object, $when->value]);
+            $where,
+        ), $parameters);
 
         $parser = new DefinitionParser();
 
@@ -60,16 +99,6 @@ final class DbalActiveWorkflows implements ActiveWorkflows, ResetInterface
             );
         }
 
-        return $this->read[$key] = $workflows;
-    }
-
-    public function forget(): void
-    {
-        $this->read = [];
-    }
-
-    public function reset(): void
-    {
-        $this->forget();
+        return $workflows;
     }
 }

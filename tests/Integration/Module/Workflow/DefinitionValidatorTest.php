@@ -69,7 +69,7 @@ final class DefinitionValidatorTest extends KernelTestCase
             'steps.2.values' => ['The value of "city", the field it matches on, is required.'],
             'steps.3.id' => ['"nowhere" is no step and no root of the chain ($trigger, $user, $workspace, $last, $now, $today).'],
             'steps.3.act_as' => ['You cannot give the role ROLE_BOSS: a workflow you activate may not act as it.'],
-            'steps.4.id' => ['$trigger holds object, action, record, before and changed: not "who".'],
+            'steps.4.id' => ['$trigger holds object, action, record, before, changed: not "who".'],
             'steps.4.act_as' => ['"ROLE_NOBODY" is no role of this workspace.'],
         ], $errors);
     }
@@ -95,6 +95,26 @@ final class DefinitionValidatorTest extends KernelTestCase
             YAML);
 
         self::assertSame(['steps.0.type' => ['set_values changes the values being written: a delete writes none.']], $errors);
+    }
+
+    public function testAManualRunReadsTheInputsOfItsFormAndNoWrite(): void
+    {
+        $errors = $this->errors(<<<'YAML'
+            trigger: { on: manual, object: person, label: Rename, form: [{ name: name, label: Name, type: text }] }
+            steps:
+              - key: pet
+                type: create_record
+                object: pet
+                values: { name: '{{ $trigger.input.name }}', owner: '{{ $trigger.record.id }}' }
+                act_as: ROLE_CLERK
+              - { key: other, type: filter, when: { field: $trigger.input.nickname, op: empty } }
+              - { key: was, type: filter, when: { field: $trigger.before.city, op: empty } }
+            YAML);
+
+        self::assertSame([
+            'steps.1.when.field' => ['The form has no input "nickname".'],
+            'steps.2.when.field' => ['$trigger holds object, action, record, input: not "before".'],
+        ], $errors);
     }
 
     private function validate(string $yaml): void

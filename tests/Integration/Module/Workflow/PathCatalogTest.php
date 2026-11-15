@@ -33,6 +33,17 @@ final class PathCatalogTest extends KernelTestCase
         self::assertSame(['check' => ['check.branch'], 'visit' => ['visit.id', 'visit.notes', 'visit.pet', 'visit.created'], 'ok' => ['ok.passed']], $paths['steps']);
     }
 
+    public function testAManualTriggerOffersTheInputsOfItsForm(): void
+    {
+        self::createRelatedObjects(self::getContainer());
+        $paths = self::getContainer()->get(PathCatalog::class)->paths((new DefinitionParser())->parse(<<<'YAML'
+            trigger: { on: manual, object: pet, label: Rename, form: [{ name: name, label: Name, type: text }] }
+            steps: [{ key: no, type: refuse, message: no }]
+            YAML));
+
+        self::assertSame(['$trigger.object', '$trigger.action', '$trigger.record.id', '$trigger.record.name', '$trigger.record.owner', '$trigger.input.name'], $paths['trigger']);
+    }
+
     public function testWithoutADefinitionTheRootsOnly(): void
     {
         $paths = self::getContainer()->get(PathCatalog::class)->paths(null);

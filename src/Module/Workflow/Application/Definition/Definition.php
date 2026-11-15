@@ -25,9 +25,14 @@ final readonly class Definition
      */
     public function toArray(): array
     {
-        $trigger = ['on' => $this->trigger->on->value, 'object' => $this->trigger->object, 'when' => $this->trigger->when->value];
+        $trigger = $this->trigger->isManual()
+            ? ['on' => $this->trigger->on->value, 'object' => $this->trigger->object, 'label' => $this->trigger->label]
+            : ['on' => $this->trigger->on->value, 'object' => $this->trigger->object, 'when' => $this->trigger->when->value];
         if ([] !== $this->trigger->fields) {
             $trigger['fields'] = $this->trigger->fields;
+        }
+        if ([] !== $this->trigger->form) {
+            $trigger['form'] = array_map(static fn (FormInput $input): array => $input->toArray(), $this->trigger->form);
         }
 
         return ['trigger' => $trigger, 'steps' => self::steps($this->steps)];

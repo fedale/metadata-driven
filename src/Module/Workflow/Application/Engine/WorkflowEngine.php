@@ -70,6 +70,8 @@ final class WorkflowEngine implements ResetInterface
         private readonly int $maxDepth,
         #[Autowire('%app.workflow.runs_per_minute%')]
         private readonly int $runsPerMinute,
+        #[Autowire('%app.workflow.max_executed_steps%')]
+        private readonly int $maxExecutedSteps,
     ) {
     }
 
@@ -95,7 +97,7 @@ final class WorkflowEngine implements ResetInterface
 
                 return;
             }
-            $chain = $this->chain($event->objectName, $event->action, $record, $event->current, $changed);
+            $chain = $this->chain($this->triggerData($event->objectName, $event->action, $record, $event->current, $changed));
             try {
                 $this->steps($workflow->definition->steps, $chain, $run, $event);
                 $run->end($run->status, $run->error);
@@ -130,7 +132,7 @@ final class WorkflowEngine implements ResetInterface
                 $this->store($run);
                 continue;
             }
-            $chain = $this->chain($event->objectName, $event->action, $record, $event->before, $event->changed);
+            $chain = $this->chain($this->triggerData($event->objectName, $event->action, $record, $event->before, $event->changed));
             try {
                 // All of the run or nothing.
                 $this->transactions->run(fn () => $this->steps($workflow->definition->steps, $chain, $run, null));
@@ -157,6 +159,9 @@ final class WorkflowEngine implements ResetInterface
     {
         $trigger = $definition->trigger;
         $record = $this->finder->find($trigger->object, $recordId) ?? throw new \InvalidArgumentException(\sprintf('There is no record %s of "%s".', $recordId, $trigger->object));
+        if ($trigger->isManual()) {
+            return $this->dryRunManual($definition, $name, $record);
+        }
         $action = match ($trigger->on) {
             TriggerEvent::Created => RecordWriteAction::Create,
             TriggerEvent::Deleted => RecordWriteAction::Delete,
@@ -165,7 +170,7 @@ final class WorkflowEngine implements ResetInterface
         $workflow = new ActiveWorkflow('', $name, '', $this->security->getUser()?->getUserIdentifier(), $definition);
         $run = new RunLog($workflow, $trigger->object, $recordId, $action->value, $trigger->when->value, $workflow->activatedBy, 1, new \DateTimeImmutable());
         $values = RecordWriteAction::Delete === $action ? [] : $this->readable($trigger->object, $record->values);
-        $chain = $this->chain($trigger->object, $action, ['id' => $recordId, ...$this->readable($trigger->object, $record->values)], RecordWriteAction::Update === $action ? $record : null, array_keys($values));
+        $chain = $this->chain($this->triggerData($trigger->object, $action, ['id' => $recordId, ...$this->readable($trigger->object, $record->values)], RecordWriteAction::Update === $action ? $record : null, array_keys($values)));
 
         $this->dryRun = true;
         try {
@@ -178,6 +183,85 @@ final class WorkflowEngine implements ResetInterface
                     $run->end($run->status, $run->error);
                 } catch (StepFailed $e) {
                     $run->end(Timing::Before === $trigger->when ? RunLog::REFUSED : RunLog::FAILED, $e->getMessage());
+                }
+
+                throw new DryRunRolledBack();
+            });
+        } catch (DryRunRolledBack) {
+        } finally {
+            $this->dryRun = false;
+            $run->chain = $chain->toArray();
+        }
+
+        return $run;
+    }
+
+    /**
+     * Runs a manual workflow, as whoever is signed in (no one from a command), on a record or
+     * none, with the answers of its form, checked already: its steps in one transaction, all or
+     * nothing (a refuse included). Who may run it is the caller's to check.
+     *
+     * @param array<string, mixed> $input
+     */
+    public function runManual(ActiveWorkflow $workflow, ?RecordOutput $record, array $input): RunLog
+    {
+        $trigger = $workflow->definition->trigger;
+        ++$this->pending;
+        $run = new RunLog($workflow, $trigger->object, $record?->id, TriggerEvent::Manual->value, TriggerEvent::Manual->value, $this->security->getUser()?->getUserIdentifier(), 1, new \DateTimeImmutable());
+        if (null !== $refusal = $this->overLimits($run)) {
+            $run->end(RunLog::FAILED, $refusal);
+            $this->store($run);
+
+            return $run;
+        }
+        $chain = $this->chain([
+            'object' => $trigger->object,
+            'action' => TriggerEvent::Manual->value,
+            'record' => null === $record ? null : ['id' => $record->id, ...$this->readable($trigger->object, $record->values)],
+            'input' => $input,
+        ]);
+        try {
+            $this->transactions->run(function () use ($workflow, $chain, $run): void {
+                $this->steps($workflow->definition->steps, $chain, $run, null);
+                if (RunLog::COMPLETED !== $run->status) {
+                    // A refuse: nothing of the run is kept.
+                    throw new StepFailed((string) $run->error);
+                }
+            });
+            $run->end($run->status, $run->error);
+        } catch (StepFailed $e) {
+            $run->end(RunLog::FAILED, $e->getMessage());
+        } finally {
+            $run->chain = $chain->toArray();
+        }
+        $this->transactions->whenDone(fn () => $this->store($run));
+
+        return $run;
+    }
+
+    /**
+     * A manual workflow's test: run on the record with its form unanswered (each input null,
+     * false for a boolean), then rolled back.
+     */
+    private function dryRunManual(Definition $definition, string $name, RecordOutput $record): RunLog
+    {
+        $trigger = $definition->trigger;
+        $workflow = new ActiveWorkflow('', $name, '', $this->security->getUser()?->getUserIdentifier(), $definition);
+        $run = new RunLog($workflow, $trigger->object, $record->id, TriggerEvent::Manual->value, TriggerEvent::Manual->value, $workflow->activatedBy, 1, new \DateTimeImmutable());
+        $input = [];
+        foreach ($trigger->form as $formInput) {
+            $input[$formInput->name] = 'boolean' === $formInput->type ? false : null;
+        }
+        $chain = $this->chain(['object' => $trigger->object, 'action' => TriggerEvent::Manual->value, 'record' => ['id' => $record->id, ...$this->readable($trigger->object, $record->values)], 'input' => $input]);
+
+        $this->dryRun = true;
+        try {
+            $this->transactions->run(function () use ($definition, $chain, $run): never {
+                try {
+                    $this->steps($definition->steps, $chain, $run, null);
+                    $run->end($run->status, $run->error);
+                } catch (StepFailed $e) {
+                    $run->end(RunLog::FAILED, $e->getMessage());
                 }
 
                 throw new DryRunRolledBack();
@@ -240,23 +324,35 @@ final class WorkflowEngine implements ResetInterface
     }
 
     /**
+     * What $trigger holds for a record's write.
+     *
      * @param array<string, mixed> $record
      * @param list<string>         $changed
+     *
+     * @return array<string, mixed>
      */
-    private function chain(string $object, RecordWriteAction $action, array $record, ?RecordOutput $before, array $changed): DataChain
+    private function triggerData(string $object, RecordWriteAction $action, array $record, ?RecordOutput $before, array $changed): array
+    {
+        return [
+            'object' => $object,
+            'action' => $action->value,
+            'record' => $record,
+            'before' => null === $before ? null : ['id' => $before->id, ...$this->readable($object, $before->values)],
+            'changed' => $changed,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $trigger what $trigger holds
+     */
+    private function chain(array $trigger): DataChain
     {
         $user = $this->security->getUser()?->getUserIdentifier();
         $workspace = $this->workspace->isSelected() ? $this->workspaces->byId($this->workspace->id()) : null;
         $now = new \DateTimeImmutable();
 
         return new DataChain([
-            '$trigger' => [
-                'object' => $object,
-                'action' => $action->value,
-                'record' => $record,
-                'before' => null === $before ? null : ['id' => $before->id, ...$this->readable($object, $before->values)],
-                'changed' => $changed,
-            ],
+            '$trigger' => $trigger,
             '$user' => null === $user ? null : ['email' => $user, 'roles' => $this->roles->rolesOf($user)],
             '$workspace' => null === $workspace ? null : ['slug' => $workspace->slug, 'name' => $workspace->name],
             '$now' => $now->format(\DateTimeInterface::ATOM),
@@ -308,6 +404,9 @@ final class WorkflowEngine implements ResetInterface
      */
     private function step(Step $step, DataChain $chain, RunLog $run, ?RecordWriting $writing): bool
     {
+        if (\count($run->steps) >= $this->maxExecutedSteps) {
+            throw new StepFailed(\sprintf('More than %d steps executed in one run: stopped.', $this->maxExecutedSteps));
+        }
         $started = hrtime(true);
         if (StepType::If === $step->type) {
             // Logged before the steps of its branch, which are logged as they run.

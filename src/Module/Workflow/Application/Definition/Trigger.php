@@ -9,14 +9,34 @@ use App\Module\Record\Contract\Event\RecordWriteAction;
 final readonly class Trigger
 {
     /**
-     * @param list<string> $fields on update: run only when one of these changed; empty for any
+     * @param list<string>    $fields on update: run only when one of these changed; empty for any
+     * @param string|null     $label  a manual trigger's button
+     * @param list<FormInput> $form   a manual trigger's inputs, asked before it runs
      */
     public function __construct(
         public TriggerEvent $on,
         public string $object,
         public Timing $when,
         public array $fields,
+        public ?string $label = null,
+        public array $form = [],
     ) {
+    }
+
+    public function isManual(): bool
+    {
+        return TriggerEvent::Manual === $this->on;
+    }
+
+    public function input(string $name): ?FormInput
+    {
+        foreach ($this->form as $input) {
+            if ($name === $input->name) {
+                return $input;
+            }
+        }
+
+        return null;
     }
 
     /**

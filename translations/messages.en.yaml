@@ -83,6 +83,7 @@ record:
     new: 'New %object%'
     new_title: 'New %object%'
     edit_title: 'Edit %object%'
+    actions: Run
     grid_views: Grid views
     showing: 'Showing %shown% of %total%.'
     delete: Delete
@@ -205,6 +206,8 @@ admin:
         deleted: 'Role %name% deleted.'
         delete_confirm: 'Delete the role %name%?'
         administration: Administration
+        workflows: Workflows
+        run_workflow: 'Run "%name%"'
         action:
             read: read
             create: create
@@ -455,6 +458,14 @@ admin:
         value: Value
         add_value: + value
         add_test: + test
+        button_label: 'Button'
+        form_inputs: 'Form, asked before the run: $trigger.input.<name>'
+        input_name: 'Name'
+        input_label: 'Label'
+        input_type: 'Type'
+        input_options: 'Options'
+        input_required: 'required'
+        add_input: '+ input'
         add_branch: + branch
         remove: Remove
         join: Combine
@@ -472,6 +483,7 @@ admin:
         on_updated: updated
         on_created_or_updated: created or updated
         on_deleted: deleted
+        on_manual: 'run by someone (manual)'
         when: Run
         when_before: before the write
         when_after: after the write
@@ -598,3 +610,9 @@ admin:
         take: Take the new version
         upgrade_button: 'Upgrade to %version%'
         upgrade_done: '%name% upgraded from %from% to %to%.'
+workflow:
+    run:
+        intro: 'Runs on this %object%: its answers first.'
+        submit: Run
+        completed: '"%label%" done.'
+        failed: '"%label%" failed, nothing was kept: %error%'

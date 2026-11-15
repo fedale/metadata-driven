@@ -156,13 +156,40 @@
                     {% for object in this.objects %}<option value="{{ object.name }}" {{ model.trigger.object == object.name ? 'selected' }}>{{ object.name }}</option>{% endfor %}
                 </select>
             </label>
-            <label>{{ 'admin.workflow.when'|trans }}
-                <select data-model="model.trigger.when">
-                    <option value="before" {{ model.trigger.when == 'before' ? 'selected' }}>{{ 'admin.workflow.when_before'|trans }}</option>
-                    <option value="after" {{ model.trigger.when == 'after' ? 'selected' }}>{{ 'admin.workflow.when_after'|trans }}</option>
-                </select>
-            </label>
+            {% if model.trigger.on == 'manual' %}
+                <label>{{ 'admin.workflow.button_label'|trans }} <input type="text" data-model="model.trigger.label" value="{{ model.trigger.label }}"></label>
+            {% else %}
+                <label>{{ 'admin.workflow.when'|trans }}
+                    <select data-model="model.trigger.when">
+                        <option value="before" {{ model.trigger.when == 'before' ? 'selected' }}>{{ 'admin.workflow.when_before'|trans }}</option>
+                        <option value="after" {{ model.trigger.when == 'after' ? 'selected' }}>{{ 'admin.workflow.when_after'|trans }}</option>
+                    </select>
+                </label>
+            {% endif %}
         </div>
+        {% if model.trigger.on == 'manual' %}
+            {# The form asked before the run: its answers are $trigger.input.<name>. #}
+            <fieldset class="md-workflow-form">
+                <legend class="gv-muted">{{ 'admin.workflow.form_inputs'|trans }}</legend>
+                {% for input in model.trigger.form %}
+                    <div class="md-workflow-row">
+                        <label>{{ 'admin.workflow.input_name'|trans }} <input type="text" data-model="model.trigger.form.{{ loop.index0 }}.name" value="{{ input.name }}"></label>
+                        <label>{{ 'admin.workflow.input_label'|trans }} <input type="text" data-model="model.trigger.form.{{ loop.index0 }}.label" value="{{ input.label }}"></label>
+                        <label>{{ 'admin.workflow.input_type'|trans }}
+                            <select data-model="model.trigger.form.{{ loop.index0 }}.type">
+                                {% for type in this.inputTypes %}<option value="{{ type }}" {{ input.type == type ? 'selected' }}>{{ type }}</option>{% endfor %}
+                            </select>
+                        </label>
+                        {% if input.type == 'select' %}
+                            <label>{{ 'admin.workflow.input_options'|trans }} <input type="text" data-model="model.trigger.form.{{ loop.index0 }}.options" value="{{ input.options }}" placeholder="a, b, c"></label>
+                        {% endif %}
+                        <label><input type="checkbox" data-model="model.trigger.form.{{ loop.index0 }}.required" {{ input.required ? 'checked' }}> {{ 'admin.workflow.input_required'|trans }}</label>
+                        <button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="removeInput" data-live-index-param="{{ loop.index0 }}" aria-label="{{ 'admin.workflow.remove'|trans }}">✕</button>
+                    </div>
+                {% endfor %}
+                <button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="addInput">{{ 'admin.workflow.add_input'|trans }}</button>
+            </fieldset>
+        {% endif %}
         {% if model.trigger.on in ['updated', 'created_or_updated'] %}
             <fieldset class="md-workflow-row">
                 <legend class="gv-muted">{{ 'admin.workflow.fields_changed'|trans }}</legend>
