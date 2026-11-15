@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Module\Admin\UI\Controller;
 
 use App\Module\Access\Contract\AccessCheckerInterface;
-use App\Module\Access\Contract\TenantRolesInterface;
+use App\Module\Access\Contract\WorkspaceRolesInterface;
 use App\Module\User\Contract\Dto\Member;
 use App\Module\User\Contract\Exception\UserException;
 use App\Module\User\Contract\UserManagerInterface;
-use App\Shared\Tenant\CurrentTenant;
+use App\Shared\Workspace\CurrentWorkspace;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
@@ -23,7 +23,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * The members of the current tenant: who may sign in to it, with which of its roles
+ * The members of the current workspace: who may sign in to it, with which of its roles
  * (docs/internal/tenant-admin-ui-plan.md, parts A and A2). New members come by invitation.
  *
  * A member is named in the forms by a short hash of their email, not the email: no address in
@@ -41,9 +41,9 @@ final class AdminMemberController extends AbstractController
 {
     public function __construct(
         private readonly UserManagerInterface $users,
-        private readonly TenantRolesInterface $roles,
+        private readonly WorkspaceRolesInterface $roles,
         private readonly AccessCheckerInterface $access,
-        private readonly CurrentTenant $tenant,
+        private readonly CurrentWorkspace $workspace,
         private readonly FormFactoryInterface $forms,
         private readonly TranslatorInterface $translator,
     ) {
@@ -71,11 +71,11 @@ final class AdminMemberController extends AbstractController
         // holding assignments here you don't hold (a former member above you), the invitation
         // takes them away on acceptance: nothing told, no escalation.
         // The assignments are keyed by the email, account or not: one given a role ahead of its
-        // account (the console invites a tenant's admin so) is weighed all the same.
+        // account (the console invites a workspace's admin so) is weighed all the same.
         $existing = $this->users->canonicalEmail($email);
         $keepAssignments = $this->outranks($existing ?? mb_strtolower(trim($email)));
         try {
-            $token = $this->users->invite($email, $this->tenant->id(), $this->yourEmail(), $keepAssignments);
+            $token = $this->users->invite($email, $this->workspace->id(), $this->yourEmail(), $keepAssignments);
             $this->addFlash('success', $this->translator->trans('admin.members.invited', ['%email%' => $email]));
             $this->addFlash('invitation', $this->generateUrl('invitation_show', ['token' => $token], UrlGeneratorInterface::ABSOLUTE_URL));
         } catch (UserException $e) {
@@ -90,7 +90,7 @@ final class AdminMemberController extends AbstractController
     {
         $this->denyUnlessAllowed();
         $form = $this->revokeForm($id)->handleRequest($request);
-        if ($form->isSubmitted() && $form->isValid() && $this->users->revokeInvitation($this->tenant->id(), $id)) {
+        if ($form->isSubmitted() && $form->isValid() && $this->users->revokeInvitation($this->workspace->id(), $id)) {
             $this->addFlash('success', $this->translator->trans('admin.members.invitation_revoked'));
         }
 
@@ -134,7 +134,7 @@ final class AdminMemberController extends AbstractController
         }
         $form = $this->removeForm($member)->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
-            $this->users->removeFromTenant($member->email, $this->tenant->id());
+            $this->users->removeFromWorkspace($member->email, $this->workspace->id());
             $this->addFlash('success', $this->translator->trans('admin.members.removed', ['%name%' => $member->displayName]));
         }
 
@@ -149,7 +149,7 @@ final class AdminMemberController extends AbstractController
         $you = $this->yourEmail();
         $grantable = $this->grantable();
         $rows = [];
-        foreach ($this->users->members($this->tenant->id()) as $member) {
+        foreach ($this->users->members($this->workspace->id()) as $member) {
             $yourself = $member->email === $you;
             $roles = $this->roles->rolesOf($member->email);
             $rows[] = [
@@ -164,7 +164,7 @@ final class AdminMemberController extends AbstractController
         }
 
         $invitations = [];
-        foreach ($this->users->invitations($this->tenant->id()) as $invitation) {
+        foreach ($this->users->invitations($this->workspace->id()) as $invitation) {
             $invitations[] = ['invitation' => $invitation, 'revoke_form' => $this->revokeForm($invitation->id)->createView()];
         }
 
@@ -223,7 +223,7 @@ final class AdminMemberController extends AbstractController
     }
 
     /**
-     * The roles of the tenant you hold, so may give and take.
+     * The roles of the workspace you hold, so may give and take.
      *
      * @return list<string>
      */
@@ -233,7 +233,7 @@ final class AdminMemberController extends AbstractController
     }
 
     /**
-     * Whether you hold everything assigned to the user in this tenant, roles and permissions
+     * Whether you hold everything assigned to the user in this workspace, roles and permissions
      * assigned directly alike: then you may change their roles, remove them, or add them back.
      *
      * @param string $email the account's canonical email (UserManagerInterface::canonicalEmail())
@@ -261,7 +261,7 @@ final class AdminMemberController extends AbstractController
 
     private function memberOr404(string $key): Member
     {
-        foreach ($this->users->members($this->tenant->id()) as $member) {
+        foreach ($this->users->members($this->workspace->id()) as $member) {
             if (self::key($member) === $key) {
                 return $member;
             }

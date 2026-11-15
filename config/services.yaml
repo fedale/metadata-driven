@@ -18,22 +18,22 @@ parameters:
     env(IMPORT_DRAFTS_DIR): '%kernel.project_dir%/var/imports'
     app.import.drafts_dir: '%env(resolve:IMPORT_DRAFTS_DIR)%'
     app.import.max_rows: 5000
-    # Tenants (docs/architecture.md, "Tenants"). A request for <slug>.<base host> is for that
-    # tenant's; one for the base host itself, or for any other host, and a command without
-    # --tenant, are for the default tenant's. Empty: no default, every request names its tenant.
-    env(TENANT_BASE_HOST): 'localhost'
-    env(TENANT_DEFAULT): 'default'
-    app.tenant.base_host: '%env(TENANT_BASE_HOST)%'
-    app.tenant.default: '%env(TENANT_DEFAULT)%'
-    # The tenant of every new database connection before a request or a command selects one.
-    # Empty, so that a session nobody pointed at a tenant sees none: only the tests set it, having
+    # Workspaces (docs/architecture.md, "Workspaces"). A request for <slug>.<base host> is for that
+    # workspace's; one for the base host itself, or for any other host, and a command without
+    # --workspace, are for the default workspace's. Empty: no default, every request names its workspace.
+    env(WORKSPACE_BASE_HOST): 'localhost'
+    env(WORKSPACE_DEFAULT): 'default'
+    app.workspace.base_host: '%env(WORKSPACE_BASE_HOST)%'
+    app.workspace.default: '%env(WORKSPACE_DEFAULT)%'
+    # The workspace of every new database connection before a request or a command selects one.
+    # Empty, so that a session nobody pointed at a workspace sees none: only the tests set it, having
     # no request or command to name one.
-    app.tenant.fallback: ''
+    app.workspace.fallback: ''
     # The system console answers on <label>.<base host>, for the system admins
-    # (system:admin grant); the label is no tenant's slug. Empty: no console.
-    app.tenant.console_label: 'console'
-    # The RBAC role that passes every check (fedale_rbac.yaml); tenant:create gives it to a new
-    # tenant's first admin. App\Module\Access\Contract\Permissions::SUPER_ADMIN_ROLE says the same.
+    # (system:admin grant); the label is no workspace's slug. Empty: no console.
+    app.workspace.console_label: 'console'
+    # The RBAC role that passes every check (fedale_rbac.yaml); workspace:create gives it to a new
+    # workspace's first admin. App\Module\Access\Contract\Permissions::SUPER_ADMIN_ROLE says the same.
     app.super_admin_role: 'ROLE_SUPER_ADMIN'
 
 services:
@@ -82,9 +82,9 @@ when@test:
         # would block them. TemplateSourcesTest checks the guard itself.
         app.template.allow_private_networks: true
         app.import.drafts_dir: '%kernel.cache_dir%/imports'
-        # Tests have no request or command to name a tenant: every connection starts in the
+        # Tests have no request or command to name a workspace: every connection starts in the
         # installation's first one.
-        app.tenant.fallback: 'default'
+        app.workspace.fallback: 'default'
     services:
         # The Flysystem storage is injected in one service only, so the container inlines and
         # removes it; the file tests read the stored bytes from it.
@@ -93,10 +93,10 @@ when@test:
             public: true
         App\Tests\Support\FakeTemplateServer:
             public: true
-        # Used by no service yet (tenant:create will): kept for the tests creating tenants.
-        App\Shared\Infrastructure\Tenant\TenantProvisioner:
+        # Used by no service yet (workspace:create will): kept for the tests creating workspaces.
+        App\Shared\Infrastructure\Workspace\WorkspaceProvisioner:
             autowire: true
             public: true
-        App\Shared\Infrastructure\Tenant\TenantRegistry:
+        App\Shared\Infrastructure\Workspace\WorkspaceRegistry:
             autowire: true
             public: true

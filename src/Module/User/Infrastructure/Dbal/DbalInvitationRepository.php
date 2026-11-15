@@ -18,11 +18,11 @@ final class DbalInvitationRepository implements InvitationRepository
     {
     }
 
-    public function add(Invitation $invitation, string $tenantId, string $tokenHash): void
+    public function add(Invitation $invitation, string $workspaceId, string $tokenHash): void
     {
-        $this->connection->insert('core.tenant_invitation', [
+        $this->connection->insert('core.workspace_invitation', [
             'id' => $invitation->id,
-            'tenant_id' => $tenantId,
+            'workspace_id' => $workspaceId,
             'email' => $invitation->email,
             'token_hash' => $tokenHash,
             'invited_by' => $invitation->invitedBy,
@@ -36,38 +36,38 @@ final class DbalInvitationRepository implements InvitationRepository
         ]);
     }
 
-    public function pendingOf(string $tenantId, string $email, \DateTimeImmutable $now, int $maxFailures): ?Invitation
+    public function pendingOf(string $workspaceId, string $email, \DateTimeImmutable $now, int $maxFailures): ?Invitation
     {
         $row = $this->connection->fetchAssociative(
-            \sprintf('SELECT %s FROM core.tenant_invitation WHERE tenant_id = :tenant AND email = :email AND %s ORDER BY created_at DESC LIMIT 1', self::COLUMNS, self::PENDING),
-            ['tenant' => $tenantId, 'email' => $email, 'now' => $now, 'max' => $maxFailures],
+            \sprintf('SELECT %s FROM core.workspace_invitation WHERE workspace_id = :workspace AND email = :email AND %s ORDER BY created_at DESC LIMIT 1', self::COLUMNS, self::PENDING),
+            ['workspace' => $workspaceId, 'email' => $email, 'now' => $now, 'max' => $maxFailures],
             ['now' => Types::DATETIME_IMMUTABLE],
         );
 
         return false === $row ? null : self::invitation($row);
     }
 
-    public function removePendingOf(string $tenantId, string $email): void
+    public function removePendingOf(string $workspaceId, string $email): void
     {
-        $this->connection->executeStatement('DELETE FROM core.tenant_invitation WHERE tenant_id = ? AND email = ? AND accepted_at IS NULL', [$tenantId, $email]);
+        $this->connection->executeStatement('DELETE FROM core.workspace_invitation WHERE workspace_id = ? AND email = ? AND accepted_at IS NULL', [$workspaceId, $email]);
     }
 
-    public function pending(string $tenantId, \DateTimeImmutable $now, int $maxFailures): array
+    public function pending(string $workspaceId, \DateTimeImmutable $now, int $maxFailures): array
     {
         $rows = $this->connection->fetchAllAssociative(
-            \sprintf('SELECT %s FROM core.tenant_invitation WHERE tenant_id = :tenant AND %s ORDER BY created_at DESC, id', self::COLUMNS, self::PENDING),
-            ['tenant' => $tenantId, 'now' => $now, 'max' => $maxFailures],
+            \sprintf('SELECT %s FROM core.workspace_invitation WHERE workspace_id = :workspace AND %s ORDER BY created_at DESC, id', self::COLUMNS, self::PENDING),
+            ['workspace' => $workspaceId, 'now' => $now, 'max' => $maxFailures],
             ['now' => Types::DATETIME_IMMUTABLE],
         );
 
         return array_map(self::invitation(...), $rows);
     }
 
-    public function findPending(string $tenantId, string $tokenHash, \DateTimeImmutable $now, int $maxFailures): ?Invitation
+    public function findPending(string $workspaceId, string $tokenHash, \DateTimeImmutable $now, int $maxFailures): ?Invitation
     {
         $row = $this->connection->fetchAssociative(
-            \sprintf('SELECT %s FROM core.tenant_invitation WHERE tenant_id = :tenant AND token_hash = :hash AND %s', self::COLUMNS, self::PENDING),
-            ['tenant' => $tenantId, 'hash' => $tokenHash, 'now' => $now, 'max' => $maxFailures],
+            \sprintf('SELECT %s FROM core.workspace_invitation WHERE workspace_id = :workspace AND token_hash = :hash AND %s', self::COLUMNS, self::PENDING),
+            ['workspace' => $workspaceId, 'hash' => $tokenHash, 'now' => $now, 'max' => $maxFailures],
             ['now' => Types::DATETIME_IMMUTABLE],
         );
 
@@ -76,20 +76,20 @@ final class DbalInvitationRepository implements InvitationRepository
 
     public function markAccepted(string $id, \DateTimeImmutable $at): void
     {
-        $this->connection->executeStatement('UPDATE core.tenant_invitation SET accepted_at = ? WHERE id = ?', [$at, $id], [Types::DATETIME_IMMUTABLE]);
+        $this->connection->executeStatement('UPDATE core.workspace_invitation SET accepted_at = ? WHERE id = ?', [$at, $id], [Types::DATETIME_IMMUTABLE]);
     }
 
     public function takeAttempt(string $id, int $maxAttempts): bool
     {
         return false !== $this->connection->fetchOne(
-            'UPDATE core.tenant_invitation SET failed_attempts = failed_attempts + 1 WHERE id = ? AND failed_attempts < ? RETURNING id',
+            'UPDATE core.workspace_invitation SET failed_attempts = failed_attempts + 1 WHERE id = ? AND failed_attempts < ? RETURNING id',
             [$id, $maxAttempts],
         );
     }
 
-    public function remove(string $tenantId, string $id): bool
+    public function remove(string $workspaceId, string $id): bool
     {
-        return 1 === $this->connection->executeStatement('DELETE FROM core.tenant_invitation WHERE tenant_id = ? AND id = ?', [$tenantId, $id]);
+        return 1 === $this->connection->executeStatement('DELETE FROM core.workspace_invitation WHERE workspace_id = ? AND id = ?', [$workspaceId, $id]);
     }
 
     /**
@@ -97,7 +97,7 @@ final class DbalInvitationRepository implements InvitationRepository
      */
     private static function invitation(array $row): Invitation
     {
-        $text = static fn (string $column): string => \is_string($row[$column] ?? null) ? $row[$column] : throw new \UnexpectedValueException(\sprintf('core.tenant_invitation.%s is not a string.', $column));
+        $text = static fn (string $column): string => \is_string($row[$column] ?? null) ? $row[$column] : throw new \UnexpectedValueException(\sprintf('core.workspace_invitation.%s is not a string.', $column));
 
         return new Invitation(
             $text('id'),

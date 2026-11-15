@@ -12,7 +12,7 @@ use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\RelationReference;
 use App\Module\Metadata\Contract\Event\MetadataChanged;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
-use App\Shared\Tenant\TenantSwitched;
+use App\Shared\Workspace\WorkspaceSwitched;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -32,8 +32,8 @@ use Symfony\Contracts\Translation\LocaleAwareInterface;
  */
 #[AsAlias(MetadataRegistryInterface::class.' $localizedMetadata')]
 #[AsEventListener(event: MetadataChanged::class, method: 'reset')]
-// Kept in memory for one tenant: forgotten when the request switches to another.
-#[AsEventListener(event: TenantSwitched::class, method: 'reset')]
+// Kept in memory for one workspace: forgotten when the request switches to another.
+#[AsEventListener(event: WorkspaceSwitched::class, method: 'reset')]
 final class LocalizedMetadataRegistry implements MetadataRegistryInterface, LocaleAwareInterface, ResetInterface
 {
     private string $locale;

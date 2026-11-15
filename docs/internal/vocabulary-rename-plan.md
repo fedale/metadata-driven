@@ -1,7 +1,7 @@
 # Plan: renaming the vocabulary
 
-Status: **agreed** (2026-11-15). Phase 1 merged into `main` (2026-11-15); phase 2 done on branch
-`system_rename` (2026-11-15), waiting for the user's review.
+Status: **agreed** (2026-11-15). Phases 1 and 2 merged into `main` (2026-11-15); phase 3 done on
+branch `workspace_rename` (2026-11-15), waiting for the user's review.
 The names are recorded in [../glossary.md](../glossary.md); this plan brings the code, the
 database, the commands, the admin UI, the guides and the package format in line with it.
 
@@ -81,7 +81,7 @@ row-level security policy that reads it (`Version20261115100000`, from `pg_polic
 - Guides: multi-tenancy.md, access.md, console.md; the rbac-bundle's docs if they say
   "landlord".
 
-### Phase 3: tenant → workspace
+### Phase 3: tenant → workspace (done)
 
 About 81 files in `src`, 18 in `tests`, 10 migrations to read (not to change), 4 Twig templates.
 After phase 2: both touch `Shared/Tenant`.
@@ -102,6 +102,16 @@ After phase 2: both touch `Shared/Tenant`.
 - Translation keys and texts of the admin, the console and the sign-in pages.
 - multi-tenancy.md → workspaces.md (title "Workspaces"), with the links to it; every guide says
   "workspace".
+
+Done: the migration `Version20261115110000` renames every name of `core` that says "tenant"
+(tables, sequence, columns, constraints, indexes, policies, triggers, the two trigger functions,
+made again) and the schema `no_tenant_rbac`; it was checked up and down against a snapshot of
+the catalog. Kept: the bundles' own words (`TenantContextInterface::getTenantId()`,
+`TenantProviderInterface::getCurrentTenantId()`, `SettingsManager::GLOBAL_TENANT`,
+`auth_assignment.tenant_id`, `core.setting*.tenant_id`), "multi-tenancy", and the names of the
+schemas already made (`t_<id>_data`, `t_<id>_rbac`). The env vars `TENANT_BASE_HOST` and
+`TENANT_DEFAULT` are now `WORKSPACE_BASE_HOST` and `WORKSPACE_DEFAULT`. `workspace:template:repo`
+becomes `system:package:source` in phase 5.
 
 ### Phase 4: package format v2
 

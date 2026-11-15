@@ -13,7 +13,7 @@ interface FileRepository
 
     /**
      * Runs $write in a transaction holding the lock of a content, named by its storage key (a
-     * tenant's content: the same bytes in two tenants are two contents), until the outermost
+     * workspace's content: the same bytes in two workspaces are two contents), until the outermost
      * transaction ends, so the GC never deletes bytes a new row is about to use.
      *
      * @template T

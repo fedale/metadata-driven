@@ -6,8 +6,8 @@ something happens, run a series of actions, configured without code.
 
 ## Decisions (user, 2026-11-13)
 
-1. **Who defines them**: each tenant's admins, for their tenant; and the operator, for every
-   tenant (the events of the platform, such as a tenant created).
+1. **Who defines them**: each workspace's admins, for their workspace; and the operator, for every
+   workspace (the events of the platform, such as a workspace created).
 2. **Execution**: in the request or in the background, depending on the step.
 3. **Permissions**: a step acts with the permissions of whoever triggered the event, by default.
 4. **Where they are configured**: pages of the admin. Their inclusion in templates, as YAML, is
@@ -25,7 +25,7 @@ Taken:
 - **Blocking and non-blocking record triggers** (Directus): *before* the write, in its
   transaction, a workflow may validate, change or refuse it; *after* the write, it reacts without
   holding it up. This is what decision 2 turns into: the moment decides, not the step.
-- **A data chain** (Directus): one JSON document per run, `$trigger`, `$user`, `$tenant`, `$last`
+- **A data chain** (Directus): one JSON document per run, `$trigger`, `$user`, `$workspace`, `$last`
   and each step's output under its key, read with `{{ … }}`.
 - **Versions** (Twenty): draft, active, deactivated, archived; editing an active workflow makes a
   draft while the active version keeps running; rolling back is "use as draft".
@@ -43,11 +43,11 @@ Taken:
 - **"Emit events"** on the data steps, off by default (Directus): a workflow writing a record
   doesn't start another one, unless asked.
 - **Imported or duplicated workflows start inactive** (Directus).
-- **Usage counted per tenant** (Twenty's credits): the steps run, from the first phase, so that
+- **Usage counted per workspace** (Twenty's credits): the steps run, from the first phase, so that
   quotas per plan need no history rebuilt.
 - **A variable picker** in the editor (Twenty): the `{{ … }}` chosen from the previous steps.
 
-Left out: **code** (JavaScript) steps, in both: a tenant's admins would run code on the server,
+Left out: **code** (JavaScript) steps, in both: a workspace's admins would run code on the server,
 against "declarative, never code"; AI steps; JWT, sleep in milliseconds; parallel branches
 (Twenty's default), harder to reason about than if/else; a free canvas editor, costly to build
 (an ordered list of steps with their branches first); "pick record" round robin, a CRM feature
@@ -55,8 +55,8 @@ for later.
 
 ## Concepts
 
-- A **workflow** belongs to a tenant (its admins'), or to the installation (the operator's: no
-  tenant, as the shared template indexes). It has a name, a description, a status, and versions.
+- A **workflow** belongs to a workspace (its admins'), or to the installation (the operator's: no
+  workspace, as the shared template indexes). It has a name, a description, a status, and versions.
 - A **version** holds the definition: one trigger, then steps. Only the active version runs.
 - A **step** has a key (unique in the version, the name of its output on the data chain), a type,
   options (with `{{ … }}`), and, for the branching steps, the steps of each branch.
@@ -71,7 +71,7 @@ for later.
 | Record created or updated | idem | 1 |
 | Record deleted | idem, with the record as it was | 1 |
 | Manual | from a record's page, a selection on a grid (once for all, or once each), or a command with no record; a form first, if the workflow asks | 2 |
-| Platform event | a tenant created, a member added (the operator's workflows) | 3 |
+| Platform event | a workspace created, a member added (the operator's workflows) | 3 |
 | Schedule | a cron expression, in UTC | 6 |
 | Incoming webhook | a request to a URL of its own (with the REST API of the roadmap) | 6 |
 
@@ -114,7 +114,7 @@ Directus reuses its filter rules: one syntax for the user, in the grids and in t
 ```yaml
 $trigger: { object: invoice, record: { id: …, amount: 1200, status: sent }, before: { status: draft } }
 $user:    { email: anna@example.com, roles: [ROLE_ACCOUNTANT] }    # whoever triggered it, if anyone
-$tenant:  { slug: acme, name: Acme Corp }
+$workspace:  { slug: acme, name: Acme Corp }
 $last:    …                                                         # the previous step's output
 create_reminder: { id: … }                                          # each step's output, by its key
 ```
@@ -134,7 +134,7 @@ The rule that the members and roles pages hold to, applied here: **no way to mor
   run against the author as they are then (a demoted author's workflows stop at that step).
 - An event with **no one behind it** (a schedule, a platform event, a webhook) needs such a role
   on every step that touches data: no implicit full access.
-- The operator's workflows act in the tenant concerned, with the role they name there.
+- The operator's workflows act in the workspace concerned, with the role they name there.
 - Defining workflows needs a new permission, `admin.workflows`; seeing the runs (which hold
   records' data), the same.
 
@@ -146,7 +146,7 @@ The rule that the members and roles pages hold to, applied here: **no way to mor
   background (Symfony Messenger, to install), with retries and the steps that wait.
 - **No loops**: the data steps emit no event unless "emit events" is on; a run started by another
   run carries its depth, refused past 3.
-- **Limits** (configurable): 50 steps per run, 200 records per search or iterator, a tenant's runs
+- **Limits** (configurable): 50 steps per run, 200 records per search or iterator, a workspace's runs
   per minute (Twenty's 100) beyond which they queue (phase 4) or are refused (before).
 
 ### Versions, runs, usage
@@ -156,18 +156,18 @@ The rule that the members and roles pages hold to, applied here: **no way to mor
 - **Runs**: status (running, completed, failed, waiting), the data chain, each step's status,
   input, output, error, duration. Kept 30 days by default (configurable), then deleted by a
   command run on a schedule (`workflow:runs:gc`, as `metadata:files:gc`).
-- **Usage**: the steps run, per tenant and per day, counted from phase 1. Quotas per plan are for
+- **Usage**: the steps run, per workspace and per day, counted from phase 1. Quotas per plan are for
   later; the history will be there.
 
 ### Where it lives
 
 - A new module, **Workflow** (`src/Module/Workflow/`), with the usual layers. It sees only the
   contracts of the others (deptrac): the Record module's events and record manager, the
-  metadata, Access (`canGrant()`, the roles), Template (phase 3), Shared's tenant ports.
-- Tables in `core`, with a `tenant_id` and row-level security, as the other tenant tables
-  (`TenantScope`): `workflow`, `workflow_version` (the definition as JSON), `workflow_run`,
-  `workflow_run_step`, `workflow_usage`. The operator's workflows have no tenant, as the shared
-  template indexes: read by the landlord, never by a tenant.
+  metadata, Access (`canGrant()`, the roles), Template (phase 3), Shared's workspace ports.
+- Tables in `core`, with a `workspace_id` and row-level security, as the other workspace tables
+  (`WorkspaceScope`): `workflow`, `workflow_version` (the definition as JSON), `workflow_run`,
+  `workflow_run_step`, `workflow_usage`. The operator's workflows have no workspace, as the shared
+  template indexes: read by the landlord, never by a workspace.
 - The definition is a JSON document (trigger, steps), so that YAML in templates (decision 4) is a
   serialization away.
 
@@ -192,10 +192,10 @@ One branch each, reviewed before the next.
    (before and after); if/else, filter, create, update, delete, upsert, set values, refuse; the
    data chain; permissions per step; versions; runs; usage; `admin.workflows`; the admin pages
    (list, editor, versions, runs). Tests, the abuse cases first (a workflow as a way to more power,
-   a loop, a cross-tenant read).
+   a loop, a cross-workspace read).
 2. **Manual workflows**: buttons on a record's page and on a grid's selection, a command; forms;
    search records; iterator.
-3. **The operator's workflows**: platform events (a tenant created, a member added), install a
+3. **The operator's workflows**: platform events (a workspace created, a member added), install a
    template, assign a role; the console's page. The user's SaaS case: an app installed with every
    new workspace.
 4. **The background**: Symfony Messenger (a dependency to add, with its worker); after-triggers
@@ -211,7 +211,7 @@ One branch each, reviewed before the next.
 6. **After-triggers in phase 1** run right after the write's transaction commits, in the same
    request; the background comes with Messenger in phase 4.
 7. **The limits' defaults**: 50 steps per run, 200 records per search or iterator, 100 runs a
-   minute per tenant, runs kept 30 days; all configurable.
+   minute per workspace, runs kept 30 days; all configurable.
 8. **The runs are seen by `admin.workflows` only**: they hold records' data.
 9. **A role-acting step is checked against its author at each run**: when the author can no longer
    give that role, the step stops, and the run fails, visibly.

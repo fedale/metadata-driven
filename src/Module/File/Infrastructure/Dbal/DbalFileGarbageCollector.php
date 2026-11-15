@@ -8,8 +8,8 @@ use App\Module\File\Application\Dto\CollectedFile;
 use App\Module\File\Application\Dto\GarbageReport;
 use App\Module\File\Application\FileGarbageCollectorInterface;
 use App\Module\File\Infrastructure\StorageKeys;
-use App\Shared\Database\TenantScope;
-use App\Shared\Tenant\CurrentTenant;
+use App\Shared\Database\WorkspaceScope;
+use App\Shared\Workspace\CurrentWorkspace;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
@@ -32,7 +32,7 @@ final class DbalFileGarbageCollector implements FileGarbageCollectorInterface
         private readonly Connection $connection,
         #[Target('record_files.storage')]
         private readonly FilesystemOperator $storage,
-        private readonly CurrentTenant $tenant,
+        private readonly CurrentWorkspace $workspace,
     ) {
     }
 
@@ -70,7 +70,7 @@ final class DbalFileGarbageCollector implements FileGarbageCollectorInterface
     }
 
     /**
-     * The current tenant's rows referenced by nothing, deleted unless on a dry run. The DELETE repeats the
+     * The current workspace's rows referenced by nothing, deleted unless on a dry run. The DELETE repeats the
      * condition, so a row referenced since it was read stays (and the RESTRICT foreign keys
      * would refuse it anyway).
      *
@@ -81,7 +81,7 @@ final class DbalFileGarbageCollector implements FileGarbageCollectorInterface
         $unreferenced = $this->unreferencedCondition();
         /** @var list<array{id: string, original_name: string, size: int|string, created_at: string}> $rows */
         $rows = $this->connection->fetchAllAssociative(
-            \sprintf('SELECT f.id, f.original_name, f.size, f.created_at FROM core.file f WHERE f.tenant_id = %s AND f.created_at < :before AND %s ORDER BY f.created_at, f.id', TenantScope::CURRENT, $unreferenced),
+            \sprintf('SELECT f.id, f.original_name, f.size, f.created_at FROM core.file f WHERE f.workspace_id = %s AND f.created_at < :before AND %s ORDER BY f.created_at, f.id', WorkspaceScope::CURRENT, $unreferenced),
             ['before' => $storedBefore],
             ['before' => Types::DATETIME_IMMUTABLE],
         );
@@ -89,7 +89,7 @@ final class DbalFileGarbageCollector implements FileGarbageCollectorInterface
             $deleted = [];
             foreach (array_chunk(array_column($rows, 'id'), self::CHUNK) as $ids) {
                 $deleted = [...$deleted, ...$this->connection->fetchFirstColumn(
-                    \sprintf('DELETE FROM core.file f WHERE f.tenant_id = %s AND f.id IN (:ids) AND %s RETURNING f.id', TenantScope::CURRENT, $unreferenced),
+                    \sprintf('DELETE FROM core.file f WHERE f.workspace_id = %s AND f.id IN (:ids) AND %s RETURNING f.id', WorkspaceScope::CURRENT, $unreferenced),
                     ['ids' => $ids],
                     ['ids' => ArrayParameterType::STRING],
                 )];
@@ -135,10 +135,10 @@ final class DbalFileGarbageCollector implements FileGarbageCollectorInterface
     }
 
     /**
-     * Everything in the current tenant's directory of the storage (StorageKeys). A key the
+     * Everything in the current workspace's directory of the storage (StorageKeys). A key the
      * storage did not get from store() or from the thumbnailer is not ours: it is left alone. So
-     * are the other tenants' directories, and the keys of before tenants had directories
-     * (tenant:files:move takes care of those).
+     * are the other workspaces' directories, and the keys of before workspaces had directories
+     * (workspace:files:move takes care of those).
      *
      * @return array{array<string, int>, array<string, list<string>>} the contents (key => size), the thumbnails (SHA-256 => keys)
      */
@@ -146,7 +146,7 @@ final class DbalFileGarbageCollector implements FileGarbageCollectorInterface
     {
         $contents = [];
         $thumbnails = [];
-        foreach ($this->storage->listContents(StorageKeys::directory($this->tenant->id()), true) as $item) {
+        foreach ($this->storage->listContents(StorageKeys::directory($this->workspace->id()), true) as $item) {
             if (!$item instanceof FileAttributes) {
                 continue;
             }
@@ -175,7 +175,7 @@ final class DbalFileGarbageCollector implements FileGarbageCollectorInterface
      * @param list<string> $hashes
      * @param list<string> $ignoredIds rows to count as gone
      *
-     * @return array<string, true> the hashes some row of the current tenant has: their
+     * @return array<string, true> the hashes some row of the current workspace has: their
      *                             thumbnails are made from its content
      */
     private function heldHashes(array $hashes, array $ignoredIds): array
@@ -194,7 +194,7 @@ final class DbalFileGarbageCollector implements FileGarbageCollectorInterface
     {
         $held = [];
         foreach (array_chunk($values, self::CHUNK) as $chunk) {
-            $sql = \sprintf('SELECT DISTINCT %1$s FROM core.file WHERE tenant_id = %2$s AND %1$s IN (:values)', $column, TenantScope::CURRENT);
+            $sql = \sprintf('SELECT DISTINCT %1$s FROM core.file WHERE workspace_id = %2$s AND %1$s IN (:values)', $column, WorkspaceScope::CURRENT);
             $parameters = ['values' => $chunk];
             if ([] !== $ignoredIds) {
                 $sql .= ' AND id NOT IN (:ignored)';

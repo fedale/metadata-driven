@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Module\Admin;
 
 use App\Module\Access\Contract\Permissions;
-use App\Module\Access\Contract\TenantRolesInterface;
+use App\Module\Access\Contract\WorkspaceRolesInterface;
 use App\Module\User\Contract\UserManagerInterface;
-use App\Shared\Infrastructure\Tenant\TenantRegistry;
-use App\Shared\Tenant\Tenant;
-use App\Tests\Support\CreatesTenants;
+use App\Shared\Infrastructure\Workspace\WorkspaceRegistry;
+use App\Shared\Workspace\Workspace;
+use App\Tests\Support\CreatesWorkspaces;
 use App\Tests\Support\SignsIn;
 use Doctrine\DBAL\Connection;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
@@ -20,12 +20,12 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\DomCrawler\Field\ChoiceFormField;
 
 /**
- * /admin/members: who may sign in to the tenant, with which of its roles
+ * /admin/members: who may sign in to the workspace, with which of its roles
  * (docs/internal/tenant-admin-ui-plan.md, part A).
  */
 final class AdminMemberControllerTest extends WebTestCase
 {
-    use CreatesTenants;
+    use CreatesWorkspaces;
     use SignsIn;
 
     private KernelBrowser $client;
@@ -52,12 +52,12 @@ final class AdminMemberControllerTest extends WebTestCase
         parent::tearDown();
     }
 
-    public function testListsTheMembersOfTheTenantOnly(): void
+    public function testListsTheMembersOfTheWorkspaceOnly(): void
     {
         self::signInAsSuperAdmin($this->client);
         self::createUser('bruno@example.com');
-        $globex = self::createTenant(self::getContainer(), 'globex', 'Globex');
-        self::useTenant(self::getContainer(), $globex);
+        $globex = self::createWorkspace(self::getContainer(), 'globex', 'Globex');
+        self::useWorkspace(self::getContainer(), $globex);
         self::createUser('carla@example.com');                     // Globex's only
 
         $this->client->request('GET', '/admin/members');
@@ -75,10 +75,10 @@ final class AdminMemberControllerTest extends WebTestCase
     public function testAnInvitationTellsNothingOfTheAccount(): void
     {
         self::signInAsSuperAdmin($this->client);
-        $globex = self::createTenant(self::getContainer(), 'globex', 'Globex');
-        self::useTenant(self::getContainer(), $globex);
+        $globex = self::createWorkspace(self::getContainer(), 'globex', 'Globex');
+        self::useWorkspace(self::getContainer(), $globex);
         self::getContainer()->get(UserManagerInterface::class)->createUser('carla@example.com', self::PASSWORD, 'Carla', 'Bruni');
-        self::useTenant(self::getContainer(), $this->tenant('default'));
+        self::useWorkspace(self::getContainer(), $this->workspace('default'));
 
         $carla = $this->invite('carla@example.com');
         $flashCarla = $this->client->getCrawler()->filter('.md-flash--success')->first()->text();
@@ -116,10 +116,10 @@ final class AdminMemberControllerTest extends WebTestCase
     public function testAnExistingAccountAcceptsWithItsPassword(): void
     {
         self::signInAsSuperAdmin($this->client);
-        $globex = self::createTenant(self::getContainer(), 'globex', 'Globex');
-        self::useTenant(self::getContainer(), $globex);
+        $globex = self::createWorkspace(self::getContainer(), 'globex', 'Globex');
+        self::useWorkspace(self::getContainer(), $globex);
         self::createUser('carla@example.com');
-        self::useTenant(self::getContainer(), $this->tenant('default'));
+        self::useWorkspace(self::getContainer(), $this->workspace('default'));
         $link = $this->invite('carla@example.com');
         $this->client->getCookieJar()->clear();
 
@@ -139,10 +139,10 @@ final class AdminMemberControllerTest extends WebTestCase
     public function testInvitingAgainGivesNoMoreTriesAtAnAccountsPassword(): void
     {
         self::signInAsSuperAdmin($this->client);
-        $globex = self::createTenant(self::getContainer(), 'globex', 'Globex');
-        self::useTenant(self::getContainer(), $globex);
+        $globex = self::createWorkspace(self::getContainer(), 'globex', 'Globex');
+        self::useWorkspace(self::getContainer(), $globex);
         self::createUser('carla@example.com');
-        self::useTenant(self::getContainer(), $this->tenant('default'));
+        self::useWorkspace(self::getContainer(), $this->workspace('default'));
         $first = $this->invite('carla@example.com');
         $second = $this->invite('carla@example.com');
         $this->client->request('GET', $first);
@@ -166,7 +166,7 @@ final class AdminMemberControllerTest extends WebTestCase
 
     /**
      * Roles are keyed by the email, account or not: an email given the super admin role ahead
-     * of its account (as the console invites a tenant's admin) is above a lesser admin too.
+     * of its account (as the console invites a workspace's admin) is above a lesser admin too.
      */
     public function testALesserAdminsInvitationCarriesNoRoleTheyDontHold(): void
     {
@@ -184,7 +184,7 @@ final class AdminMemberControllerTest extends WebTestCase
         $this->client->followRedirect();
 
         self::assertContains('dora@example.com', $this->members());
-        self::assertSame([], self::getContainer()->get(TenantRolesInterface::class)->assignmentsOf('dora@example.com'));
+        self::assertSame([], self::getContainer()->get(WorkspaceRolesInterface::class)->assignmentsOf('dora@example.com'));
     }
 
     /**
@@ -233,11 +233,11 @@ final class AdminMemberControllerTest extends WebTestCase
         $rbac->addItem('ROLE_HR', AuthItemType::ROLE);
         self::signIn($this->client, 'boss@example.com', [Permissions::SUPER_ADMIN_ROLE]);
         $users = self::getContainer()->get(UserManagerInterface::class);
-        $users->removeFromTenant('boss@example.com', $this->tenant('default')->id);
+        $users->removeFromWorkspace('boss@example.com', $this->workspace('default')->id);
         $rbac->addChild('ROLE_HR', Permissions::MEMBERS);
         self::signIn($this->client, 'hr@example.com', ['ROLE_HR']);
         $link = $this->invite('boss@example.com');
-        self::getContainer()->get(UserManagerInterface::class)->addToTenant('boss@example.com', $this->tenant('default')->id);
+        self::getContainer()->get(UserManagerInterface::class)->addToWorkspace('boss@example.com', $this->workspace('default')->id);
 
         $this->client->getCookieJar()->clear();
         $this->client->request('GET', $link);
@@ -245,19 +245,19 @@ final class AdminMemberControllerTest extends WebTestCase
         $this->client->followRedirect();
         $this->client->followRedirect();
 
-        self::assertSame([Permissions::SUPER_ADMIN_ROLE], self::getContainer()->get(TenantRolesInterface::class)->assignmentsOf('boss@example.com'));
+        self::assertSame([Permissions::SUPER_ADMIN_ROLE], self::getContainer()->get(WorkspaceRolesInterface::class)->assignmentsOf('boss@example.com'));
     }
 
-    public function testARevokedExpiredOrOtherTenantsInvitationIsNotFound(): void
+    public function testARevokedExpiredOrOtherWorkspacesInvitationIsNotFound(): void
     {
         self::signInAsSuperAdmin($this->client);
         $revoked = $this->invite('dora@example.com');
         $crawler = $this->client->request('GET', '/admin/members');
         $this->client->submit($crawler->filter('form[name^="revoke_"]')->form());
         $expired = $this->invite('eva@example.com');
-        self::getContainer()->get(Connection::class)->executeStatement("UPDATE core.tenant_invitation SET expires_at = now() - INTERVAL '1 minute' WHERE email = 'eva@example.com'");
+        self::getContainer()->get(Connection::class)->executeStatement("UPDATE core.workspace_invitation SET expires_at = now() - INTERVAL '1 minute' WHERE email = 'eva@example.com'");
         $elsewhere = $this->invite('fede@example.com');
-        self::createTenant(self::getContainer(), 'globex', 'Globex');
+        self::createWorkspace(self::getContainer(), 'globex', 'Globex');
         $this->client->getCookieJar()->clear();
 
         foreach ([$revoked, $expired, str_replace('://localhost', '://globex.localhost', $elsewhere)] as $link) {
@@ -275,7 +275,7 @@ final class AdminMemberControllerTest extends WebTestCase
         $rbac = self::getContainer()->get(RbacManagerInterface::class);
         $rbac->addItem('ROLE_HR', AuthItemType::ROLE);
         self::signIn($this->client, 'mallory@example.com', [Permissions::SUPER_ADMIN_ROLE]);
-        self::getContainer()->get(UserManagerInterface::class)->removeFromTenant('mallory@example.com', $this->tenant('default')->id);
+        self::getContainer()->get(UserManagerInterface::class)->removeFromWorkspace('mallory@example.com', $this->workspace('default')->id);
         $rbac->addChild('ROLE_HR', Permissions::MEMBERS);
         self::signIn($this->client, 'hr@example.com', ['ROLE_HR']);
 
@@ -292,10 +292,10 @@ final class AdminMemberControllerTest extends WebTestCase
         self::assertSelectorExists('.md-topbar__user', 'Signed in, and still so on the next request.');
         self::assertSelectorNotExists('.md-topbar__nav a[href="/admin"]', 'Without the super admin role.');
         self::assertContains('mallory@example.com', $this->members());
-        self::assertSame([], self::getContainer()->get(TenantRolesInterface::class)->assignmentsOf('mallory@example.com'));
+        self::assertSame([], self::getContainer()->get(WorkspaceRolesInterface::class)->assignmentsOf('mallory@example.com'));
     }
 
-    public function testGivesAndTakesTheTenantsRoles(): void
+    public function testGivesAndTakesTheWorkspacesRoles(): void
     {
         self::signInAsSuperAdmin($this->client);
         self::createUser('bruno@example.com');
@@ -471,7 +471,7 @@ final class AdminMemberControllerTest extends WebTestCase
      */
     private function rolesOf(string $email): array
     {
-        return self::getContainer()->get(TenantRolesInterface::class)->rolesOf($email);
+        return self::getContainer()->get(WorkspaceRolesInterface::class)->rolesOf($email);
     }
 
     /**
@@ -479,15 +479,15 @@ final class AdminMemberControllerTest extends WebTestCase
      */
     private function members(): array
     {
-        return self::getContainer()->get(UserManagerInterface::class)->membersOf($this->tenant('default')->id);
+        return self::getContainer()->get(UserManagerInterface::class)->membersOf($this->workspace('default')->id);
     }
 
-    private function tenant(string $slug): Tenant
+    private function workspace(string $slug): Workspace
     {
-        $tenant = self::getContainer()->get(TenantRegistry::class)->bySlug($slug);
-        self::assertInstanceOf(Tenant::class, $tenant);
+        $workspace = self::getContainer()->get(WorkspaceRegistry::class)->bySlug($slug);
+        self::assertInstanceOf(Workspace::class, $workspace);
 
-        return $tenant;
+        return $workspace;
     }
 
     private static function key(string $email): string

@@ -6,7 +6,7 @@ namespace App\Module\Metadata\Infrastructure\Doctrine;
 
 use App\Module\Metadata\Domain\Model\Translation;
 use App\Module\Metadata\Domain\Repository\TranslationRepository;
-use App\Shared\Database\TenantScope;
+use App\Shared\Database\WorkspaceScope;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class DoctrineTranslationRepository implements TranslationRepository
@@ -72,10 +72,10 @@ final class DoctrineTranslationRepository implements TranslationRepository
     }
 
     /**
-     * A write to the current tenant's translations, in SQL: Doctrine's filters apply to
-     * SELECTs only, so a DQL UPDATE or DELETE would reach every tenant's rows.
+     * A write to the current workspace's translations, in SQL: Doctrine's filters apply to
+     * SELECTs only, so a DQL UPDATE or DELETE would reach every workspace's rows.
      *
-     * @param string           $sql        %1$s the table, %2$s the key column, %3$s the tenant condition
+     * @param string           $sql        %1$s the table, %2$s the key column, %3$s the workspace condition
      * @param list<string|int> $parameters
      */
     private function write(string $sql, array $parameters): void
@@ -83,7 +83,7 @@ final class DoctrineTranslationRepository implements TranslationRepository
         $metadata = $this->entityManager->getClassMetadata(Translation::class);
         $table = (null === $metadata->getSchemaName() ? '' : $metadata->getSchemaName().'.').$metadata->getTableName();
         $this->entityManager->getConnection()->executeStatement(
-            \sprintf($sql, $table, $metadata->getColumnName('key'), TenantScope::COLUMN.' = '.TenantScope::CURRENT),
+            \sprintf($sql, $table, $metadata->getColumnName('key'), WorkspaceScope::COLUMN.' = '.WorkspaceScope::CURRENT),
             $parameters,
         );
     }

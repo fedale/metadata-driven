@@ -11,10 +11,10 @@ use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * The user as Symfony Security sees it: a snapshot of the domain User, plus the roles
- * assigned in the RBAC tables, and the tenant it was loaded for.
+ * assigned in the RBAC tables, and the workspace it was loaded for.
  *
- * The tenant binds a session to it: this object is what the session keeps from the sign-in,
- * compared on every request with the user loaded again for the request's tenant
+ * The workspace binds a session to it: this object is what the session keeps from the sign-in,
+ * compared on every request with the user loaded again for the request's workspace
  * (isEqualTo()). It binds a remember-me cookie too, as a signature property (security.yaml).
  */
 final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInterface, EquatableInterface
@@ -22,10 +22,10 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
     public const string BASE_ROLE = 'ROLE_USER';
 
     /**
-     * Not promoted, so that it has a default: a user kept by a session of before tenants is
-     * unserialized with null here, which no request's tenant equals.
+     * Not promoted, so that it has a default: a user kept by a session of before workspaces is
+     * unserialized with null here, which no request's workspace equals.
      */
-    private ?string $tenantId = null;
+    private ?string $workspaceId = null;
 
     /**
      * @param list<string> $assignedRoles
@@ -37,17 +37,17 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
         private readonly string $displayName,
         private readonly array $assignedRoles = [],
         private readonly ?string $locale = null,
-        ?string $tenantId = null,
+        ?string $workspaceId = null,
     ) {
-        $this->tenantId = $tenantId;
+        $this->workspaceId = $workspaceId;
     }
 
     /**
      * @param list<string> $assignedRoles
      */
-    public static function fromUser(User $user, array $assignedRoles, ?string $tenantId = null): self
+    public static function fromUser(User $user, array $assignedRoles, ?string $workspaceId = null): self
     {
-        return new self($user->getId()->toRfc4122(), $user->getEmail(), $user->getPasswordHash(), $user->getDisplayName(), $assignedRoles, $user->getLocale(), $tenantId);
+        return new self($user->getId()->toRfc4122(), $user->getEmail(), $user->getPasswordHash(), $user->getDisplayName(), $assignedRoles, $user->getLocale(), $workspaceId);
     }
 
     /**
@@ -74,12 +74,12 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
     }
 
     /**
-     * The tenant the user was loaded for; empty without one (a command in the system session).
+     * The workspace the user was loaded for; empty without one (a command in the system session).
      * A remember-me signature property: a string.
      */
-    public function getTenantId(): string
+    public function getWorkspaceId(): string
     {
-        return $this->tenantId ?? '';
+        return $this->workspaceId ?? '';
     }
 
     public function getDisplayName(): string
@@ -102,12 +102,12 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
      * sign-in, so a revoked role (ROLE_SUPER_ADMIN) would otherwise keep working until logout.
      * With a remember-me cookie the user is signed back in at once, with the new roles.
      *
-     * Another tenant signs it out too: a session opened in one tenant, presented to another
+     * Another workspace signs it out too: a session opened in one workspace, presented to another
      * (a cookie copied to its host, or shared by a cookie_domain), even by a member of both.
      */
     public function isEqualTo(UserInterface $user): bool
     {
-        if (!$user instanceof self || $user->id !== $this->id || $user->passwordHash !== $this->passwordHash || $user->tenantId !== $this->tenantId) {
+        if (!$user instanceof self || $user->id !== $this->id || $user->passwordHash !== $this->passwordHash || $user->workspaceId !== $this->workspaceId) {
             return false;
         }
         $roles = $this->getRoles();

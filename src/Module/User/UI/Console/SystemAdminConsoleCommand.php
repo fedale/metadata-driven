@@ -14,7 +14,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 /**
  * The system admins of the installation, who may enter its console (console.<base host>). From the
  * command line only, so that no page can make a system admin: a stolen console session makes no
- * more of them. A tenant command: it runs as the system.
+ * more of them. A workspace command: it runs as the system.
  */
 #[AsCommand(name: 'system:admin', description: 'List, grant or revoke the system admins who may enter the system console')]
 final class SystemAdminConsoleCommand

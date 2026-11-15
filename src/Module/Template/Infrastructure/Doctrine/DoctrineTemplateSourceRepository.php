@@ -6,7 +6,7 @@ namespace App\Module\Template\Infrastructure\Doctrine;
 
 use App\Module\Template\Domain\Model\TemplateSource;
 use App\Module\Template\Domain\Repository\TemplateSourceRepository;
-use App\Shared\Database\TenantScope;
+use App\Shared\Database\WorkspaceScope;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class DoctrineTemplateSourceRepository implements TemplateSourceRepository
@@ -24,16 +24,16 @@ final class DoctrineTemplateSourceRepository implements TemplateSourceRepository
     public function isShared(TemplateSource $source): bool
     {
         return true === $this->entityManager->getConnection()->fetchOne(
-            'SELECT tenant_id IS NULL FROM core.template_source WHERE id = ?',
+            'SELECT workspace_id IS NULL FROM core.template_source WHERE id = ?',
             [$source->getId()->toRfc4122()],
         );
     }
 
     public function isNameTaken(string $name): bool
     {
-        // As the system (no tenant), any tenant's: a shared index must not shadow one of them.
+        // As the system (no workspace), any workspace's: a shared index must not shadow one of them.
         return false !== $this->entityManager->getConnection()->fetchOne(
-            \sprintf('SELECT 1 FROM core.template_source WHERE name = ? AND (tenant_id IS NULL OR tenant_id = %1$s OR %1$s IS NULL)', TenantScope::CURRENT),
+            \sprintf('SELECT 1 FROM core.template_source WHERE name = ? AND (workspace_id IS NULL OR workspace_id = %1$s OR %1$s IS NULL)', WorkspaceScope::CURRENT),
             [$name],
         );
     }

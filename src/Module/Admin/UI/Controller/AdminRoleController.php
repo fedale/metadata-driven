@@ -6,7 +6,7 @@ namespace App\Module\Admin\UI\Controller;
 
 use App\Module\Access\Contract\AccessCheckerInterface;
 use App\Module\Access\Contract\Permissions;
-use App\Module\Access\Contract\TenantRolesInterface;
+use App\Module\Access\Contract\WorkspaceRolesInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Target;
@@ -22,7 +22,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * The roles of the tenant: which permissions each gives (docs/internal/tenant-admin-ui-plan.md,
+ * The roles of the workspace: which permissions each gives (docs/internal/tenant-admin-ui-plan.md,
  * part D). Who holds them is the members page's.
  *
  * No way to more power, nor to take from those above:
@@ -40,7 +40,7 @@ final class AdminRoleController extends AbstractController
     private const string ROLE = 'ROLE_[A-Z0-9_]{1,59}';
 
     public function __construct(
-        private readonly TenantRolesInterface $roles,
+        private readonly WorkspaceRolesInterface $roles,
         private readonly AccessCheckerInterface $access,
         #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,

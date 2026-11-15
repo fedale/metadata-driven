@@ -8,7 +8,7 @@ use App\Module\FieldType\Contract\Dto\ColumnType;
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Search\Contract\SearchConfigurationInterface;
-use App\Shared\Tenant\CurrentTenant;
+use App\Shared\Workspace\CurrentWorkspace;
 use Doctrine\DBAL\Connection;
 
 /**
@@ -27,7 +27,7 @@ final class TrigramIndexPlanner
         private readonly SearchConfigurationInterface $search,
         private readonly FieldTypeRegistryInterface $fieldTypes,
         private readonly TableDefinitionFactory $tables,
-        private readonly CurrentTenant $tenant,
+        private readonly CurrentWorkspace $workspace,
     ) {
     }
 
@@ -69,7 +69,7 @@ final class TrigramIndexPlanner
         /** @var list<string> $names */
         $names = $this->connection->fetchFirstColumn(
             "SELECT indexname FROM pg_indexes WHERE schemaname = ? AND tablename = ? AND indexname LIKE 'trgm\\_%' ORDER BY indexname",
-            [$this->tenant->dataSchema(), $object->tableName],
+            [$this->workspace->dataSchema(), $object->tableName],
         );
 
         return $names;
@@ -79,7 +79,7 @@ final class TrigramIndexPlanner
     {
         return \sprintf(
             'DROP INDEX %s.%s',
-            $this->connection->quoteSingleIdentifier($this->tenant->dataSchema()),
+            $this->connection->quoteSingleIdentifier($this->workspace->dataSchema()),
             $this->connection->quoteSingleIdentifier($indexName),
         );
     }
@@ -91,6 +91,6 @@ final class TrigramIndexPlanner
 
     private function qualifiedTable(ObjectDefinitionDto $object): string
     {
-        return $this->connection->quoteSingleIdentifier($this->tenant->dataSchema()).'.'.$this->connection->quoteSingleIdentifier($object->tableName);
+        return $this->connection->quoteSingleIdentifier($this->workspace->dataSchema()).'.'.$this->connection->quoteSingleIdentifier($object->tableName);
     }
 }

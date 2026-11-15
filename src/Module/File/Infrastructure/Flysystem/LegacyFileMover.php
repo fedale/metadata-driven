@@ -13,13 +13,13 @@ use League\Flysystem\FilesystemOperator;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 
 /**
- * Moves the files stored before tenants had directories (their key at the root of the storage)
- * into their tenant's directory, once: tenant:files:move.
+ * Moves the files stored before workspaces had directories (their key at the root of the storage)
+ * into their workspace's directory, once: workspace:files:move.
  *
- * Each row gets a copy of its bytes under its tenant (two tenants holding the same bytes get
+ * Each row gets a copy of its bytes under its workspace (two workspaces holding the same bytes get
  * one each), then its new key. Then the root contents no row uses any more are deleted, and the
- * thumbnails of the root, which are made again under the tenants on demand. Run in the
- * system session: every tenant's rows.
+ * thumbnails of the root, which are made again under the workspaces on demand. Run in the
+ * system session: every workspace's rows.
  */
 final class LegacyFileMover implements LegacyFileMoverInterface
 {
@@ -37,15 +37,15 @@ final class LegacyFileMover implements LegacyFileMoverInterface
      */
     public function move(bool $dryRun = false): array
     {
-        /** @var list<array{id: string, tenant_id: string, storage_key: string, sha256: string}> $rows */
+        /** @var list<array{id: string, workspace_id: string, storage_key: string, sha256: string}> $rows */
         $rows = $this->connection->fetchAllAssociative(
-            "SELECT id, tenant_id, storage_key, sha256 FROM core.file WHERE storage_key !~ '^[0-9a-f-]{36}/' ORDER BY created_at, id",
+            "SELECT id, workspace_id, storage_key, sha256 FROM core.file WHERE storage_key !~ '^[0-9a-f-]{36}/' ORDER BY created_at, id",
         );
 
         $moved = 0;
         $missing = [];
         foreach ($rows as $row) {
-            $key = StorageKeys::content($row['tenant_id'], $row['sha256']);
+            $key = StorageKeys::content($row['workspace_id'], $row['sha256']);
             if (!$this->storage->fileExists($key)) {
                 if (!$this->storage->fileExists($row['storage_key'])) {
                     $missing[] = $row['id'];

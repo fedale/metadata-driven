@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Module\User\Contract\Dto;
 
 /**
- * A user who may sign in to a tenant, as the members page lists them.
+ * A user who may sign in to a workspace, as the members page lists them.
  */
 final readonly class Member
 {

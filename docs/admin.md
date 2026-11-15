@@ -109,14 +109,14 @@ the server: installing from a directory, packing and exporting are console comma
 
 ## Members — `/admin/members`
 
-Who may sign in to this tenant, and with which of its roles: invite someone (a link they accept),
+Who may sign in to this workspace, and with which of its roles: invite someone (a link they accept),
 tick their roles, remove them. It needs the
 `admin.members` permission rather than `admin.metadata`, and it is linked from the top bar. See
 [The members page](access.md#the-members-page--adminmembers).
 
 ## Roles — `/admin/roles`
 
-What each role of the tenant gives: create a role with permissions you hold, change or delete one
+What each role of the workspace gives: create a role with permissions you hold, change or delete one
 within your reach. It needs `admin.roles`. See [The roles page](access.md#the-roles-page--adminroles).
 
 ## A field — `/admin/objects/<object>/fields/<field>`

@@ -15,7 +15,7 @@ class User
     private string $email;
     private bool $isActive = true;
 
-    /** May enter the system console, its tenants' and system admins' (set from the command line). */
+    /** May enter the system console, its workspaces' and system admins' (set from the command line). */
     private bool $isSystemAdmin = false;
     private ?UserProfile $profile = null;
     private \DateTimeImmutable $createdAt;

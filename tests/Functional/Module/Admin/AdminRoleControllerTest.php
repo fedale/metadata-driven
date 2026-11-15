@@ -6,7 +6,7 @@ namespace App\Tests\Functional\Module\Admin;
 
 use App\Module\Access\Contract\Permissions;
 use App\Module\Access\Contract\RecordAction;
-use App\Module\Access\Contract\TenantRolesInterface;
+use App\Module\Access\Contract\WorkspaceRolesInterface;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Tests\Support\SignsIn;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
@@ -16,7 +16,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\DomCrawler\Field\ChoiceFormField;
 
 /**
- * /admin/roles: what each role of the tenant gives (docs/internal/tenant-admin-ui-plan.md,
+ * /admin/roles: what each role of the workspace gives (docs/internal/tenant-admin-ui-plan.md,
  * part D), and no way to more power.
  */
 final class AdminRoleControllerTest extends WebTestCase
@@ -186,8 +186,8 @@ final class AdminRoleControllerTest extends WebTestCase
         $this->client->followRedirect();
     }
 
-    private function roles(): TenantRolesInterface
+    private function roles(): WorkspaceRolesInterface
     {
-        return self::getContainer()->get(TenantRolesInterface::class);
+        return self::getContainer()->get(WorkspaceRolesInterface::class);
     }
 }

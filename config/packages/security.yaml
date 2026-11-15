@@ -28,16 +28,16 @@ security:
             logout:
                 path: app_logout
                 target: app_login
-            # Five tries a minute per address and email, in every tenant and on the console.
+            # Five tries a minute per address and email, in every workspace and on the console.
             login_throttling:
                 max_attempts: 5
                 interval: '1 minute'
             remember_me:
                 secret: '%kernel.secret%'
                 lifetime: 1209600 # 2 weeks
-                # A cookie signs in to the tenant it was made in only (SecurityUser::getTenantId()),
+                # A cookie signs in to the workspace it was made in only (SecurityUser::getWorkspaceId()),
                 # and stops working when the password changes.
-                signature_properties: ['password', 'tenantId']
+                signature_properties: ['password', 'workspaceId']
 
     # Signing in is required everywhere; what a user may do is decided by the RBAC
     # permissions, checked by the controllers (App\Module\Access).
@@ -45,7 +45,7 @@ security:
         - { path: ^/login$, roles: PUBLIC_ACCESS }
         # An invitation's link: its token is the credential (InvitationController).
         - { path: ^/invitation/, roles: PUBLIC_ACCESS }
-        # The system console, on its own host (HostTenantListener): its system admins.
+        # The system console, on its own host (HostWorkspaceListener): its system admins.
         - { path: ^/console, roles: ROLE_SYSTEM_ADMIN }
         # The grid UI settings (fedale/gridview-bundle) apply to every user: administrators only.
         - { path: ^/gridview/_settings, allow_if: "is_granted('ROLE_SUPER_ADMIN') or is_granted('admin.metadata')" }

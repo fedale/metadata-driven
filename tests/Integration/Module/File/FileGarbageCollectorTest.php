@@ -17,7 +17,7 @@ use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\RecordManagerInterface;
-use App\Shared\Tenant\CurrentTenant;
+use App\Shared\Workspace\CurrentWorkspace;
 use Doctrine\DBAL\Connection;
 use League\Flysystem\FilesystemOperator;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -143,8 +143,8 @@ final class FileGarbageCollectorTest extends KernelTestCase
         self::assertSame(1, $report->thumbnails);
         self::assertFalse($storage->fileExists($this->contentKey($stray)));
         self::assertTrue($storage->fileExists('exports/products.csv'));
-        $thumbnails = $storage->listContents($this->tenant().'/thumbnails', true)->filter(static fn ($item): bool => $item->isFile())->map(static fn ($item): string => $item->path())->toArray();
-        self::assertSame([StorageKeys::thumbnail($this->tenant(), 'small', (string) $this->files()->find($photo)?->sha256, 'png')], $thumbnails);
+        $thumbnails = $storage->listContents($this->workspace().'/thumbnails', true)->filter(static fn ($item): bool => $item->isFile())->map(static fn ($item): string => $item->path())->toArray();
+        self::assertSame([StorageKeys::thumbnail($this->workspace(), 'small', (string) $this->files()->find($photo)?->sha256, 'png')], $thumbnails);
     }
 
     public function testStoringAndCollectingTakeTheLockOfTheContent(): void
@@ -264,14 +264,14 @@ final class FileGarbageCollectorTest extends KernelTestCase
         );
     }
 
-    private function tenant(): string
+    private function workspace(): string
     {
-        return self::getContainer()->get(CurrentTenant::class)->id();
+        return self::getContainer()->get(CurrentWorkspace::class)->id();
     }
 
     private function contentKey(string $sha256): string
     {
-        return StorageKeys::content($this->tenant(), $sha256);
+        return StorageKeys::content($this->workspace(), $sha256);
     }
 
     private function bytes(string $id): string

@@ -10,8 +10,8 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * What metadata:template:repo (a tenant's indexes) and tenant:template:repo (the indexes offered
- * to every tenant) do: the same actions, in the session each runs in.
+ * What metadata:template:repo (a workspace's indexes) and workspace:template:repo (the indexes offered
+ * to every workspace) do: the same actions, in the session each runs in.
  */
 final class TemplateRepoActions
 {
@@ -43,7 +43,7 @@ final class TemplateRepoActions
                 $index['name'],
                 $index['url'],
                 null === $index['key'] ? 'no (accepted unsigned)' : 'yes',
-                $index['shared'] ? 'every tenant' : 'this tenant',
+                $index['shared'] ? 'every workspace' : 'this workspace',
             ], $indexes));
         }
 

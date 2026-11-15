@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Shared;
 
 use App\Module\User\Contract\UserManagerInterface;
-use App\Shared\Infrastructure\Tenant\TenantRegistry;
-use App\Shared\Tenant\Tenant;
+use App\Shared\Infrastructure\Workspace\WorkspaceRegistry;
+use App\Shared\Workspace\Workspace;
 use App\Tests\Support\SignsIn;
 use Doctrine\DBAL\Connection;
 use Psr\Cache\CacheItemPoolInterface;
@@ -14,7 +14,7 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
- * The system console, console.localhost in the tests: its system admins, its tenants
+ * The system console, console.localhost in the tests: its system admins, its workspaces
  * (docs/internal/tenant-admin-ui-plan.md, part B).
  */
 final class SystemConsoleTest extends WebTestCase
@@ -49,7 +49,7 @@ final class SystemConsoleTest extends WebTestCase
 
         $this->signInOnTheConsole('anna@example.com');
         $this->client->followRedirect();
-        self::assertSelectorExists('.md-flash--error', 'A member of a tenant is no system admin.');
+        self::assertSelectorExists('.md-flash--error', 'A member of a workspace is no system admin.');
 
         $this->signInOnTheConsole('olga@example.com');
         self::assertResponseRedirects('/', 302);
@@ -75,7 +75,7 @@ final class SystemConsoleTest extends WebTestCase
         self::assertResponseIsSuccessful();
     }
 
-    public function testTheConsoleAndTheTenantsKeepToTheirHosts(): void
+    public function testTheConsoleAndTheWorkspacesKeepToTheirHosts(): void
     {
         $this->client->request('GET', '/console', server: ['HTTP_HOST' => 'localhost']);
         self::assertResponseStatusCodeSame(404);
@@ -86,50 +86,50 @@ final class SystemConsoleTest extends WebTestCase
         }
     }
 
-    public function testCreatesATenantWithItsPermissionsAndAnInvitedAdmin(): void
+    public function testCreatesAWorkspaceWithItsPermissionsAndAnInvitedAdmin(): void
     {
         $this->signedInSystemAdmin();
 
-        $crawler = $this->client->request('GET', '/console/tenants/new');
-        $this->client->submitForm('Create', ['new_tenant[slug]' => 'console', 'new_tenant[name]' => 'Console']);
+        $crawler = $this->client->request('GET', '/console/workspaces/new');
+        $this->client->submitForm('Create', ['new_workspace[slug]' => 'console', 'new_workspace[name]' => 'Console']);
         self::assertResponseStatusCodeSame(422);
         self::assertSelectorTextContains('main', 'is reserved');
 
-        $this->client->submitForm('Create', ['new_tenant[slug]' => 'globex', 'new_tenant[name]' => 'Globex', 'new_tenant[admin_email]' => 'Dora@Example.com']);
-        self::assertResponseRedirects('/console/tenants/globex', 303);
+        $this->client->submitForm('Create', ['new_workspace[slug]' => 'globex', 'new_workspace[name]' => 'Globex', 'new_workspace[admin_email]' => 'Dora@Example.com']);
+        self::assertResponseRedirects('/console/workspaces/globex', 303);
         $crawler = $this->client->followRedirect();
 
-        $globex = $this->tenant('globex');
+        $globex = $this->workspace('globex');
         self::assertStringStartsWith('http://globex.localhost/invitation/', (string) $crawler->filter('input[readonly]')->attr('value'));
         $connection = self::getContainer()->get(Connection::class);
         self::assertNotFalse($connection->fetchOne(\sprintf("SELECT 1 FROM %s.auth_item WHERE name = 'admin.members'", $globex->rbacSchema)), 'Its permissions.');
         self::assertSame(['ROLE_SUPER_ADMIN'], $connection->fetchFirstColumn(\sprintf("SELECT item_name FROM %s.auth_assignment WHERE user_id = 'dora@example.com'", $globex->rbacSchema)));
     }
 
-    public function testSuspendsResumesAndDeletesATenantButNeverTheDefaultOne(): void
+    public function testSuspendsResumesAndDeletesAWorkspaceButNeverTheDefaultOne(): void
     {
         $this->signedInSystemAdmin();
-        $this->client->request('GET', '/console/tenants/new');
-        $this->client->submitForm('Create', ['new_tenant[slug]' => 'globex', 'new_tenant[name]' => 'Globex']);
+        $this->client->request('GET', '/console/workspaces/new');
+        $this->client->submitForm('Create', ['new_workspace[slug]' => 'globex', 'new_workspace[name]' => 'Globex']);
         $this->client->followRedirect();
 
         $this->client->submitForm('Suspend');
-        self::assertFalse($this->tenant('globex')->active);
+        self::assertFalse($this->workspace('globex')->active);
         $this->client->followRedirect();
         $this->client->submitForm('Resume');
-        self::assertTrue($this->tenant('globex')->active);
+        self::assertTrue($this->workspace('globex')->active);
 
         $this->client->followRedirect();
-        $this->client->submitForm('Delete the tenant', ['delete_tenant[confirm]' => 'globe']);
+        $this->client->submitForm('Delete the workspace', ['delete_workspace[confirm]' => 'globe']);
         $this->client->followRedirect();
         self::assertSelectorTextContains('.md-flash--error', 'Not confirmed');
-        $this->client->submitForm('Delete the tenant', ['delete_tenant[confirm]' => 'globex']);
+        $this->client->submitForm('Delete the workspace', ['delete_workspace[confirm]' => 'globex']);
         self::assertResponseRedirects('/console', 303);
-        self::assertNull(self::getContainer()->get(TenantRegistry::class)->bySlug('globex'));
+        self::assertNull(self::getContainer()->get(WorkspaceRegistry::class)->bySlug('globex'));
 
-        $crawler = $this->client->request('GET', '/console/tenants/default');
-        self::assertCount(0, $crawler->filter('form[name="delete_tenant"]'));
-        $this->client->request('POST', '/console/tenants/default/delete');
+        $crawler = $this->client->request('GET', '/console/workspaces/default');
+        self::assertCount(0, $crawler->filter('form[name="delete_workspace"]'));
+        $this->client->request('POST', '/console/workspaces/default/delete');
         self::assertResponseStatusCodeSame(403);
     }
 
@@ -139,14 +139,14 @@ final class SystemConsoleTest extends WebTestCase
         $this->signedInSystemAdmin();
         $key = substr(hash('sha256', 'bruno@example.com'), 0, 12);
 
-        $crawler = $this->client->request('GET', '/console/tenants/default');
+        $crawler = $this->client->request('GET', '/console/workspaces/default');
         $this->client->submit($crawler->filter(\sprintf('form[name="admin_%s"]', $key))->form());
         $connection = self::getContainer()->get(Connection::class);
         self::assertSame(['ROLE_SUPER_ADMIN'], $connection->fetchFirstColumn("SELECT item_name FROM rbac.auth_assignment WHERE user_id = 'bruno@example.com'"));
 
         $crawler = $this->client->followRedirect();
         $this->client->submit($crawler->filter(\sprintf('form[name="remove_%s"]', $key))->form());
-        self::assertNotContains('bruno@example.com', self::getContainer()->get(UserManagerInterface::class)->membersOf($this->tenant('default')->id));
+        self::assertNotContains('bruno@example.com', self::getContainer()->get(UserManagerInterface::class)->membersOf($this->workspace('default')->id));
     }
 
     /**
@@ -157,13 +157,13 @@ final class SystemConsoleTest extends WebTestCase
         self::createUser('bruno@example.com');
         $this->signedInSystemAdmin();
         $key = substr(hash('sha256', 'bruno@example.com'), 0, 12);
-        $default = $this->tenant('default');
+        $default = $this->workspace('default');
 
-        $this->client->request('POST', '/console/tenants/default/status', ['status' => []]);
-        $this->client->request('POST', \sprintf('/console/tenants/default/members/%s/admin', $key), ['admin_'.$key => []]);
-        $this->client->request('POST', \sprintf('/console/tenants/default/members/%s/remove', $key), ['remove_'.$key => []]);
+        $this->client->request('POST', '/console/workspaces/default/status', ['status' => []]);
+        $this->client->request('POST', \sprintf('/console/workspaces/default/members/%s/admin', $key), ['admin_'.$key => []]);
+        $this->client->request('POST', \sprintf('/console/workspaces/default/members/%s/remove', $key), ['remove_'.$key => []]);
 
-        self::assertTrue($this->tenant('default')->active);
+        self::assertTrue($this->workspace('default')->active);
         self::assertSame([], self::getContainer()->get(Connection::class)->fetchFirstColumn("SELECT item_name FROM rbac.auth_assignment WHERE user_id = 'bruno@example.com'"));
         self::assertContains('bruno@example.com', self::getContainer()->get(UserManagerInterface::class)->membersOf($default->id));
     }
@@ -213,11 +213,11 @@ final class SystemConsoleTest extends WebTestCase
         $this->client->submitForm('Sign in', ['email' => $email, 'password' => self::PASSWORD]);
     }
 
-    private function tenant(string $slug): Tenant
+    private function workspace(string $slug): Workspace
     {
-        $tenant = self::getContainer()->get(TenantRegistry::class)->bySlug($slug);
-        self::assertInstanceOf(Tenant::class, $tenant);
+        $workspace = self::getContainer()->get(WorkspaceRegistry::class)->bySlug($slug);
+        self::assertInstanceOf(Workspace::class, $workspace);
 
-        return $tenant;
+        return $workspace;
     }
 }

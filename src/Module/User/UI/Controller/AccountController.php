@@ -27,7 +27,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * The signed-in user's own account: their name, their password, the language of the
- * application. Accounts are global: the same page in every tenant, and on the console.
+ * application. Accounts are global: the same page in every workspace, and on the console.
  */
 final class AccountController extends AbstractController
 {

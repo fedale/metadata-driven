@@ -10,8 +10,8 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * The indexes of the command's tenant, listed with those offered to every tenant
- * (tenant:template:repo), which it may not remove.
+ * The indexes of the command's workspace, listed with those offered to every workspace
+ * (workspace:template:repo), which it may not remove.
  */
 #[AsCommand(name: 'metadata:template:repo', description: 'List, add or remove the indexes templates are downloaded from')]
 final class TemplateRepoConsoleCommand

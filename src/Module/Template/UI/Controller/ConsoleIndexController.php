@@ -20,9 +20,9 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * The template indexes offered to every tenant, on the system console: the page of
- * tenant:template:repo. The console runs in the system session, where an index added gets no
- * tenant: every tenant lists it, none removes it.
+ * The template indexes offered to every workspace, on the system console: the page of
+ * workspace:template:repo. The console runs in the system session, where an index added gets no
+ * workspace: every workspace lists it, none removes it.
  */
 #[Route('/console/indexes', name: 'console_')]
 final class ConsoleIndexController extends AbstractController

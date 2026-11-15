@@ -13,7 +13,7 @@ use App\Module\Metadata\Contract\Dto\RelationSettings;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Shared\Database\CoreSchema;
 use App\Shared\Database\DataSchema;
-use App\Shared\Tenant\CurrentTenant;
+use App\Shared\Workspace\CurrentWorkspace;
 use Doctrine\DBAL\Schema\Column;
 use Doctrine\DBAL\Schema\ForeignKeyConstraint;
 use Doctrine\DBAL\Schema\ForeignKeyConstraint\ReferentialAction;
@@ -38,14 +38,14 @@ final class TableDefinitionFactory
     public function __construct(
         private readonly FieldTypeRegistryInterface $fieldTypes,
         private readonly MetadataRegistryInterface $metadata,
-        private readonly CurrentTenant $tenant,
+        private readonly CurrentWorkspace $workspace,
     ) {
     }
 
     public function build(ObjectDefinitionDto $object): Table
     {
         $table = Table::editor()
-            ->setUnquotedName($this->nonEmpty($object->tableName), $this->tenant->dataSchema())
+            ->setUnquotedName($this->nonEmpty($object->tableName), $this->workspace->dataSchema())
             ->addColumn($this->column('id', Types::GUID, notNull: true))
             ->addColumn($this->column('created_at', Types::DATETIME_IMMUTABLE, notNull: true))
             ->addColumn($this->column('updated_at', Types::DATETIME_IMMUTABLE, notNull: true))
@@ -113,7 +113,7 @@ final class TableDefinitionFactory
             }
             $names = $this->linkNames($object, $field);
             $tables[$field->id] = Table::editor()
-                ->setUnquotedName($names['table'], $this->tenant->dataSchema())
+                ->setUnquotedName($names['table'], $this->workspace->dataSchema())
                 ->addColumn($this->column('record_id', Types::GUID, notNull: true))
                 ->addColumn($this->column('target_id', Types::GUID, notNull: true))
                 ->addColumn($this->column('created_at', Types::DATETIME_IMMUTABLE, notNull: true))
@@ -165,7 +165,7 @@ final class TableDefinitionFactory
         $names = $this->linkNames($object, $field);
 
         return Table::editor()
-            ->setUnquotedName($names['table'], $this->tenant->dataSchema())
+            ->setUnquotedName($names['table'], $this->workspace->dataSchema())
             ->addColumn($this->column('record_id', Types::GUID, notNull: true))
             ->addColumn($this->column('target_id', Types::GUID, notNull: true))
             ->addColumn($this->column('position', Types::INTEGER, notNull: true))
@@ -270,7 +270,7 @@ final class TableDefinitionFactory
         return ForeignKeyConstraint::editor()
             ->setUnquotedName($name)
             ->setUnquotedReferencingColumnNames($this->nonEmpty($column))
-            ->setUnquotedReferencedTableName($this->nonEmpty($targetTable), $this->tenant->dataSchema())
+            ->setUnquotedReferencedTableName($this->nonEmpty($targetTable), $this->workspace->dataSchema())
             ->setUnquotedReferencedColumnNames('id')
             ->setOnDeleteAction($onDelete)
             ->create();
