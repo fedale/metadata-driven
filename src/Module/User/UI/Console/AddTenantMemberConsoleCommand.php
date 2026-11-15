@@ -13,7 +13,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * Lets a user sign in to a tenant. A tenant command: it runs in the landlord's session, the
+ * Lets a user sign in to a tenant. A tenant command: it runs in the system session, the
  * tenant named by its argument.
  */
 #[AsCommand(name: 'tenant:member:add', description: 'Let a user sign in to a tenant')]

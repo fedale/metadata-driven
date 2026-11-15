@@ -81,24 +81,24 @@ interface UserManagerInterface
     public function changePassword(string $email, string $currentPassword, string $newPassword): void;
 
     /**
-     * Makes the user an operator of the installation, or no longer: the console of the
+     * Makes the user a system admin of the installation, or no longer: the console of the
      * installation (part B of docs/internal/tenant-admin-ui-plan.md). From the command line only.
      *
      * @throws UserException unknown user
      */
-    public function setOperator(string $email, bool $operator): void;
+    public function setSystemAdmin(string $email, bool $systemAdmin): void;
 
     /**
-     * @return list<string> the emails of the operators, sorted
+     * @return list<string> the emails of the system admins, sorted
      */
-    public function operators(): array;
+    public function systemAdmins(): array;
 
     /**
      * Invites someone to a tenant: whoever the email belongs to accepts with acceptInvitation().
      * The same whether the email has an account or not: nothing of the account is told.
      *
      * One invitation per email is pending: the inviter's own replaces theirs; another inviter's
-     * is refused unless $replaceOthers (the operator, above every admin).
+     * is refused unless $replaceOthers (the system admin, above every admin).
      *
      * @param bool $keepAssignments false: take the account's assignments in the tenant away on
      *                              acceptance (its inviter doesn't hold them all)

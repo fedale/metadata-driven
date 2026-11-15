@@ -114,7 +114,7 @@ final class TemplateAdminController extends AbstractController
             'available' => $offers,
             'unreachable' => $unreachable,
             'indexes' => $indexes,
-            // The indexes offered to every tenant (the catalog, configured; the operator's,
+            // The indexes offered to every tenant (the catalog, configured; the system admin's,
             // tenant:template:repo) cannot be removed here.
             'remove_forms' => array_combine(
                 array_column($indexes, 'name'),

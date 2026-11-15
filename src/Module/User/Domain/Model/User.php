@@ -15,8 +15,8 @@ class User
     private string $email;
     private bool $isActive = true;
 
-    /** May enter the console of the installation, its tenants' and operators' (set from the command line). */
-    private bool $isOperator = false;
+    /** May enter the system console, its tenants' and system admins' (set from the command line). */
+    private bool $isSystemAdmin = false;
     private ?UserProfile $profile = null;
     private \DateTimeImmutable $createdAt;
     private ?\DateTimeImmutable $lastLoginAt = null;
@@ -61,19 +61,19 @@ class User
         $this->lastLoginAt = $at;
     }
 
-    public function grantOperator(): void
+    public function grantSystemAdmin(): void
     {
-        $this->isOperator = true;
+        $this->isSystemAdmin = true;
     }
 
-    public function revokeOperator(): void
+    public function revokeSystemAdmin(): void
     {
-        $this->isOperator = false;
+        $this->isSystemAdmin = false;
     }
 
-    public function isOperator(): bool
+    public function isSystemAdmin(): bool
     {
-        return $this->isOperator;
+        return $this->isSystemAdmin;
     }
 
     public function deactivate(): void

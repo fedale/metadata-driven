@@ -45,7 +45,7 @@ final class TenantScope
 
     /**
      * Tables of TABLES whose rows may have no tenant: offered to every tenant, read by all of
-     * them, written by the landlord only (template_source: the indexes the operator offers).
+     * them, written by the system only (template_source: the indexes the system admin offers).
      */
     public const array SHARED = ['template_source'];
 

@@ -10,7 +10,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * Every tenant, with what it holds. A tenant command: the landlord's session sees every
+ * Every tenant, with what it holds. A tenant command: the system session sees every
  * tenant's rows.
  */
 #[AsCommand(name: 'tenant:list', description: 'List the tenants: slug, name, status, members, objects, schemas')]

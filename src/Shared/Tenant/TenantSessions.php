@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Shared\Tenant;
 
 /**
- * Work done in a tenant's session from the landlord's: the steps that are a tenant's (its
- * permissions, its roles) when the console of the installation creates or manages it.
+ * Work done in a tenant's session from the system's: the steps that are a tenant's (its
+ * permissions, its roles) when the system console creates or manages it.
  */
 interface TenantSessions
 {

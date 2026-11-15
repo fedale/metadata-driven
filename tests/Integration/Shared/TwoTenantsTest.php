@@ -102,16 +102,16 @@ final class TwoTenantsTest extends KernelTestCase
         self::assertSame(['ROLE_REPORTER'], $assignments->getAssignments('anna@example.com'));
         self::assertNotNull($container->get(ItemStorageInterface::class)->getItem('ROLE_REPORTER'));
 
-        $container->get(TenantSwitcher::class)->landlord();
+        $container->get(TenantSwitcher::class)->system();
         self::assertSame(TenantContextInterface::GLOBAL, $container->get(TenantContextInterface::class)->getTenantId());
         self::assertSame([], $assignments->getAssignments('anna@example.com'));
     }
 
-    public function testTheLandlordsSessionReadsAndWritesNoTenantsRows(): void
+    public function testTheSystemSessionReadsAndWritesNoTenantsRows(): void
     {
         $container = self::getContainer();
         $this->insertSource('acme');
-        $container->get(TenantSwitcher::class)->landlord();
+        $container->get(TenantSwitcher::class)->system();
 
         self::assertFalse($container->get(CurrentTenant::class)->isSelected());
         self::assertSame([], $container->get(TemplateSourceRepository::class)->all());
@@ -159,10 +159,10 @@ final class TwoTenantsTest extends KernelTestCase
             }
 
             $this->connection->executeStatement(TenantSessionSql::none());
-            self::assertSame([], $this->sourceNames(), 'A session that has no tenant, and is no landlord, sees nothing.');
+            self::assertSame([], $this->sourceNames(), 'A session that has no tenant, and is not the system, sees nothing.');
 
-            $this->connection->executeStatement(TenantSessionSql::landlord());
-            self::assertSame(['acme', 'globex-catalog'], $this->sourceNames(), 'The landlord sees every tenant\'s rows.');
+            $this->connection->executeStatement(TenantSessionSql::system());
+            self::assertSame(['acme', 'globex-catalog'], $this->sourceNames(), 'the system sees every tenant\'s rows.');
         } finally {
             // Undoes the role, the grants and the session's settings with them.
             $this->connection->rollBack();

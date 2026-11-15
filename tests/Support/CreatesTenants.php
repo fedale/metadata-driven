@@ -17,17 +17,17 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 trait CreatesTenants
 {
     /**
-     * Created in the landlord's session; the test is back in the tenant it was in.
+     * Created in the system session; the test is back in the tenant it was in.
      */
     private static function createTenant(ContainerInterface $container, string $slug, string $name): Tenant
     {
         $switcher = $container->get(TenantSwitcher::class);
         $previous = $container->get(ConnectionCurrentTenant::class)->tenant();
-        $switcher->landlord();
+        $switcher->system();
         try {
             return $container->get(TenantProvisioner::class)->create($slug, $name);
         } finally {
-            null === $previous ? $switcher->landlord() : $switcher->switchTo($previous);
+            null === $previous ? $switcher->system() : $switcher->switchTo($previous);
         }
     }
 

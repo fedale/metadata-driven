@@ -124,10 +124,10 @@ final class AccountControllerTest extends WebTestCase
         self::assertSelectorTextContains('main', 'Too many tries');
     }
 
-    public function testAnOperatorHasTheirAccountOnTheConsoleToo(): void
+    public function testASystemAdminHasTheirAccountOnTheConsoleToo(): void
     {
         self::createUser('olga@example.com');
-        self::getContainer()->get(UserManagerInterface::class)->setOperator('olga@example.com', true);
+        self::getContainer()->get(UserManagerInterface::class)->setSystemAdmin('olga@example.com', true);
         $this->client->setServerParameter('HTTP_HOST', 'console.localhost');
         $this->client->request('GET', '/login');
         $this->client->submitForm('Sign in', ['email' => 'olga@example.com', 'password' => self::PASSWORD]);

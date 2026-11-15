@@ -21,5 +21,5 @@ interface UserRepository
     /**
      * @return list<User> by email
      */
-    public function operators(): array;
+    public function systemAdmins(): array;
 }

@@ -31,7 +31,7 @@ final class DoctrineTemplateSourceRepository implements TemplateSourceRepository
 
     public function isNameTaken(string $name): bool
     {
-        // As the landlord (no tenant), any tenant's: a shared index must not shadow one of them.
+        // As the system (no tenant), any tenant's: a shared index must not shadow one of them.
         return false !== $this->entityManager->getConnection()->fetchOne(
             \sprintf('SELECT 1 FROM core.template_source WHERE name = ? AND (tenant_id IS NULL OR tenant_id = %1$s OR %1$s IS NULL)', TenantScope::CURRENT),
             [$name],

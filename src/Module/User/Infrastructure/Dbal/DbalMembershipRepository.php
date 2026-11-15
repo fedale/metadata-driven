@@ -9,7 +9,7 @@ use Doctrine\DBAL\Connection;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * core.tenant_membership, the landlord's table: every query names its tenant, never the session's,
+ * core.tenant_membership, the system's table: every query names its tenant, never the session's,
  * since a user's tenants are listed from any of them.
  */
 final class DbalMembershipRepository implements MembershipRepository

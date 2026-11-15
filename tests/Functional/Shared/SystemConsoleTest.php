@@ -14,10 +14,10 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
- * The console of the installation, console.localhost in the tests: its operators, its tenants
+ * The system console, console.localhost in the tests: its system admins, its tenants
  * (docs/internal/tenant-admin-ui-plan.md, part B).
  */
-final class OperatorConsoleTest extends WebTestCase
+final class SystemConsoleTest extends WebTestCase
 {
     use SignsIn;
 
@@ -42,14 +42,14 @@ final class OperatorConsoleTest extends WebTestCase
         parent::tearDown();
     }
 
-    public function testOnlyAnOperatorSignsInToTheConsole(): void
+    public function testOnlyASystemAdminSignsInToTheConsole(): void
     {
         self::createUser('anna@example.com');
-        $this->operator('olga@example.com');
+        $this->systemAdmin('olga@example.com');
 
         $this->signInOnTheConsole('anna@example.com');
         $this->client->followRedirect();
-        self::assertSelectorExists('.md-flash--error', 'A member of a tenant is no operator.');
+        self::assertSelectorExists('.md-flash--error', 'A member of a tenant is no system admin.');
 
         $this->signInOnTheConsole('olga@example.com');
         self::assertResponseRedirects('/', 302);
@@ -88,7 +88,7 @@ final class OperatorConsoleTest extends WebTestCase
 
     public function testCreatesATenantWithItsPermissionsAndAnInvitedAdmin(): void
     {
-        $this->signedInOperator();
+        $this->signedInSystemAdmin();
 
         $crawler = $this->client->request('GET', '/console/tenants/new');
         $this->client->submitForm('Create', ['new_tenant[slug]' => 'console', 'new_tenant[name]' => 'Console']);
@@ -108,7 +108,7 @@ final class OperatorConsoleTest extends WebTestCase
 
     public function testSuspendsResumesAndDeletesATenantButNeverTheDefaultOne(): void
     {
-        $this->signedInOperator();
+        $this->signedInSystemAdmin();
         $this->client->request('GET', '/console/tenants/new');
         $this->client->submitForm('Create', ['new_tenant[slug]' => 'globex', 'new_tenant[name]' => 'Globex']);
         $this->client->followRedirect();
@@ -136,7 +136,7 @@ final class OperatorConsoleTest extends WebTestCase
     public function testMakesAMemberSuperAdminAndRemovesThem(): void
     {
         self::createUser('bruno@example.com');
-        $this->signedInOperator();
+        $this->signedInSystemAdmin();
         $key = substr(hash('sha256', 'bruno@example.com'), 0, 12);
 
         $crawler = $this->client->request('GET', '/console/tenants/default');
@@ -155,7 +155,7 @@ final class OperatorConsoleTest extends WebTestCase
     public function testAForgedRequestChangesNothing(): void
     {
         self::createUser('bruno@example.com');
-        $this->signedInOperator();
+        $this->signedInSystemAdmin();
         $key = substr(hash('sha256', 'bruno@example.com'), 0, 12);
         $default = $this->tenant('default');
 
@@ -168,10 +168,10 @@ final class OperatorConsoleTest extends WebTestCase
         self::assertContains('bruno@example.com', self::getContainer()->get(UserManagerInterface::class)->membersOf($default->id));
     }
 
-    public function testRevokingTheFlagSignsTheOperatorOut(): void
+    public function testRevokingTheFlagSignsTheSystemAdminOut(): void
     {
-        $this->signedInOperator();
-        self::getContainer()->get(UserManagerInterface::class)->setOperator('olga@example.com', false);
+        $this->signedInSystemAdmin();
+        self::getContainer()->get(UserManagerInterface::class)->setSystemAdmin('olga@example.com', false);
 
         $this->client->request('GET', '/console');
 
@@ -193,15 +193,15 @@ final class OperatorConsoleTest extends WebTestCase
         self::assertSelectorTextContains('.md-flash--error', 'Too many');
     }
 
-    private function operator(string $email): void
+    private function systemAdmin(string $email): void
     {
         self::createUser($email);
-        self::getContainer()->get(UserManagerInterface::class)->setOperator($email, true);
+        self::getContainer()->get(UserManagerInterface::class)->setSystemAdmin($email, true);
     }
 
-    private function signedInOperator(): void
+    private function signedInSystemAdmin(): void
     {
-        $this->operator('olga@example.com');
+        $this->systemAdmin('olga@example.com');
         $this->signInOnTheConsole('olga@example.com');
         self::assertResponseRedirects('/', 302);
     }

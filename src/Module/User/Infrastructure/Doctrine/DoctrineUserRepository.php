@@ -24,9 +24,9 @@ final class DoctrineUserRepository implements UserRepository
         $this->entityManager->flush();
     }
 
-    public function operators(): array
+    public function systemAdmins(): array
     {
-        return $this->entityManager->getRepository(User::class)->findBy(['isOperator' => true], ['email' => 'ASC']);
+        return $this->entityManager->getRepository(User::class)->findBy(['isSystemAdmin' => true], ['email' => 'ASC']);
     }
 
     public function findByEmail(string $email): ?User

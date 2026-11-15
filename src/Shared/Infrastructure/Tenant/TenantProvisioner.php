@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Tenant;
 
-use App\Shared\Tenant\OperatorConsole;
+use App\Shared\Tenant\SystemConsole;
 use App\Shared\Tenant\Tenant;
 use App\Shared\Tenant\TenantAdministration;
 use Doctrine\DBAL\Connection;
@@ -14,8 +14,8 @@ use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Creates, suspends, resumes and deletes tenants, in the landlord's session only
- * (TenantSwitcher::landlord()): where row-level security applies, a tenant's session may not
+ * Creates, suspends, resumes and deletes tenants, in the system session only
+ * (TenantSwitcher::system()): where row-level security applies, a tenant's session may not
  * write another tenant's rows.
  *
  * A tenant is its row of core.tenant, its row of core.metadata_state, its data schema (empty:
@@ -63,11 +63,11 @@ final class TenantProvisioner implements TenantAdministration
 
     public function create(string $slug, string $name): Tenant
     {
-        $this->assertLandlord();
+        $this->assertSystem();
         if (1 !== preg_match(self::SLUG, $slug)) {
             throw new \InvalidArgumentException(\sprintf('"%s" is no tenant slug: lower case letters, digits and dashes, 63 at most.', $slug));
         }
-        if (\in_array($slug, [...OperatorConsole::RESERVED_SLUGS, $this->consoleLabel], true)) {
+        if (\in_array($slug, [...SystemConsole::RESERVED_SLUGS, $this->consoleLabel], true)) {
             throw new \InvalidArgumentException(\sprintf('"%s" is reserved: choose another slug.', $slug));
         }
         if (null !== $this->registry->bySlug($slug)) {
@@ -118,7 +118,7 @@ final class TenantProvisioner implements TenantAdministration
      */
     public function delete(Tenant $tenant): void
     {
-        $this->assertLandlord();
+        $this->assertSystem();
         $this->connection->transactional(function () use ($tenant): void {
             // The schemas first: the record tables reference core.file, RESTRICT.
             $this->connection->executeStatement(\sprintf('DROP SCHEMA IF EXISTS %s CASCADE', $tenant->dataSchema));
@@ -135,7 +135,7 @@ final class TenantProvisioner implements TenantAdministration
     {
         /** @var array<string, int|string> $members */
         $members = $this->connection->fetchAllKeyValue('SELECT tenant_id, count(*) FROM core.tenant_membership GROUP BY tenant_id');
-        // As the landlord: every tenant's rows.
+        // As the system: every tenant's rows.
         /** @var array<string, int|string> $objects */
         $objects = $this->connection->fetchAllKeyValue('SELECT tenant_id, count(*) FROM core.metadata_object GROUP BY tenant_id');
 
@@ -148,14 +148,14 @@ final class TenantProvisioner implements TenantAdministration
 
     private function setStatus(Tenant $tenant, string $status): void
     {
-        $this->assertLandlord();
+        $this->assertSystem();
         $this->connection->executeStatement('UPDATE core.tenant SET status = ? WHERE id = ?', [$status, $tenant->id]);
     }
 
-    private function assertLandlord(): void
+    private function assertSystem(): void
     {
         if ($this->current->isSelected()) {
-            throw new \LogicException('Tenants are managed in the landlord\'s session: leave the current tenant first.');
+            throw new \LogicException('Tenants are managed in the system session: leave the current tenant first.');
         }
     }
 }

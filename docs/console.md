@@ -43,7 +43,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
 | [`tenant:create`](#tenantcreate), [`tenant:list`](#tenantlist), [`tenant:suspend`, `tenant:resume`](#tenantsuspend-tenantresume), [`tenant:delete`](#tenantdelete), [`tenant:run`](#tenantrun) | Create, list, suspend, resume and delete tenants; run a command for several of them |
 | [`tenant:files:move`](#tenantfilesmove) | Move the files stored before tenants had directories into their tenant's directory, once |
-| `tenant:operator` | List, grant or revoke the operators who may enter the console of the installation — see [Tenants](multi-tenancy.md#the-console) |
+| `system:admin` | List, grant or revoke the system admins who may enter the system console — see [Tenants](multi-tenancy.md#the-system-console) |
 | `tenant:template:repo` | List, add or remove the template indexes offered to every tenant — see [Templates](templates.md#publishing-and-downloading) |
 | `user:create` | Create a user who can sign in, a member of the command's tenant — see [Users and permissions](access.md#usercreate) |
 | `tenant:member:add`, `tenant:member:remove`, `tenant:member:list` | Let a user sign in to a tenant, or no longer; list a tenant's members — see [Users and tenants](access.md#users-and-tenants) |
@@ -62,7 +62,7 @@ symfony console metadata:list --tenant=acme     # tenant acme's
 ```
 
 The other commands (the migrations, Doctrine's, `cache:clear`) and the `tenant:*` commands work
-for no tenant, as the landlord, across all of them, unless `--tenant` names one. An unknown or suspended tenant stops the command:
+for no tenant, as the system, across all of them, unless `--tenant` names one. An unknown or suspended tenant stops the command:
 `There is no tenant "acme".` See [Architecture](architecture.md#tenants).
 
 ## How the commands change the database
@@ -758,7 +758,7 @@ Run it on a schedule, for example every night from cron:
 ## Tenants
 
 The `tenant:*` commands manage the installation's [tenants](architecture.md#tenants). They run as
-the landlord: the tenant they work on is their first argument, not `--tenant`.
+the system: the tenant they work on is their first argument, not `--tenant`.
 
 ### `tenant:create`
 

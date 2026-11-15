@@ -74,7 +74,7 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
     }
 
     /**
-     * The tenant the user was loaded for; empty without one (a command in the landlord's session).
+     * The tenant the user was loaded for; empty without one (a command in the system session).
      * A remember-me signature property: a string.
      */
     public function getTenantId(): string

@@ -91,5 +91,4 @@ code, the commands, the admin UI and the other guides still say:
 | record | record and row |
 | form | form |
 | package, package item, package source | template, template item, template source (`metadata:template:*`, `core.template_*`, the repositories `metadata-driven-templates` and `metadata-driven-template-format`) |
-| system, system admin | landlord, operator (`tenant:operator`) |
 | workspace, workspace membership | tenant, tenant membership (`core.tenant*`, `tenant:*`, `--tenant`, the guide multi-tenancy.md) |

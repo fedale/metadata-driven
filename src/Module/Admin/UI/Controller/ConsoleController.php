@@ -29,12 +29,12 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * The console of the installation (docs/internal/tenant-admin-ui-plan.md, part B): its tenants,
- * for its operators. On its own host, in the landlord's session (HostTenantListener); every path
- * needs ROLE_OPERATOR (security.yaml). The counterpart of the tenant:* commands.
+ * The system console (docs/internal/tenant-admin-ui-plan.md, part B): its tenants,
+ * for its system admins. On its own host, in the system session (HostTenantListener); every path
+ * needs ROLE_SYSTEM_ADMIN (security.yaml). The counterpart of the tenant:* commands.
  *
  * A tenant's first admin, or another one, is invited: they accept the link on the tenant's host,
- * with their account or a new one, and hold the tenant's super admin role there. The operator
+ * with their account or a new one, and hold the tenant's super admin role there. The system admin
  * chooses no one's password.
  */
 #[Route('/console', name: 'console_')]
@@ -218,8 +218,8 @@ final class ConsoleController extends AbstractController
     {
         $email = $this->users->canonicalEmail($email) ?? mb_strtolower(trim($email));
         try {
-            // The operator is above every admin: their invitation replaces a pending one.
-            $token = $this->users->invite($email, $tenant->id, $this->operator(), true, true);
+            // The system admin is above every admin: their invitation replaces a pending one.
+            $token = $this->users->invite($email, $tenant->id, $this->systemAdmin(), true, true);
         } catch (UserException $e) {
             $this->addFlash('error', $e->getMessage());
 
@@ -297,7 +297,7 @@ final class ConsoleController extends AbstractController
         throw $this->createNotFoundException('No such member.');
     }
 
-    private function operator(): string
+    private function systemAdmin(): string
     {
         return $this->getUser()?->getUserIdentifier() ?? '';
     }
@@ -307,8 +307,8 @@ final class ConsoleController extends AbstractController
      */
     private function log(string $action, Tenant $tenant, ?string $email = null): void
     {
-        $this->logger->notice('Operator {operator} {action} {tenant}{email}', [
-            'operator' => $this->operator(),
+        $this->logger->notice('System admin {admin} {action} {tenant}{email}', [
+            'admin' => $this->systemAdmin(),
             'action' => $action,
             'tenant' => $tenant->slug,
             'email' => null === $email ? '' : ' ('.$email.')',

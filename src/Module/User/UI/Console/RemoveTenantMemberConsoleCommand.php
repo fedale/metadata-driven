@@ -14,7 +14,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
  * Takes a user out of a tenant: they can no longer sign in there, and a session of theirs ends
- * at its next request. A tenant command: it runs in the landlord's session.
+ * at its next request. A tenant command: it runs in the system session.
  */
 #[AsCommand(name: 'tenant:member:remove', description: 'Take a user out of a tenant')]
 final class RemoveTenantMemberConsoleCommand
