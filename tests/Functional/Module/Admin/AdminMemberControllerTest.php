@@ -225,7 +225,7 @@ final class AdminMemberControllerTest extends WebTestCase
     }
 
     /**
-     * Become a member meanwhile (the operator added them), they keep what they have.
+     * Become a member meanwhile (the system admin added them), they keep what they have.
      */
     public function testAcceptingAsAMemberAlreadyChangesNothing(): void
     {

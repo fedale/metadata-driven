@@ -27,15 +27,15 @@ any DNS.
 | `TENANT_BASE_HOST` | `localhost` | The host the tenants' hosts end with |
 | `TENANT_DEFAULT` | `default` | The tenant of the base host, of any other host, and of a command without `--tenant`. Empty: every request names its tenant, and a command without `--tenant` works for none |
 
-## The console
+## The system console
 
-Operators manage the tenants from the **console of the installation**, at
+System admins manage the tenants from the **system console**, at
 `https://console.<base host>` (`console.localhost` in development), with their ordinary account:
 
 ```bash
-symfony console tenant:operator grant olga@example.com    # olga may enter the console
-symfony console tenant:operator                          # the operators
-symfony console tenant:operator revoke olga@example.com  # her console session ends
+symfony console system:admin grant olga@example.com    # olga may enter the console
+symfony console system:admin                          # the system admins
+symfony console system:admin revoke olga@example.com  # their console session ends
 ```
 
 - **Tenants**: the list (members, objects, status), a new one (its slug, its name, and its first
@@ -45,8 +45,8 @@ symfony console tenant:operator revoke olga@example.com  # her console session e
 - **A tenant's members**: give or take the super admin role, remove, invite another admin.
 - **Template indexes** offered to every tenant.
 
-The console is no tenant: an operator has no power inside a tenant unless they're a member there,
-with a role. Only operators sign in there, and only the command line makes operators. The slug
+The console is no tenant: a system admin has no power inside a tenant unless they're a member there,
+with a role. Only system admins sign in there, and only the command line makes system admins. The slug
 `console`, and `admin`, `www`, `api`, `mail`, `static`, are reserved: no tenant takes them.
 
 ## Creating and managing tenants
@@ -93,7 +93,7 @@ in to a tenant:
 
 A tenant's admins manage its members on the **Members** page of the admin (`/admin/members`):
 invite someone by email (they accept with a link, signing in or creating their account), tick
-their roles, remove them. From the console, where the operator adds an account at once:
+their roles, remove them. From the console, where the system admin adds an account at once:
 
 ```bash
 symfony console user:create anna@example.com --tenant=acme      # a new user, a member of acme
@@ -109,7 +109,7 @@ symfony console tenant:member:remove globex anna@example.com     # her sessions 
   until someone gives them a role there.
 - A member of several tenants gets links to the others in the top bar.
 
-The operator of the installation has no special power inside a tenant: they work in it as a
+The system admin has no special power inside a tenant: they work in it as a
 member with a role, like anyone else. A tenant's own admins change its model, with the
 permissions of [Users and permissions](access.md).
 
@@ -175,7 +175,7 @@ never share a stored file. `tenant:delete` deletes the tenant's directory, and
 
 ## Not yet
 
-- A second factor for signing in, operators included: planned for every user at once.
+- A second factor for signing in, system admins included: planned for every user at once.
 - Signing up, and inviting a user to a tenant.
 - One sign-in for all the tenants a user belongs to: you sign in to each host.
 - Moving a tenant to a database of its own.

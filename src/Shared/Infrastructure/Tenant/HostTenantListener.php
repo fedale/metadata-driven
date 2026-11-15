@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Tenant;
 
-use App\Shared\Tenant\OperatorConsole;
+use App\Shared\Tenant\SystemConsole;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -20,8 +20,8 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * An unknown or suspended tenant, or no tenant at all, is a 404 before anything else runs:
  * above the firewall (priority 8), so no session or user is loaded for it.
  *
- * The console of the installation, <console label>.<base host>, is no tenant's: its requests run
- * in the landlord's session. Its paths (/console…) answer there only, and the tenants' paths
+ * The system console, <console label>.<base host>, is no tenant's: its requests run
+ * in the system session. Its paths (/console…) answer there only, and the tenants' paths
  * nowhere else than on a tenant's host.
  */
 #[AsEventListener(event: KernelEvents::REQUEST, priority: 40)]
@@ -46,24 +46,24 @@ final class HostTenantListener
         }
         $request = $event->getRequest();
         $path = $request->getPathInfo();
-        $console = str_starts_with($path, OperatorConsole::PATH_PREFIX.'/') || OperatorConsole::PATH_PREFIX === $path;
+        $console = str_starts_with($path, SystemConsole::PATH_PREFIX.'/') || SystemConsole::PATH_PREFIX === $path;
 
         if ($this->isConsoleHost($request->getHost())) {
-            // The console of the installation: the landlord's session, the console's paths and
+            // The system console: the system session, the console's paths and
             // signing in only. Its home is the list of tenants.
             if ('/' === $path) {
-                $event->setResponse(new RedirectResponse(OperatorConsole::PATH_PREFIX));
+                $event->setResponse(new RedirectResponse(SystemConsole::PATH_PREFIX));
 
                 return;
             }
-            // The operator's own account (global, as every account) answers there too, and so
+            // The system admin's own account (global, as every account) answers there too, and so
             // do the pages' styles and scripts: in development AssetMapper serves them through
             // the application, under /assets/ (in production the web server does, from public/).
             if (!$console && !\in_array($path, ['/login', '/logout', '/account'], true) && !str_starts_with($path, '/_') && !str_starts_with($path, '/assets/')) {
                 throw new NotFoundHttpException(\sprintf('No page "%s" on the console.', $path));
             }
-            $request->attributes->set(OperatorConsole::REQUEST_ATTRIBUTE, true);
-            $this->switcher->landlord();
+            $request->attributes->set(SystemConsole::REQUEST_ATTRIBUTE, true);
+            $this->switcher->system();
 
             return;
         }

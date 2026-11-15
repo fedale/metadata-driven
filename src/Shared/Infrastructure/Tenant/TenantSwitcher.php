@@ -38,15 +38,15 @@ final class TenantSwitcher implements ResetInterface, TenantSessions
     public function within(Tenant $tenant, callable $work): mixed
     {
         $previous = $this->current->tenant();
-        $landlord = $this->state->isLandlord();
+        $system = $this->state->isSystem();
         $this->switchTo($tenant);
         try {
             return $work();
         } finally {
             if (null !== $previous) {
                 $this->switchTo($previous);
-            } elseif ($landlord) {
-                $this->landlord();
+            } elseif ($system) {
+                $this->system();
             } else {
                 $this->leave();
             }
@@ -63,24 +63,24 @@ final class TenantSwitcher implements ResetInterface, TenantSessions
 
     public function switchTo(Tenant $tenant): void
     {
-        $this->state->setLandlord(false);
+        $this->state->setSystem(false);
         $this->connection->executeStatement(TenantSessionSql::select($tenant));
         $this->forget($tenant);
     }
 
     /**
-     * The landlord's session, whatever the baseline: no tenant, and the row-level security
+     * The system session, whatever the baseline: no tenant, and the row-level security
      * policies let it see and write every tenant's rows (the migrations, the tenant commands,
      * creating a tenant).
      */
-    public function landlord(): void
+    public function system(): void
     {
         // Never opens a connection: a command may run without a database, or before it exists
-        // (doctrine:database:create). One opened later is the landlord's too (the middleware
+        // (doctrine:database:create). One opened later is the system's too (the middleware
         // reads the state).
-        $this->state->setLandlord(true);
+        $this->state->setSystem(true);
         if ($this->connection->isConnected()) {
-            $this->connection->executeStatement(TenantSessionSql::landlord());
+            $this->connection->executeStatement(TenantSessionSql::system());
         }
         $this->forget(null);
     }
@@ -90,14 +90,14 @@ final class TenantSwitcher implements ResetInterface, TenantSessions
      */
     public function leave(): void
     {
-        $this->state->setLandlord(false);
+        $this->state->setSystem(false);
         $this->toBaseline();
         $this->forget(null);
     }
 
     public function reset(): void
     {
-        $this->state->setLandlord(false);
+        $this->state->setSystem(false);
         $this->toBaseline();
         $this->current->reset();
     }

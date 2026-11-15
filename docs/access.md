@@ -52,11 +52,11 @@ symfony console tenant:member:remove acme anna@example.com   # her sessions ther
 The `tenant:member:*` commands work for the tenant their first argument names. Removing a member
 leaves their roles in the tenant, unused until they're a member again.
 
-### Operators
+### System admins
 
-The operators of the installation sign in to its console, `console.<base host>`, to manage the
-tenants (see [Tenants](multi-tenancy.md#the-console)). `tenant:operator grant|revoke <email>`
-makes them, from the command line only; there they hold `ROLE_OPERATOR`, and nothing in any
+System admins sign in to the system console, `console.<base host>`, to manage the
+tenants (see [Tenants](multi-tenancy.md#the-system-console)). `system:admin grant|revoke <email>`
+makes them, from the command line only; there they hold `ROLE_SYSTEM_ADMIN`, and nothing in any
 tenant they're no member of. Signing in, everywhere, is throttled: five tries a minute per address
 and email.
 

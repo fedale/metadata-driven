@@ -21,8 +21,8 @@
     </head>
     <body data-gv-scope>
         <header class="md-topbar">
-            {% if app.request.attributes.get('_operator_console') %}
-                {# The console of the installation: the landlord's, no tenant's navigation (whose
+            {% if app.request.attributes.get('_system_console') %}
+                {# The system console: the system's, no tenant's navigation (whose
                    permission checks would find no RBAC tables). #}
                 <a href="{{ path('console_index') }}" class="md-topbar__brand">{{ 'console.title'|trans }}</a>
                 {% if app.user %}

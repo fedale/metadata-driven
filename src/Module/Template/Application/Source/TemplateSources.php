@@ -132,7 +132,7 @@ final class TemplateSources
     {
         $source = $this->sources->findByName($name) ?? throw new TemplateSourceFailed(\sprintf('No index is named "%s".', $name));
         if ($this->tenant->isSelected() && $this->sources->isShared($source)) {
-            throw new TemplateSourceFailed(\sprintf('"%s" is offered to every tenant: only the operator removes it (tenant:template:repo remove %s).', $name, $name));
+            throw new TemplateSourceFailed(\sprintf('"%s" is offered to every tenant: only the system admin removes it (tenant:template:repo remove %s).', $name, $name));
         }
         $this->sources->remove($source);
     }

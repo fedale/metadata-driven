@@ -274,8 +274,11 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   operator → system / system admin, tenant → workspace, template → package (the repositories
   too). The glossary's "Not yet" lists the old names still in use. The rename is agreed, in six
   phases, in [vocabulary-rename-plan.md](vocabulary-rename-plan.md), with no aliases for the old
-  commands and URLs. Phase 1 (composite form → form): done on branch `composite_form_rename`
-  (2026-11-15), waiting for the user's review; phases 2 and 3 after `rbac_tenancy` is merged.
+  commands and URLs. Phase 1 (composite form → form) merged into `main` on 2026-11-15. Phase 2
+  (landlord / operator → system / system admin: `system:admin`, `ROLE_SYSTEM_ADMIN`,
+  `is_system_admin`, the session setting `app.system` the row-level security policies read,
+  migration `Version20261115100000`): done on branch `system_rename` (2026-11-15), waiting for
+  the user's review. Run the migrations on an existing database (`make db`).
 - **CSV import**, (C) only: imports of very large files in the background, with Messenger. (A)
   and (B) are done (see "Done").
 - Admin UI in Italian: still English are the error messages of the metadata and the templates
@@ -289,22 +292,22 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   bound to their tenant, more tests) on 2026-11-13. Run the migrations (`make db`, `make
   db-test`) and `tenant:files:move` once on an installation from before. `fedale/rbac-bundle` 1.2
   with tenants (tables per tenant, its cache on again per tenant, `landlord_rbac` renamed
-  `no_tenant_rbac`): branch `rbac_tenancy`, 2026-11-14, on the bundle's 1.2.1 (three fixes found
-  on the way); waiting for the user's review.
+  `no_tenant_rbac`), on the bundle's 1.2.1 (three fixes found on the way): merged into `main` on
+  2026-11-15.
 - **Tenants and members in the admin UI**: done, see
   [tenant-admin-ui-plan.md](tenant-admin-ui-plan.md); merged into `main` on 2026-11-13, not yet
   tested by hand by the user (no email is sent: invitation links are shown on the page). The
   members page (`/admin/members`, `admin.members`) with invitations by link, the roles page
-  (`/admin/roles`, `admin.roles`), the account page (`/account`), the operators' console on
-  `console.<base host>` (`tenant:operator grant`). Migrations up to `Version20261113130000`.
+  (`/admin/roles`, `admin.roles`), the account page (`/account`), the system console on
+  `console.<base host>` (`system:admin grant`). Migrations up to `Version20261113130000`.
   Left, roughly in the order discussed: email sending and a password reset (put off by the
   user); the console's finishing touches (renaming a tenant, its pending invitations,
   deactivating an account everywhere); a domain of its own per tenant, if needed; a second factor
-  and the operators' log (with Monolog, the user's call).
+  and the system admins' log (with Monolog, the user's call).
 - **Workflows**: proposed in [workflow-plan.md](workflow-plan.md) (2026-11-13), after reading
   Directus Flows and Twenty's workflows with the user: record triggers (before and after the
   write), if/else and data steps, permissions per step (no way to more power), versions, runs,
-  usage per tenant; then manual workflows, the operator's (an app installed with every new
+  usage per tenant; then manual workflows, the system admin's (an app installed with every new
   workspace), the background with Messenger, states. Agreed on 2026-11-13; next: phase 1.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its

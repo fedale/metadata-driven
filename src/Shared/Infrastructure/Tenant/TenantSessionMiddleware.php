@@ -13,9 +13,9 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 /**
  * Sets every new connection's session to its baseline: no tenant, or the fallback tenant of
  * app.tenant.fallback (the tests', which have no request or command to name one). A request
- * or a command then selects its tenant through TenantSwitcher. The landlord's session instead,
+ * or a command then selects its tenant through TenantSwitcher. The system session instead,
  * when the process selected it first (TenantSessionState): a migration opens its connection
- * after its command chose the landlord.
+ * after its command chose the system.
  *
  * A connection opened again (after close(), or a lost one) is back to the baseline: in
  * production none, so what follows sees no tenant's rows instead of the wrong ones.
@@ -45,7 +45,7 @@ final class TenantSessionMiddleware implements Middleware
             public function connect(array $params): Connection
             {
                 $connection = parent::connect($params);
-                $connection->exec($this->state->isLandlord() ? TenantSessionSql::landlord() : $this->baseline);
+                $connection->exec($this->state->isSystem() ? TenantSessionSql::system() : $this->baseline);
 
                 return $connection;
             }

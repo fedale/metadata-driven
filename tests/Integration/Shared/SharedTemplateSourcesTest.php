@@ -18,7 +18,7 @@ use Symfony\Component\Console\Tester\ApplicationTester;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Phase 6 of the multi-tenancy plan: template indexes offered to every tenant by the operator.
+ * Phase 6 of the multi-tenancy plan: template indexes offered to every tenant by the system admin.
  */
 final class SharedTemplateSourcesTest extends KernelTestCase
 {
@@ -44,7 +44,7 @@ final class SharedTemplateSourcesTest extends KernelTestCase
         self::assertSame(['fedale-extra' => true], $this->indexes());
     }
 
-    public function testOnlyTheOperatorRemovesASharedIndex(): void
+    public function testOnlyTheSystemAdminRemovesASharedIndex(): void
     {
         $this->insertShared('fedale-extra');
 
@@ -69,8 +69,8 @@ final class SharedTemplateSourcesTest extends KernelTestCase
 
         $this->assertNameTaken(static fn () => $sources->add('fedale-extra', 'https://templates.example.com/index.json', unsigned: true));
 
-        // As the landlord: a tenant's name is taken too.
-        self::getContainer()->get(TenantSwitcher::class)->landlord();
+        // As the system: a tenant's name is taken too.
+        self::getContainer()->get(TenantSwitcher::class)->system();
         $this->assertNameTaken(static fn () => $sources->add('acme', 'https://templates.example.com/index.json', unsigned: true));
     }
 
@@ -129,11 +129,11 @@ final class SharedTemplateSourcesTest extends KernelTestCase
     }
 
     /**
-     * As tenant:template:repo add does: in the landlord's session, where the row gets no tenant.
+     * As tenant:template:repo add does: in the system session, where the row gets no tenant.
      */
     private function insertShared(string $name): void
     {
-        $this->connection->executeStatement(TenantSessionSql::landlord());
+        $this->connection->executeStatement(TenantSessionSql::system());
         $this->insert($name);
         self::useTenant(self::getContainer(), $this->tenant('default'));
     }

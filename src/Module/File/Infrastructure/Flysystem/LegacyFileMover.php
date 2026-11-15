@@ -19,7 +19,7 @@ use Symfony\Component\DependencyInjection\Attribute\Target;
  * Each row gets a copy of its bytes under its tenant (two tenants holding the same bytes get
  * one each), then its new key. Then the root contents no row uses any more are deleted, and the
  * thumbnails of the root, which are made again under the tenants on demand. Run in the
- * landlord's session: every tenant's rows.
+ * system session: every tenant's rows.
  */
 final class LegacyFileMover implements LegacyFileMoverInterface
 {

@@ -7,8 +7,8 @@ namespace App\Shared\Infrastructure\Tenant;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
- * Whether this process works as the landlord, remembered for the connection: a landlord's
- * command (the migrations) may select the landlord before the connection is opened, and a
+ * Whether this process works as the system, remembered for the connection: a system
+ * command (the migrations) may select the system before the connection is opened, and a
  * connection opened again must not come back at its baseline (no rows) in the middle of it.
  *
  * Kept apart from TenantSwitcher, which needs the connection: the connection's middleware needs
@@ -16,20 +16,20 @@ use Symfony\Contracts\Service\ResetInterface;
  */
 final class TenantSessionState implements ResetInterface
 {
-    private bool $landlord = false;
+    private bool $system = false;
 
-    public function isLandlord(): bool
+    public function isSystem(): bool
     {
-        return $this->landlord;
+        return $this->system;
     }
 
-    public function setLandlord(bool $landlord): void
+    public function setSystem(bool $system): void
     {
-        $this->landlord = $landlord;
+        $this->system = $system;
     }
 
     public function reset(): void
     {
-        $this->landlord = false;
+        $this->system = false;
     }
 }

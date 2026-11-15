@@ -18,7 +18,7 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * the default tenant (app.tenant.default) when the option is left out.
  *
  * Only the application's commands and fedale/* bundles' (RBAC, settings) get the default. The
- * others work for no tenant, the landlord: the migrations and the other Doctrine and DBAL
+ * others work for no tenant, as the system: the migrations and the other Doctrine and DBAL
  * commands work across tenants, and a default tenant would hide the others' rows from them
  * where row-level security applies; the framework's (cache:clear) must run before the
  * migrations have made core.tenant what this code expects. So do the tenant:* commands.
@@ -66,7 +66,7 @@ final class ConsoleTenantListener
             $slug = $this->worksForATenant($command) ? $this->default : '';
         }
         if ('' === $slug) {
-            $this->switcher->landlord();
+            $this->switcher->system();
 
             return;
         }

@@ -10,7 +10,7 @@ from `fedale/gridview-bundle`, the runtime settings from `fedale/setting-bundle`
 | `core` | The tenant registry (`core.tenant`) and who may sign in to each tenant (`core.tenant_membership`); object, field, view and form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the templates installed (`core.template_installation`) and the ids of items in templates (`core.template_item`), the settings of `fedale/setting-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
 | a tenant's data schema (`data` for the first tenant) | One table per object, `c_<object>`, holding the records, and one link table per many-to-many field, `l_<object>__<field>` | The Schema module, from the tenant's metadata |
 | a tenant's RBAC schema (`rbac` for the first tenant) | The tables of `fedale/rbac-bundle` (`auth_*`): the tenant's roles, permissions and assignments | Created with the tenant |
-| `no_tenant_rbac` | The same tables, empty: the RBAC tables of a session with no tenant (the landlord's, the console's), where the bundle finds tables and no permission | Migrations |
+| `no_tenant_rbac` | The same tables, empty: the RBAC tables of a session with no tenant (the system's, the console's), where the bundle finds tables and no permission | Migrations |
 
 Every session's `search_path` starts with `core`, so the tables whose mapping names no schema
 (Doctrine's migration table, the settings) are found there; then comes the current tenant's
@@ -44,14 +44,14 @@ guide says how to use and deploy them. Under the hood (see also
   above the firewall): `acme.example.com`, or `acme.localhost` in development, which browsers
   resolve to 127.0.0.1 without any DNS. The base host itself, and any other host, is the
   default tenant's. An unknown or suspended tenant is a 404.
-- **The console of the installation** answers on `console.<base host>` (`app.tenant.console_label`),
-  in the landlord's session, for the operators only; its paths (`/console…`) answer nowhere
-  else. See [Tenants](multi-tenancy.md#the-console).
+- **The system console** answers on `console.<base host>` (`app.tenant.console_label`),
+  in the system session, for the system admins only; its paths (`/console…`) answer nowhere
+  else. See [Tenants](multi-tenancy.md#the-system-console).
 - **A command** of the application or of a `fedale/*` bundle is for the tenant of its global
   `--tenant=<slug>` option, the default tenant without it (`ConsoleTenantListener`). The other
   commands (Doctrine's, the migrations, `cache:clear`) and the `tenant:*` commands run in the
-  landlord's session, unless `--tenant` names a tenant.
-- **Without a tenant** (the landlord's session), the ORM reads no tenant's rows, and an insert
+  system session, unless `--tenant` names a tenant.
+- **Without a tenant** (the system session), the ORM reads no tenant's rows, and an insert
   fails on `NOT NULL`. A trigger fills in `tenant_id` on insert from the session (no model maps
   the column), the ORM's `tenant` filter adds it to every read, and the DBAL queries on these
   tables add it themselves.
@@ -60,8 +60,8 @@ guide says how to use and deploy them. Under the hood (see also
   `DoctrineTranslationRepository` does.
 - **Row-level security** is the safety net under those filters: a policy on each of these tables
   lets a session with a tenant see and write that tenant's rows only,
-  a session without a tenant none, and the landlord's session every tenant's. The landlord's is
-  an explicit mark, `app.landlord = 'on'`, set by `TenantSwitcher::landlord()` for the
+  a session without a tenant none, and the system session every tenant's. The system's is
+  an explicit mark, `app.system = 'on'`, set by `TenantSwitcher::system()` for the
   migrations and the tenant commands, and remembered for a connection opened later
   (`TenantSessionState`): a session that lost its tenant sees nothing, not everything. The policies apply
   to the owner of the tables too (`FORCE`), but **not to a superuser or a role with
@@ -69,12 +69,12 @@ guide says how to use and deploy them. Under the hood (see also
   of development connects as a superuser, so there the filters work alone; the tests check the
   policies under a role of their own.
 - **Rows offered to every tenant**: `template_source` (`TenantScope::SHARED`) may have no
-  tenant, an index the operator offers to all (`tenant:template:repo`, as the landlord). The
+  tenant, an index the system admin offers to all (`tenant:template:repo`, as the system). The
   `tenant` filter and the policies let every tenant read such a row, and none write it.
 - `CurrentTenant` gives the tenant's id and data schema to the code that names record tables
   (the Schema and Record modules).
 - **Users are global**, with their profile; a membership (`core.tenant_membership`, the
-  landlord's, without row-level security) lets them sign in to a tenant. `UserProvider` finds
+  system's, without row-level security) lets them sign in to a tenant. `UserProvider` finds
   only the members of the request's tenant, at sign-in and on every request; the
   `SecurityUser` it loads holds that tenant, so the session and the remember-me cookie are bound
   to it (see [Users and tenants](access.md#users-and-tenants)).

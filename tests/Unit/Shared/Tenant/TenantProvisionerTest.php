@@ -58,7 +58,7 @@ final class TenantProvisionerTest extends TestCase
     }
 
     /**
-     * In the landlord's session (no tenant), running what transactional() is given.
+     * In the system session (no tenant), running what transactional() is given.
      *
      * @return Connection&Stub
      */

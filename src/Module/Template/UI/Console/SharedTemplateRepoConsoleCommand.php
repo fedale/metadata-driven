@@ -10,8 +10,8 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * The indexes offered to every tenant: the operator's. A tenant command, so it runs as the
- * landlord, where an index gets no tenant; every tenant then sees it next to its own, and may
+ * The indexes offered to every tenant: the system admin's. A tenant command, so it runs as the
+ * system, where an index gets no tenant; every tenant then sees it next to its own, and may
  * not remove it.
  */
 #[AsCommand(name: 'tenant:template:repo', description: 'List, add or remove the template indexes offered to every tenant')]

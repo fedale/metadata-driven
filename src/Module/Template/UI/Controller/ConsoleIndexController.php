@@ -20,8 +20,8 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * The template indexes offered to every tenant, on the console of the installation: the page of
- * tenant:template:repo. The console runs in the landlord's session, where an index added gets no
+ * The template indexes offered to every tenant, on the system console: the page of
+ * tenant:template:repo. The console runs in the system session, where an index added gets no
  * tenant: every tenant lists it, none removes it.
  */
 #[Route('/console/indexes', name: 'console_')]
@@ -44,7 +44,7 @@ final class ConsoleIndexController extends AbstractController
             $key = self::text($add, 'key');
             try {
                 $this->sources->add($name, self::text($add, 'url'), '' === $key ? null : $key, true === $add->get('unsigned')->getData());
-                $this->logger->notice('Operator {operator} added the shared index {name}', ['operator' => $this->getUser()?->getUserIdentifier(), 'name' => $name]);
+                $this->logger->notice('System admin {admin} added the shared index {name}', ['admin' => $this->getUser()?->getUserIdentifier(), 'name' => $name]);
                 $this->addFlash('success', $this->translator->trans('admin.template_admin.index_added', ['%name%' => $name]));
 
                 return $this->redirectToRoute('console_indexes', [], Response::HTTP_SEE_OTHER);
@@ -77,7 +77,7 @@ final class ConsoleIndexController extends AbstractController
         if ($this->isValidSubmission($this->removeForm($name), $request)) {
             try {
                 $this->sources->remove($name);
-                $this->logger->notice('Operator {operator} removed the shared index {name}', ['operator' => $this->getUser()?->getUserIdentifier(), 'name' => $name]);
+                $this->logger->notice('System admin {admin} removed the shared index {name}', ['admin' => $this->getUser()?->getUserIdentifier(), 'name' => $name]);
                 $this->addFlash('success', $this->translator->trans('admin.template_admin.index_removed', ['%name%' => $name]));
             } catch (TemplateSourceFailed $e) {
                 $this->addFlash('error', $e->getMessage());

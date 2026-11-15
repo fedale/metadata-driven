@@ -13,7 +13,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
  * Once, after upgrading to tenants with directories of their own in the file storage. A tenant
- * command: it runs as the landlord, for every tenant. Running it again does nothing.
+ * command: it runs as the system, for every tenant. Running it again does nothing.
  */
 #[AsCommand(name: 'tenant:files:move', description: 'Move the files stored before tenants had directories of their own into their tenant\'s directory')]
 final class MoveFilesToTenantsConsoleCommand

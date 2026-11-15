@@ -141,16 +141,16 @@ final class UserManager implements UserManagerInterface
         $this->users->save($user);
     }
 
-    public function setOperator(string $email, bool $operator): void
+    public function setSystemAdmin(string $email, bool $systemAdmin): void
     {
         $user = $this->user($email);
-        $operator ? $user->grantOperator() : $user->revokeOperator();
+        $systemAdmin ? $user->grantSystemAdmin() : $user->revokeSystemAdmin();
         $this->users->save($user);
     }
 
-    public function operators(): array
+    public function systemAdmins(): array
     {
-        return array_map(static fn (User $user): string => $user->getEmail(), $this->users->operators());
+        return array_map(static fn (User $user): string => $user->getEmail(), $this->users->systemAdmins());
     }
 
     public function invite(string $email, string $tenantId, string $invitedBy, bool $keepAssignments, bool $replaceOthers = false): string

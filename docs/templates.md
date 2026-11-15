@@ -530,7 +530,7 @@ symfony console metadata:template:upgrade acme/shop            # from the index 
 - **The template catalog** is an index too, looked into before the others, as `catalog` (see
   [below](#the-template-catalog)).
 - **Per tenant, or for every tenant.** `metadata:template:repo` manages the indexes of the
-  command's [tenant](architecture.md#tenants) (`--tenant=<slug>`). The operator offers an index
+  command's [tenant](architecture.md#tenants) (`--tenant=<slug>`). The system admin offers an index
   to every tenant with `tenant:template:repo add …` (same arguments): each tenant then lists it
   next to its own, marked "every tenant", and may not remove it. No two indexes a tenant sees
   share a name.

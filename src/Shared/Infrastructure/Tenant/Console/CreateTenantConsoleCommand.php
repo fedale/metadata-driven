@@ -22,7 +22,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *
  * The steps after the first are the commands that do them for any tenant, run with --tenant:
  * access:sync, user:create or tenant:member:add, rbac:assign, metadata:template:install. The
- * shared layer may not use the modules, and the commands are what an operator would type.
+ * shared layer may not use the modules, and the commands are what a system admin would type.
  * A step that fails stops the command; the tenant stays, and the steps left can be run by hand.
  */
 #[AsCommand(name: 'tenant:create', description: 'Create a tenant: its schemas, its permissions, its first admin, a template if asked')]
@@ -96,7 +96,7 @@ final class CreateTenantConsoleCommand extends Command
     private function runStep(array $step, string $slug, InputInterface $input, OutputInterface $output): int
     {
         $application = $this->getApplication() ?? throw new \LogicException('tenant:create runs in an application.');
-        // tenant:member:add names its tenant in an argument, and runs as the landlord.
+        // tenant:member:add names its tenant in an argument, and runs as the system.
         if ('tenant:member:add' !== $step['command']) {
             $step['--tenant'] = $slug;
         }

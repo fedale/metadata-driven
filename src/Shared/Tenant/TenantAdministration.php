@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Shared\Tenant;
 
 /**
- * Creates and manages tenants, as the landlord: the console of the installation and the tenant:*
+ * Creates and manages tenants, as the system: the system console and the tenant:*
  * commands.
  */
 interface TenantAdministration

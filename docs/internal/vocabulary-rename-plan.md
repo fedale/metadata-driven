@@ -1,7 +1,7 @@
 # Plan: renaming the vocabulary
 
-Status: **agreed** (2026-11-15). Phase 1 done on branch `composite_form_rename` (2026-11-15),
-waiting for the user's review.
+Status: **agreed** (2026-11-15). Phase 1 merged into `main` (2026-11-15); phase 2 done on branch
+`system_rename` (2026-11-15), waiting for the user's review.
 The names are recorded in [../glossary.md](../glossary.md); this plan brings the code, the
 database, the commands, the admin UI, the guides and the package format in line with it.
 
@@ -63,9 +63,15 @@ About 36 files in `src`, 10 in `tests`.
   `record/_composite.html.twig` → `form/page.html.twig`, `form/_node.html.twig`, the HTML form
   name `composite[...]` → `form[...]`, the CSS classes `md-composite__*` → `md-form-section*`.
 
-### Phase 2: landlord, operator → system, system admin
+### Phase 2: landlord, operator → system, system admin (done)
 
 About 46 files. **After `rbac_tenancy` is merged**: that branch touches the same code.
+
+Done: also the session setting `app.landlord` → `app.system`, rewritten by the migration in every
+row-level security policy that reads it (`Version20261115100000`, from `pg_policies`);
+`ROLE_OPERATOR` → `ROLE_SYSTEM_ADMIN`; the request attribute `_operator_console` →
+`_system_console`; `TenantSwitcher::landlord()` → `system()`; "the console of the installation"
+→ "the system console" in the code and the guides.
 
 - `Shared/Tenant`, `Shared/Infrastructure/Tenant`: "landlord" → "system" in classes, methods,
   comments (`OperatorConsole` → `SystemConsole`).
