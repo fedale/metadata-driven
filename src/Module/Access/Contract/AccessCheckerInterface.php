@@ -37,4 +37,18 @@ interface AccessCheckerInterface
      * permission and passes every check, only a super admin gives.
      */
     public function canGrant(string $item): bool;
+
+    /**
+     * Whether a role gives a permission or a role: it is the role, or one of the items the role
+     * contains, through the roles it contains. The super admin role gives everything. Whoever
+     * holds the role: a workflow's step acting as a role is checked so.
+     */
+    public function roleGives(string $role, string $item): bool;
+
+    /**
+     * canGrant() for another member of the workspace, as they are now: from the items assigned
+     * to them. Nothing, once they are no member any more (their assignments go with them). A
+     * workflow's step acting as a role is checked so against whoever activated the workflow.
+     */
+    public function userCanGrant(string $email, string $item): bool;
 }
