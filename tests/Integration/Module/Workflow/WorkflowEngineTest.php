@@ -326,6 +326,50 @@ final class WorkflowEngineTest extends KernelTestCase
         self::assertSame([], $this->runs());
     }
 
+    public function testADryRunRunsTheStepsAndKeepsNothing(): void
+    {
+        $this->signIn('clerk@example.com');
+        $ada = $this->records->create(new RecordInput('person', ['full_name' => 'Ada', 'city' => 'Pisa']));
+        // Another workflow, which a write of the test would start were its events raised.
+        $this->workflow('Name pets', "trigger: { on: created, object: pet, when: before }\nsteps: [{ key: n, type: set_values, values: { name: Renamed } }]");
+        $definition = (new \App\Module\Workflow\Application\Definition\DefinitionParser())->parse(<<<'YAML'
+            trigger: { on: updated, object: person, when: after }
+            steps:
+              - { key: pet, type: create_record, object: pet, values: { name: 'Pet of {{ $trigger.record.full_name }}' }, emit_events: true }
+              - { key: again, type: update_record, object: person, id: '{{ $trigger.record.id }}', values: { city: '{{ $trigger.record.city }}!' } }
+            YAML);
+
+        $run = self::getContainer()->get(\App\Module\Workflow\Application\Engine\WorkflowEngine::class)->dryRun($definition, 'Test', $ada->id);
+
+        self::assertSame('completed', $run->status);
+        [$pet, $again] = [$run->steps[0]['output'], $run->steps[1]['output']];
+        self::assertIsArray($pet);
+        self::assertIsArray($again);
+        self::assertSame('Pet of Ada', $pet['name'] ?? null);
+        self::assertSame('Pisa!', $again['city'] ?? null);
+        self::assertSame([], $this->names('pet'));
+        self::assertSame('Pisa', $this->find('person', $ada->id)?->get('city'));
+        self::assertSame([], $this->runs());
+    }
+
+    public function testADryRunOfABeforeWorkflowShowsItsRefusal(): void
+    {
+        $this->signIn('clerk@example.com');
+        $ada = $this->records->create(new RecordInput('person', ['full_name' => 'Ada']));
+        $definition = (new \App\Module\Workflow\Application\Definition\DefinitionParser())->parse(<<<'YAML'
+            trigger: { on: created_or_updated, object: person, when: before }
+            steps:
+              - { key: city, type: set_values, values: { city: Torino } }
+              - { key: no, type: refuse, message: 'No {{ $trigger.record.full_name }}.' }
+            YAML);
+
+        $run = self::getContainer()->get(\App\Module\Workflow\Application\Engine\WorkflowEngine::class)->dryRun($definition, 'Test', $ada->id);
+
+        self::assertSame(['refused', 'No Ada.'], [$run->status, $run->error]);
+        self::assertSame(['city' => 'Torino'], $run->steps[0]['output']);
+        self::assertSame([], $this->runs());
+    }
+
     private function signIn(string $email): void
     {
         $user = self::getContainer()->get(UserProvider::class)->loadUserByIdentifier($email);

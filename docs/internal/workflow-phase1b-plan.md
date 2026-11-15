@@ -1,6 +1,7 @@
 # Plan: workflows, phase 1b
 
-Status: **agreed** (2026-11-15). Phase 1b of [workflow-plan.md](workflow-plan.md), after
+Status: **agreed** (2026-11-15). Part 1 done on branch `workflow_picker_test` (2026-11-15), waiting
+for the user's review. Phase 1b of [workflow-plan.md](workflow-plan.md), after
 [phase 1](workflow-phase1-plan.md): the editor's helpers, then the visual editor.
 
 ## Decisions (user, 2026-11-15)

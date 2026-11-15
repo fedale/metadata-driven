@@ -426,6 +426,18 @@ admin:
         deleted: 'Workflow "%name%" eliminato.'
         reused: 'La bozza ora ha la definizione della versione %number%.'
         invalid: '{1}Non si può attivare: un problema, qui sotto.|]1,Inf[Non si può attivare: %count% problemi, qui sotto.'
+        variables: Variabili
+        variables_help: 'Un clic inserisce <code>{{ path }}</code> dove si trova il cursore. Un passo legge solo i passi eseguiti prima di lui.'
+        variables_trigger: L'evento
+        variables_context: L'esecuzione
+        variables_steps: I passi
+        test_record: 'Prova su'
+        test_help: 'Un record dell''oggetto dell''evento: la bozza gira davvero su di lui, poi tutto viene annullato.'
+        test: Prova su questo record
+        test_choose: Scegli un record su cui provare la bozza.
+        test_result: Prova
+        test_rolled_back: 'Annullata: non è rimasto niente.'
+        test_no_step: Nessun passo eseguito.
         reference: Oggetti e campi
         reference_help: 'I percorsi leggono i dati dell''esecuzione: <code>$trigger.record.&lt;campo&gt;</code>, <code>$trigger.before.&lt;campo&gt;</code> (modifiche), <code>$user.email</code>, <code>$today</code>, e l''output di ogni passo con la sua chiave, <code>{{ reminder.id }}</code>. Un passo scrive come chi ha scatenato l''evento, o come il ruolo del suo <code>act_as</code>, che devi poter assegnare.'
         versions: Versioni

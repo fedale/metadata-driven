@@ -30,6 +30,14 @@ steps:
 - **The editor**: the name, a description, and the definition of the **draft**. *Save the draft*
   keeps it as written, comments included; *Save and activate* checks it first, and lists every
   problem by its place in the definition (`steps.0.branches.1.steps.0.values.note: …`).
+- **Variables**: next to the editor, the paths the draft can read (the trigger's record and its
+  fields, the run's context, each step's output); a click puts `{{ path }}` where the cursor is.
+- **Test on this record**: choose a record of the trigger's object; the draft is saved, checked as
+  an activation would, then run on it **for real and rolled back**: each step's input, output and
+  error are shown on the page, and nothing is kept (no record written, no run stored). It acts with
+  your permissions; a before-trigger runs as the update of the record with its own values (a create
+  for a trigger on `created`), an after-trigger as the record written. Its writes start no other
+  workflow, whatever `emit_events` says, and the limits don't apply.
 - **Versions**: activating a draft makes it the active version, the previous one archived. Editing
   an active workflow writes a new draft while the active version keeps running. *Deactivate* stops
   it; *Use as draft* on an archived or deactivated version copies its definition into the draft,
@@ -168,4 +176,4 @@ rolled back. The steps run are counted per workspace and day.
 Manual workflows (a button on a record or a selection), search and iterator steps, forms asking
 for input (phase 2); the system admin's workflows on platform events (phase 3); the background,
 HTTP requests, waits (phase 4); states (phase 5); a visual editor with a variable picker and a
-dry run against a record (phase 1b). See [the plan](internal/workflow-plan.md).
+visual editor, steps as a list with their branches (phase 1b, part 2). See [the plan](internal/workflow-plan.md).

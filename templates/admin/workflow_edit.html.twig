@@ -23,13 +23,13 @@
         {% endif %}
     {% endif %}
 
-    <div class="md-admin__columns">
+    <div class="md-admin__columns" data-controller="variable-picker">
         <section class="md-admin__section">
             {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
                 {{ form_errors(form) }}
                 {{ form_row(form.name) }}
                 {{ form_row(form.description) }}
-                {{ form_row(form.definition) }}
+                {{ form_row(form.definition, {attr: {'data-variable-picker-target': 'input'}}) }}
                 {% if problems is not empty %}
                     <ul class="md-problems">
                         {% for problem in problems %}
@@ -40,6 +40,10 @@
                 {% if workflow %}
                     {{ form_widget(form.save) }}
                     {{ form_widget(form.activate) }}
+                    <div class="md-workflow-test">
+                        {{ form_row(form.test_record) }}
+                        {{ form_widget(form.test) }}
+                    </div>
                 {% else %}
                     <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.workflow.create'|trans }}</button>
                 {% endif %}
@@ -58,6 +62,23 @@
         </section>
 
         <section class="md-admin__section">
+            <h2>{{ 'admin.workflow.variables'|trans }}</h2>
+            <p class="gv-muted">{{ 'admin.workflow.variables_help'|trans|raw }}</p>
+            {% for group, list in {('admin.workflow.variables_trigger'): paths.trigger, ('admin.workflow.variables_context'): paths.context} %}
+                <h3>{{ group|trans }}</h3>
+                <p class="md-variables">
+                    {% for path in list %}<button type="button" class="gv-btn gv-btn-sm" data-action="variable-picker#insert" data-variable-picker-path-param="{{ path }}">{{ path }}</button> {% endfor %}
+                </p>
+            {% endfor %}
+            {% if paths.steps is not empty %}
+                <h3>{{ 'admin.workflow.variables_steps'|trans }}</h3>
+                {% for key, list in paths.steps %}
+                    <p class="md-variables">
+                        {% for path in list %}<button type="button" class="gv-btn gv-btn-sm" data-action="variable-picker#insert" data-variable-picker-path-param="{{ path }}">{{ path }}</button> {% endfor %}
+                    </p>
+                {% endfor %}
+            {% endif %}
+
             <h2>{{ 'admin.workflow.reference'|trans }}</h2>
             <p class="gv-muted">{{ 'admin.workflow.reference_help'|trans|raw }}</p>
             <dl class="md-facts">
@@ -68,4 +89,36 @@
             </dl>
         </section>
     </div>
+    {% if test %}
+        <section class="md-admin__section" id="test">
+            <h2>{{ 'admin.workflow.test_result'|trans }}</h2>
+            <p>{{ ('admin.workflow.run_' ~ test.status)|trans }}{% if test.error %}: {{ test.error }}{% endif %} · <span class="gv-muted">{{ 'admin.workflow.test_rolled_back'|trans }}</span></p>
+            <table class="md-table">
+                <thead>
+                    <tr>
+                        <th scope="col">{{ 'admin.workflow.step'|trans }}</th>
+                        <th scope="col">{{ 'admin.workflow.status'|trans }}</th>
+                        <th scope="col">{{ 'admin.workflow.input'|trans }}</th>
+                        <th scope="col">{{ 'admin.workflow.output'|trans }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for step in test.steps %}
+                        <tr>
+                            <td><code>{{ step.key }}</code> <span class="gv-muted">{{ step.type }}</span></td>
+                            <td>{{ step.status }}{% if step.error %}: {{ step.error }}{% endif %}</td>
+                            <td><pre class="md-code">{{ step.input is null ? '' : step.input|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_UNICODE') b-or constant('JSON_UNESCAPED_SLASHES')) }}</pre></td>
+                            <td><pre class="md-code">{{ step.output is null ? '' : step.output|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_UNICODE') b-or constant('JSON_UNESCAPED_SLASHES')) }}</pre></td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="4" class="gv-muted">{{ 'admin.workflow.test_no_step'|trans }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <details>
+                <summary>{{ 'admin.workflow.chain'|trans }}</summary>
+                <pre class="md-code">{{ test.chain|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_UNICODE') b-or constant('JSON_UNESCAPED_SLASHES')) }}</pre>
+            </details>
+        </section>
+    {% endif %}
 {% endblock %}

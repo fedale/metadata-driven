@@ -126,6 +126,29 @@ final class WorkflowAdminControllerTest extends WebTestCase
         self::assertSelectorTextContains('body', 'Version 1 is running');
     }
 
+    public function testOffersTheVariablesAndTestsTheDraftOnARecordKeepingNothing(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('person', ['full_name' => 'Ada']));
+        $this->client->request('GET', '/admin/workflows/new');
+        $this->client->submitForm('Create the draft', ['workflow[name]' => 'Welcome', 'workflow[definition]' => self::WELCOME]);
+        $this->client->followRedirect();
+
+        self::assertSelectorExists('button[data-variable-picker-path-param="$trigger.record.full_name"]');
+        self::assertSelectorExists('button[data-variable-picker-path-param="pet.name"]');
+
+        $crawler = $this->client->getCrawler();
+        $ada = $crawler->filter('select[name="workflow[test_record]"] option')->eq(1)->attr('value');
+        $this->client->submitForm('Test on this record', ['workflow[test_record]' => $ada]);
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('#test', 'Rolled back: nothing was kept.');
+        self::assertSelectorTextContains('#test pre', 'Pet of Ada');
+
+        // Nothing kept: no pet, no run.
+        $this->client->request('GET', '/o/pet');
+        self::assertSelectorTextNotContains('body', 'Pet of Ada');
+    }
+
     public function testTheListSetsTheOrderAndAWorkflowIsDeleted(): void
     {
         self::signInAsSuperAdmin($this->client);

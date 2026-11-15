@@ -370,6 +370,9 @@ a:hover { color: var(--gv-color-link-hover); }
 /* A form of one or two buttons, on the line of what it acts on. */
 .md-inline-form { display: inline-flex; gap: .25rem; margin: 0; }
 /* The problems of a definition, each by its path in it. */
+.md-variables { display: flex; flex-wrap: wrap; gap: .25rem; margin: 0 0 .5rem; }
+.md-variables .gv-btn { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .75rem; }
+.md-workflow-test { display: flex; align-items: flex-end; gap: .5rem; flex-wrap: wrap; margin-top: 1rem; }
 .md-problems { color: var(--gv-color-danger, #b42318); font-size: .875rem; padding-left: 1.25rem; }
 
 /* ── Admin ─────────────────────────────────────────────────────────── */

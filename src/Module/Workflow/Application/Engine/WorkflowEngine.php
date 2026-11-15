@@ -18,9 +18,11 @@ use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordEventScopeInterface;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
+use App\Module\Workflow\Application\Definition\Definition;
 use App\Module\Workflow\Application\Definition\Step;
 use App\Module\Workflow\Application\Definition\StepType;
 use App\Module\Workflow\Application\Definition\Timing;
+use App\Module\Workflow\Application\Definition\TriggerEvent;
 use App\Shared\Transaction\TransactionRunner;
 use App\Shared\Workspace\CurrentWorkspace;
 use App\Shared\Workspace\Workspaces;
@@ -46,6 +48,9 @@ final class WorkflowEngine implements ResetInterface
 {
     /** Runs started in this process and not stored yet: they count for the limit too. */
     private int $pending = 0;
+
+    /** A test is running: its writes raise no event, whatever its steps say. */
+    private bool $dryRun = false;
 
     public function __construct(
         private readonly ActiveWorkflows $workflows,
@@ -139,9 +144,57 @@ final class WorkflowEngine implements ResetInterface
         }
     }
 
+    /**
+     * Runs a definition against a record for real, then rolls everything back: what each step
+     * would read, write and output, with nothing kept (no record, no run stored), as whoever runs
+     * the test. A before-trigger runs as the update of the record with its own values (a create
+     * for a trigger on created), an after-trigger as the record written. No event is raised by its
+     * writes, and the limits don't apply.
+     *
+     * @throws \InvalidArgumentException no such record
+     */
+    public function dryRun(Definition $definition, string $name, string $recordId): RunLog
+    {
+        $trigger = $definition->trigger;
+        $record = $this->finder->find($trigger->object, $recordId) ?? throw new \InvalidArgumentException(\sprintf('There is no record %s of "%s".', $recordId, $trigger->object));
+        $action = match ($trigger->on) {
+            TriggerEvent::Created => RecordWriteAction::Create,
+            TriggerEvent::Deleted => RecordWriteAction::Delete,
+            default => RecordWriteAction::Update,
+        };
+        $workflow = new ActiveWorkflow('', $name, '', $this->security->getUser()?->getUserIdentifier(), $definition);
+        $run = new RunLog($workflow, $trigger->object, $recordId, $action->value, $trigger->when->value, $workflow->activatedBy, 1, new \DateTimeImmutable());
+        $values = RecordWriteAction::Delete === $action ? [] : $this->readable($trigger->object, $record->values);
+        $chain = $this->chain($trigger->object, $action, ['id' => $recordId, ...$this->readable($trigger->object, $record->values)], RecordWriteAction::Update === $action ? $record : null, array_keys($values));
+
+        $this->dryRun = true;
+        try {
+            $this->transactions->run(function () use ($definition, $trigger, $action, $recordId, $values, $record, $chain, $run): never {
+                $writing = Timing::Before === $trigger->when
+                    ? new RecordWriting($trigger->object, $action, RecordWriteAction::Create === $action ? null : $recordId, $values, RecordWriteAction::Create === $action ? null : $record, null)
+                    : null;
+                try {
+                    $this->steps($definition->steps, $chain, $run, $writing);
+                    $run->end($run->status, $run->error);
+                } catch (StepFailed $e) {
+                    $run->end(Timing::Before === $trigger->when ? RunLog::REFUSED : RunLog::FAILED, $e->getMessage());
+                }
+
+                throw new DryRunRolledBack();
+            });
+        } catch (DryRunRolledBack) {
+        } finally {
+            $this->dryRun = false;
+            $run->chain = $chain->toArray();
+        }
+
+        return $run;
+    }
+
     public function reset(): void
     {
         $this->pending = 0;
+        $this->dryRun = false;
     }
 
     /**
@@ -370,7 +423,7 @@ final class WorkflowEngine implements ResetInterface
         $input = ['object' => $object, 'id' => $id, 'values' => $values];
 
         try {
-            $output = $this->recordEvents->asRun($run->id, $run->depth, $step->emitsEvents(), function () use ($step, $object, $values, $id, $action): array {
+            $output = $this->recordEvents->asRun($run->id, $run->depth, $step->emitsEvents() && !$this->dryRun, function () use ($step, $object, $values, $id, $action): array {
                 if (RecordAction::Delete === $action) {
                     $this->records->delete($object, (string) $id);
 

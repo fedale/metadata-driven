@@ -1,0 +1,80 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Module\Workflow\Application;
+
+use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Workflow\Application\Definition\Definition;
+use App\Module\Workflow\Application\Definition\StepType;
+use App\Module\Workflow\Application\Definition\TriggerEvent;
+
+/**
+ * The paths a definition's steps can read, as the variable picker offers them: the trigger's
+ * record and its fields, the context of the run, each step's output. Which step may read which
+ * output is DefinitionValidator's to say.
+ */
+final class PathCatalog
+{
+    public function __construct(
+        private readonly MetadataRegistryInterface $metadata,
+    ) {
+    }
+
+    /**
+     * @return array{trigger: list<string>, context: list<string>, steps: array<string, list<string>>} the steps' paths by key
+     */
+    public function paths(?Definition $definition): array
+    {
+        $context = ['$user.email', '$user.roles', '$workspace.slug', '$workspace.name', '$now', '$today', '$last'];
+        if (null === $definition) {
+            return ['trigger' => ['$trigger.object', '$trigger.action', '$trigger.record.id', '$trigger.changed'], 'context' => $context, 'steps' => []];
+        }
+
+        $object = $definition->trigger->object;
+        $trigger = ['$trigger.object', '$trigger.action', '$trigger.record.id', ...array_map(static fn (string $field): string => '$trigger.record.'.$field, $this->fields($object))];
+        if (\in_array($definition->trigger->on, [TriggerEvent::Updated, TriggerEvent::CreatedOrUpdated], true)) {
+            $trigger = [...$trigger, '$trigger.before.id', ...array_map(static fn (string $field): string => '$trigger.before.'.$field, $this->fields($object))];
+        }
+        $trigger[] = '$trigger.changed';
+
+        $steps = [];
+        foreach ($definition->allSteps() as $step) {
+            $key = $step->key;
+            $steps[$key] = match ($step->type) {
+                StepType::If => [$key.'.branch'],
+                StepType::Filter => [$key.'.passed'],
+                StepType::Refuse => [],
+                StepType::SetValues => array_map(static fn (string $field): string => $key.'.'.$field, array_keys($step->values())),
+                StepType::DeleteRecord => [$key.'.id'],
+                default => [
+                    $key.'.id',
+                    ...array_map(static fn (string $field): string => $key.'.'.$field, $this->fields((string) $step->string('object'))),
+                    ...(StepType::UpsertRecord === $step->type ? [$key.'.created'] : []),
+                ],
+            };
+        }
+
+        return ['trigger' => $trigger, 'context' => $context, 'steps' => array_filter($steps, static fn (array $paths): bool => [] !== $paths)];
+    }
+
+    /**
+     * The fields of an object the chain holds: every one but the passwords.
+     *
+     * @return list<string>
+     */
+    private function fields(string $object): array
+    {
+        if (!$this->metadata->hasObject($object)) {
+            return [];
+        }
+        $fields = [];
+        foreach ($this->metadata->getObject($object)->fields as $name => $field) {
+            if ('password' !== $field->type) {
+                $fields[] = (string) $name;
+            }
+        }
+
+        return $fields;
+    }
+}
