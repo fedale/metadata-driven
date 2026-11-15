@@ -1,7 +1,6 @@
 # Plan: renaming the vocabulary
 
-Status: **agreed** (2026-11-15). Phases 1 to 3 merged into `main` (2026-11-15); phase 4 done on
-branches (the library's `package_format`, the app's `package_format_v2`), waiting for the release.
+Status: **agreed** (2026-11-15). Phases 1 to 4 merged into `main` (2026-11-15); phase 5 is next.
 The names are recorded in [../glossary.md](../glossary.md); this plan brings the code, the
 database, the commands, the admin UI, the guides and the package format in line with it.
 
@@ -113,7 +112,7 @@ schemas already made (`t_<id>_data`, `t_<id>_rbac`). The env vars `TENANT_BASE_H
 `TENANT_DEFAULT` are now `WORKSPACE_BASE_HOST` and `WORKSPACE_DEFAULT`. `workspace:template:repo`
 becomes `system:package:source` in phase 5.
 
-### Phase 4: package format v2 (done, not released)
+### Phase 4: package format v2 (done)
 
 In the repository `metadata-driven-template-format`, renamed `metadata-driven-package-format` in
 phase 6.

@@ -288,9 +288,9 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   Phase 4 (package format v2, the index's key `packages`, the library renamed
   `fedale/metadata-driven-package-format` 2.0.0, then 2.1.0 for the index,
   namespace `Fedale\PackageFormat`; the installations' snapshots converted by
-  `Version20261115120000`): the library on its branch `package_format`, the app on
-  `package_format_v2` (2026-11-15), the app linked to the local library until 2.0.0 is released
-  and on Packagist.
+  `Version20261115120000`): merged into `main` on 2026-11-15, the app on the released
+  2.1.0 from Packagist; the GitHub repository renamed `metadata-driven-package-format`, the old
+  package abandoned in its favour. Next: phase 5 (template → package in the app).
 - **CSV import**, (C) only: imports of very large files in the background, with Messenger. (A)
   and (B) are done (see "Done").
 - Admin UI in Italian: still English are the error messages of the metadata and the templates
