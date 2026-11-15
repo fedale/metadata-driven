@@ -493,13 +493,16 @@ symfony console metadata:template:pack templates/shop acme-shop-1.0.0.tar.gz --i
 ```json
 {
   "format": "metadata-driven/index/v1",
-  "templates": {
+  "packages": {
     "acme/shop": {
       "1.0.0": { "url": "acme-shop-1.0.0.tar.gz", "sha256": "…", "requires": { "format": "metadata-driven/v2" } }
     }
   }
 }
 ```
+
+Until 2026-11-15 the index listed the same under `templates`; such an index is not read any
+more: `pack` it again, or rename the key.
 
 ```bash
 # Who installs: add the index once, with the author's public key, then name templates

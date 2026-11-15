@@ -130,8 +130,10 @@ phase 6.
 Done, with the user's decisions of 2026-11-15: **one break**, the library renamed in this phase
 rather than in phase 6, `fedale/metadata-driven-package-format` 2.0.0 (namespace
 `Fedale\PackageFormat`, `TemplateIndex` → `RepositoryIndex`, `DocumentKind::Template` →
-`Package`; 2.0 because the repository's tags already run to 1.2.0); the index keeps its format
-(`metadata-driven/index/v1`, its `templates` key), each version naming its package format. The
+`Package`; 2.0 because the repository's tags already run to 1.2.0). Then, asked by the user the
+same day, 2.1.0: the index keeps its format (`metadata-driven/index/v1`) and lists the packages
+under `packages` instead of `templates`, with no compatibility (the library has no other user);
+each version names its package format. The catalog's index follows in phase 6. The
 app's installations' snapshots are converted once by `Version20261115120000`. Not renamed yet:
 the key `template` of a grid view's virtual columns (a column's text pattern), another meaning
 of the word, not in this plan.

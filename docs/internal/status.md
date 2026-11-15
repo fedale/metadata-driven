@@ -285,7 +285,8 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   and `--workspace`, `/console/workspaces/...`, the env vars `WORKSPACE_BASE_HOST` and
   `WORKSPACE_DEFAULT`, the guide workspaces.md; migration `Version20261115110000`): merged into
   `main` on 2026-11-15. The entries of this file written before 2026-11-15 still say "tenant".
-  Phase 4 (package format v2, the library renamed `fedale/metadata-driven-package-format` 2.0.0,
+  Phase 4 (package format v2, the index's key `packages`, the library renamed
+  `fedale/metadata-driven-package-format` 2.0.0, then 2.1.0 for the index,
   namespace `Fedale\PackageFormat`; the installations' snapshots converted by
   `Version20261115120000`): the library on its branch `package_format`, the app on
   `package_format_v2` (2026-11-15), the app linked to the local library until 2.0.0 is released

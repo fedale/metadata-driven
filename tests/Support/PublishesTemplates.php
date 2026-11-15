@@ -54,7 +54,7 @@ trait PublishesTemplates
             }
             $templates['acme/shop'][$version] = $entry;
         }
-        $index = (string) json_encode(['format' => RepositoryIndex::FORMAT, 'templates' => $templates]);
+        $index = (string) json_encode(['format' => RepositoryIndex::FORMAT, 'packages' => $templates]);
         file_put_contents($this->directory.'/index.json', $index);
         FakeTemplateServer::serve(self::INDEX, $index);
     }

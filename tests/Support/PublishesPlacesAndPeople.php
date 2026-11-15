@@ -66,6 +66,6 @@ trait PublishesPlacesAndPeople
 
     private function serveFixtures(): void
     {
-        FakeTemplateServer::serve(self::INDEX, (string) json_encode(['format' => RepositoryIndex::FORMAT, 'templates' => $this->entries]));
+        FakeTemplateServer::serve(self::INDEX, (string) json_encode(['format' => RepositoryIndex::FORMAT, 'packages' => $this->entries]));
     }
 }
