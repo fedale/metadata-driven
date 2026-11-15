@@ -22,7 +22,7 @@ code, the commands, the admin UI and the documentation.
 
 | Term | Meaning |
 |---|---|
-| **Record** | One instance of an object: a row of its table. Records are read and written with DBAL, never as Doctrine entities. "Row" means only the physical row of a table or the line of a grid, never the concept |
+| **Record** | One instance of an object: a row of its table. Records are read and written with DBAL, never as Doctrine entities. "Row" is never the concept: it is a physical row of a table, a line of a CSV file, or a line on a page (of a grid, of a repeatable section, of the links of a many-to-many field, the row of a field in a layout) |
 | **Record label** | The field (or fields) naming a record in relations, lists and searches |
 | **File** | A document or an image uploaded into a `file` field of a record; its metadata are kept in `core.file` |
 | **Seed** | The records a package brings with it, written as CSV and installed with it |
@@ -34,7 +34,7 @@ code, the commands, the admin UI and the documentation.
 | **Form view** | The layout of the form of a record of an object: HTML with a `{field}` token where each field goes (see [Views](views.md)) |
 | **Grid view** | How the grid of the records of an object looks: its columns, their order, renderers, virtual columns, the initial sort and the page size, in YAML |
 | **Grid** | The list of the records of an object, with filters, search, sort and export (`fedale/gridview-bundle`) |
-| **Virtual column** | A grid column joining several fields, with no column of its own in the table |
+| **Virtual column** | A grid column joining several fields, with no column of its own in the table. Its text, with a `{field}` token per field, is its `template` (`template: '{first_name} {last_name}'`): the one place where "template" stays, by choice |
 | **Renderer** | How a grid cell is drawn (a link, a badge, a thumbnail...) |
 | **Token** | A placeholder in a layout: `{field}` for a field, `{section}` for a section of a form, `{t:name}` for a translated text |
 | **Form** | One page writing a record **and the records related to it** in one transaction, defined in YAML (see [Forms](forms.md)). Opened at `/f/<form>` |
@@ -80,12 +80,3 @@ code, the commands, the admin UI and the documentation.
 | **Restore** | An archived object or field comes back as it was |
 | **Purge** | An archived object or field is deleted for good, with its data |
 | **Schema change log** | The history of the changes made to the tables of a workspace |
-
-## Not yet
-
-These names were chosen on 2026-11-14 and the rest of the application does not use them yet. The
-code, the commands, the admin UI and the other guides still say:
-
-| Here | Still in use |
-|---|---|
-| record | record and row |
