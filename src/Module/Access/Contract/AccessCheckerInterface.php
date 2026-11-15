@@ -24,6 +24,12 @@ interface AccessCheckerInterface
     public function canManageRoles(): bool;
 
     /**
+     * The workflows page: the workflows of the workspace, their versions and their runs (which
+     * hold the data of the records they ran on).
+     */
+    public function canManageWorkflows(): bool;
+
+    /**
      * Whether the current user holds an RBAC item, a role or a permission, directly or through
      * the role hierarchy (the super admin holds them all). What one may give or take on the
      * members page: no more than one has.

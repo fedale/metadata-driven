@@ -1,0 +1,46 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Module\Workflow\Application\Definition;
+
+enum StepType: string
+{
+    case If = 'if';
+    case Filter = 'filter';
+    case CreateRecord = 'create_record';
+    case UpdateRecord = 'update_record';
+    case DeleteRecord = 'delete_record';
+    case UpsertRecord = 'upsert_record';
+    case SetValues = 'set_values';
+    case Refuse = 'refuse';
+
+    /**
+     * Whether the step writes records: it needs a permission, and may act as a role.
+     */
+    public function writes(): bool
+    {
+        return \in_array($this, [self::CreateRecord, self::UpdateRecord, self::DeleteRecord, self::UpsertRecord], true);
+    }
+
+    /**
+     * The options of the step, after "key" and "type".
+     *
+     * @return array<string, bool> option => required
+     */
+    public function options(): array
+    {
+        $writing = ['act_as' => false, 'emit_events' => false];
+
+        return match ($this) {
+            self::If => ['branches' => true],
+            self::Filter => ['when' => true],
+            self::CreateRecord => ['object' => true, 'values' => true, ...$writing],
+            self::UpdateRecord => ['object' => true, 'id' => true, 'values' => true, ...$writing],
+            self::DeleteRecord => ['object' => true, 'id' => true, ...$writing],
+            self::UpsertRecord => ['object' => true, 'match' => true, 'values' => true, ...$writing],
+            self::SetValues => ['values' => true],
+            self::Refuse => ['message' => true],
+        };
+    }
+}

@@ -184,6 +184,15 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         return null === $record ? null : $this->withRows($object, $record);
     }
 
+    public function findBy(string $objectName, string $fieldName, string $value): ?RecordOutput
+    {
+        $object = $this->metadata->getObject($objectName);
+        $field = $object->fields[$fieldName] ?? throw new \InvalidArgumentException(\sprintf('Object "%s" has no field "%s".', $objectName, $fieldName));
+        $id = $this->store->idsByValues($object, $field, [$value])[$value] ?? null;
+
+        return null === $id ? null : $this->find($objectName, $id);
+    }
+
     public function findReferencing(string $objectName, string $fieldName, string $targetId): array
     {
         $object = $this->metadata->getObject($objectName);

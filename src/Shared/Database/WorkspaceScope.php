@@ -41,6 +41,11 @@ final class WorkspaceScope
         'package_installation',
         'package_item',
         'package_source',
+        'workflow',
+        'workflow_version',
+        'workflow_run',
+        'workflow_run_step',
+        'workflow_usage',
     ];
 
     /**

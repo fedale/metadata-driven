@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <entity name="App\Module\Workflow\Domain\Model\WorkflowVersion" table="workflow_version" schema="core">
+        <unique-constraints>
+            <unique-constraint name="uniq_workflow_version_number" columns="workflow_id,number"/>
+        </unique-constraints>
+
+        <id name="id" type="uuid"/>
+
+        <many-to-one field="workflow" target-entity="App\Module\Workflow\Domain\Model\Workflow">
+            <join-column name="workflow_id" referenced-column-name="id" nullable="false" on-delete="CASCADE"/>
+        </many-to-one>
+
+        <field name="number" type="integer"/>
+        <field name="status" length="20" enum-type="App\Module\Workflow\Domain\Model\VersionStatus"/>
+        <field name="source" type="text"/>
+        <field name="definition" type="json" nullable="true">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+        <field name="activatedBy" length="180" nullable="true"/>
+        <field name="activatedAt" type="datetime_immutable" nullable="true"/>
+        <field name="createdAt" type="datetime_immutable"/>
+    </entity>
+</doctrine-mapping>

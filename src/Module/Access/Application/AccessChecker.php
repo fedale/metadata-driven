@@ -43,6 +43,11 @@ final class AccessChecker implements AccessCheckerInterface
         return $this->access->can(Permissions::ROLES);
     }
 
+    public function canManageWorkflows(): bool
+    {
+        return $this->access->can(Permissions::WORKFLOWS);
+    }
+
     public function holds(string $item): bool
     {
         return $this->access->can($item);

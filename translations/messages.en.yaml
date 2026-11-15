@@ -214,6 +214,7 @@ admin:
             admin_metadata: 'Objects, fields and views'
             admin_members: Members
             admin_roles: Roles
+            admin_workflows: Workflows
     members:
         title: Members
         intro: 'Who may sign in to this workspace, and with which of its roles. Accounts are shared by every workspace: one email, one password.'

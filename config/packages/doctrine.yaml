@@ -9,9 +9,11 @@ doctrine:
         # (diff, validate). Their record tables are the Schema module's, their RBAC tables are
         # made with each workspace. So are core.metadata_state, written by triggers only (migration
         # Version20261107060749), and the system's tables, read with DBAL: core.workspace,
-        # core.workspace_membership, core.workspace_invitation. The comparison names core's tables with
-        # or without their schema, and a workspace's with theirs.
-        schema_filter: '~^(?!(core\.)?(metadata_state|workspace|workspace_membership|workspace_invitation)$)(core\.)?[^.]+$~'
+        # core.workspace_membership, core.workspace_invitation; and the runs of the workflows, written
+        # with DBAL once a transaction ended (core.workflow_run, workflow_run_step, workflow_usage).
+        # The comparison names core's tables with or without their schema, and a workspace's with
+        # theirs.
+        schema_filter: '~^(?!(core\.)?(metadata_state|workspace|workspace_membership|workspace_invitation|workflow_run|workflow_run_step|workflow_usage)$)(core\.)?[^.]+$~'
 
         profiling_collect_backtrace: '%kernel.debug%'
     orm:
@@ -58,6 +60,12 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Module/User/Infrastructure/Doctrine/Mapping'
                 prefix: 'App\Module\User\Domain\Model'
                 alias: User
+            Workflow:
+                type: xml
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Module/Workflow/Infrastructure/Doctrine/Mapping'
+                prefix: 'App\Module\Workflow\Domain\Model'
+                alias: Workflow
 
 when@test:
     doctrine:

@@ -211,6 +211,7 @@ admin:
             admin_metadata: 'Oggetti, campi e viste'
             admin_members: Membri
             admin_roles: Ruoli
+            admin_workflows: Workflow
     members:
         title: Membri
         intro: 'Chi può accedere a questo spazio di lavoro, e con quali dei suoi ruoli. Gli account sono comuni a tutti gli spazi: una email, una password.'

@@ -1,0 +1,52 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Module\Workflow\Application\Definition;
+
+/**
+ * One step of a workflow: its key (its output's name on the data chain), its type, its options
+ * as written ({{ … }} paths unresolved), and for an if, its branches.
+ */
+final readonly class Step
+{
+    /**
+     * @param array<string, mixed> $options
+     * @param list<Branch>         $branches
+     */
+    public function __construct(
+        public string $key,
+        public StepType $type,
+        public array $options,
+        public array $branches = [],
+        public ?Condition $when = null,
+    ) {
+    }
+
+    public function string(string $option): ?string
+    {
+        $value = $this->options[$option] ?? null;
+
+        return \is_string($value) ? $value : null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function values(): array
+    {
+        $values = $this->options['values'] ?? [];
+
+        return \is_array($values) ? array_combine(array_map(strval(...), array_keys($values)), array_values($values)) : [];
+    }
+
+    public function actAs(): ?string
+    {
+        return $this->string('act_as');
+    }
+
+    public function emitsEvents(): bool
+    {
+        return true === ($this->options['emit_events'] ?? false);
+    }
+}
