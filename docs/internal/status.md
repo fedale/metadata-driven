@@ -268,12 +268,14 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
 
 ### Other open items
 
-- **Vocabulary** (decided by the user on 2026-11-14, see [../glossary.md](../glossary.md)): object
-  → entity, row → record only, form view / grid view → form layout / grid layout, composite form →
-  form, template → package, landlord / operator → system / system admin. Only the glossary uses
-  them so far (its "Not yet" lists the old names); the rename of the code, the commands, the
-  `core.template_*` tables, the admin UI, the other guides and the two template repositories is
-  not planned yet.
+- **Vocabulary** (see [../glossary.md](../glossary.md)): on 2026-11-14 the user asked for one
+  word per concept; on 2026-11-15, after comparing the app with Drupal, Directus and Twenty CRM
+  (the closest), object, field, record and view stay. Renamed: composite form → form, landlord /
+  operator → system / system admin, tenant → workspace, template → package (the repositories
+  too). Only the glossary uses the new names so far (its "Not yet" lists the old ones). The
+  rename is agreed, in six phases, in [vocabulary-rename-plan.md](vocabulary-rename-plan.md):
+  no aliases for the old commands and URLs; phase 1 (composite form → form) is next; phases 2
+  and 3 after `rbac_tenancy` is merged.
 - **CSV import**, (C) only: imports of very large files in the background, with Messenger. (A)
   and (B) are done (see "Done").
 - Admin UI in Italian: still English are the error messages of the metadata and the templates

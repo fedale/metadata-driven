@@ -23,7 +23,7 @@ Objects are defined from the admin UI at `/admin` or from the console.
 | [Templates](templates.md) | A model as a package of YAML documents: exporting objects, views, forms and translations, validating a template |
 | [Console commands](console.md) | Every command, its arguments and options, what it changes in the database |
 | [Field types](field-types.md) | The twelve field types, their settings, columns, validation and grid behaviour |
-| [Glossary](glossary.md) | The names of the parts of the application, one word per concept: entities, records, layouts, forms, packages, tenants |
+| [Glossary](glossary.md) | The names of the parts of the application, one word per concept: objects, records, views, forms, packages, tenants |
 | [Architecture](architecture.md) | Modules and layers, the boundaries Deptrac enforces, how a definition becomes a table |
 
 ## At a glance
