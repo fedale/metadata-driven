@@ -15,9 +15,13 @@ use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordLabel;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\Dto\ReferencingGroup;
+use App\Module\Record\Contract\Event\RecordWriteAction;
+use App\Module\Record\Contract\Event\RecordWriting;
+use App\Module\Record\Contract\Event\RecordWritten;
 use App\Module\Record\Contract\Exception\RecordDeleteRestricted;
 use App\Module\Record\Contract\Exception\RecordNotFound;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
+use App\Module\Record\Contract\RecordEventScopeInterface;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordLookupInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
@@ -27,6 +31,7 @@ use App\Module\Validation\Contract\RecordValidatorInterface;
 use App\Shared\Transaction\TransactionRunner;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Pipeline of every record write: RecordInput → denormalization → conditions (the fields
@@ -59,51 +64,66 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         private readonly RecordLookupInterface $lookup,
         private readonly TransactionRunner $transactions,
         private readonly FieldTypeRegistryInterface $fieldTypes,
+        private readonly EventDispatcherInterface $events,
+        private readonly RecordEventScopeInterface $scope,
     ) {
     }
 
     public function create(RecordInput $input): RecordOutput
     {
         $object = $this->metadata->getObject($input->objectName);
-        $values = $this->validValues($object, $input, null);
-
         $id = Uuid::v7()->toRfc4122();
-        $stored = $this->stored($object, $values);
-        $now = new \DateTimeImmutable();
-        $this->write($object, $values, null, fn () => $this->transactions->run(function () use ($object, $id, $stored, $now): void {
-            $this->store->insert($object, $id, self::columns($object, $stored), $now);
-            $this->writeLinks($object, $id, $stored, $now);
-        }));
 
-        return $this->withRows($object, $this->store->find($object, $id) ?? throw new \LogicException('The record just created cannot be read back.'));
+        // The listeners of RecordWriting first, in the transaction: the values they set are
+        // validated as the others.
+        $record = $this->transactions->run(function () use ($object, $input, $id): RecordOutput {
+            $values = $this->validValues($object, $this->beforeWrite($object, RecordWriteAction::Create, null, $input, null), null);
+            $stored = $this->stored($object, $values);
+            $now = new \DateTimeImmutable();
+            $this->write($object, $values, null, fn () => $this->transactions->run(function () use ($object, $id, $stored, $now): void {
+                $this->store->insert($object, $id, self::columns($object, $stored), $now);
+                $this->writeLinks($object, $id, $stored, $now);
+            }));
+
+            return $this->withRows($object, $this->store->find($object, $id) ?? throw new \LogicException('The record just created cannot be read back.'));
+        });
+        $this->afterWrite($object, RecordWriteAction::Create, $record, null);
+
+        return $record;
     }
 
     public function update(string $id, RecordInput $input): RecordOutput
     {
         $object = $this->metadata->getObject($input->objectName);
-        if (null === $this->store->find($object, $id)) {
-            throw RecordNotFound::withId($object->name, $id);
-        }
-        $values = $this->validValues($object, $input, $id);
+        $found = $this->store->find($object, $id) ?? throw RecordNotFound::withId($object->name, $id);
+        $before = $this->withRows($object, $found);
 
-        if ([] !== $values) {
-            $stored = $this->stored($object, $values);
-            $now = new \DateTimeImmutable();
-            // Columns or links alone: the update marks the record as changed either way.
-            $updated = $this->write($object, $values, $id, fn (): bool => $this->transactions->run(function () use ($object, $id, $stored, $now): bool {
-                if (!$this->store->update($object, $id, self::columns($object, $stored), $now)) {
-                    return false;
+        [$record, $written] = $this->transactions->run(function () use ($object, $id, $input, $before): array {
+            $values = $this->validValues($object, $this->beforeWrite($object, RecordWriteAction::Update, $id, $input, $before), $id);
+            if ([] !== $values) {
+                $stored = $this->stored($object, $values);
+                $now = new \DateTimeImmutable();
+                // Columns or links alone: the update marks the record as changed either way.
+                $updated = $this->write($object, $values, $id, fn (): bool => $this->transactions->run(function () use ($object, $id, $stored, $now): bool {
+                    if (!$this->store->update($object, $id, self::columns($object, $stored), $now)) {
+                        return false;
+                    }
+                    $this->writeLinks($object, $id, $stored, $now);
+
+                    return true;
+                }));
+                if (!$updated) {
+                    throw RecordNotFound::withId($object->name, $id);
                 }
-                $this->writeLinks($object, $id, $stored, $now);
-
-                return true;
-            }));
-            if (!$updated) {
-                throw RecordNotFound::withId($object->name, $id);
             }
+
+            return [$this->withRows($object, $this->store->find($object, $id) ?? throw RecordNotFound::withId($object->name, $id)), [] !== $values];
+        });
+        if ($written) {
+            $this->afterWrite($object, RecordWriteAction::Update, $record, $before);
         }
 
-        return $this->withRows($object, $this->store->find($object, $id) ?? throw RecordNotFound::withId($object->name, $id));
+        return $record;
     }
 
     public function check(RecordInput $input, ?string $id = null): array
@@ -162,6 +182,15 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         $record = $this->store->find($object, $id);
 
         return null === $record ? null : $this->withRows($object, $record);
+    }
+
+    public function findBy(string $objectName, string $fieldName, string $value): ?RecordOutput
+    {
+        $object = $this->metadata->getObject($objectName);
+        $field = $object->fields[$fieldName] ?? throw new \InvalidArgumentException(\sprintf('Object "%s" has no field "%s".', $objectName, $fieldName));
+        $id = $this->store->idsByValues($object, $field, [$value])[$value] ?? null;
+
+        return null === $id ? null : $this->find($objectName, $id);
     }
 
     public function findReferencing(string $objectName, string $fieldName, string $targetId): array
@@ -580,9 +609,13 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
             }
         }
 
+        $current = $this->store->find($object, $id) ?? throw RecordNotFound::withId($object->name, $id);
+        $current = $this->withRows($object, $current);
+        $this->beforeWrite($object, RecordWriteAction::Delete, $id, new RecordInput($object->name, []), $current);
         if (!$this->store->softDelete($object, $id, $now)) {
             throw RecordNotFound::withId($object->name, $id);
         }
+        $this->afterWrite($object, RecordWriteAction::Delete, $current, null);
 
         foreach ($references as $reference) {
             match ($reference->settings->onDelete) {
@@ -600,5 +633,44 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
                 $this->store->clearReferences($link->object, $link->field, $id, $now);
             }
         }
+    }
+
+    /**
+     * Raises RecordWriting, unless the scope says no: the values as the listeners left them, or
+     * the write refused with the message of the first refusal.
+     *
+     * @throws RecordValidationFailed a create or an update refused
+     * @throws RecordDeleteRestricted a delete refused
+     */
+    private function beforeWrite(ObjectDefinitionDto $object, RecordWriteAction $action, ?string $id, RecordInput $input, ?RecordOutput $current): RecordInput
+    {
+        if (!$this->scope->emitsEvents()) {
+            return $input;
+        }
+        $event = $this->events->dispatch(new RecordWriting($object->name, $action, $id, $input->values, $current, $this->scope->origin()));
+        if (null !== $refusal = $event->refusal()) {
+            throw RecordWriteAction::Delete === $action ? RecordDeleteRestricted::refused($refusal) : new RecordValidationFailed($object->name, [RecordValidationFailed::GLOBAL_ERRORS => [$refusal]]);
+        }
+
+        return new RecordInput($object->name, $event->values());
+    }
+
+    /**
+     * Raises RecordWritten once the outermost transaction committed, unless the scope says no.
+     */
+    private function afterWrite(ObjectDefinitionDto $object, RecordWriteAction $action, RecordOutput $record, ?RecordOutput $before): void
+    {
+        if (!$this->scope->emitsEvents()) {
+            return;
+        }
+        $changed = null === $before
+            ? array_keys($object->fields)
+            : array_values(array_filter(array_keys($object->fields), static fn (string $field): bool => ($before->values[$field] ?? null) != ($record->values[$field] ?? null) || $before->rows($field) != $record->rows($field)));
+        $event = new RecordWritten($object->name, $action, $record->id, $record, $before, $changed, $this->scope->origin());
+        $this->transactions->whenDone(function (bool $committed) use ($event): void {
+            if ($committed) {
+                $this->events->dispatch($event);
+            }
+        });
     }
 }

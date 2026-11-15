@@ -39,6 +39,16 @@ interface RecordFinderInterface
     public function each(string $objectName): iterable;
 
     /**
+     * The live record whose field holds the value, compared as text; with a unique field, the
+     * one there is.
+     *
+     * @throws ObjectDefinitionNotFound
+     *
+     * @phpstan-impure the result changes after every write
+     */
+    public function findBy(string $objectName, string $fieldName, string $value): ?RecordOutput;
+
+    /**
      * The records of an object whose relation field points at a record, oldest first.
      *
      * @return list<RecordOutput>

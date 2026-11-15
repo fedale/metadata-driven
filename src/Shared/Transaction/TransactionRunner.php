@@ -17,4 +17,16 @@ interface TransactionRunner
      * @return T
      */
     public function run(callable $operation): mixed;
+
+    /**
+     * Runs $done once the work of the current transaction is settled: when the outermost
+     * transaction ends, with true if it was committed and what was done in the current one is
+     * kept, false otherwise (rolled back, or a nested transaction rolled back to its savepoint).
+     * With no transaction open, $done runs at once, with true.
+     *
+     * $done runs outside any transaction: what it writes is committed on its own.
+     *
+     * @param callable(bool $committed): void $done
+     */
+    public function whenDone(callable $done): void;
 }

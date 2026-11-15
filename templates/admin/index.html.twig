@@ -11,6 +11,7 @@
             <a class="gv-btn" href="{{ path('admin_package_index') }}">{{ 'admin.packages'|trans }}</a>
             {% if can('admin.members') %}<a class="gv-btn" href="{{ path('admin_member_index') }}">{{ 'admin.members.title'|trans }}</a>{% endif %}
             {% if can('admin.roles') %}<a class="gv-btn" href="{{ path('admin_role_index') }}">{{ 'admin.roles.title'|trans }}</a>{% endif %}
+            {% if can('admin.workflows') %}<a class="gv-btn" href="{{ path('admin_workflow_index') }}">{{ 'admin.workflows'|trans }}</a>{% endif %}
             <a class="gv-btn gv-btn-primary" href="{{ path('admin_object_new') }}">{{ 'admin.index.new_object'|trans }}</a>
         </div>
     </div>

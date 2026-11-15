@@ -18,6 +18,9 @@ final class Permissions
     /** The roles of the workspace: which permissions each gives (/admin/roles). */
     public const string ROLES = 'admin.roles';
 
+    /** The workflows of the workspace, their versions and their runs (/admin/workflows). */
+    public const string WORKFLOWS = 'admin.workflows';
+
     /** Short-circuits every check (fedale_rbac.super_admin_role). */
     public const string SUPER_ADMIN_ROLE = 'ROLE_SUPER_ADMIN';
 

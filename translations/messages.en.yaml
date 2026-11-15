@@ -214,6 +214,7 @@ admin:
             admin_metadata: 'Objects, fields and views'
             admin_members: Members
             admin_roles: Roles
+            admin_workflows: Workflows
     members:
         title: Members
         intro: 'Who may sign in to this workspace, and with which of its roles. Accounts are shared by every workspace: one email, one password.'
@@ -394,6 +395,68 @@ admin:
         created: 'Form "%name%" created.'
         saved: Form saved.
         deleted: 'Form "%name%" deleted; its records stay.'
+    workflows: Workflows
+    workflow:
+        intro: 'When something happens to a record, run a series of steps: check or change it before it is written, or write other records after. Defined in YAML; only the active version runs.'
+        new: New workflow
+        create: Create the draft
+        empty: No workflow yet.
+        name: Name
+        description: Description
+        definition: Definition (YAML)
+        trigger: Trigger
+        status: Status
+        last_run: Last run
+        failed_day: 'Failed, last day'
+        order: Order
+        order_help: 'The workflows of one event run in this order.'
+        move_up: Move up
+        move_down: Move down
+        active_version: 'Active: version %number%'
+        draft_version: 'Draft: version %number%'
+        inactive: Not running
+        not_running: 'Not running: activate the draft.'
+        active_since: 'Version %number% is running, activated by %by% on %at%.'
+        draft_while_active: 'You are editing the draft, version %number%: the active version keeps running until you activate it.'
+        save_draft: Save the draft
+        save_activate: Save and activate
+        deactivate: Deactivate
+        delete_confirm: 'Delete the workflow %name%, its versions and its runs?'
+        created: 'Workflow "%name%" created: activate it when its draft is ready.'
+        draft_saved: Draft saved.
+        activated: 'Version %number% is active.'
+        deactivated: 'The workflow runs no more.'
+        deleted: 'Workflow "%name%" deleted.'
+        reused: 'The draft is now version %number%''s definition.'
+        invalid: '{1}It cannot be activated: one problem, below.|]1,Inf[It cannot be activated: %count% problems, below.'
+        reference: Objects and fields
+        reference_help: 'Paths read the data of the run: <code>$trigger.record.&lt;field&gt;</code>, <code>$trigger.before.&lt;field&gt;</code> (updates), <code>$user.email</code>, <code>$today</code>, and each step''s output by its key, <code>{{ reminder.id }}</code>. A step writes as whoever triggered the event, or as the role of its <code>act_as</code>, which you must be able to give.'
+        versions: Versions
+        version: Version
+        activated_at: Activated
+        use_as_draft: Use as draft
+        status_draft: Draft
+        status_active: Active
+        status_deactivated: Deactivated
+        status_archived: Archived
+        runs: Runs
+        run: Run
+        all_runs: All
+        run_completed: Completed
+        run_failed: Failed
+        run_refused: Refused
+        runs_help: 'Kept 30 days. A run refused stopped the write it guarded.'
+        no_runs: No run.
+        started: Started
+        record: Record
+        triggered_by: Triggered by
+        error: Error
+        depth: 'depth %depth%'
+        steps: Steps
+        step: Step
+        input: Input
+        output: Output
+        chain: Data of the run
     translation:
         metadata: Metadata
         texts: Texts

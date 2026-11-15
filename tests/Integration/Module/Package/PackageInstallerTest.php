@@ -15,6 +15,8 @@ use App\Module\Package\Application\PackageInstaller;
 use App\Module\Package\Domain\Exception\InstallRefused;
 use App\Module\Package\Domain\Exception\InvalidExport;
 use App\Module\Package\Domain\Repository\PackageInstallationRepository;
+use App\Module\Record\Contract\Event\RecordWriting;
+use App\Module\Record\Contract\Event\RecordWritten;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Tests\Support\ExamplePackage;
 use App\Tests\Support\RemovesDirectories;
@@ -27,6 +29,7 @@ use Fedale\PackageFormat\SeedRecords;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Installs the example package (tests/Fixtures/packages/shop) through the real
@@ -101,6 +104,22 @@ final class PackageInstallerTest extends KernelTestCase
         // An empty cell is no value: the table has no seats, and no photo.
         self::assertNull($products['BRG-02']->values['seats']);
         self::assertNull($products['BRG-02']->values['photo']);
+    }
+
+    public function testTheRecordsOfTheSeedsRaiseNoRecordEvent(): void
+    {
+        $raised = 0;
+        $events = self::getContainer()->get(EventDispatcherInterface::class);
+        $events->addListener(RecordWriting::class, static function () use (&$raised): void {
+            ++$raised;
+        });
+        $events->addListener(RecordWritten::class, static function () use (&$raised): void {
+            ++$raised;
+        });
+
+        self::assertSame(6, $this->install(ExamplePackage::package())->records);
+        // A package's records are installed, not written by anyone: no workflow runs on them.
+        self::assertSame(0, $raised);
     }
 
     public function testARecordMayPointAtOneOfItsSeedWrittenAfterIt(): void

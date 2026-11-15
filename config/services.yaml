@@ -18,6 +18,12 @@ parameters:
     env(IMPORT_DRAFTS_DIR): '%kernel.project_dir%/var/imports'
     app.import.drafts_dir: '%env(resolve:IMPORT_DRAFTS_DIR)%'
     app.import.max_rows: 5000
+    # The workflows (docs/workflows.md): the longest chain of runs started by one another's writes,
+    # the runs a workspace may start a minute (beyond, a write a workflow guards is refused, other
+    # runs fail), and how long the runs are kept (workflow:runs:gc).
+    app.workflow.max_depth: 3
+    app.workflow.runs_per_minute: 100
+    app.workflow.runs_keep_days: 30
     # Workspaces (docs/architecture.md, "Workspaces"). A request for <slug>.<base host> is for that
     # workspace's; one for the base host itself, or for any other host, and a command without
     # --workspace, are for the default workspace's. Empty: no default, every request names its workspace.

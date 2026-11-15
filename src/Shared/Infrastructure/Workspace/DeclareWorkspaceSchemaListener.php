@@ -39,6 +39,7 @@ final class DeclareWorkspaceSchemaListener
         'uniq_package_item_local_id',
         'idx_file_sha256',
         'idx_schema_change_log_object',
+        'uniq_workflow_name',
     ];
 
     /** fedale/rbac-bundle's tables, by their unqualified names. */

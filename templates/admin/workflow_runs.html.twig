@@ -1,0 +1,42 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'admin.workflow.runs'|trans }} · {{ workflow.name }}{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('admin_workflow_edit', {id: workflow.id.toRfc4122}) }}">&larr; {{ workflow.name }}</a></p>
+    <h1>{{ 'admin.workflow.runs'|trans }}</h1>
+    <p>
+        {% for filter in [null, 'completed', 'failed', 'refused'] %}
+            {% if filter == status %}<strong>{% endif %}
+            <a href="{{ path('admin_workflow_runs', {id: workflow.id.toRfc4122, status: filter}) }}">{{ (filter ? 'admin.workflow.run_' ~ filter : 'admin.workflow.all_runs')|trans }}</a>
+            {% if filter == status %}</strong>{% endif %}{% if not loop.last %} · {% endif %}
+        {% endfor %}
+    </p>
+    <p class="gv-muted">{{ 'admin.workflow.runs_help'|trans }}</p>
+    {% if runs is empty %}
+        <p class="gv-muted">{{ 'admin.workflow.no_runs'|trans }}</p>
+    {% else %}
+        <table class="md-table">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'admin.workflow.started'|trans }}</th>
+                    <th scope="col">{{ 'admin.workflow.status'|trans }}</th>
+                    <th scope="col">{{ 'admin.workflow.record'|trans }}</th>
+                    <th scope="col">{{ 'admin.workflow.triggered_by'|trans }}</th>
+                    <th scope="col">{{ 'admin.workflow.error'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for run in runs %}
+                    <tr>
+                        <td><a href="{{ path('admin_workflow_run', {id: run.id}) }}">{{ run.started_at|slice(0, 19) }}</a></td>
+                        <td>{{ ('admin.workflow.run_' ~ run.status)|trans }}</td>
+                        <td><code>{{ run.object }}</code> {{ run.action }}, {{ run.timing }}{% if run.depth > 1 %} · {{ 'admin.workflow.depth'|trans({'%depth%': run.depth}) }}{% endif %}</td>
+                        <td>{{ run.triggered_by ?? '—' }}</td>
+                        <td>{{ run.error }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}

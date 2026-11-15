@@ -211,6 +211,7 @@ admin:
             admin_metadata: 'Oggetti, campi e viste'
             admin_members: Membri
             admin_roles: Ruoli
+            admin_workflows: Workflow
     members:
         title: Membri
         intro: 'Chi può accedere a questo spazio di lavoro, e con quali dei suoi ruoli. Gli account sono comuni a tutti gli spazi: una email, una password.'
@@ -391,6 +392,68 @@ admin:
         created: 'Modulo "%name%" creato.'
         saved: Modulo salvato.
         deleted: 'Modulo "%name%" eliminato; i suoi record restano.'
+    workflows: Workflow
+    workflow:
+        intro: 'Quando succede qualcosa a un record, esegue una serie di passi: lo controlla o lo cambia prima che venga scritto, o scrive altri record dopo. Definito in YAML; gira solo la versione attiva.'
+        new: Nuovo workflow
+        create: Crea la bozza
+        empty: Ancora nessun workflow.
+        name: Nome
+        description: Descrizione
+        definition: Definizione (YAML)
+        trigger: Evento
+        status: Stato
+        last_run: Ultima esecuzione
+        failed_day: 'Fallite, ultimo giorno'
+        order: Ordine
+        order_help: 'I workflow di uno stesso evento girano in questo ordine.'
+        move_up: Sposta su
+        move_down: Sposta giù
+        active_version: 'Attiva: versione %number%'
+        draft_version: 'Bozza: versione %number%'
+        inactive: Non attivo
+        not_running: 'Non attivo: attiva la bozza.'
+        active_since: 'Gira la versione %number%, attivata da %by% il %at%.'
+        draft_while_active: 'Stai modificando la bozza, versione %number%: la versione attiva continua a girare finché non la attivi.'
+        save_draft: Salva la bozza
+        save_activate: Salva e attiva
+        deactivate: Disattiva
+        delete_confirm: 'Eliminare il workflow %name%, le sue versioni e le sue esecuzioni?'
+        created: 'Workflow "%name%" creato: attivalo quando la bozza è pronta.'
+        draft_saved: Bozza salvata.
+        activated: 'La versione %number% è attiva.'
+        deactivated: 'Il workflow non gira più.'
+        deleted: 'Workflow "%name%" eliminato.'
+        reused: 'La bozza ora ha la definizione della versione %number%.'
+        invalid: '{1}Non si può attivare: un problema, qui sotto.|]1,Inf[Non si può attivare: %count% problemi, qui sotto.'
+        reference: Oggetti e campi
+        reference_help: 'I percorsi leggono i dati dell''esecuzione: <code>$trigger.record.&lt;campo&gt;</code>, <code>$trigger.before.&lt;campo&gt;</code> (modifiche), <code>$user.email</code>, <code>$today</code>, e l''output di ogni passo con la sua chiave, <code>{{ reminder.id }}</code>. Un passo scrive come chi ha scatenato l''evento, o come il ruolo del suo <code>act_as</code>, che devi poter assegnare.'
+        versions: Versioni
+        version: Versione
+        activated_at: Attivata
+        use_as_draft: Usa come bozza
+        status_draft: Bozza
+        status_active: Attiva
+        status_deactivated: Disattivata
+        status_archived: Archiviata
+        runs: Esecuzioni
+        run: Esecuzione
+        all_runs: Tutte
+        run_completed: Completata
+        run_failed: Fallita
+        run_refused: Rifiutata
+        runs_help: 'Conservate 30 giorni. Un''esecuzione rifiutata ha fermato la scrittura che controllava.'
+        no_runs: Nessuna esecuzione.
+        started: Iniziata
+        record: Record
+        triggered_by: Scatenata da
+        error: Errore
+        depth: 'profondità %depth%'
+        steps: Passi
+        step: Passo
+        input: Input
+        output: Output
+        chain: Dati dell'esecuzione
     translation:
         metadata: Metadati
         texts: Testi

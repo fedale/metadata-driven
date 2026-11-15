@@ -120,6 +120,15 @@ deptrac:
       collectors:
         - { type: directory, value: src/Module/Package/Contract/.* }
 
+    - name: Workflow
+      collectors:
+        - type: bool
+          must: [{ type: directory, value: src/Module/Workflow/.* }]
+          must_not: [{ type: directory, value: src/Module/Workflow/Contract/.* }]
+    - name: WorkflowContract
+      collectors:
+        - { type: directory, value: src/Module/Workflow/Contract/.* }
+
     - name: Admin
       collectors:
         - type: bool
@@ -167,6 +176,9 @@ deptrac:
 
     Package: [PackageContract, MetadataContract, RecordContract, FieldTypeContract, FileContract, AccessContract, Shared]
     PackageContract: [Shared]
+
+    Workflow: [WorkflowContract, MetadataContract, RecordContract, AccessContract, Shared]
+    WorkflowContract: [Shared]
 
     Admin: [AdminContract, MetadataContract, FieldTypeContract, SchemaContract, ViewContract, SettingsContract, AccessContract, UserContract, Shared]
     AdminContract: [Shared]

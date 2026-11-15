@@ -366,6 +366,11 @@ a:hover { color: var(--gv-color-link-hover); }
 
 /* A textarea holding code (YAML, HTML). */
 .md-code-input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85rem; }
+.md-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; white-space: pre-wrap; word-break: break-word; margin: 0; max-height: 24rem; overflow: auto; }
+/* A form of one or two buttons, on the line of what it acts on. */
+.md-inline-form { display: inline-flex; gap: .25rem; margin: 0; }
+/* The problems of a definition, each by its path in it. */
+.md-problems { color: var(--gv-color-danger, #b42318); font-size: .875rem; padding-left: 1.25rem; }
 
 /* ── Admin ─────────────────────────────────────────────────────────── */
 

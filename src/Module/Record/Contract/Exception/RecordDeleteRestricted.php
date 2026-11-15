@@ -13,4 +13,12 @@ final class RecordDeleteRestricted extends \DomainException
     {
         return new self(\sprintf('This record cannot be deleted: %d %s still refer to it.', $count, $referencingLabel));
     }
+
+    /**
+     * Refused by a listener of RecordWriting (a workflow guarding the delete), with its message.
+     */
+    public static function refused(string $message): self
+    {
+        return new self($message);
+    }
 }

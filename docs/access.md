@@ -131,6 +131,7 @@ The application checks these RBAC items:
 | `admin.metadata` | permission | The admin UI (objects, fields, search, tables) — not the records |
 | `admin.members` | permission | The members page, `/admin/members`: who may sign in to the workspace, with which roles |
 | `admin.roles` | permission | The roles page, `/admin/roles`: which permissions each role gives |
+| `admin.workflows` | permission | The workflows page, `/admin/workflows`: the workflows of the workspace, their versions and their runs (see [Workflows](workflows.md#permissions)) |
 | `ROLE_SUPER_ADMIN` | role | Everything, now and in the future |
 
 The four permissions of an object are created with it (by the admin or the console). `access:sync`

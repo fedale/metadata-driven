@@ -24,6 +24,12 @@ interface AccessCheckerInterface
     public function canManageRoles(): bool;
 
     /**
+     * The workflows page: the workflows of the workspace, their versions and their runs (which
+     * hold the data of the records they ran on).
+     */
+    public function canManageWorkflows(): bool;
+
+    /**
      * Whether the current user holds an RBAC item, a role or a permission, directly or through
      * the role hierarchy (the super admin holds them all). What one may give or take on the
      * members page: no more than one has.
@@ -37,4 +43,18 @@ interface AccessCheckerInterface
      * permission and passes every check, only a super admin gives.
      */
     public function canGrant(string $item): bool;
+
+    /**
+     * Whether a role gives a permission or a role: it is the role, or one of the items the role
+     * contains, through the roles it contains. The super admin role gives everything. Whoever
+     * holds the role: a workflow's step acting as a role is checked so.
+     */
+    public function roleGives(string $role, string $item): bool;
+
+    /**
+     * canGrant() for another member of the workspace, as they are now: from the items assigned
+     * to them. Nothing, once they are no member any more (their assignments go with them). A
+     * workflow's step acting as a role is checked so against whoever activated the workflow.
+     */
+    public function userCanGrant(string $email, string $item): bool;
 }
