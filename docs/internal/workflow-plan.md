@@ -1,12 +1,14 @@
 # Plan: workflows
 
-Status: **agreed**, not started. Discussed with the user on 2026-11-13. "Declarative rules and
+Status: **agreed**; phase 1 detailed in [workflow-phase1-plan.md](workflow-phase1-plan.md)
+(2026-11-15), waiting for the user's answers. Discussed with the user on 2026-11-13, before the
+vocabulary rename of 2026-11-15 (the operator is now the system admin). "Declarative rules and
 automations" of the roadmap ([status.md](status.md), "An app in a package", point d): when
 something happens, run a series of actions, configured without code.
 
 ## Decisions (user, 2026-11-13)
 
-1. **Who defines them**: each workspace's admins, for their workspace; and the operator, for every
+1. **Who defines them**: each workspace's admins, for their workspace; and the system admin, for every
    workspace (the events of the platform, such as a workspace created).
 2. **Execution**: in the request or in the background, depending on the step.
 3. **Permissions**: a step acts with the permissions of whoever triggered the event, by default.
@@ -55,7 +57,7 @@ for later.
 
 ## Concepts
 
-- A **workflow** belongs to a workspace (its admins'), or to the installation (the operator's: no
+- A **workflow** belongs to a workspace (its admins'), or to the installation (the system admin's: no
   workspace, as the shared package indexes). It has a name, a description, a status, and versions.
 - A **version** holds the definition: one trigger, then steps. Only the active version runs.
 - A **step** has a key (unique in the version, the name of its output on the data chain), a type,
@@ -71,7 +73,7 @@ for later.
 | Record created or updated | idem | 1 |
 | Record deleted | idem, with the record as it was | 1 |
 | Manual | from a record's page, a selection on a grid (once for all, or once each), or a command with no record; a form first, if the workflow asks | 2 |
-| Platform event | a workspace created, a member added (the operator's workflows) | 3 |
+| Platform event | a workspace created, a member added (the system admin's workflows) | 3 |
 | Schedule | a cron expression, in UTC | 6 |
 | Incoming webhook | a request to a URL of its own (with the REST API of the roadmap) | 6 |
 
@@ -101,7 +103,7 @@ error step, its message shown to the user). They are kept small: no waiting, no 
 | Search records | with the grid's filters, up to 200 records | 2 |
 | Iterator | the steps inside it for each item of a list | 2 |
 | Form | asks the person running a manual workflow | 2 |
-| Install package, assign role | the operator's platform workflows | 3 |
+| Install package, assign role | the system admin's platform workflows | 3 |
 | HTTP request | to an external URL, in the background, with retries | 4 |
 | Wait | a duration, or until a date | 4 |
 | Send email, notification | when the application sends email (put off by the user) | 6 |
@@ -134,7 +136,7 @@ The rule that the members and roles pages hold to, applied here: **no way to mor
   run against the author as they are then (a demoted author's workflows stop at that step).
 - An event with **no one behind it** (a schedule, a platform event, a webhook) needs such a role
   on every step that touches data: no implicit full access.
-- The operator's workflows act in the workspace concerned, with the role they name there.
+- The system admin's workflows act in the workspace concerned, with the role they name there.
 - Defining workflows needs a new permission, `admin.workflows`; seeing the runs (which hold
   records' data), the same.
 
@@ -166,8 +168,8 @@ The rule that the members and roles pages hold to, applied here: **no way to mor
   metadata, Access (`canGrant()`, the roles), Package (phase 3), Shared's workspace ports.
 - Tables in `core`, with a `workspace_id` and row-level security, as the other workspace tables
   (`WorkspaceScope`): `workflow`, `workflow_version` (the definition as JSON), `workflow_run`,
-  `workflow_run_step`, `workflow_usage`. The operator's workflows have no workspace, as the shared
-  package indexes: read by the landlord, never by a workspace.
+  `workflow_run_step`, `workflow_usage`. The system admin's workflows have no workspace, as the shared
+  package indexes: read by the system, never by a workspace.
 - The definition is a JSON document (trigger, steps), so that YAML in packages (decision 4) is a
   serialization away.
 
@@ -182,7 +184,7 @@ The rule that the members and roles pages hold to, applied here: **no way to mor
 - versions: publish the draft, deactivate, "use as draft" on an archived version;
 - the runs: filtered by status and date, each with its steps' inputs, outputs and errors.
 
-The operator's workflows: a page of the console (phase 3).
+The system admin's workflows: a page of the system console (phase 3).
 
 ## Phases
 
@@ -195,7 +197,7 @@ One branch each, reviewed before the next.
    a loop, a cross-workspace read).
 2. **Manual workflows**: buttons on a record's page and on a grid's selection, a command; forms;
    search records; iterator.
-3. **The operator's workflows**: platform events (a workspace created, a member added), install a
+3. **The system admin's workflows**: platform events (a workspace created, a member added), install a
    package, assign a role; the console's page. The user's SaaS case: an app installed with every
    new workspace.
 4. **The background**: Symfony Messenger (a dependency to add, with its worker); after-triggers

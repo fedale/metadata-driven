@@ -276,7 +276,7 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   word per concept; on 2026-11-15, after comparing the app with Drupal, Directus and Twenty CRM
   (the closest), object, field, record and view stay. Renamed: composite form → form, landlord /
   operator → system / system admin, tenant → workspace, template → package (the repositories
-  too). The glossary's "Not yet" lists the old names still in use. The rename is agreed, in six
+  too). The rename was agreed in six
   phases, in [vocabulary-rename-plan.md](vocabulary-rename-plan.md), with no aliases for the old
   commands and URLs. Phase 1 (composite form → form) merged into `main` on 2026-11-15. Phase 2
   (landlord / operator → system / system admin: `system:admin`, `ROLE_SYSTEM_ADMIN`,
@@ -334,7 +334,9 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   Directus Flows and Twenty's workflows with the user: record triggers (before and after the
   write), if/else and data steps, permissions per step (no way to more power), versions, runs,
   usage per tenant; then manual workflows, the system admin's (an app installed with every new
-  workspace), the background with Messenger, states. Agreed on 2026-11-13; next: phase 1.
+  workspace), the background with Messenger, states. Agreed on 2026-11-13. Phase 1 detailed in
+  [workflow-phase1-plan.md](workflow-phase1-plan.md) (2026-11-15), waiting for the user's answers
+  to its four open questions.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`
