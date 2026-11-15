@@ -47,7 +47,7 @@ final class WorkflowAdminController extends AbstractController
 
     private const string EXAMPLE = <<<'YAML'
         # When a person is created, after the write: a welcome pet for them.
-        trigger: { on: created, object: person, when: after }   # on: created, updated, created_or_updated, deleted; when: before or after
+        trigger: { on: created, object: person, when: after }   # on: created, updated, created_or_updated, deleted, manual; when: before or after
         steps:
           - key: named                                            # a step's key names its output: {{ named.passed }}
             type: filter                                          # goes on only if the condition holds

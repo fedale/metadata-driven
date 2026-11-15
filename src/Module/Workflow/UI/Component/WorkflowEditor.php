@@ -12,6 +12,7 @@ use App\Module\Record\Contract\Dto\RecordLabel;
 use App\Module\Workflow\Application\Definition\Condition;
 use App\Module\Workflow\Application\Definition\Definition;
 use App\Module\Workflow\Application\Definition\DefinitionParser;
+use App\Module\Workflow\Application\Definition\FormInput;
 use App\Module\Workflow\Application\Definition\StepType;
 use App\Module\Workflow\Application\Definition\TriggerEvent;
 use App\Module\Workflow\Application\EditorModel;
@@ -152,6 +153,30 @@ final class WorkflowEditor extends AbstractController
         $branches = $this->listAt($at.'.branches');
         array_splice($branches, $index, 1);
         $this->setAt($at.'.branches', $branches);
+    }
+
+    #[LiveAction]
+    public function addInput(): void
+    {
+        $form = $this->listAt('trigger.form');
+        $form[] = EditorModel::newInput();
+        $this->setAt('trigger.form', $form);
+    }
+
+    #[LiveAction]
+    public function removeInput(#[LiveArg] int $index): void
+    {
+        $form = $this->listAt('trigger.form');
+        array_splice($form, $index, 1);
+        $this->setAt('trigger.form', $form);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getInputTypes(): array
+    {
+        return FormInput::TYPES;
     }
 
     #[LiveAction]

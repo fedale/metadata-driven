@@ -42,6 +42,17 @@ final class EditorModel
                 'object' => self::text($trigger['object'] ?? ''),
                 'when' => self::text($trigger['when'] ?? 'after'),
                 'fields' => \is_array($trigger['fields'] ?? null) ? array_values(array_map(self::text(...), $trigger['fields'])) : [],
+                'label' => self::text($trigger['label'] ?? ''),
+                'form' => array_values(array_map(
+                    static fn (mixed $input): array => \is_array($input) ? [
+                        'name' => self::text($input['name'] ?? ''),
+                        'label' => self::text($input['label'] ?? ''),
+                        'type' => self::text($input['type'] ?? 'text'),
+                        'required' => true === ($input['required'] ?? false),
+                        'options' => \is_array($input['options'] ?? null) ? implode(', ', array_map(self::text(...), $input['options'])) : '',
+                    ] : self::newInput(),
+                    \is_array($trigger['form'] ?? null) ? $trigger['form'] : [],
+                )),
             ],
             'steps' => self::stepsFrom($data['steps'] ?? []),
         ];
@@ -53,7 +64,7 @@ final class EditorModel
     public static function toSource(array $model): string
     {
         $trigger = \is_array($model['trigger'] ?? null) ? $model['trigger'] : [];
-        $data = ['trigger' => array_filter([
+        $data = ['trigger' => 'manual' === ($trigger['on'] ?? null) ? self::manualTo($trigger) : array_filter([
             'on' => self::text($trigger['on'] ?? ''),
             'object' => self::text($trigger['object'] ?? ''),
             'when' => self::text($trigger['when'] ?? ''),
@@ -62,6 +73,14 @@ final class EditorModel
         $data['steps'] = self::stepsTo(\is_array($model['steps'] ?? null) ? $model['steps'] : []);
 
         return Yaml::dump($data, 12, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK);
+    }
+
+    /**
+     * @return array{name: string, label: string, type: string, required: bool, options: string}
+     */
+    public static function newInput(): array
+    {
+        return ['name' => '', 'label' => '', 'type' => 'text', 'required' => false, 'options' => ''];
     }
 
     /**
@@ -127,6 +146,38 @@ final class EditorModel
         $walk($model['steps'] ?? []);
 
         return $keys;
+    }
+
+    /**
+     * A manual trigger: its label and the inputs of its form, options as a list.
+     *
+     * @param array<mixed> $trigger
+     *
+     * @return array<string, mixed>
+     */
+    private static function manualTo(array $trigger): array
+    {
+        $form = [];
+        foreach (\is_array($trigger['form'] ?? null) ? $trigger['form'] : [] as $input) {
+            if (!\is_array($input)) {
+                continue;
+            }
+            $type = self::text($input['type'] ?? 'text');
+            $form[] = array_filter([
+                'name' => self::text($input['name'] ?? ''),
+                'label' => self::text($input['label'] ?? ''),
+                'type' => $type,
+                'required' => true === ($input['required'] ?? false) ? true : null,
+                'options' => 'select' === $type ? array_values(array_filter(array_map(trim(...), explode(',', self::text($input['options'] ?? ''))), static fn (string $option): bool => '' !== $option)) : null,
+            ], static fn (mixed $value): bool => null !== $value && '' !== $value);
+        }
+
+        return array_filter([
+            'on' => 'manual',
+            'object' => self::text($trigger['object'] ?? ''),
+            'label' => self::text($trigger['label'] ?? ''),
+            'form' => $form,
+        ], static fn (mixed $value): bool => '' !== $value && [] !== $value);
     }
 
     /**

@@ -76,6 +76,29 @@ final class WorkflowEditorTest extends WebTestCase
         self::assertSelectorTextContains('table', 'Pet of Ada');
     }
 
+    public function testAManualTriggerHasALabelAndAForm(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        $editor = $this->editor()
+            ->set('model.trigger.on', 'manual')
+            ->set('model.trigger.label', 'Give a pet')
+            ->call('addInput')
+            ->set('model.trigger.form.0.name', 'kind')
+            ->set('model.trigger.form.0.label', 'Kind')
+            ->set('model.trigger.form.0.type', 'select')
+            ->set('model.trigger.form.0.options', 'cat, dog')
+            ->set('model.steps.0.values.0.value', '{{ $trigger.input.kind }} of {{ $trigger.record.full_name }}');
+        $html = (string) $editor->render();
+        self::assertStringContainsString('data-model="model.trigger.form.0.options"', $html);
+        self::assertStringNotContainsString('data-model="model.trigger.when"', $html);
+
+        $editor->call('activate');
+        self::assertSame(303, $editor->response()->getStatusCode());
+        $workflow = self::getContainer()->get(WorkflowRepository::class)->findByName('Welcome');
+        self::assertNotNull($workflow);
+        self::assertStringContainsString("options:\n        - cat\n        - dog", (string) self::getContainer()->get(WorkflowManager::class)->activeVersion($workflow)?->getSource());
+    }
+
     public function testShowsTheProblemsOfTheDraftByStep(): void
     {
         self::signInAsSuperAdmin($this->client);

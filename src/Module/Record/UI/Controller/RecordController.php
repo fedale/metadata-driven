@@ -19,6 +19,7 @@ use App\Module\Record\Contract\Dto\ReferencingGroup;
 use App\Module\Record\Contract\Exception\RecordDeleteRestricted;
 use App\Module\Record\Contract\Exception\RecordNotFound;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
+use App\Module\Record\Contract\RecordActionsInterface;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordLookupInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
@@ -26,6 +27,7 @@ use App\Module\Record\UI\Form\RecordFormFactory;
 use App\Module\Record\UI\Grid\RecordGridFactory;
 use Fedale\GridviewBundle\Export\GridExporterRegistry;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -55,6 +57,9 @@ final class RecordController extends AbstractController
         private readonly AccessCheckerInterface $access,
         private readonly CascadeTargets $cascadeTargets,
         private readonly TranslatorInterface $translator,
+        /** @var iterable<RecordActionsInterface> */
+        #[AutowireIterator('app.record_actions')]
+        private readonly iterable $actions,
     ) {
     }
 
@@ -207,6 +212,7 @@ final class RecordController extends AbstractController
             )),
             'can_update' => $canUpdate,
             'can_delete' => $this->access->canRecords($definition->name, RecordAction::Delete),
+            'actions' => array_merge(...array_map(static fn (RecordActionsInterface $actions): array => $actions->actionsFor($definition->name, $id), [...$this->actions])),
         ]);
     }
 

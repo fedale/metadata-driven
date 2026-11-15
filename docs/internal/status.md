@@ -344,8 +344,13 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   [workflow-phase1b-plan.md](workflow-phase1b-plan.md): part 1 (the variable picker,
   `PathCatalog`; the test on a record, `WorkflowEngine::dryRun()`) done on branch
   `workflow_picker_test`, merged into `main` on 2026-11-15; part 2, the visual editor (a Live
-  Component, `symfony/ux-live-component` 3.7), done on branch `workflow_visual_editor`, waiting
-  for review. Next on the workflow plan: phase 2, manual workflows.
+  Component, `symfony/ux-live-component` 3.7), done on branch `workflow_visual_editor`, merged
+  into `main` on 2026-11-15 (the user hand-tests it later). Phase 2 planned in
+  [workflow-phase2-plan.md](workflow-phase2-plan.md), in three parts: 2a, the manual trigger
+  (`on: manual`, its `label` and `form`; `workflow.<id>.run` made on activation; the **Run** menu
+  on a record's page through the Record contract's `RecordActionsInterface`; `/w/<id>/run/<record>`;
+  `workflow:run`; `app.workflow.max_executed_steps`), done on branch `workflow_manual`, waiting for
+  review. Next: 2b (search records and the iterator), then 2c (a grid's selection).
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

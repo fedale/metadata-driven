@@ -50,6 +50,23 @@ steps: [...]
 - **Editors**: the visual editor gets the manual trigger (label, form inputs as rows); the picker
   offers `$trigger.input.<name>`.
 
+### Done (2026-11-15, branch `workflow_manual`)
+
+As planned, with these choices made on the way:
+
+- A workflow without a form is posted from the record's page by a button in its **Run** menu: the
+  header sits inside the record's form, so the button names a form of its own rendered after it
+  (`form="…"`), its token the stateless `submit` one; a workflow with a form is a link to its page.
+- The run permission's label on the roles page is its description, the workflow's name when it
+  was first made (the bundle keeps no way to change a description); removing it revokes its
+  assignments and edges first, through the bundle (`PermissionSynchronizer::removePermission()`):
+  the database cascade alone left the entity manager holding assignments to a removed item.
+- Running on a record needs reading it (`record.<object>.read`), on top of `workflow.<id>.run`.
+- The test on a record runs a manual draft with its form unanswered (each input null, a boolean
+  false).
+- `max_executed_steps` is checked before every step of every run, record triggers included; it is
+  reached only with the iterator (2b).
+
 ## 2b and 2c
 
 To be detailed when 2a is merged.

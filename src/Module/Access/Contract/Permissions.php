@@ -28,4 +28,20 @@ final class Permissions
     {
         return \sprintf('record.%s.%s', $objectName, $action->value);
     }
+
+    /**
+     * Running a manual workflow: created when a manual version of it is activated.
+     */
+    public static function workflowRun(string $workflowId): string
+    {
+        return \sprintf('workflow.%s.run', $workflowId);
+    }
+
+    /**
+     * The workflow id of a workflow permission (workflow.<id>.run), null for the others.
+     */
+    public static function workflowOf(string $permission): ?string
+    {
+        return 1 === preg_match('/^workflow\.([0-9a-f-]{36})\.run$/', $permission, $match) ? $match[1] : null;
+    }
 }

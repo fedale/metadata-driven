@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Module\Workflow\Application;
 
+use App\Module\Access\Contract\AccessSetupInterface;
+use App\Module\Access\Contract\Permissions;
 use App\Module\Workflow\Application\Definition\DefinitionParser;
 use App\Module\Workflow\Application\Definition\DefinitionValidator;
 use App\Module\Workflow\Application\Engine\ActiveWorkflows;
@@ -32,6 +34,7 @@ final class WorkflowManager
         private readonly ActiveWorkflows $active,
         private readonly TransactionRunner $transactions,
         private readonly Security $security,
+        private readonly AccessSetupInterface $permissions,
     ) {
     }
 
@@ -96,6 +99,14 @@ final class WorkflowManager
             $active?->archive();
             $draft->activate($definition->toArray(), $activator, new \DateTimeImmutable());
             $this->workflows->save(...array_filter([$active, $draft]));
+            // Who may run a manual workflow: given on the roles page. A workflow no longer
+            // manual takes it from every role.
+            $permission = Permissions::workflowRun($workflow->getId()->toRfc4122());
+            if ($definition->trigger->isManual()) {
+                $this->permissions->ensurePermission($permission, $workflow->getName());
+            } else {
+                $this->permissions->removePermission($permission);
+            }
         });
         $this->active->forget();
 
@@ -139,11 +150,14 @@ final class WorkflowManager
     }
 
     /**
-     * Deletes the workflow, its versions and its runs.
+     * Deletes the workflow, its versions and its runs, and the permission to run it.
      */
     public function delete(Workflow $workflow): void
     {
-        $this->workflows->remove($workflow);
+        $this->transactions->run(function () use ($workflow): void {
+            $this->permissions->removePermission(Permissions::workflowRun($workflow->getId()->toRfc4122()));
+            $this->workflows->remove($workflow);
+        });
         $this->active->forget();
     }
 

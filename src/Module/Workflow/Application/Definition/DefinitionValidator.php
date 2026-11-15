@@ -120,7 +120,7 @@ final class DefinitionValidator
                 TriggerEvent::Created => [RecordAction::Create],
                 TriggerEvent::Updated => [RecordAction::Update],
                 TriggerEvent::CreatedOrUpdated => [RecordAction::Create, RecordAction::Update],
-                TriggerEvent::Deleted => [],
+                TriggerEvent::Deleted, TriggerEvent::Manual => [],
             };
             if (TriggerEvent::Deleted === $definition->trigger->on) {
                 $this->error($path.'.type', 'set_values changes the values being written: a delete writes none.');
@@ -204,8 +204,17 @@ final class DefinitionValidator
         if ('$trigger' !== $root || !isset($segments[1])) {
             return;
         }
-        if (!\in_array($segments[1], ['object', 'action', 'record', 'before', 'changed'], true)) {
-            $this->error($at, \sprintf('$trigger holds object, action, record, before and changed: not "%s".', $segments[1]));
+        $manual = $definition->trigger->isManual();
+        $holds = $manual ? ['object', 'action', 'record', 'input'] : ['object', 'action', 'record', 'before', 'changed'];
+        if (!\in_array($segments[1], $holds, true)) {
+            $this->error($at, \sprintf('$trigger holds %s: not "%s".', implode(', ', $holds), $segments[1]));
+
+            return;
+        }
+        if ('input' === $segments[1]) {
+            if (isset($segments[2]) && null === $definition->trigger->input($segments[2])) {
+                $this->error($at, \sprintf('The form has no input "%s".', $segments[2]));
+            }
 
             return;
         }

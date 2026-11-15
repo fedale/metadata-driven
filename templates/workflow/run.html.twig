@@ -1,0 +1,18 @@
+{% extends 'base.html.twig' %}
+
+{% set label = workflow.definition.trigger.label %}
+
+{% block title %}{{ label }}{% endblock %}
+
+{% block body %}
+    <p><a href="{{ back }}">&larr; {{ object.labelSingular }}</a></p>
+    <h1>{{ label }}</h1>
+    <p class="gv-muted">{{ 'workflow.run.intro'|trans({'%object%': object.labelSingular|lower}) }}</p>
+
+    {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+        {{ form_errors(form) }}
+        {{ form_rest(form) }}
+        <button type="submit" class="gv-btn gv-btn-primary">{{ 'workflow.run.submit'|trans }}</button>
+        <a class="gv-btn" href="{{ back }}">{{ 'form.cancel'|trans }}</a>
+    {{ form_end(form) }}
+{% endblock %}

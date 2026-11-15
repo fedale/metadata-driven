@@ -132,6 +132,7 @@ The application checks these RBAC items:
 | `admin.members` | permission | The members page, `/admin/members`: who may sign in to the workspace, with which roles |
 | `admin.roles` | permission | The roles page, `/admin/roles`: which permissions each role gives |
 | `admin.workflows` | permission | The workflows page, `/admin/workflows`: the workflows of the workspace, their versions and their runs (see [Workflows](workflows.md#permissions)) |
+| `workflow.<workflow id>.run` | permission | Running a manual workflow, from a record's page; created when a manual version of it is activated, removed with the workflow (see [Manual workflows](workflows.md#manual-workflows)) |
 | `ROLE_SUPER_ADMIN` | role | Everything, now and in the future |
 
 The four permissions of an object are created with it (by the admin or the console). `access:sync`

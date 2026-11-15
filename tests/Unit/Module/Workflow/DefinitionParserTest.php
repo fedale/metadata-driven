@@ -49,6 +49,32 @@ final class DefinitionParserTest extends TestCase
         self::assertEquals($definition, $parser->fromArray($definition->toArray()));
     }
 
+    public function testReadsAManualTriggerItsLabelAndItsForm(): void
+    {
+        $parser = new DefinitionParser();
+        $definition = $parser->parse(<<<'YAML'
+            trigger:
+              on: manual
+              object: invoice
+              label: Send a reminder
+              form:
+                - { name: note, label: Note, type: text, required: true }
+                - { name: tone, label: Tone, type: select, options: [kind, firm] }
+            steps:
+              - { key: r, type: create_record, object: reminder, values: { note: '{{ $trigger.input.note }}' } }
+            YAML);
+
+        self::assertTrue($definition->trigger->isManual());
+        self::assertSame('Send a reminder', $definition->trigger->label);
+        self::assertSame(['kind', 'firm'], $definition->trigger->input('tone')?->options);
+        self::assertTrue($definition->trigger->input('note')?->required);
+        // Stored without a when, read back the same.
+        $stored = $definition->toArray()['trigger'];
+        self::assertIsArray($stored);
+        self::assertArrayNotHasKey('when', $stored);
+        self::assertEquals($definition, $parser->fromArray($definition->toArray()));
+    }
+
     /**
      * @param array<string, list<string>> $expected some of the errors, by path
      */
@@ -73,7 +99,7 @@ final class DefinitionParserTest extends TestCase
         yield 'not YAML' => ["trigger: [\n", ['' => ['Not valid YAML: Malformed inline YAML string at line 2.']]];
         yield 'no trigger, no steps' => ['{}', ['trigger' => ['Required: a map with on, object and when.'], 'steps' => ['Required: a list of steps, one at least.']]];
         yield 'a wrong trigger' => ["trigger: { on: archived, object: Invoice, when: later, fields: [x] }\nsteps: [{ key: a, type: refuse, message: no }]", [
-            'trigger.on' => ['One of created, updated, created_or_updated, deleted.'],
+            'trigger.on' => ['One of created, updated, created_or_updated, deleted, manual.'],
             'trigger.object' => ['Required: a machine name, lowercase letters, digits and underscores.'],
             'trigger.when' => ['before or after.'],
             'trigger.fields' => ['Only for a trigger on updated or created_or_updated: the fields whose change runs it.'],
@@ -96,6 +122,37 @@ final class DefinitionParserTest extends TestCase
             'steps.2.act_as' => ['A role of the workspace, e.g. ROLE_ACCOUNTANT.'],
             'steps.2.emit_events' => ['true or false.'],
         ]];
+    }
+
+    public function testReportsEveryProblemOfAManualTrigger(): void
+    {
+        try {
+            (new DefinitionParser())->parse(<<<'YAML'
+                trigger:
+                  on: manual
+                  object: invoice
+                  when: after
+                  form:
+                    - { name: a, label: A, type: text }
+                    - { name: a, label: Again, type: text }
+                    - { name: c, label: C, type: color }
+                    - { name: s, label: S, type: select }
+                    - { name: t, label: T, type: text, options: [x], required: maybe }
+                steps: [{ key: v, type: set_values, values: { x: 1 } }]
+                YAML);
+            self::fail('Refused.');
+        } catch (InvalidWorkflowDefinition $e) {
+            self::assertSame([
+                'trigger.when' => ['Unknown: here, on, object, label, form.'],
+                'trigger.label' => ['Required: the text of its button, at most 100 characters.'],
+                'trigger.form.1.name' => ['"a" names another input already.'],
+                'trigger.form.2.type' => ['One of text, number, date, boolean, select.'],
+                'trigger.form.3.options' => ['A select takes a list of options, one at least.'],
+                'trigger.form.4.options' => ['Only a select takes options.'],
+                'trigger.form.4.required' => ['true or false.'],
+                'steps.0.type' => ['set_values changes the values being written: only in a workflow run before the write.'],
+            ], $e->errors);
+        }
     }
 
     public function testCountsTheStepsOfTheBranches(): void

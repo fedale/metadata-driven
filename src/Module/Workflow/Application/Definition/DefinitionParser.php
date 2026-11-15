@@ -36,6 +36,9 @@ final class DefinitionParser
 
     private int $count = 0;
 
+    /** The definition read has a manual trigger: no write for set_values to change. */
+    private bool $manual = false;
+
     /**
      * @throws InvalidWorkflowDefinition
      */
@@ -58,6 +61,7 @@ final class DefinitionParser
     public function fromArray(array $data): Definition
     {
         [$this->errors, $this->keys, $this->count] = [[], [], 0];
+        $this->manual = \is_array($data['trigger'] ?? null) && 'manual' === ($data['trigger']['on'] ?? null);
 
         $this->unknownKeys($data, ['trigger', 'steps'], '');
         $trigger = $this->trigger($data['trigger'] ?? null);
@@ -80,11 +84,14 @@ final class DefinitionParser
 
             return null;
         }
-        $this->unknownKeys($trigger, ['on', 'object', 'when', 'fields'], 'trigger');
         $on = \is_string($trigger['on'] ?? null) ? TriggerEvent::tryFrom($trigger['on']) : null;
         if (null === $on) {
             $this->error('trigger.on', \sprintf('One of %s.', implode(', ', array_column(TriggerEvent::cases(), 'value'))));
         }
+        if (TriggerEvent::Manual === $on) {
+            return $this->manualTrigger($trigger);
+        }
+        $this->unknownKeys($trigger, ['on', 'object', 'when', 'fields'], 'trigger');
         $object = $this->name($trigger['object'] ?? null, 'trigger.object');
         $when = \is_string($trigger['when'] ?? null) ? Timing::tryFrom($trigger['when']) : null;
         if (null === $when) {
@@ -99,6 +106,77 @@ final class DefinitionParser
         }
 
         return null === $on || null === $object || null === $when ? null : new Trigger($on, $object, $when, $fields);
+    }
+
+    /**
+     * A manual trigger: run by someone, as an after-run, its button's label and its inputs.
+     *
+     * @param array<mixed> $trigger
+     */
+    private function manualTrigger(array $trigger): ?Trigger
+    {
+        $this->unknownKeys($trigger, ['on', 'object', 'label', 'form'], 'trigger');
+        $object = $this->name($trigger['object'] ?? null, 'trigger.object');
+        $label = \is_string($trigger['label'] ?? null) && '' !== trim($trigger['label']) && mb_strlen($trigger['label']) <= 100 ? trim($trigger['label']) : null;
+        if (null === $label) {
+            $this->error('trigger.label', 'Required: the text of its button, at most 100 characters.');
+        }
+        $form = [];
+        if (\array_key_exists('form', $trigger)) {
+            if (!\is_array($trigger['form']) || !array_is_list($trigger['form'])) {
+                $this->error('trigger.form', 'A list of inputs, each with name, label and type.');
+            } else {
+                $names = [];
+                foreach ($trigger['form'] as $i => $input) {
+                    $input = $this->formInput($input, 'trigger.form.'.$i);
+                    if (null !== $input && isset($names[$input->name])) {
+                        $this->error('trigger.form.'.$i.'.name', \sprintf('"%s" names another input already.', $input->name));
+                    } elseif (null !== $input) {
+                        $names[$input->name] = true;
+                        $form[] = $input;
+                    }
+                }
+            }
+        }
+
+        return null === $object || null === $label ? null : new Trigger(TriggerEvent::Manual, $object, Timing::After, [], $label, $form);
+    }
+
+    private function formInput(mixed $input, string $path): ?FormInput
+    {
+        if (!\is_array($input)) {
+            $this->error($path, 'An input is a map with name, label and type.');
+
+            return null;
+        }
+        $this->unknownKeys($input, ['name', 'label', 'type', 'required', 'options'], $path);
+        $name = $this->name($input['name'] ?? null, $path.'.name');
+        $label = \is_string($input['label'] ?? null) && '' !== trim($input['label']) ? trim($input['label']) : null;
+        if (null === $label) {
+            $this->error($path.'.label', 'Required: the text shown next to it.');
+        }
+        $type = $input['type'] ?? null;
+        if (!\is_string($type) || !\in_array($type, FormInput::TYPES, true)) {
+            $this->error($path.'.type', \sprintf('One of %s.', implode(', ', FormInput::TYPES)));
+            $type = null;
+        }
+        $options = [];
+        if ('select' === $type) {
+            $raw = $input['options'] ?? null;
+            if (!\is_array($raw) || !array_is_list($raw) || [] === $raw || [] !== array_filter($raw, static fn (mixed $option): bool => !\is_scalar($option))) {
+                $this->error($path.'.options', 'A select takes a list of options, one at least.');
+            } else {
+                $options = array_map(static fn (mixed $option): string => \is_scalar($option) ? (string) $option : '', $raw);
+            }
+        } elseif (\array_key_exists('options', $input)) {
+            $this->error($path.'.options', 'Only a select takes options.');
+        }
+        $required = $input['required'] ?? false;
+        if (!\is_bool($required)) {
+            $this->error($path.'.required', 'true or false.');
+        }
+
+        return null === $name || null === $label || null === $type ? null : new FormInput($name, $label, $type, true === $required, $options);
     }
 
     /**
@@ -151,7 +229,7 @@ final class DefinitionParser
                 $this->error($path.'.'.$option, 'Required.');
             }
         }
-        if (Timing::After === $timing && StepType::SetValues === $type) {
+        if ((Timing::After === $timing || $this->manual) && StepType::SetValues === $type) {
             $this->error($path.'.type', 'set_values changes the values being written: only in a workflow run before the write.');
         }
 

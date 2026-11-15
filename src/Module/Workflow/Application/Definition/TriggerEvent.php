@@ -15,6 +15,8 @@ enum TriggerEvent: string
     case Updated = 'updated';
     case CreatedOrUpdated = 'created_or_updated';
     case Deleted = 'deleted';
+    /** Run by someone, from a record's page or a command: no write starts it. */
+    case Manual = 'manual';
 
     public function matches(RecordWriteAction $action): bool
     {
@@ -23,6 +25,7 @@ enum TriggerEvent: string
             self::Updated => RecordWriteAction::Update === $action,
             self::CreatedOrUpdated => RecordWriteAction::Delete !== $action,
             self::Deleted => RecordWriteAction::Delete === $action,
+            self::Manual => false,
         };
     }
 }

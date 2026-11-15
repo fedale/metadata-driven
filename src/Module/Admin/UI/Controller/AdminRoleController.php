@@ -160,9 +160,15 @@ final class AdminRoleController extends AbstractController
         ];
     }
 
+    /** @var array<string, string|null>|null the permissions' descriptions, read once */
+    private ?array $descriptions = null;
+
     private function permissionGroup(string $permission): string
     {
         $object = self::objectOf($permission);
+        if (null !== Permissions::workflowOf($permission)) {
+            return $this->translator->trans('admin.roles.workflows');
+        }
 
         return null === $object
             ? $this->translator->trans('admin.roles.administration')
@@ -177,6 +183,10 @@ final class AdminRoleController extends AbstractController
             $text = $this->translator->trans('admin.roles.action.'.$action);
 
             return $this->metadata->hasObject($object) ? $this->metadata->getObject($object)->labelPlural.': '.$text : $object.': '.$text;
+        }
+        if (null !== Permissions::workflowOf($permission)) {
+            // Its description: the workflow's name when it was made.
+            return $this->translator->trans('admin.roles.run_workflow', ['%name%' => ($this->descriptions ??= $this->roles->permissions())[$permission] ?? $permission]);
         }
         $key = 'admin.roles.permission.'.str_replace('.', '_', $permission);
         $text = $this->translator->trans($key);
