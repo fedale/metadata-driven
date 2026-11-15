@@ -426,6 +426,53 @@ admin:
         deleted: 'Workflow "%name%" eliminato.'
         reused: 'La bozza ora ha la definizione della versione %number%.'
         invalid: '{1}Non si può attivare: un problema, qui sotto.|]1,Inf[Non si può attivare: %count% problemi, qui sotto.'
+        editors: Editor
+        tab_visual: Visuale
+        tab_yaml: YAML
+        yaml_unreadable: 'Lo YAML non si riesce a leggere: correggilo qui prima di usare l''editor visuale.'
+        visual_rewrites: 'Salvando lo YAML viene riscritto: i commenti scritti nella tab YAML vanno persi.'
+        add_step: 'Aggiungi un passo:'
+        type_if: Se
+        type_filter: Filtro
+        type_create_record: Crea un record
+        type_update_record: Modifica un record
+        type_delete_record: Elimina un record
+        type_upsert_record: Crea o modifica un record
+        type_set_values: Imposta valori
+        type_refuse: Rifiuta
+        key: Chiave
+        object: Oggetto
+        record_id: Id del record
+        match: Abbinato su
+        act_as: Agisce come
+        act_as_triggerer: Chi ha scatenato l'evento
+        emit_events: Le sue scritture avviano workflow
+        message: Messaggio
+        value_field: Campo
+        value: Valore
+        add_value: + valore
+        add_test: + condizione
+        add_branch: + ramo
+        remove: Rimuovi
+        join: Combina
+        join_all: Tutte
+        join_any: Una qualsiasi
+        test_field: Percorso
+        test_op: Operatore
+        test_value: Valore
+        condition_in_yaml: 'Una condizione annidata più a fondo di quanto mostra l''editor visuale: modificala nella tab YAML.'
+        branch_if: Se
+        branch_else_if: Altrimenti se
+        branch_else: Altrimenti
+        on: Quando un record viene
+        on_created: creato
+        on_updated: modificato
+        on_created_or_updated: creato o modificato
+        on_deleted: eliminato
+        when: Esegui
+        when_before: prima della scrittura
+        when_after: dopo la scrittura
+        fields_changed: 'Solo quando cambia uno di questi campi (nessuno: qualsiasi)'
         variables: Variabili
         variables_help: 'Un clic inserisce <code>{{ path }}</code> dove si trova il cursore. Un passo legge solo i passi eseguiti prima di lui.'
         variables_trigger: L'evento
@@ -434,7 +481,7 @@ admin:
         test_record: 'Prova su'
         test_help: 'Un record dell''oggetto dell''evento: la bozza gira davvero su di lui, poi tutto viene annullato.'
         test: Prova su questo record
-        test_choose: Scegli un record su cui provare la bozza.
+        test_choose: 'Scegli un record di "%object%" su cui provare la bozza.'
         test_cannot_read: 'Non puoi leggere i record di "%object%": la prova li mostrerebbe.'
         test_result: Prova
         test_rolled_back: 'Annullata: non è rimasto niente.'

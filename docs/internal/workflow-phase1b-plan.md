@@ -1,7 +1,7 @@
 # Plan: workflows, phase 1b
 
-Status: **agreed** (2026-11-15). Part 1 done on branch `workflow_picker_test` (2026-11-15), waiting
-for the user's review. Phase 1b of [workflow-plan.md](workflow-plan.md), after
+Status: **done** (2026-11-15): part 1 merged into `main`; part 2 on branch
+`workflow_visual_editor`, waiting for the user's review. Phase 1b of [workflow-plan.md](workflow-plan.md), after
 [phase 1](workflow-phase1-plan.md): the editor's helpers, then the visual editor.
 
 ## Decisions (user, 2026-11-15)
@@ -31,6 +31,21 @@ for the user's review. Phase 1b of [workflow-plan.md](workflow-plan.md), after
   event (no other workflow runs), whatever `emit_events` says; the limits don't apply; the result
   is shown on the page, as a run's.
 
-## Part 2: the visual editor
+## Part 2: the visual editor, as delivered
 
-To be detailed when part 1 is merged.
+- `symfony/ux-live-component` 3.7 (its Flex recipe: the bundle, `/_components`, the Stimulus
+  controller). Its actions are guarded by the `X-Requested-With` header and its props by a
+  checksum; `WorkflowEditor` checks `admin.workflows` in `mount()`, after every hydration and so in
+  every action.
+- `EditorModel`: a draft's YAML read tolerantly into a model the page binds to (every option of
+  every step; values as rows; conditions as all/any of tests, a deeper one kept as YAML) and
+  written back; the round trip gives the same definition, without the comments.
+- `WorkflowEditor` (`templates/admin/workflow_editor.html.twig`): the trigger, the steps with their
+  branches, add/move/remove steps, branches, values and tests; save, activate (the problems shown
+  under the step whose path they start with), test. The test moved to `WorkflowTester`, shared by
+  both tabs.
+- The edit page has two tabs, visual by default (`?mode=yaml` for the YAML); the YAML tab opens by
+  itself when the YAML cannot be read, and after its form is sent.
+- The variable picker inserts into the input last focused in either tab.
+- Not done: dragging steps (↑ and ↓ move them); a condition deeper than all/any of tests in the
+  visual tab.

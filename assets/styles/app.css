@@ -370,6 +370,16 @@ a:hover { color: var(--gv-color-link-hover); }
 /* A form of one or two buttons, on the line of what it acts on. */
 .md-inline-form { display: inline-flex; gap: .25rem; margin: 0; }
 /* The problems of a definition, each by its path in it. */
+.md-tabs { display: flex; gap: 1rem; border-bottom: 1px solid var(--gv-color-border, #ddd); margin-bottom: 1rem; }
+.md-tabs a { padding: .4rem 0; text-decoration: none; }
+.md-tabs a[aria-current="page"] { font-weight: 600; border-bottom: 2px solid currentColor; }
+.md-workflow-step { border: 1px solid var(--gv-color-border, #ddd); border-radius: .4rem; padding: .6rem .8rem; margin: 0 0 .6rem; }
+.md-workflow-step__head { display: flex; align-items: center; gap: .5rem; margin-bottom: .4rem; }
+.md-workflow-step__moves { margin-left: auto; display: inline-flex; gap: .25rem; }
+.md-workflow-branch { border-left: 3px solid var(--gv-color-border, #ddd); padding-left: .8rem; margin: .5rem 0; }
+.md-workflow-row { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: .3rem 0; }
+.md-workflow-condition { margin: .3rem 0; }
+.md-workflow-add { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem; }
 .md-variables { display: flex; flex-wrap: wrap; gap: .25rem; margin: 0 0 .5rem; }
 .md-variables .gv-btn { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .75rem; }
 .md-workflow-test { display: flex; align-items: flex-end; gap: .5rem; flex-wrap: wrap; margin-top: 1rem; }

@@ -1,0 +1,31 @@
+{# The result of a test of a draft (WorkflowEngine::dryRun()): test, a RunLog. #}
+    <section class="md-admin__section" id="test">
+        <h2>{{ 'admin.workflow.test_result'|trans }}</h2>
+        <p>{{ ('admin.workflow.run_' ~ test.status)|trans }}{% if test.error %}: {{ test.error }}{% endif %} · <span class="gv-muted">{{ 'admin.workflow.test_rolled_back'|trans }}</span></p>
+        <table class="md-table">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'admin.workflow.step'|trans }}</th>
+                    <th scope="col">{{ 'admin.workflow.status'|trans }}</th>
+                    <th scope="col">{{ 'admin.workflow.input'|trans }}</th>
+                    <th scope="col">{{ 'admin.workflow.output'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for step in test.steps %}
+                    <tr>
+                        <td><code>{{ step.key }}</code> <span class="gv-muted">{{ step.type }}</span></td>
+                        <td>{{ step.status }}{% if step.error %}: {{ step.error }}{% endif %}</td>
+                        <td><pre class="md-code">{{ step.input is null ? '' : step.input|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_UNICODE') b-or constant('JSON_UNESCAPED_SLASHES')) }}</pre></td>
+                        <td><pre class="md-code">{{ step.output is null ? '' : step.output|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_UNICODE') b-or constant('JSON_UNESCAPED_SLASHES')) }}</pre></td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="4" class="gv-muted">{{ 'admin.workflow.test_no_step'|trans }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <details>
+            <summary>{{ 'admin.workflow.chain'|trans }}</summary>
+            <pre class="md-code">{{ test.chain|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_UNICODE') b-or constant('JSON_UNESCAPED_SLASHES')) }}</pre>
+        </details>
+    </section>

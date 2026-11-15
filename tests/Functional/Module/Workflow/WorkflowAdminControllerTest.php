@@ -54,6 +54,7 @@ final class WorkflowAdminControllerTest extends WebTestCase
         self::assertResponseRedirects();
         $edit = (string) $this->client->getResponse()->headers->get('Location');
         $this->client->followRedirect();
+        $this->yaml();
         self::assertSelectorTextContains('body', 'Not running: activate the draft.');
 
         // Saved as a draft, refused on activation, every problem listed by its path.
@@ -85,11 +86,14 @@ final class WorkflowAdminControllerTest extends WebTestCase
         $this->client->request('GET', '/admin/workflows/new');
         $this->client->submitForm('Create the draft', ['workflow[name]' => 'Welcome', 'workflow[definition]' => self::WELCOME]);
         $this->client->followRedirect();
+        $this->yaml();
         $this->client->submitForm('Save and activate');
         $this->client->followRedirect();
+        $this->yaml();
 
         $this->client->submitForm('Save the draft', ['workflow[definition]' => str_replace('Pet of', 'Friend of', self::WELCOME)]);
         $this->client->followRedirect();
+        $this->yaml();
         self::assertSelectorTextContains('body', 'You are editing the draft, version 2: the active version keeps running until you activate it.');
         $this->client->submitForm('Save and activate');
         $this->client->followRedirect();
@@ -99,9 +103,10 @@ final class WorkflowAdminControllerTest extends WebTestCase
         $this->client->submitForm('Use as draft');
         $this->client->followRedirect();
         self::assertSelectorTextContains('.md-flash--success', "The draft is now version 1's definition.");
+        $this->yaml();
         self::assertStringContainsString('Pet of', (string) $this->client->getCrawler()->filter('textarea')->text());
 
-        $this->client->submitForm('Deactivate');
+        $this->client->submit($this->client->getCrawler()->filter('form[name="deactivate_workflow"]')->form());
         $this->client->followRedirect();
         self::assertSelectorTextContains('body', 'Not running: activate the draft.');
     }
@@ -112,6 +117,7 @@ final class WorkflowAdminControllerTest extends WebTestCase
         $this->client->request('GET', '/admin/workflows/new');
         $this->client->submitForm('Create the draft', ['workflow[name]' => 'Welcome', 'workflow[definition]' => self::WELCOME]);
         $this->client->followRedirect();
+        $this->yaml();
         $this->client->submitForm('Save and activate');
         $workflow = self::getContainer()->get(WorkflowRepository::class)->all()[0];
         $id = $workflow->getId()->toRfc4122();
@@ -133,6 +139,7 @@ final class WorkflowAdminControllerTest extends WebTestCase
         $this->client->request('GET', '/admin/workflows/new');
         $this->client->submitForm('Create the draft', ['workflow[name]' => 'Welcome', 'workflow[definition]' => self::WELCOME]);
         $this->client->followRedirect();
+        $this->yaml();
 
         self::assertSelectorExists('button[data-variable-picker-path-param="$trigger.record.full_name"]');
         self::assertSelectorExists('button[data-variable-picker-path-param="pet.name"]');
@@ -156,6 +163,7 @@ final class WorkflowAdminControllerTest extends WebTestCase
         $this->client->request('GET', '/admin/workflows/new');
         $this->client->submitForm('Create the draft', ['workflow[name]' => 'Welcome', 'workflow[definition]' => self::WELCOME]);
         $this->client->followRedirect();
+        $this->yaml();
 
         // Anna may not read people: none is offered, and a test is refused.
         self::assertCount(1, $this->client->getCrawler()->filter('select[name="workflow[test_record]"] option'));
@@ -178,8 +186,16 @@ final class WorkflowAdminControllerTest extends WebTestCase
         self::assertSame(['Second', 'First'], array_map(static fn ($workflow): string => $workflow->getName(), self::getContainer()->get(WorkflowRepository::class)->all()));
 
         $this->client->clickLink('First');
-        $this->client->submitForm('Delete');
+        $this->client->submit($this->client->getCrawler()->filter('form[name="delete_workflow"]')->form());
         self::assertResponseRedirects('/admin/workflows', 303);
         self::assertSame(['Second'], array_map(static fn ($workflow): string => $workflow->getName(), self::getContainer()->get(WorkflowRepository::class)->all()));
+    }
+
+    /**
+     * The YAML tab of the page shown: its form.
+     */
+    private function yaml(): void
+    {
+        $this->client->request('GET', strtok($this->client->getRequest()->getUri(), '?').'?mode=yaml');
     }
 }

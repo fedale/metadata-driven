@@ -429,6 +429,53 @@ admin:
         deleted: 'Workflow "%name%" deleted.'
         reused: 'The draft is now version %number%''s definition.'
         invalid: '{1}It cannot be activated: one problem, below.|]1,Inf[It cannot be activated: %count% problems, below.'
+        editors: Editors
+        tab_visual: Visual
+        tab_yaml: YAML
+        yaml_unreadable: 'The YAML cannot be read: fix it here before using the visual editor.'
+        visual_rewrites: 'Saving writes the YAML again: comments written in the YAML tab are lost.'
+        add_step: 'Add a step:'
+        type_if: If
+        type_filter: Filter
+        type_create_record: Create a record
+        type_update_record: Update a record
+        type_delete_record: Delete a record
+        type_upsert_record: Create or update a record
+        type_set_values: Set values
+        type_refuse: Refuse
+        key: Key
+        object: Object
+        record_id: Record id
+        match: Matched on
+        act_as: Acts as
+        act_as_triggerer: Whoever triggered it
+        emit_events: Its writes start workflows
+        message: Message
+        value_field: Field
+        value: Value
+        add_value: + value
+        add_test: + test
+        add_branch: + branch
+        remove: Remove
+        join: Combine
+        join_all: All of
+        join_any: Any of
+        test_field: Path
+        test_op: Operator
+        test_value: Value
+        condition_in_yaml: 'A condition nested deeper than the visual editor shows: edit it in the YAML tab.'
+        branch_if: If
+        branch_else_if: Else if
+        branch_else: Else
+        on: When a record is
+        on_created: created
+        on_updated: updated
+        on_created_or_updated: created or updated
+        on_deleted: deleted
+        when: Run
+        when_before: before the write
+        when_after: after the write
+        fields_changed: 'Only when one of these fields changes (none: any)'
         variables: Variables
         variables_help: 'A click puts <code>{{ path }}</code> where the cursor is. A step reads only the steps run before it.'
         variables_trigger: The trigger
@@ -437,7 +484,7 @@ admin:
         test_record: 'Test on'
         test_help: 'A record of the trigger''s object: the draft runs for real on it, then everything is rolled back.'
         test: Test on this record
-        test_choose: Choose a record to test the draft on.
+        test_choose: 'Choose a record of "%object%" to test the draft on.'
         test_cannot_read: 'You may not read the records of "%object%": the test would show them.'
         test_result: Test
         test_rolled_back: 'Rolled back: nothing was kept.'
