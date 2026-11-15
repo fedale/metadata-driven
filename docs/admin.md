@@ -107,6 +107,13 @@ Packages are only named on these pages (`vendor/name@version`), never given as a
 the server: installing from a directory, packing and exporting are console commands
 ([`metadata:package:*`](console.md)).
 
+## Workflows — `/admin/workflows`
+
+For whoever holds `admin.workflows`: what runs when a record is written. The list sets the order
+in which the workflows of one event run; a workflow's page edits its draft in YAML and activates
+it once checked, every problem listed by its place in the definition; its versions and its runs
+are a link away. See [Workflows](workflows.md).
+
 ## Members — `/admin/members`
 
 Who may sign in to this workspace, and with which of its roles: invite someone (a link they accept),

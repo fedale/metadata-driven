@@ -28,6 +28,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:purge`](#metadatapurge) | Delete an archived object or field for good, its data with it |
 | [`metadata:list`](#metadatalist) | List the objects, or the fields of one object, and what is archived |
 | [`metadata:files:gc`](#metadatafilesgc) | Delete the stored files no record references any more |
+| [`workflow:runs:gc`](#workflowrunsgc) | Delete the runs of the workflows older than the days they are kept |
 | [`record:import`](#recordimport) | Import the rows of a CSV file into an object, all or nothing |
 | [`metadata:package:export`](#metadatapackageexport) | Write objects, their fields and views, forms and their translations as a package |
 | [`metadata:package:validate`](#metadatapackagevalidate) | Check that a package follows the format, without installing it |
@@ -753,6 +754,26 @@ Run it on a schedule, for example every night from cron:
 
 ```
 30 3 * * * cd /srv/app && php bin/console metadata:files:gc --no-interaction
+```
+
+## `workflow:runs:gc`
+
+Delete the runs of the [workflows](workflows.md) older than `app.workflow.runs_keep_days` (30 by
+default), with their steps: they hold the data of the records they ran on. For the command's
+workspace.
+
+```
+workflow:runs:gc [--days=DAYS]
+```
+
+| Option | Meaning |
+|---|---|
+| `--days` | Keep the runs of the last days instead, one at least |
+
+Run it on a schedule, for every workspace:
+
+```
+45 3 * * * cd /srv/app && php bin/console workspace:run --all -- workflow:runs:gc --no-interaction
 ```
 
 ## Workspaces

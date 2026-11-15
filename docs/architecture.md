@@ -7,7 +7,7 @@ from `fedale/gridview-bundle`, the runtime settings from `fedale/setting-bundle`
 
 | Schema | Holds | Managed by |
 |---|---|---|
-| `core` | The workspace registry (`core.workspace`) and who may sign in to each workspace (`core.workspace_membership`); object, field, view and form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the packages installed (`core.package_installation`) and the ids of items in packages (`core.package_item`), the settings of `fedale/setting-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
+| `core` | The workspace registry (`core.workspace`) and who may sign in to each workspace (`core.workspace_membership`); object, field, view and form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the packages installed (`core.package_installation`) and the ids of items in packages (`core.package_item`), the workflows, their versions and their runs (`core.workflow*`), the settings of `fedale/setting-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
 | a workspace's data schema (`data` for the first workspace) | One table per object, `c_<object>`, holding the records, and one link table per many-to-many field, `l_<object>__<field>` | The Schema module, from the workspace's metadata |
 | a workspace's RBAC schema (`rbac` for the first workspace) | The tables of `fedale/rbac-bundle` (`auth_*`): the workspace's roles, permissions and assignments | Created with the workspace |
 | `no_workspace_rbac` | The same tables, empty: the RBAC tables of a session with no workspace (the system's, the console's), where the bundle finds tables and no permission | Migrations |
@@ -151,6 +151,7 @@ package catalog uses it too (see [Packages](packages.md)). It depends on `symfon
 | Access | The permissions of objects and admin, checked through `fedale/rbac-bundle`; `access:sync` | Metadata |
 | Package | Packages: the export of objects, views, forms and translations (`metadata:package:export`), their validation (`metadata:package:validate`), their install and their upgrades through `MetadataManagerInterface` in one transaction (`metadata:package:install`, `metadata:package:upgrade`, `metadata:package:list`), the installations (`core.package_installation`), the ids items keep in a package (`core.package_item`), the indexes looked into (`core.package_source`), downloads over https (`symfony/http-client`) checked against their checksum and signature; the admin pages at `/admin/packages`; the records of seeds, through the record pipeline; built on `Fedale\PackageFormat` | Metadata, Record, FieldType, File, Access |
 | File | Stored files: their bytes in the `record_files` Flysystem storage, keyed by their SHA-256 (the same bytes are stored once), their metadata in `core.file`, the type detected from the content; their thumbnails (`imagine/imagine`, GD); the GC, `metadata:files:gc`, which finds the references in the foreign keys to `core.file` (no other module needed); `FileStorageInterface`, `ThumbnailerInterface` | — |
+| Workflow | Record workflows: their definitions and versions (`core.workflow*`), the engine listening to the Record module's events, the runs, `/admin/workflows`, `workflow:runs:gc` (see [Workflows](workflows.md)) | Metadata, Record, Access |
 | Settings | Reserved for the next phases | |
 
 Modules that must react to another one without depending on it go through **ports**: the
@@ -230,6 +231,13 @@ RecordInput (raw values: form, API)
 
 Forms carry no validation of their own: they only convert input, so every rule lives once, in the
 metadata.
+
+Every write raises two events (`App\Module\Record\Contract\Event`): `RecordWriting`, before it
+and in its transaction, whose listeners may change the raw values (validated afterwards) or refuse
+the write; `RecordWritten`, once the outermost transaction committed
+(`TransactionRunner::whenDone()`), one per record, never for what was rolled back. The Workflow
+module listens; `RecordEventScopeInterface` silences them (a package's seeds) or stamps them with
+the workflow run they come from.
 
 ## Styles
 

@@ -43,6 +43,16 @@ code, the commands, the admin UI and the documentation.
 | **Service field** | A field of a form that is checked and then dropped: no column stores it (a "I accept the terms" box) |
 | **Translation** | The text of a label, option, title or `{t:name}` text in one language, stored under a **key** such as `field.<object>.<field>` (see [Languages](i18n.md)) |
 
+## Workflows
+
+| Term | Meaning |
+|---|---|
+| **Workflow** | A series of steps run when something happens to a record of an object (see [Workflows](workflows.md)) |
+| **Trigger** | What starts a workflow: a record created, updated or deleted, **before** the write (it may change or refuse it) or **after** it |
+| **Step** | One thing a workflow does: a condition (`if`, `filter`), a write (`create_record`…), `set_values`, `refuse`; its output is read by its **key** |
+| **Version** | One definition of a workflow: a **draft** being written, the **active** one that runs, the deactivated and archived ones before |
+| **Run** | One execution of a workflow's active version: its steps and the data it read and wrote; completed, failed or refused |
+
 ## Packages
 
 | Term | Meaning |

@@ -1,6 +1,7 @@
 # Plan: workflows, phase 1 in detail
 
-Status: **agreed** (2026-11-15), in progress on branch `workflow_phase1_design`. Phase 1 of [workflow-plan.md](workflow-plan.md) ("Record workflows"), which holds the
+Status: **done** (2026-11-15) on branch `workflow_phase1_design`, waiting for the user's review.
+The guide is [../workflows.md](../workflows.md). Phase 1 of [workflow-plan.md](workflow-plan.md) ("Record workflows"), which holds the
 decisions already taken (2026-11-13) and the concepts; this page says how they fit the code as it
 is, and what is built, in which order.
 
@@ -205,6 +206,25 @@ runs kept 30 days.
 5. The admin pages and `workflow:runs:gc`; functional tests.
 6. The guide `docs/workflows.md`, and admin.md, console.md, access.md, architecture.md, the
    glossary (workflow, version, run, step, trigger), status.md.
+
+## As delivered (2026-11-15)
+
+What differs from the design above, and why:
+
+- **The active workflows are read once per request**, object and moment (`DbalActiveWorkflows`),
+  not cached across requests: one indexed query per write that has to know; a cache bumped on
+  activation can come when it shows in a profile.
+- **Constant values are not checked against their fields on activation**: the record's own
+  validation checks them at each write, with its messages; activation checks the objects, the
+  fields, the paths and the roles. A workflow does not write file fields.
+- **The upsert finds its record with `RecordFinderInterface::findBy()`**, added to the Record
+  contract (an import's matching query, one value).
+- **A package's migrations (`copy_values`) are silent too**, as its seeds: installed, not written
+  by anyone.
+- **The list's order is set with ↑ and ↓**, not by dragging.
+- **`workflow:runs:gc` works in its workspace**, as `metadata:files:gc`: every workspace with
+  `workspace:run --all`.
+- The run statuses are completed, failed and refused (a before-run that refused its write).
 
 ## Decisions (user, 2026-11-15)
 
