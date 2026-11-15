@@ -29,22 +29,22 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:list`](#metadatalist) | List the objects, or the fields of one object, and what is archived |
 | [`metadata:files:gc`](#metadatafilesgc) | Delete the stored files no record references any more |
 | [`record:import`](#recordimport) | Import the rows of a CSV file into an object, all or nothing |
-| [`metadata:template:export`](#metadatatemplateexport) | Write objects, their fields and views, forms and their translations as a template |
-| [`metadata:template:validate`](#metadatatemplatevalidate) | Check that a template follows the format, without installing it |
-| [`metadata:template:install`](#metadatatemplateinstall) | Install a template: its objects and their tables, fields, views, forms and translations, all or nothing |
-| [`metadata:template:list`](#metadatatemplatelist) | List the templates installed, with their versions |
-| [`metadata:template:keygen`](#metadatatemplatekeygen) | Make a key pair to sign the templates of an index with |
-| [`metadata:template:pack`](#metadatatemplatepack) | Pack a template into an archive, and list it in an index |
-| [`metadata:template:repo`](#metadatatemplaterepo) | List, add or remove the indexes templates are downloaded from |
-| [`metadata:template:search`](#metadatatemplatesearch) | Find templates in the indexes, with the version installed here |
-| [`metadata:template:yank`](#metadatatemplateyank) | Withdraw a version from an index, or list it again |
-| [`metadata:template:publish`](#metadatatemplatepublish) | Prepare a template version for the central catalog: copied into a checkout of it, ready for a pull request |
-| [`metadata:template:upgrade`](#metadatatemplateupgrade) | Upgrade an installed template to a new version: only what it changed, what this instance changed kept |
+| [`metadata:package:export`](#metadatapackageexport) | Write objects, their fields and views, forms and their translations as a package |
+| [`metadata:package:validate`](#metadatapackagevalidate) | Check that a package follows the format, without installing it |
+| [`metadata:package:install`](#metadatapackageinstall) | Install a package: its objects and their tables, fields, views, forms and translations, all or nothing |
+| [`metadata:package:list`](#metadatapackagelist) | List the packages installed, with their versions |
+| [`metadata:package:keygen`](#metadatapackagekeygen) | Make a key pair to sign the packages of an index with |
+| [`metadata:package:pack`](#metadatapackagepack) | Pack a package into an archive, and list it in an index |
+| [`metadata:package:repo`](#metadatapackagerepo) | List, add or remove the indexes packages are downloaded from |
+| [`metadata:package:search`](#metadatapackagesearch) | Find packages in the indexes, with the version installed here |
+| [`metadata:package:yank`](#metadatapackageyank) | Withdraw a version from an index, or list it again |
+| [`metadata:package:publish`](#metadatapackagepublish) | Prepare a package version for the central catalog: copied into a checkout of it, ready for a pull request |
+| [`metadata:package:upgrade`](#metadatapackageupgrade) | Upgrade an installed package to a new version: only what it changed, what this instance changed kept |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
 | [`workspace:create`](#workspacecreate), [`workspace:list`](#workspacelist), [`workspace:suspend`, `workspace:resume`](#workspacesuspend-workspaceresume), [`workspace:delete`](#workspacedelete), [`workspace:run`](#workspacerun) | Create, list, suspend, resume and delete workspaces; run a command for several of them |
 | [`workspace:files:move`](#workspacefilesmove) | Move the files stored before workspaces had directories into their workspace's directory, once |
 | `system:admin` | List, grant or revoke the system admins who may enter the system console — see [Workspaces](workspaces.md#the-system-console) |
-| `workspace:template:repo` | List, add or remove the template indexes offered to every workspace — see [Templates](templates.md#publishing-and-downloading) |
+| `system:package:repo` | List, add or remove the package indexes offered to every workspace — see [Packages](packages.md#publishing-and-downloading) |
 | `user:create` | Create a user who can sign in, a member of the command's workspace — see [Users and permissions](access.md#usercreate) |
 | `workspace:member:add`, `workspace:member:remove`, `workspace:member:list` | Let a user sign in to a workspace, or no longer; list a workspace's members — see [Users and workspaces](access.md#users-and-workspaces) |
 | `access:sync` | Create the permissions of every object, the admin permission and the super admin role — see [Users and permissions](access.md#permissions) |
@@ -496,94 +496,94 @@ symfony console metadata:list pet
 With an object, every field with its type, label, required and unique flags and resolved settings
 (defaults included), then the sets of fields unique together.
 
-## `metadata:template:export`
+## `metadata:package:export`
 
 Write objects, with their fields and views, forms and their translations as a
-template: a directory of YAML documents (see [Templates](templates.md)).
+package: a directory of YAML documents (see [Packages](packages.md)).
 
 ```
-metadata:template:export <name> <release> <directory> [--object=OBJECT]... [--form=FORM]... [--label=LABEL] [--description=DESCRIPTION] [--license=LICENSE]
+metadata:package:export <name> <release> <directory> [--object=OBJECT]... [--form=FORM]... [--label=LABEL] [--description=DESCRIPTION] [--license=LICENSE]
 ```
 
 | Argument or option | Meaning |
 |---|---|
-| `name` | The template's name, `vendor/name` (`acme/shop`) |
+| `name` | The package's name, `vendor/name` (`acme/shop`) |
 | `release` | Its version, `major.minor.patch` (`1.0.0`) |
 | `directory` | A new or empty directory to write it into |
 | `--object` | An object to export, with its fields and views (repeatable) |
-| `--form` | A form to export; its objects must be exported too, or belong to another installed template (repeatable) |
-| `--label`, `--description` | The title (default: from the name) and a line about the template |
+| `--form` | A form to export; its objects must be exported too, or belong to another installed package (repeatable) |
+| `--label`, `--description` | The title (default: from the name) and a line about the package |
 | `--license` | An SPDX identifier, such as `MIT` (default `proprietary`) |
 | `--seed` | Export the records of an object as a seed: `object`, or `object:key` to name its key field (default: its first unique field). Repeatable |
 
 ```bash
-symfony console metadata:template:export acme/shop 1.0.0 templates/shop --object=category --object=product --form=catalogue --license=MIT
+symfony console metadata:package:export acme/shop 1.0.0 packages/shop --object=category --object=product --form=catalogue --license=MIT
 ```
 
-Records in `core.template_item` the id each item received, so that the next export of the same
-template gives it the same id, renamed or not. An item pointing at an object of another
-installed template makes the export require it, noted after the listing (`It requires
-fedale/geo-italy ^1.0.`; see [Templates](templates.md#exporting-a-template-that-requires-others)).
+Records in `core.package_item` the id each item received, so that the next export of the same
+package gives it the same id, renamed or not. An item pointing at an object of another
+installed package makes the export require it, noted after the listing (`It requires
+fedale/geo-italy ^1.0.`; see [Packages](packages.md#exporting-a-package-that-requires-others)).
 Fails when an exported item points at an object that is neither exported nor another installed
-template's, or at a field added here to such an object; when a form writes such an object; when
-an exported object belongs to another installed template; when a seed points at a record the
-required template doesn't seed; or when the name or the version is invalid.
+package's, or at a field added here to such an object; when a form writes such an object; when
+an exported object belongs to another installed package; when a seed points at a record the
+required package doesn't seed; or when the name or the version is invalid.
 
-## `metadata:template:validate`
+## `metadata:package:validate`
 
-Check a template's structure without touching the data: the schemas, the settings of every
-field type, ids, names and references, those to the templates it requires checked against them
-as installed (see [Templates](templates.md#validating-a-template)).
+Check a package's structure without touching the data: the schemas, the settings of every
+field type, ids, names and references, those to the packages it requires checked against them
+as installed (see [Packages](packages.md#validating-a-package)).
 
 ```
-metadata:template:validate <directory>
+metadata:package:validate <directory>
 ```
 
 Lists every problem with its file and where in it, and fails when there is one. Changes nothing.
 
-## `metadata:template:install`
+## `metadata:package:install`
 
-Install a template, from a directory or downloaded from an index, in one transaction (see
-[Templates](templates.md#installing-a-template)). Named from an index, it comes with the
-templates it requires that are missing, installed first in the same transaction; from a
+Install a package, from a directory or downloaded from an index, in one transaction (see
+[Packages](packages.md#installing-a-package)). Named from an index, it comes with the
+packages it requires that are missing, installed first in the same transaction; from a
 directory, they must be installed already (see
-[Templates requiring templates](templates.md#templates-requiring-templates)).
+[Packages requiring packages](packages.md#packages-requiring-packages)).
 
 ```
-metadata:template:install <template> [--dry-run] [--repo=NAME]
+metadata:package:install <package> [--dry-run] [--repo=NAME]
 ```
 
 | Argument or option | Meaning |
 |---|---|
-| `template` | The directory of the template, or its name in an index: `acme/shop` (its newest version) or `acme/shop@1.0.0` |
+| `package` | The directory of the package, or its name in an index: `acme/shop` (its newest version) or `acme/shop@1.0.0` |
 | `--dry-run` | Go through the whole install, then roll it back: nothing is changed |
 | `--repo` | The index to download it from, when several offer it |
 
 ```bash
-symfony console metadata:template:install templates/shop --dry-run
-symfony console metadata:template:install templates/shop
+symfony console metadata:package:install packages/shop --dry-run
+symfony console metadata:package:install packages/shop
 ```
 
 Prints what it created (objects, fields, views, forms, translations), and the languages it left
 out. Writes the objects, fields, views, forms and translations through the metadata API (tables,
-columns, indexes and permissions included), then `core.template_installation` and
-`core.template_item`. Fails, changing nothing, when the template is invalid, already installed,
-requires a template that is missing (from a directory) or installed in a version it doesn't
+columns, indexes and permissions included), then `core.package_installation` and
+`core.package_item`. Fails, changing nothing, when the package is invalid, already installed,
+requires a package that is missing (from a directory) or installed in a version it doesn't
 allow, or names an object or a form this instance already has; or when the app refuses one of
 its items.
 
-## `metadata:template:upgrade`
+## `metadata:package:upgrade`
 
-Upgrade an installed template to a new version, from a directory or downloaded from an index
-(see [Templates](templates.md#upgrading-a-template)).
+Upgrade an installed package to a new version, from a directory or downloaded from an index
+(see [Packages](packages.md#upgrading-a-package)).
 
 ```
-metadata:template:upgrade <template> [--strategy=keep|overwrite] [--dry-run] [--repo=NAME]
+metadata:package:upgrade <package> [--strategy=keep|overwrite] [--dry-run] [--repo=NAME]
 ```
 
 | Argument or option | Meaning |
 |---|---|
-| `template` | The directory of the new version, or its name: `acme/shop` (the newest version, looked for first in the index it was installed from) or `acme/shop@2.0.0` |
+| `package` | The directory of the new version, or its name: `acme/shop` (the newest version, looked for first in the index it was installed from) or `acme/shop@2.0.0` |
 | `--repo` | The index to download it from, instead |
 | `--strategy` | For an item both the new version and this instance changed: `keep` this instance's version, or `overwrite` it with the new one. Without it, such conflicts stop the upgrade |
 | `--dry-run` | Go through the whole upgrade, then roll it back: nothing is changed |
@@ -594,97 +594,97 @@ then the conflicts kept. Renames objects and fields, creates the new ones, chang
 conditions, search, record labels and unique sets, saves views and forms, sets translations,
 runs the migration steps, writes the records of new and `managed` seeds and deletes the ones
 removed, deletes the views and forms the new version removed and archives its removed fields and
-objects; then records the new version in `core.template_installation`. Fails, changing nothing,
-when the template is not installed, the version not newer or its number does not fit the
+objects; then records the new version in `core.package_installation`. Fails, changing nothing,
+when the package is not installed, the version not newer or its number does not fit the
 changes, on a conflict without `--strategy`, on a change the app cannot make to an existing item (a field's type, required or
-unique, an object's icon), when a template it requires is missing or installed in a version the
-new one doesn't allow, when the new version would break an installed template requiring it (a
+unique, an object's icon), when a package it requires is missing or installed in a version the
+new one doesn't allow, when the new version would break an installed package requiring it (a
 version past its constraint, an item it references removed), or when the app refuses a step
-(see [Templates requiring templates](templates.md#templates-requiring-templates)).
+(see [Packages requiring packages](packages.md#packages-requiring-packages)).
 
-## `metadata:template:pack`
+## `metadata:package:pack`
 
-Check a template and pack it into a `.tar.gz` archive; with `--index`, list it in an index file
-(see [Templates](templates.md#publishing-and-downloading)).
+Check a package and pack it into a `.tar.gz` archive; with `--index`, list it in an index file
+(see [Packages](packages.md#publishing-and-downloading)).
 
 ```
-metadata:template:pack <directory> <archive> [--index=FILE] [--url=URL]
+metadata:package:pack <directory> <archive> [--index=FILE] [--url=URL]
 ```
 
 | Argument or option | Meaning |
 |---|---|
-| `directory` | The directory of the template |
+| `directory` | The directory of the package |
 | `archive` | The archive to write, e.g. `acme-shop-1.0.0.tar.gz` |
 | `--index` | An `index.json` to add this version to (created if missing; the same version is replaced) |
 | `--url` | Where the archive will be served; default: its file name, next to the index |
-| `--sign` | A file holding the secret key (`metadata:template:keygen`) to sign the entry with; needs `--index` |
+| `--sign` | A file holding the secret key (`metadata:package:keygen`) to sign the entry with; needs `--index` |
 
-Prints the archive's sha256. Refuses an invalid template, with every problem.
+Prints the archive's sha256. Refuses an invalid package, with every problem.
 
-## `metadata:template:keygen`
+## `metadata:package:keygen`
 
 ```
-metadata:template:keygen <file>
+metadata:package:keygen <file>
 ```
 
 Makes an Ed25519 key pair: writes the secret key to the file (readable by its owner only; an
 existing file is never overwritten) and prints the public key, for `repo add --key`.
 
-## `metadata:template:yank`
+## `metadata:package:yank`
 
 ```
-metadata:template:yank <index> <name> <version> [--sign=FILE] [--undo]
+metadata:package:yank <index> <name> <version> [--sign=FILE] [--undo]
 ```
 
 Marks a version of an index file yanked: new installs and upgrades skip it, naming it still
 installs it. `--undo` lists it again. A signed entry needs the secret key (`--sign`): the
 signature covers the flag.
 
-## `metadata:template:publish`
+## `metadata:package:publish`
 
 ```
-metadata:template:publish <directory> [--catalog=../metadata-driven-templates] [--dry-run]
+metadata:package:publish <directory> [--catalog=../metadata-driven-templates] [--dry-run]
 ```
 
-Checks a template directory against a checkout of the template catalog as the catalog's pull
-request check would (the format, a registered vendor, a template not removed, a version higher
-than the published ones whose number fits its changes, 20 MB at most, no links, the templates
+Checks a package directory against a checkout of the package catalog as the catalog's pull
+request check would (the format, a registered vendor, a package not removed, a version higher
+than the published ones whose number fits its changes, 20 MB at most, no links, the packages
 it requires published there in a fitting version not yanked and no cycle of them), then copies it
-to `templates/<vendor>/<name>/<version>/` there and prints the git commands to propose it.
+to `packages/<vendor>/<name>/<version>/` there and prints the git commands to propose it.
 `--dry-run` checks only. Pull the checkout first: it is compared as it is. See
-[Templates](templates.md#publishing-to-the-catalog).
+[Packages](packages.md#publishing-to-the-catalog).
 
-## `metadata:template:repo`
+## `metadata:package:repo`
 
 ```
-metadata:template:repo [list]
-metadata:template:repo add <name> <url> --key=<public key>
-metadata:template:repo add <name> <url> --unsigned
-metadata:template:repo remove <name>
+metadata:package:repo [list]
+metadata:package:repo add <name> <url> --key=<public key>
+metadata:package:repo add <name> <url> --unsigned
+metadata:package:repo remove <name>
 ```
 
-Lists the indexes templates are downloaded from, and whether they are signed (the template
-catalog first, when `TEMPLATE_CATALOG_URL` and `TEMPLATE_CATALOG_KEY` are set); adds one; or
+Lists the indexes packages are downloaded from, and whether they are signed (the package
+catalog first, when `PACKAGE_CATALOG_URL` and `PACKAGE_CATALOG_KEY` are set); adds one; or
 removes one. Adding reads its `index.json` first, which must be valid and served over https;
 with `--key`, every entry must be signed with it. Without a key, `--unsigned` is required: the
-index's checksums are then all that is checked. Stored in `core.template_source`.
+index's checksums are then all that is checked. Stored in `core.package_source`.
 
-## `metadata:template:search`
+## `metadata:package:search`
 
 ```
-metadata:template:search [term]
+metadata:package:search [term]
 ```
 
-Lists the newest version of every template whose name holds the term, in every index, with its
+Lists the newest version of every package whose name holds the term, in every index, with its
 index and the version installed here ("upgrade available" when it is older).
 
-## `metadata:template:list`
+## `metadata:package:list`
 
-List the installed templates: name, version, the templates each requires (with their
+List the installed packages: name, version, the packages each requires (with their
 constraints), date, and where each was installed from.
 
 ```
-metadata:template:list
+metadata:package:list
 ```
 
 ## `record:import`
@@ -763,7 +763,7 @@ the system: the workspace they work on is their first argument, not `--workspace
 ### `workspace:create`
 
 ```
-workspace:create [--name=…] [--admin-email=…] [--admin-password=…] [--template=…] <slug>
+workspace:create [--name=…] [--admin-email=…] [--admin-password=…] [--package=…] <slug>
 ```
 
 Creates a workspace ready to use, at `http://<slug>.<WORKSPACE_BASE_HOST>`:
@@ -774,10 +774,10 @@ Creates a workspace ready to use, at `http://<slug>.<WORKSPACE_BASE_HOST>`:
 3. with `--admin-email`, its first admin: an existing user becomes a member, a new one is created
    (the password is asked, hidden, without `--admin-password`), and gets the super admin role
    there;
-4. with `--template`, a template installed (`metadata:template:install`).
+4. with `--package`, a package installed (`metadata:package:install`).
 
 ```bash
-symfony console workspace:create acme --name="Acme Corp" --admin-email=anna@example.com --template=fedale/registration
+symfony console workspace:create acme --name="Acme Corp" --admin-email=anna@example.com --package=fedale/registration
 ```
 
 The slug is lower case letters, digits and dashes, 63 at most. Steps 2 to 4 are the commands
@@ -832,7 +832,7 @@ workspace:run (--all | --only=<slug>...) -- <command> [arguments]
 Runs a command for every active workspace, or for the ones you name, each in a process of its own:
 
 ```bash
-symfony console workspace:run --all -- metadata:template:upgrade fedale/registration
+symfony console workspace:run --all -- metadata:package:upgrade fedale/registration
 symfony console workspace:run --only=acme --only=globex -- metadata:files:gc
 ```
 

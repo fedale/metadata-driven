@@ -306,20 +306,20 @@ class ObjectDefinition
     }
 
     /**
-     * Creates the view, or replaces the template of the existing one with that kind and name.
+     * Creates the view, or replaces the source of the existing one with that kind and name.
      *
      * The first view of a kind becomes its default; making a view the default takes the
      * flag off the previous one. In a form view every {token} must name a field, once, outside
      * any tag; a grid view comes with its definition, compiled (and checked) by the caller.
      *
-     * @param string                    $template   sanitized HTML (form), or the YAML source (grid)
+     * @param string                    $source     sanitized HTML (form), or the YAML (grid)
      * @param array<string, mixed>|null $definition the compiled grid definition
      */
-    public function saveView(Uuid $id, ViewKind $kind, string $name, string $template, bool $isDefault, ?array $definition = null): ViewDefinition
+    public function saveView(Uuid $id, ViewKind $kind, string $name, string $source, bool $isDefault, ?array $definition = null): ViewDefinition
     {
         MachineName::assert($name);
         if (ViewKind::Form === $kind) {
-            $this->assertLayout($name, $template);
+            $this->assertLayout($name, $source);
         } elseif (null === $definition) {
             throw new \LogicException(\sprintf('A %s view needs its compiled definition.', $kind->value));
         }
@@ -327,10 +327,10 @@ class ObjectDefinition
         $view = $this->findView($kind, $name);
         if (null === $view) {
             $isDefault = $isDefault || null === $this->defaultView($kind);
-            $view = new ViewDefinition($id, $this, $kind, $name, $template, false, $definition);
+            $view = new ViewDefinition($id, $this, $kind, $name, $source, false, $definition);
             $this->views->add($view);
         } else {
-            $view->change($template, $definition);
+            $view->change($source, $definition);
         }
         if ($isDefault) {
             foreach ($this->views as $other) {
@@ -611,9 +611,9 @@ class ObjectDefinition
         return null;
     }
 
-    private function assertLayout(string $viewName, string $template): void
+    private function assertLayout(string $viewName, string $source): void
     {
-        $tokens = ViewDefinitionDto::tokens($template);
+        $tokens = ViewDefinitionDto::tokens($source);
         foreach ($tokens as $field) {
             if (!$this->hasField($field)) {
                 throw InvalidMetadataDefinition::unknownViewField($this->name, $viewName, $field);
@@ -625,7 +625,7 @@ class ObjectDefinition
             }
         }
         // A token inside a tag (an attribute value) would be replaced by markup there.
-        if (\count(ViewDefinitionDto::tokens(strip_tags($template))) !== \count($tokens)) {
+        if (\count(ViewDefinitionDto::tokens(strip_tags($source))) !== \count($tokens)) {
             throw InvalidMetadataDefinition::viewTokenInsideTag($viewName);
         }
     }

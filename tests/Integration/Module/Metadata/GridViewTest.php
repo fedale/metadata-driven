@@ -43,7 +43,7 @@ final class GridViewTest extends KernelTestCase
 
         $view = self::getContainer()->get(MetadataRegistryInterface::class)->getObject('pet')->view(ViewKind::Grid);
         self::assertNotNull($view);
-        self::assertSame($source, $view->template);
+        self::assertSame($source, $view->source);
         $grid = $view->grid;
         self::assertNotNull($grid);
         self::assertSame(['name', 'species', 'tag', 'weight'], array_map(static fn ($column): string => $column->key, $grid->columns));
@@ -117,7 +117,7 @@ final class GridViewTest extends KernelTestCase
         try {
             $this->manager()->saveView($object, ViewKind::Grid, 'main', $source);
         } catch (MetadataInputInvalid $e) {
-            return $e->errors['template'];
+            return $e->errors['source'];
         }
         self::fail('The definition is invalid.');
     }

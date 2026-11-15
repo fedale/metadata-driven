@@ -2,7 +2,7 @@
 
 One installation serves several **workspaces**: customers, companies or teams, each building an
 application of its own. A workspace has its own objects, fields, views, forms, records, roles,
-files and installed templates, and sees nothing of the others. Users are shared: one account
+files and installed packages, and sees nothing of the others. Users are shared: one account
 can be a member of several workspaces, with different roles in each.
 
 An installation starts with one workspace, `default`, which holds everything that existed before
@@ -43,7 +43,7 @@ symfony console system:admin revoke olga@example.com  # their console session en
   hold its super admin role), suspend or resume, delete (typing the slug back; never the default
   workspace).
 - **A workspace's members**: give or take the super admin role, remove, invite another admin.
-- **Template indexes** offered to every workspace.
+- **Package indexes** offered to every workspace.
 
 The console is no workspace: a system admin has no power inside a workspace unless they're a member there,
 with a role. Only system admins sign in there, and only the command line makes system admins. The slug
@@ -52,8 +52,8 @@ with a role. Only system admins sign in there, and only the command line makes s
 ## Creating and managing workspaces
 
 ```bash
-# A workspace ready to use: its schemas, its permissions, its first admin, a template
-symfony console workspace:create acme --name="Acme Corp" --admin-email=anna@example.com --template=fedale/registration
+# A workspace ready to use: its schemas, its permissions, its first admin, a package
+symfony console workspace:create acme --name="Acme Corp" --admin-email=anna@example.com --package=fedale/registration
 
 symfony console workspace:list                     # slug, name, status, members, objects
 symfony console workspace:suspend acme             # 404 for its requests, its data kept
@@ -113,24 +113,24 @@ The system admin has no special power inside a workspace: they work in it as a
 member with a role, like anyone else. A workspace's own admins change its model, with the
 permissions of [Users and permissions](access.md).
 
-## Templates
+## Packages
 
-Every workspace installs and upgrades its templates on its own, and may stay on another version than
+Every workspace installs and upgrades its packages on its own, and may stay on another version than
 its neighbours. To upgrade every workspace:
 
 ```bash
-symfony console workspace:run --all -- metadata:template:upgrade fedale/registration
+symfony console workspace:run --all -- metadata:package:upgrade fedale/registration
 ```
 
-A workspace that changed the template (a field added, a label changed) keeps its changes; one where
+A workspace that changed the package (a field added, a label changed) keeps its changes; one where
 the upgrade stops (a conflict, a field of its own named like a new one) is listed at the end, to
-resolve with `--workspace=<slug>`. See [Templates](templates.md#templates-and-workspaces).
+resolve with `--workspace=<slug>`. See [Packages](packages.md#packages-and-workspaces).
 
-The template catalog is offered to every workspace. You can offer more indexes the same way, which
+The package catalog is offered to every workspace. You can offer more indexes the same way, which
 the workspaces can use but not remove:
 
 ```bash
-symfony console workspace:template:repo add acme-extra https://templates.acme.example/index.json --key=<public key>
+symfony console system:package:repo add acme-extra https://packages.acme.example/index.json --key=<public key>
 ```
 
 ## Files

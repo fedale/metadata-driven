@@ -7,12 +7,12 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
-    # Templates downloaded from an index: the archive, then its files once unpacked, in MB.
-    app.template.max_download_mb: 50
-    app.template.max_unpacked_mb: 200
+    # Packages downloaded from an index: the archive, then its files once unpacked, in MB.
+    app.package.max_download_mb: 50
+    app.package.max_unpacked_mb: 200
     # true lets indexes and archives be on a private network (an intranet index); false refuses
     # private, loopback and link-local addresses, redirects included.
-    app.template.allow_private_networks: false
+    app.package.allow_private_networks: false
     # The CSV import wizard: where the uploaded files wait between its steps (a day at most), and
     # the most rows it imports at once; a larger file goes through record:import.
     env(IMPORT_DRAFTS_DIR): '%kernel.project_dir%/var/imports'
@@ -62,8 +62,8 @@ services:
             - '../src/Module/*/Domain/Exception/'
             - '../src/Module/*/Application/Command/'
 
-    # The template format (fedale/metadata-driven-package-format) is a plain library: the
-    # services the Template module needs from it.
+    # The package format (fedale/metadata-driven-package-format) is a plain library: the
+    # services the Package module needs from it.
     Fedale\PackageFormat\Archive: ~
     Fedale\PackageFormat\DocumentCodec: ~
     Fedale\PackageFormat\SchemaValidator: ~
@@ -78,9 +78,9 @@ services:
 
 when@test:
     parameters:
-        # The fake template server's hosts resolve nowhere: the guard against private networks
-        # would block them. TemplateSourcesTest checks the guard itself.
-        app.template.allow_private_networks: true
+        # The fake package server's hosts resolve nowhere: the guard against private networks
+        # would block them. PackageSourcesTest checks the guard itself.
+        app.package.allow_private_networks: true
         app.import.drafts_dir: '%kernel.cache_dir%/imports'
         # Tests have no request or command to name a workspace: every connection starts in the
         # installation's first one.
@@ -91,7 +91,7 @@ when@test:
         test.record_files.storage:
             alias: record_files.storage
             public: true
-        App\Tests\Support\FakeTemplateServer:
+        App\Tests\Support\FakePackageServer:
             public: true
         # Used by no service yet (workspace:create will): kept for the tests creating workspaces.
         App\Shared\Infrastructure\Workspace\WorkspaceProvisioner:

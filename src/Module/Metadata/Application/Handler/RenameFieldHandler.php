@@ -69,14 +69,14 @@ final class RenameFieldHandler
             $renamed = $this->metadata->getObject($objectName);
             foreach ($object->getViews() as $view) {
                 if (ViewKind::Form === $view->getKind()) {
-                    $template = $this->rewriter->tokens($view->getTemplate(), $old, $new);
+                    $source = $this->rewriter->tokens($view->getSource(), $old, $new);
                     $definition = null;
                 } else {
-                    $template = $this->rewriter->gridField($view->getTemplate(), $old, $new);
-                    $definition = $template === $view->getTemplate() ? $view->getDefinition() : $this->grids->compile($renamed, $template);
+                    $source = $this->rewriter->gridField($view->getSource(), $old, $new);
+                    $definition = $source === $view->getSource() ? $view->getDefinition() : $this->grids->compile($renamed, $source);
                 }
-                if ($template !== $view->getTemplate()) {
-                    $object->saveView($view->getId(), $view->getKind(), $view->getName(), $template, $view->isDefault(), $definition);
+                if ($source !== $view->getSource()) {
+                    $object->saveView($view->getId(), $view->getKind(), $view->getName(), $source, $view->isDefault(), $definition);
                     $rewritten[] = \sprintf('%s view "%s"', $view->getKind()->value, $view->getName());
                 }
             }

@@ -40,14 +40,14 @@ final class SaveViewConsoleCommand
 
             return Command::INVALID;
         }
-        $template = @file_get_contents('-' === $file ? 'php://stdin' : $file);
-        if (false === $template) {
+        $source = @file_get_contents('-' === $file ? 'php://stdin' : $file);
+        if (false === $source) {
             $io->error(\sprintf('Cannot read "%s".', $file));
 
             return Command::FAILURE;
         }
 
-        $command = new SaveViewCommand($object, $name, $template, $viewKind, $default);
+        $command = new SaveViewCommand($object, $name, $source, $viewKind, $default);
         if (!$this->isValid($this->validator, $command, $io)) {
             return Command::INVALID;
         }

@@ -35,7 +35,7 @@ final class MetadataTranslator
                 $view->id,
                 $view->kind,
                 $view->name,
-                ViewKind::Form === $view->kind ? $lookup->layout($view->template) : $view->template,
+                ViewKind::Form === $view->kind ? $lookup->layout($view->source) : $view->source,
                 $view->isDefault,
                 null === $view->grid ? null : $this->grid($view->grid, $lookup),
             );

@@ -6,7 +6,7 @@ namespace App\Tests\Integration\Shared;
 
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Domain\Repository\TranslationRepository;
-use App\Module\Template\Domain\Repository\TemplateSourceRepository;
+use App\Module\Package\Domain\Repository\PackageSourceRepository;
 use App\Shared\Database\WorkspaceScope;
 use App\Shared\Workspace\CurrentWorkspace;
 use App\Tests\Support\CreatesWorkspaces;
@@ -51,20 +51,20 @@ final class WorkspaceScopeTest extends KernelTestCase
     public function testAnotherWorkspacesRowsAreNeitherFoundNorInTheWayOfANameOfOurs(): void
     {
         $other = $this->createOtherWorkspace();
-        $this->insertSource('acme', 'https://templates.acme.example/index.json', $other);
-        $sources = self::getContainer()->get(TemplateSourceRepository::class);
+        $this->insertSource('acme', 'https://packages.acme.example/index.json', $other);
+        $sources = self::getContainer()->get(PackageSourceRepository::class);
 
         $theirs = $sources->findByName('acme');
         self::assertNull($theirs);
         self::assertSame([], $sources->all());
 
         // Names are unique per workspace: ours may be "acme" too.
-        $this->insertSource('acme', 'https://templates.example.com/index.json');
+        $this->insertSource('acme', 'https://packages.example.com/index.json');
         self::getContainer()->get('doctrine.orm.entity_manager')->clear();
 
         $ours = $sources->findByName('acme');
         self::assertNotNull($ours);
-        self::assertSame('https://templates.example.com/index.json', $ours->getUrl());
+        self::assertSame('https://packages.example.com/index.json', $ours->getUrl());
         self::assertCount(1, $sources->all());
     }
 
@@ -73,7 +73,7 @@ final class WorkspaceScopeTest extends KernelTestCase
         $this->connection->beginTransaction();
         try {
             $this->connection->executeStatement("SELECT set_config('app.workspace_id', '', false)");
-            // Not template_source: its rows may have no workspace (shared indexes).
+            // Not package_source: its rows may have no workspace (shared indexes).
             $this->connection->executeStatement(
                 "INSERT INTO core.metadata_translation (id, locale, message_key, text, updated_at) VALUES (?, 'it', 'object.pet.singular', 'Animale', now())",
                 [Uuid::v7()->toRfc4122()],
@@ -137,7 +137,7 @@ final class WorkspaceScopeTest extends KernelTestCase
     private function insertSource(string $name, string $url, ?string $workspace = null): void
     {
         $this->connection->executeStatement(
-            'INSERT INTO core.template_source (id, name, url, added_at, workspace_id) VALUES (?, ?, ?, now(), ?)',
+            'INSERT INTO core.package_source (id, name, url, added_at, workspace_id) VALUES (?, ?, ?, now(), ?)',
             [Uuid::v7()->toRfc4122(), $name, $url, $workspace],
         );
     }

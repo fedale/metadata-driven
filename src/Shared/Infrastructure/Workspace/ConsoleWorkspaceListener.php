@@ -21,7 +21,8 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * others work for no workspace, as the system: the migrations and the other Doctrine and DBAL
  * commands work across workspaces, and a default workspace would hide the others' rows from them
  * where row-level security applies; the framework's (cache:clear) must run before the
- * migrations have made core.workspace what this code expects. So do the workspace:* commands.
+ * migrations have made core.workspace what this code expects. So do the workspace:* and system:*
+ * commands.
  * --workspace still selects one for any command.
  */
 #[AsEventListener(event: ConsoleEvents::COMMAND)]
@@ -31,6 +32,9 @@ final class ConsoleWorkspaceListener
 
     /** Namespaces of the classes of the commands that get the default workspace. */
     private const array WORKSPACE_COMMANDS = ['App\\', 'Fedale\\'];
+
+    /** The commands of the system: they work for no workspace unless --workspace names one. */
+    private const array SYSTEM_COMMANDS = ['workspace:', 'system:'];
 
     public function __construct(
         private readonly WorkspaceRegistry $registry,
@@ -79,8 +83,10 @@ final class ConsoleWorkspaceListener
 
     private function worksForAWorkspace(Command $command): bool
     {
-        if (str_starts_with((string) $command->getName(), 'workspace:')) {
-            return false;
+        foreach (self::SYSTEM_COMMANDS as $prefix) {
+            if (str_starts_with((string) $command->getName(), $prefix)) {
+                return false;
+            }
         }
         $class = self::commandClass($command);
         foreach (self::WORKSPACE_COMMANDS as $namespace) {

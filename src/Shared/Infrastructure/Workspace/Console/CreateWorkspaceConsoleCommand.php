@@ -18,14 +18,14 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * Creates a workspace, ready to use: its schemas and rows (WorkspaceProvisioner), its permissions,
- * its first admin, a template if asked.
+ * its first admin, a package if asked.
  *
  * The steps after the first are the commands that do them for any workspace, run with --workspace:
- * access:sync, user:create or workspace:member:add, rbac:assign, metadata:template:install. The
+ * access:sync, user:create or workspace:member:add, rbac:assign, metadata:package:install. The
  * shared layer may not use the modules, and the commands are what a system admin would type.
  * A step that fails stops the command; the workspace stays, and the steps left can be run by hand.
  */
-#[AsCommand(name: 'workspace:create', description: 'Create a workspace: its schemas, its permissions, its first admin, a template if asked')]
+#[AsCommand(name: 'workspace:create', description: 'Create a workspace: its schemas, its permissions, its first admin, a package if asked')]
 final class CreateWorkspaceConsoleCommand extends Command
 {
     public function __construct(
@@ -44,7 +44,7 @@ final class CreateWorkspaceConsoleCommand extends Command
             ->addOption('name', null, InputOption::VALUE_REQUIRED, 'Its name, shown to its users (default: the slug)')
             ->addOption('admin-email', null, InputOption::VALUE_REQUIRED, 'Its first admin: an existing user becomes a member, a new one is created')
             ->addOption('admin-password', null, InputOption::VALUE_REQUIRED, 'The password of a new admin (asked, hidden, when omitted; avoid it in shared shells)')
-            ->addOption('template', null, InputOption::VALUE_REQUIRED, 'A template to install: vendor/name, vendor/name@1.0.0, or a directory');
+            ->addOption('package', null, InputOption::VALUE_REQUIRED, 'A package to install: vendor/name, vendor/name@1.0.0, or a directory');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -73,9 +73,9 @@ final class CreateWorkspaceConsoleCommand extends Command
                 : array_filter(['command' => 'user:create', 'email' => $email, '--password' => $input->getOption('admin-password')]);
             $steps[] = ['command' => 'rbac:assign', 'user' => mb_strtolower(trim($email)), 'item' => $this->superAdminRole];
         }
-        $template = $input->getOption('template');
-        if (\is_string($template) && '' !== $template) {
-            $steps[] = ['command' => 'metadata:template:install', 'template' => $template];
+        $package = $input->getOption('package');
+        if (\is_string($package) && '' !== $package) {
+            $steps[] = ['command' => 'metadata:package:install', 'package' => $package];
         }
 
         foreach ($steps as $step) {

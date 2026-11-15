@@ -20,7 +20,7 @@ use Symfony\Component\HtmlSanitizer\HtmlSanitizerInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Creates or replaces a view. The template of a form view is sanitized here, once, before it
+ * Creates or replaces a view. The source of a form view is sanitized here, once, before it
  * is stored: the pages print it as it is. A grid view is compiled (and checked) here, and
  * stored with its YAML source as written.
  */
@@ -43,25 +43,25 @@ final class SaveViewHandler
      */
     public function __invoke(SaveViewCommand $command): string
     {
-        $template = $command->template;
+        $source = $command->source;
         $definition = null;
         if (ViewKind::Grid === $command->kind) {
             if (!$this->metadata->hasObject($command->objectName)) {
                 throw ObjectDefinitionNotFound::named($command->objectName);
             }
-            $definition = $this->grids->compile($this->metadata->getObject($command->objectName), $template);
+            $definition = $this->grids->compile($this->metadata->getObject($command->objectName), $source);
         } else {
-            $template = $this->sanitizer->sanitize($template);
-            if (null !== $error = $this->texts->errorFor(\sprintf('View "%s"', $command->name), $template)) {
-                throw new MetadataInputInvalid(['template' => [$error]]);
+            $source = $this->sanitizer->sanitize($source);
+            if (null !== $error = $this->texts->errorFor(\sprintf('View "%s"', $command->name), $source)) {
+                throw new MetadataInputInvalid([GridViewCompiler::INPUT => [$error]]);
             }
         }
 
-        $id = $this->transactions->run(function () use ($command, $template, $definition): string {
+        $id = $this->transactions->run(function () use ($command, $source, $definition): string {
             $object = $this->objects->findByName($command->objectName)
                 ?? throw ObjectDefinitionNotFound::named($command->objectName);
 
-            $view = $object->saveView(Uuid::v7(), $command->kind, $command->name, $template, $command->isDefault, $definition);
+            $view = $object->saveView(Uuid::v7(), $command->kind, $command->name, $source, $command->isDefault, $definition);
             $this->objects->save($object);
 
             return $view->getId()->toRfc4122();

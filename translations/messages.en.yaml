@@ -12,7 +12,7 @@ nav:
 console:
     title: Console
     workspaces: Workspaces
-    indexes: Template indexes
+    indexes: Package indexes
     indexes_intro: 'Offered to every workspace, next to its own; no workspace removes them.'
     new: New workspace
     create: Create
@@ -188,7 +188,7 @@ admin:
     fields: Fields
     views: Views
     translations: Translations
-    templates: Templates
+    packages: Packages
     roles:
         title: Roles
         intro: 'What each role of this workspace gives. Members get roles on the members page.'
@@ -236,7 +236,7 @@ admin:
         roles_saved: 'Roles of %name% saved.'
         removed: '%name% can no longer sign in here.'
         remove_confirm: '%name% will no longer be able to sign in here. Their roles stay, unused. Remove them?'
-    template_heading: Template
+    package_heading: Package
     machine_name: Machine name
     name: Name
     label: Label
@@ -417,16 +417,16 @@ admin:
         saved: '{1}1 text saved.|]1,Inf[%count% texts saved.'
         give_name: 'Give the text a name and its %locale% text.'
         text_exists: 'A text named "%name%" already exists.'
-    template_admin:
-        intro: 'A template brings objects, their views and forms, their translations and their records. It is installed in one go, and upgraded later: only what its new version changed is applied, what was changed here is kept.'
+    package_admin:
+        intro: 'A package brings objects, their views and forms, their translations and their records. It is installed in one go, and upgraded later: only what its new version changed is applied, what was changed here is kept.'
         installed: Installed
-        none_installed: No template is installed.
+        none_installed: No package is installed.
         version: Version
         upgraded: Upgraded
         from: From
         available: Available
-        no_offer: The indexes offer no template.
-        no_offer_no_index: 'The indexes offer no template: add an index below.'
+        no_offer: The indexes offer no package.
+        no_offer_no_index: 'The indexes offer no package: add an index below.'
         newest_version: Newest version
         index: Index
         install_link: Install…
@@ -447,21 +447,21 @@ admin:
         index_unsigned: Accept it unsigned, trusting its checksums only
         index_added: 'Index "%name%" added.'
         index_removed: 'Index "%name%" removed; what was installed from it stays.'
-        install_title: 'Install %template%'
-        install_heading: 'Install <code>%template%</code>'
+        install_title: 'Install %package%'
+        install_heading: 'Install <code>%package%</code>'
         cannot_install: 'It cannot be installed:'
-        requires_missing: '%name% requires templates this instance does not have: they are installed with it, first.'
+        requires_missing: '%name% requires packages this instance does not have: they are installed with it, first.'
         trial_one: 'A trial install went through: nothing was changed yet. Installing it creates:'
         trial_many: 'A trial install went through: nothing was changed yet. Installing them creates:'
         from_source: 'From %source%'
         skipped_locales: 'Left out, this instance not having them: the languages %locales%.'
         install_button: 'Install %name% %version%'
         install_button_many: 'Install %name% %version% and what it requires'
-        installed_one: 'Template %templates% installed.'
-        installed_many: 'Templates %templates% installed.'
-        upgrade_title: 'Upgrade %template%'
-        upgrade_heading: 'Upgrade <code>%template%</code>'
-        upgrade_heading_versions: 'Upgrade <code>%template%</code> from %from% to %to%'
+        installed_one: 'Package %packages% installed.'
+        installed_many: 'Packages %packages% installed.'
+        upgrade_title: 'Upgrade %package%'
+        upgrade_heading: 'Upgrade <code>%package%</code>'
+        upgrade_heading_versions: 'Upgrade <code>%package%</code> from %from% to %to%'
         cannot_upgrade: 'It cannot be upgraded:'
         changes: Changes
         only_conflicts: 'Nothing but the conflicts below: this instance already has the rest.'

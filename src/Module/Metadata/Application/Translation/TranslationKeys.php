@@ -66,7 +66,7 @@ final class TranslationKeys
         foreach ($this->metadata->allObjects() as $object) {
             foreach ($object->views as $view) {
                 $where = \sprintf('%s view %s/%s', $view->kind->value, $object->name, $view->name);
-                $tokens = ViewKind::Form === $view->kind ? ViewDefinitionDto::textTokens($view->template) : [];
+                $tokens = ViewKind::Form === $view->kind ? ViewDefinitionDto::textTokens($view->source) : [];
                 foreach ($view->grid->columns ?? [] as $column) {
                     $tokens = [...$tokens, ...ViewDefinitionDto::textTokens($column->label ?? '')];
                 }

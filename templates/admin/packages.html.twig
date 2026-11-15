@@ -1,0 +1,112 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'admin.packages'|trans }} · {{ 'admin.title'|trans }}{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('admin_index') }}">&larr; {{ 'admin.objects'|trans }}</a></p>
+    <h1>{{ 'admin.packages'|trans }}</h1>
+    <p class="gv-muted">{{ 'admin.package_admin.intro'|trans }}</p>
+
+    <h2>{{ 'admin.package_admin.installed'|trans }}</h2>
+    {% if installed is empty %}
+        <p class="gv-muted">{{ 'admin.package_admin.none_installed'|trans }}</p>
+    {% else %}
+        <table class="md-table">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'admin.package_heading'|trans }}</th>
+                    <th scope="col">{{ 'admin.package_admin.version'|trans }}</th>
+                    <th scope="col">{{ 'admin.package_admin.installed'|trans }}</th>
+                    <th scope="col">{{ 'admin.package_admin.upgraded'|trans }}</th>
+                    <th scope="col">{{ 'admin.package_admin.from'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for installation in installed %}
+                    <tr>
+                        <td><code>{{ installation.name }}</code></td>
+                        <td>{{ installation.version }}</td>
+                        <td>{{ installation.installedAt|date('Y-m-d H:i') }}</td>
+                        <td>{{ installation.upgradedAt ? installation.upgradedAt|date('Y-m-d H:i') : '—' }}</td>
+                        <td class="md-file__name">{{ installation.source }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    <h2>{{ 'admin.package_admin.available'|trans }}</h2>
+    {% if unreachable %}
+        <p class="md-flash md-flash--error" role="alert">{{ unreachable }}</p>
+    {% elseif available is empty %}
+        <p class="gv-muted">{{ (indexes is empty ? 'admin.package_admin.no_offer_no_index' : 'admin.package_admin.no_offer')|trans }}</p>
+    {% else %}
+        <table class="md-table">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'admin.package_heading'|trans }}</th>
+                    <th scope="col">{{ 'admin.package_admin.newest_version'|trans }}</th>
+                    <th scope="col">{{ 'admin.package_admin.index'|trans }}</th>
+                    <th scope="col"><span class="md-visually-hidden">{{ 'admin.actions'|trans }}</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for offer in available %}
+                    {% set located = offer.located %}
+                    {% set named = located.entry.name ~ '@' ~ located.entry.version %}
+                    <tr>
+                        <td><code>{{ located.entry.name }}</code></td>
+                        <td>{{ located.entry.version }}</td>
+                        <td>{{ located.source }}</td>
+                        <td>
+                            {% if offer.action == 'install' %}
+                                <a href="{{ path('admin_package_install', {package: named, repo: located.source}) }}">{{ 'admin.package_admin.install_link'|trans }}</a>
+                            {% elseif offer.action == 'upgrade' %}
+                                <a href="{{ path('admin_package_upgrade', {package: named, repo: located.source}) }}">{{ 'admin.package_admin.upgrade_link'|trans({'%version%': offer.installed}) }}</a>
+                            {% else %}
+                                <span class="gv-muted">{{ 'admin.package_admin.installed'|trans }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    <h2>{{ 'admin.package_admin.indexes'|trans }}</h2>
+    {% if indexes is not empty %}
+        <table class="md-table">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'admin.name'|trans }}</th>
+                    <th scope="col">{{ 'admin.package_admin.address'|trans }}</th>
+                    <th scope="col">{{ 'admin.package_admin.signed'|trans }}</th>
+                    <th scope="col"><span class="md-visually-hidden">{{ 'admin.actions'|trans }}</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for index in indexes %}
+                    <tr>
+                        <td>{{ index.name }}</td>
+                        <td class="md-file__name">{{ index.url }}</td>
+                        <td>{{ (index.key is null ? 'admin.package_admin.signed_no' : 'admin.package_admin.signed_yes')|trans }}</td>
+                        <td>
+                            {% if remove_forms[index.name] %}
+                                {{ form_start(remove_forms[index.name], {action: path('admin_package_index_remove', {name: index.name}), attr: {'data-turbo-confirm': 'admin.package_admin.remove_confirm'|trans({'%name%': index.name})}}) }}
+                                    <button type="submit" class="gv-btn">{{ 'admin.remove'|trans }}</button>
+                                {{ form_end(remove_forms[index.name]) }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    <h3>{{ 'admin.package_admin.add_index'|trans }}</h3>
+    {{ form_start(add_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+        {{ form_errors(add_form) }}
+        {{ form_rest(add_form) }}
+        <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.package_admin.add_the_index'|trans }}</button>
+    {{ form_end(add_form) }}
+{% endblock %}

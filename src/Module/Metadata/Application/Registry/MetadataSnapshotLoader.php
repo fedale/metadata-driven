@@ -112,7 +112,7 @@ final class MetadataSnapshotLoader
             $view->getId()->toRfc4122(),
             $view->getKind(),
             $view->getName(),
-            $view->getTemplate(),
+            $view->getSource(),
             $view->isDefault(),
             null === $view->getDefinition() ? null : self::mapGrid($view->getDefinition()),
         );

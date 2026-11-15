@@ -114,12 +114,12 @@ final class RenameTest extends KernelTestCase
             $views[$view->name] = $view;
         }
         // HTML keeps its text, only the tokens change; a YAML definition is dumped again.
-        self::assertSame('<fieldset><legend>{t:sign_in}</legend>{login} {email}</fieldset>', $views['compact']->template);
+        self::assertSame('<fieldset><legend>{t:sign_in}</legend>{login} {email}</fieldset>', $views['compact']->source);
         self::assertSame(['login', 'who'], array_map(static fn ($column): string => $column->key, $views['list']->grid->columns ?? []));
         self::assertSame(['firstname', 'login'], $views['list']->grid->columns[1]->sources ?? null);
         self::assertSame(['login' => 'asc'], $views['list']->grid?->sort);
-        self::assertStringNotContainsString('# the people', $views['list']->template);
-        self::assertStringStartsWith('# untouched', $views['names']->template);
+        self::assertStringNotContainsString('# the people', $views['list']->source);
+        self::assertStringStartsWith('# untouched', $views['names']->source);
 
         $form = $this->metadata->getForm('registration');
         self::assertContains('login', $form->root->fields ?? []);

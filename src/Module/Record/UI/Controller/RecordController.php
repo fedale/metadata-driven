@@ -273,7 +273,7 @@ final class RecordController extends AbstractController
     }
 
     /**
-     * The template of the form view picked by "?view=<name>", else of the default one;
+     * The source of the form view picked by "?view=<name>", else of the default one;
      * null for the plain layout. An unknown view name is a 404.
      */
     private function formLayout(ObjectDefinitionDto $object, Request $request): ?string
@@ -284,7 +284,7 @@ final class RecordController extends AbstractController
             throw $this->createNotFoundException(\sprintf('Object "%s" has no form view "%s".', $object->name, $name));
         }
 
-        return $view?->template;
+        return $view?->source;
     }
 
     private function recordOr404(ObjectDefinitionDto $object, string $id): RecordOutput

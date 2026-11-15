@@ -20,11 +20,11 @@ final class DefinitionRewriter
     private const int DUMP_INDENT = 2;
 
     /**
-     * The {old} tokens of an HTML template; the {t:name} tokens are no field and stay.
+     * The {old} tokens of an HTML layout or a column's text; the {t:name} tokens are no field and stay.
      */
-    public function tokens(string $template, string $old, string $new): string
+    public function tokens(string $text, string $old, string $new): string
     {
-        return (string) preg_replace('/\{\s*'.preg_quote($old, '/').'\s*\}/', '{'.$new.'}', $template);
+        return (string) preg_replace('/\{\s*'.preg_quote($old, '/').'\s*\}/', '{'.$new.'}', $text);
     }
 
     /**

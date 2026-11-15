@@ -280,21 +280,21 @@ final class AdminControllerTest extends WebTestCase
         $crawler = $this->client->request('GET', '/admin/objects/author');
         $this->client->click($crawler->selectLink('Add a view')->link());
         self::assertSelectorTextContains('main form', '{full_name} {city}');
-        $this->client->submitForm('Save', ['view[name]' => 'main', 'view[template]' => '<div class="grid">{city}<script>alert(1)</script></div>']);
+        $this->client->submitForm('Save', ['view[name]' => 'main', 'view[source]' => '<div class="grid">{city}<script>alert(1)</script></div>']);
         self::assertResponseRedirects('/admin/objects/author', 303);
         $this->client->followRedirect();
         self::assertSelectorTextContains('.md-flash--success', 'View "main" created.');
 
         $view = $this->registry()->getObject('author')->view(ViewKind::Form);
         self::assertSame('main', $view?->name);
-        self::assertSame('<div class="grid">{city}</div>', $view->template);
+        self::assertSame('<div class="grid">{city}</div>', $view->source);
 
         // A layout error shows on the form, nothing is saved.
         $this->client->click($this->client->getCrawler()->filter('a[href="/admin/objects/author/views/form/main"]')->link());
-        $this->client->submitForm('Save', ['view[template]' => '{nickname}']);
+        $this->client->submitForm('Save', ['view[source]' => '{nickname}']);
         self::assertResponseStatusCodeSame(422);
         self::assertAnySelectorTextContains('.gv-form-error', 'object "author" has no field "nickname"');
-        self::assertSame('<div class="grid">{city}</div>', $this->registry()->getObject('author')->view(ViewKind::Form)?->template);
+        self::assertSame('<div class="grid">{city}</div>', $this->registry()->getObject('author')->view(ViewKind::Form)?->source);
 
         $this->client->submitForm('Delete');
         $this->client->followRedirect();
@@ -310,19 +310,19 @@ final class AdminControllerTest extends WebTestCase
 
         $this->client->request('GET', '/admin/objects/author/views/new');
         // Every error of the definition at once, on the input.
-        $this->client->submitForm('Save', ['view[name]' => 'list', 'view[kind]' => 'grid', 'view[template]' => "columns: [nickname]\npage_size: 0"]);
+        $this->client->submitForm('Save', ['view[name]' => 'list', 'view[kind]' => 'grid', 'view[source]' => "columns: [nickname]\npage_size: 0"]);
         self::assertResponseStatusCodeSame(422);
         self::assertAnySelectorTextContains('.gv-form-error', 'Column #1: object "author" has no field "nickname".');
         self::assertAnySelectorTextContains('.gv-form-error', '"page_size" must be an integer from 1 to 500.');
 
         $definition = "columns:\n  - { field: city, label: Town }\n  - full_name";
-        $this->client->submitForm('Save', ['view[name]' => 'list', 'view[kind]' => 'grid', 'view[template]' => $definition]);
+        $this->client->submitForm('Save', ['view[name]' => 'list', 'view[kind]' => 'grid', 'view[source]' => $definition]);
         self::assertResponseRedirects('/admin/objects/author', 303);
         self::assertSame(['city', 'full_name'], array_map(static fn ($column): string => $column->key, $this->registry()->getObject('author')->view(ViewKind::Grid)->grid->columns ?? []));
 
         $crawler = $this->client->request('GET', '/admin/objects/author/views/grid/list');
         self::assertSelectorTextContains('label', 'Grid definition (YAML)');
-        self::assertSame($definition, $crawler->filter('textarea[name="view[template]"]')->text(null, false));
+        self::assertSame($definition, $crawler->filter('textarea[name="view[source]"]')->text(null, false));
         self::assertSame('/o/author/grid/list', $crawler->filter('.md-facts a')->attr('href'));
     }
 

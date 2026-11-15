@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <entity name="App\Module\Package\Domain\Model\PackageItem" table="package_item" schema="core">
+        <unique-constraints>
+            <!-- An id names one item of its kind in a package; an item has one id in it. -->
+            <unique-constraint name="uniq_package_item_item_id" columns="package,kind,item_id"/>
+            <unique-constraint name="uniq_package_item_local_id" columns="package,local_id"/>
+        </unique-constraints>
+
+        <id name="id" type="uuid"/>
+
+        <field name="package" length="100"/>
+        <field name="kind" length="20" enum-type="App\Module\Package\Domain\Model\ItemKind"/>
+        <field name="itemId" length="200"/>
+        <field name="localId" type="guid"/>
+    </entity>
+</doctrine-mapping>

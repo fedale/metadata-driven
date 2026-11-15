@@ -28,11 +28,11 @@ use Symfony\Component\Yaml\Yaml;
  *     sort: { lastname: asc }                    # optional: the initial order
  *     page_size: 50                              # optional
  *
- * Every error is collected and reported at once under the "template" input.
+ * Every error is collected and reported at once under the "source" input.
  */
 final class GridViewCompiler
 {
-    public const string INPUT = 'template';
+    public const string INPUT = 'source';
     public const array SYSTEM_SORT_COLUMNS = ['created_at', 'updated_at'];
     private const int MAX_LABEL_LENGTH = 100;
     private const int MAX_PAGE_SIZE = 500;

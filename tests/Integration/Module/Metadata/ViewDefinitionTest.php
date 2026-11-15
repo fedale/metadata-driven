@@ -40,7 +40,7 @@ final class ViewDefinitionTest extends KernelTestCase
         self::assertSame('main', $view->name);
         // The first view of a kind is its default.
         self::assertTrue($view->isDefault);
-        self::assertSame('<div class="row">{name}</div><p>{ species }</p>', $view->template);
+        self::assertSame('<div class="row">{name}</div><p>{ species }</p>', $view->source);
     }
 
     public function testTheDefaultMovesAndCanBeLeftEmpty(): void
@@ -52,7 +52,7 @@ final class ViewDefinitionTest extends KernelTestCase
         $this->manager->saveView('pet', ViewKind::Form, 'compact', '{weight} {age}', isDefault: true);
         $pet = $this->registry->getObject('pet');
         self::assertSame('compact', $pet->view(ViewKind::Form)?->name);
-        self::assertSame('{weight} {age}', $pet->view(ViewKind::Form)->template);
+        self::assertSame('{weight} {age}', $pet->view(ViewKind::Form)->source);
         self::assertFalse($pet->view(ViewKind::Form, 'main')?->isDefault);
         self::assertSame(['compact', 'main'], array_map(static fn ($view): string => $view->name, $pet->views));
 
@@ -88,7 +88,7 @@ final class ViewDefinitionTest extends KernelTestCase
             $this->manager->saveView('pet', ViewKind::Form, '', '');
             self::fail('A blank name and template must be refused.');
         } catch (MetadataInputInvalid $e) {
-            self::assertSame(['name', 'template'], array_keys($e->errors));
+            self::assertSame(['name', 'source'], array_keys($e->errors));
         }
 
         $this->expectException(MetadataException::class);
