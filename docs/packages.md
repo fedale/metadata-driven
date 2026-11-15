@@ -322,7 +322,7 @@ symfony console metadata:package:install fedale/registration --dry-run
 ```
  ! [NOTE] fedale/registration requires packages this instance does not have: they are
  !        installed first, fedale/geo-italy 1.0.0 from
- !        https://fedale.github.io/metadata-driven-templates/index.json.
+ !        https://fedale.github.io/metadata-driven-packages/index.json.
  …
  [OK] Packages fedale/geo-italy 1.0.0, fedale/registration 1.0.0 can be installed. Dry run: nothing was changed.
 ```
@@ -557,12 +557,12 @@ symfony console metadata:package:upgrade acme/shop            # from the index i
 ## The package catalog
 
 The central catalog is the GitHub repository
-[fedale/metadata-driven-templates](https://github.com/fedale/metadata-driven-templates): it
+[fedale/metadata-driven-packages](https://github.com/fedale/metadata-driven-packages): it
 holds the sources of every published version, and publishes them as a signed index on GitHub
 Pages. Every instance uses it out of the box: `.env` sets
 
 ```bash
-PACKAGE_CATALOG_URL=https://fedale.github.io/metadata-driven-templates/index.json
+PACKAGE_CATALOG_URL=https://fedale.github.io/metadata-driven-packages/index.json
 PACKAGE_CATALOG_KEY=ta4QYEX/ZmCA9xA0yPP4sRZLeqYqBvmCXazwXiGadEc=
 ```
 
@@ -584,7 +584,7 @@ vendor (`acme` in `acme/shop`) must be registered there first, in a pull request
 the catalog's README). Then, with a checkout of the catalog up to date next to this repository:
 
 ```bash
-git clone git@github.com:fedale/metadata-driven-templates.git ../metadata-driven-templates
+git clone git@github.com:fedale/metadata-driven-packages.git ../metadata-driven-packages
 symfony console metadata:package:export acme/shop 1.1.0 /tmp/shop --object=… --license=MIT
 symfony console metadata:package:publish /tmp/shop --dry-run   # what the catalog would refuse
 symfony console metadata:package:publish /tmp/shop             # copied into the checkout
