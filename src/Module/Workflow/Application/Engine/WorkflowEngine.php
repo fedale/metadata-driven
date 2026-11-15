@@ -9,11 +9,13 @@ use App\Module\Access\Contract\Permissions;
 use App\Module\Access\Contract\RecordAction;
 use App\Module\Access\Contract\WorkspaceRolesInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Record\Contract\Dto\RecordFilter;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\Event\RecordWriteAction;
 use App\Module\Record\Contract\Event\RecordWriting;
 use App\Module\Record\Contract\Event\RecordWritten;
+use App\Module\Record\Contract\Exception\InvalidRecordSearch;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordEventScopeInterface;
 use App\Module\Record\Contract\RecordFinderInterface;
@@ -72,6 +74,8 @@ final class WorkflowEngine implements ResetInterface
         private readonly int $runsPerMinute,
         #[Autowire('%app.workflow.max_executed_steps%')]
         private readonly int $maxExecutedSteps,
+        #[Autowire('%app.workflow.max_records%')]
+        private readonly int $maxRecords,
     ) {
     }
 
@@ -418,12 +422,16 @@ final class WorkflowEngine implements ResetInterface
 
             return null === $branch || $this->steps($step->branches[$branch]->steps, $chain, $run, $writing);
         }
+        if (StepType::Iterator === $step->type) {
+            return $this->iterate($step, $chain, $run, $writing, $started);
+        }
         $input = null;
         try {
             [$input, $output, $goOn] = match ($step->type) {
                 StepType::Filter => [null, ['passed' => $passed = null !== $step->when && $this->conditions->holds($step->when, $chain)], $passed],
                 StepType::SetValues => $this->setValues($step, $chain, $writing, $run),
                 StepType::Refuse => $this->refuse($step, $chain, $run, null !== $writing),
+                StepType::SearchRecords => $this->search($step, $chain, $run),
                 default => $this->write($step, $chain, $run),
             };
         } catch (StepFailed $e) {
@@ -436,6 +444,74 @@ final class WorkflowEngine implements ResetInterface
         $chain->set('$last', $output);
 
         return $goOn;
+    }
+
+    /**
+     * Runs its steps once per item, the item and its index under its key. A filter that stops
+     * skips the item; a refuse, or a failure, ends the run. Logged before the steps it runs.
+     *
+     * @return bool false when the run ends here (a refuse)
+     *
+     * @throws StepFailed
+     */
+    private function iterate(Step $step, DataChain $chain, RunLog $run, ?RecordWriting $writing, int|float $started): bool
+    {
+        $items = $chain->render((string) $step->string('items'));
+        if (!\is_array($items) || !array_is_list($items) || \count($items) > $this->maxRecords) {
+            $error = \is_array($items) && array_is_list($items)
+                ? \sprintf('%d items: at most %d.', \count($items), $this->maxRecords)
+                : \sprintf('%s is no list: nothing to run on.', $step->string('items'));
+            $run->step($step->key, $step->type->value, 'failed', ['items' => $items], null, $error, self::since($started));
+
+            throw new StepFailed($error);
+        }
+        $run->step($step->key, $step->type->value, 'completed', ['items' => \count($items)], ['count' => \count($items)], null, self::since($started));
+        foreach ($items as $index => $item) {
+            $chain->set($step->key, ['item' => $item, 'index' => $index]);
+            $this->steps($step->steps, $chain, $run, $writing);
+            if (RunLog::COMPLETED !== $run->status) {
+                return false;
+            }
+            // A filter that stopped skips this item only.
+        }
+        $chain->set($step->key, ['count' => \count($items)]);
+        $chain->set('$last', ['count' => \count($items)]);
+
+        return true;
+    }
+
+    /**
+     * The records an object holds that every test holds for, the first ones in its order.
+     *
+     * @return array{array<string, mixed>, array<string, mixed>, bool}
+     *
+     * @throws StepFailed
+     */
+    private function search(Step $step, DataChain $chain, RunLog $run): array
+    {
+        $object = (string) $step->string('object');
+        $this->allow($step, $object, RecordAction::Read, $run);
+        $filters = array_map(
+            static fn (array $test): RecordFilter => new RecordFilter($test['field'], $test['op'], \array_key_exists('value', $test) ? $chain->render($test['value']) : null),
+            $step->where(),
+        );
+        $limit = $step->options['limit'] ?? $this->maxRecords;
+        $limit = min(\is_int($limit) ? $limit : $this->maxRecords, $this->maxRecords);
+        $input = [
+            'object' => $object,
+            'where' => array_map(static fn (RecordFilter $filter): array => ['field' => $filter->field, 'op' => $filter->operator, 'value' => $filter->value], $filters),
+            'sort' => $step->string('sort'),
+            'direction' => $step->string('direction') ?? 'asc',
+            'limit' => $limit,
+        ];
+        try {
+            $result = $this->finder->search($object, $filters, $step->string('sort'), 'desc' === $step->string('direction'), $limit);
+        } catch (InvalidRecordSearch $e) {
+            throw new StepFailed($e->getMessage(), 0, $e);
+        }
+        $records = array_map(fn (RecordOutput $record): array => ['id' => $record->id, ...$this->readable($object, $record->values)], $result->records);
+
+        return [$input, ['records' => $records, 'count' => \count($records), 'total' => $result->total, 'first' => $records[0] ?? null], true];
     }
 
     /**

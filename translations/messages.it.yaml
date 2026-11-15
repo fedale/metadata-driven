@@ -443,6 +443,16 @@ admin:
         type_upsert_record: Crea o modifica un record
         type_set_values: Imposta valori
         type_refuse: Rifiuta
+        type_search_records: 'Cerca record'
+        type_iterator: 'Per ogni elemento'
+        sort: 'Ordina per'
+        direction: 'Ordine'
+        direction_asc: 'crescente'
+        direction_desc: 'decrescente'
+        limit: 'Al massimo'
+        where: 'Record per cui valgono tutte:'
+        items: 'Elementi (una lista)'
+        for_each: 'Per ogni elemento: {{ %key%.item }}'
         key: Chiave
         object: Oggetto
         record_id: Id del record

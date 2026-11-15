@@ -117,6 +117,30 @@ final class DefinitionValidatorTest extends KernelTestCase
         ], $errors);
     }
 
+    public function testASearchAndAnIteratorNameWhatTheObjectHas(): void
+    {
+        $errors = $this->errors(<<<'YAML'
+            trigger: { on: updated, object: person, when: after }
+            steps:
+              - { key: pets, type: search_records, object: pet, where: [{ field: color, op: eq, value: '{{ $trigger.record.id }}' }], sort: kind, limit: 500, act_as: ROLE_CLERK }
+              - key: each
+                type: iterator
+                items: '{{ pets.records }}'
+                steps:
+                  - { key: seen, type: filter, when: { field: each.item.age, op: empty } }
+                  - { key: ok, type: filter, when: { field: each.item.name, op: empty } }
+              - { key: after, type: filter, when: { field: seen.passed, op: empty } }
+            YAML);
+
+        self::assertSame([
+            'steps.0.where.0.field' => ['Object "pet" has no field "color".'],
+            'steps.0.sort' => ['Object "pet" has no field "kind".'],
+            'steps.0.limit' => ['At most 200 records.'],
+            'steps.1.steps.0.when.field' => ['Object "pet" has no field "age".'],
+            'steps.2.when.field' => ['"seen" is not run before this point on every way here: its output cannot be read.'],
+        ], $errors);
+    }
+
     private function validate(string $yaml): void
     {
         $access = $this->createStub(AccessCheckerInterface::class);

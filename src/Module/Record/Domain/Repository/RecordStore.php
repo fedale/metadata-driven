@@ -6,7 +6,10 @@ namespace App\Module\Record\Domain\Repository;
 
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
+use App\Module\Record\Contract\Dto\RecordFilter;
 use App\Module\Record\Contract\Dto\RecordOutput;
+use App\Module\Record\Contract\Dto\RecordSearchResult;
+use App\Module\Record\Contract\Exception\InvalidRecordSearch;
 use App\Module\Record\Domain\Exception\UniqueValueConflict;
 
 /**
@@ -51,6 +54,17 @@ interface RecordStore
      * @phpstan-impure
      */
     public function latest(ObjectDefinitionDto $object, int $limit): array;
+
+    /**
+     * See RecordFinderInterface::search().
+     *
+     * @param list<RecordFilter> $filters
+     *
+     * @throws InvalidRecordSearch
+     *
+     * @phpstan-impure
+     */
+    public function search(ObjectDefinitionDto $object, array $filters, ?string $sortField, bool $descending, int $limit): RecordSearchResult;
 
     /**
      * The live records whose field holds one of the values, compared as text: an import

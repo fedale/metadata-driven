@@ -25,6 +25,8 @@ parameters:
     app.workflow.runs_per_minute: 100
     # The steps one run may execute, an iterator's counted (a definition holds 50 at most).
     app.workflow.max_executed_steps: 1000
+    # The records one search reads, the items one iterator runs on.
+    app.workflow.max_records: 200
     app.workflow.runs_keep_days: 30
     # Workspaces (docs/architecture.md, "Workspaces"). A request for <slug>.<base host> is for that
     # workspace's; one for the base host itself, or for any other host, and a command without

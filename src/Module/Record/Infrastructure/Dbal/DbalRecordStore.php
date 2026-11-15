@@ -6,7 +6,10 @@ namespace App\Module\Record\Infrastructure\Dbal;
 
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
+use App\Module\Record\Contract\Dto\RecordFilter;
 use App\Module\Record\Contract\Dto\RecordOutput;
+use App\Module\Record\Contract\Dto\RecordSearchResult;
+use App\Module\Record\Contract\Exception\InvalidRecordSearch;
 use App\Module\Record\Domain\Exception\UniqueValueConflict;
 use App\Module\Record\Domain\Repository\RecordStore;
 use Doctrine\DBAL\ArrayParameterType;
@@ -14,6 +17,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
+use Symfony\Component\Uid\Uuid;
 
 final class DbalRecordStore implements RecordStore
 {
@@ -158,6 +162,35 @@ final class DbalRecordStore implements RecordStore
         return array_map(
             fn (array $row): RecordOutput => $this->table->hydrate($object, $row, \is_string($row['id'] ?? null) ? ($links[$row['id']] ?? []) : []),
             $rows,
+        );
+    }
+
+    public function search(ObjectDefinitionDto $object, array $filters, ?string $sortField, bool $descending, int $limit): RecordSearchResult
+    {
+        $where = [$this->table->quote('deleted_at').' IS NULL'];
+        $params = [];
+        $types = [];
+        foreach ($filters as $i => $filter) {
+            $where[] = $this->searchClause($object, $filter, 'f'.$i, $params, $types);
+        }
+        $from = \sprintf('FROM %s WHERE %s', $this->table->table($object), implode(' AND ', $where));
+        $order = null === $sortField ? '' : $this->searchColumn($object, $sortField)[0].($descending ? ' DESC' : ' ASC').', ';
+
+        $total = $this->connection->fetchOne('SELECT COUNT(*) '.$from, $params, $types);
+        $rows = $this->connection->fetchAllAssociative(\sprintf(
+            'SELECT %s %s ORDER BY %s%s, %s LIMIT %d',
+            $this->table->selectList($object),
+            $from,
+            $order,
+            $this->table->quote('created_at'),
+            $this->table->quote('id'),
+            max(1, $limit),
+        ), $params, $types);
+        $links = $this->linksOf($object, array_values(array_filter(array_column($rows, 'id'), is_string(...))));
+
+        return new RecordSearchResult(
+            array_map(fn (array $row): RecordOutput => $this->table->hydrate($object, $row, \is_string($row['id'] ?? null) ? ($links[$row['id']] ?? []) : []), $rows),
+            is_numeric($total) ? (int) $total : 0,
         );
     }
 
@@ -395,6 +428,140 @@ final class DbalRecordStore implements RecordStore
         }
 
         return $result;
+    }
+
+    /**
+     * The SQL of a filter, its values checked and bound as parameters named after $param.
+     *
+     * @param array<string, mixed>                $params
+     * @param array<string, ParameterType|string> $types
+     *
+     * @param-out array<string, mixed>                $params
+     * @param-out array<string, ParameterType|string> $types
+     *
+     * @throws InvalidRecordSearch
+     */
+    private function searchClause(ObjectDefinitionDto $object, RecordFilter $filter, string $param, array &$params, array &$types): string
+    {
+        [$column, $cast, $text] = $this->searchColumn($object, $filter->field);
+        $bind = function (mixed $value, string $name) use ($filter, $cast, &$params, &$types): string {
+            $value = $this->searchValue($filter->field, $value, $cast);
+            $params[$name] = $value;
+            $types[$name] = \is_bool($value) ? ParameterType::BOOLEAN : ParameterType::STRING;
+
+            return 'TEXT' === $cast ? ':'.$name : \sprintf('CAST(:%s AS %s)', $name, $cast);
+        };
+        $value = $filter->value;
+
+        return match ($filter->operator) {
+            'eq' => null === $value ? $column.' IS NULL' : \sprintf('%s = %s', $column, $bind($value, $param)),
+            'neq' => null === $value ? $column.' IS NOT NULL' : \sprintf('(%1$s <> %2$s OR %1$s IS NULL)', $column, $bind($value, $param)),
+            'lt', 'lte', 'gt', 'gte' => \sprintf('%s %s %s', $column, ['lt' => '<', 'lte' => '<=', 'gt' => '>', 'gte' => '>='][$filter->operator], $bind($value, $param)),
+            'contains', 'not_contains', 'starts_with', 'ends_with' => $this->searchLike($text, $filter, $param, $params, $types),
+            'in' => \is_array($value)
+                ? ([] === $value ? 'FALSE' : \sprintf('%s IN (%s)', $column, implode(', ', array_map(static fn (mixed $item, int $i): string => $bind($item, $param.'_'.$i), array_values($value), array_keys(array_values($value))))))
+                : throw new InvalidRecordSearch(\sprintf('"in" on "%s" takes a list of values.', $filter->field)),
+            'between' => \is_array($value) && 2 === \count($value)
+                ? \sprintf('%s BETWEEN %s AND %s', $column, $bind(array_values($value)[0], $param.'_low'), $bind(array_values($value)[1], $param.'_high'))
+                : throw new InvalidRecordSearch(\sprintf('"between" on "%s" takes two values: the lowest and the highest.', $filter->field)),
+            'empty' => 'TEXT' === $cast ? \sprintf("(%1\$s IS NULL OR %1\$s = '')", $column) : $column.' IS NULL',
+            'not_empty' => 'TEXT' === $cast ? \sprintf("(%1\$s IS NOT NULL AND %1\$s <> '')", $column) : $column.' IS NOT NULL',
+            default => throw new InvalidRecordSearch(\sprintf('"%s" is no operator: one of %s.', $filter->operator, implode(', ', RecordFilter::OPERATORS))),
+        };
+    }
+
+    /**
+     * contains, starts_with and the like: the column as text, case ignored.
+     *
+     * @param array<string, mixed>                $params
+     * @param array<string, ParameterType|string> $types
+     *
+     * @param-out array<string, mixed>                $params
+     * @param-out array<string, ParameterType|string> $types
+     */
+    private function searchLike(string $text, RecordFilter $filter, string $param, array &$params, array &$types): string
+    {
+        if (!\is_scalar($filter->value)) {
+            throw new InvalidRecordSearch(\sprintf('"%s" on "%s" takes a text.', $filter->operator, $filter->field));
+        }
+        [$before, $after] = match ($filter->operator) {
+            'starts_with' => ['', '%'],
+            'ends_with' => ['%', ''],
+            default => ['%', '%'],
+        };
+        $params[$param] = $before.RecordTable::escapeLike(mb_strtolower((string) $filter->value)).$after;
+        $types[$param] = ParameterType::STRING;
+
+        return 'not_contains' === $filter->operator
+            ? \sprintf('(LOWER(%1$s) NOT LIKE :%2$s OR %1$s IS NULL)', $text, $param)
+            : \sprintf('LOWER(%s) LIKE :%s', $text, $param);
+    }
+
+    /**
+     * A field a search may test or sort on: its column, the SQL type its values are cast to
+     * ("TEXT": none), and the column as text.
+     *
+     * @return array{string, string, string}
+     *
+     * @throws InvalidRecordSearch
+     */
+    private function searchColumn(ObjectDefinitionDto $object, string $name): array
+    {
+        if ('id' === $name) {
+            $id = $this->table->quote('id');
+
+            return [$id, 'UUID', 'CAST('.$id.' AS TEXT)'];
+        }
+        $field = $object->fields[$name] ?? throw new InvalidRecordSearch(\sprintf('Object "%s" has no field "%s".', $object->name, $name));
+        if (!$field->storesColumn() || null !== $field->fileList() || 'file' === $field->type || $this->table->isWriteOnly($field)) {
+            throw new InvalidRecordSearch(\sprintf('Field "%s" of "%s" cannot be searched on: a many-to-many, file or password field.', $name, $object->name));
+        }
+        $cast = match ($this->table->typeOf($field)) {
+            Types::INTEGER, Types::DECIMAL => 'NUMERIC',
+            Types::BOOLEAN => 'BOOLEAN',
+            Types::DATE_IMMUTABLE => 'DATE',
+            Types::DATETIME_IMMUTABLE => 'TIMESTAMPTZ',
+            Types::GUID => 'UUID',
+            default => 'TEXT',
+        };
+
+        return [$this->table->column($field->columnName), $cast, $this->table->asText($field)];
+    }
+
+    /**
+     * A value checked against the type it is cast to: a wrong one would fail the query, and with
+     * it the transaction it runs in.
+     *
+     * @throws InvalidRecordSearch
+     */
+    private function searchValue(string $field, mixed $value, string $cast): string|bool
+    {
+        if ($value instanceof \DateTimeInterface) {
+            $value = 'DATE' === $cast ? $value->format('Y-m-d') : $value->format(\DateTimeInterface::ATOM);
+        }
+        $wrong = static fn (string $what): InvalidRecordSearch => new InvalidRecordSearch(\sprintf('%s is no %s, for "%s".', json_encode($value), $what, $field));
+        if (!\is_scalar($value)) {
+            throw $wrong('single value');
+        }
+        $text = \is_bool($value) ? ($value ? 'true' : 'false') : (string) $value;
+
+        return match ($cast) {
+            'NUMERIC' => is_numeric($text) ? $text : throw $wrong('number'),
+            'BOOLEAN' => filter_var($value, \FILTER_VALIDATE_BOOLEAN, \FILTER_NULL_ON_FAILURE) ?? throw $wrong('boolean'),
+            'DATE' => false !== ($date = \DateTimeImmutable::createFromFormat('!Y-m-d', $text)) && $date->format('Y-m-d') === $text ? $text : throw $wrong('date (2026-12-31)'),
+            'TIMESTAMPTZ' => self::timestamp($text) ?? throw $wrong('date and time'),
+            'UUID' => Uuid::isValid($text) ? $text : throw $wrong('id'),
+            default => $text,
+        };
+    }
+
+    private static function timestamp(string $text): ?string
+    {
+        try {
+            return '' === trim($text) ? null : (new \DateTimeImmutable($text))->format(\DateTimeInterface::ATOM);
+        } catch (\Exception) {
+            return null;
+        }
     }
 
     /**

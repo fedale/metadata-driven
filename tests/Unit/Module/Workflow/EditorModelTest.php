@@ -67,6 +67,23 @@ final class EditorModelTest extends TestCase
         self::assertStringNotContainsString('when:', EditorModel::toSource($model));
     }
 
+    public function testASearchAndAnIteratorKeepTheirOptionsAndSteps(): void
+    {
+        $source = <<<'YAML'
+            trigger: { on: manual, object: person, label: Pets }
+            steps:
+              - { key: pets, type: search_records, object: pet, where: [{ field: owner, op: eq, value: '{{ $trigger.record.id }}' }, { field: name, op: empty }], sort: name, direction: desc, limit: 10, act_as: ROLE_CLERK }
+              - { key: each, type: iterator, items: '{{ pets.records }}', steps: [{ key: renamed, type: update_record, object: pet, id: '{{ each.item.id }}', values: { name: x } }] }
+            YAML;
+        $model = EditorModel::fromSource($source);
+        self::assertNotNull($model);
+        self::assertSame(['field' => 'name', 'op' => 'empty', 'value' => ''], self::at($model, 'steps.0.where.1'));
+        self::assertSame(['pets', 'each', 'renamed'], EditorModel::keys($model));
+
+        $parser = new DefinitionParser();
+        self::assertEquals($parser->parse($source), $parser->parse(EditorModel::toSource($model)));
+    }
+
     public function testUnreadableYamlHasNoModel(): void
     {
         self::assertNull(EditorModel::fromSource("trigger: [\n"));

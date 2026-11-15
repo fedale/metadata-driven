@@ -105,7 +105,7 @@ final class DefinitionParserTest extends TestCase
             'trigger.fields' => ['Only for a trigger on updated or created_or_updated: the fields whose change runs it.'],
         ]];
         yield 'steps' => ["trigger: { on: created, object: invoice, when: after }\nsteps:\n  - { key: a, type: fly }\n  - { key: a, type: refuse, message: no, extra: 1 }\n  - { key: Bad, type: create_record, object: invoice }\n  - { key: c, type: set_values, values: { x: 1 } }", [
-            'steps.0.type' => ['One of if, filter, create_record, update_record, delete_record, upsert_record, set_values, refuse.'],
+            'steps.0.type' => ['One of if, filter, create_record, update_record, delete_record, upsert_record, set_values, refuse, search_records, iterator.'],
             'steps.1.key' => ['"a" names another step already.'],
             'steps.1.extra' => ['Unknown: here, key, type, message.'],
             'steps.2.key' => ["Required: lowercase letters, digits and underscores, starting with a letter; it names the step's output."],
@@ -122,6 +122,48 @@ final class DefinitionParserTest extends TestCase
             'steps.2.act_as' => ['A role of the workspace, e.g. ROLE_ACCOUNTANT.'],
             'steps.2.emit_events' => ['true or false.'],
         ]];
+    }
+
+    public function testReadsASearchAndAnIteratorWithItsSteps(): void
+    {
+        $parser = new DefinitionParser();
+        $definition = $parser->parse(<<<'YAML'
+            trigger: { on: manual, object: person, label: Pets }
+            steps:
+              - { key: pets, type: search_records, object: pet, where: [{ field: owner, op: eq, value: '{{ $trigger.record.id }}' }, { field: name, op: not_empty }], sort: name, direction: desc, limit: 10 }
+              - key: each
+                type: iterator
+                items: '{{ pets.records }}'
+                steps:
+                  - { key: renamed, type: update_record, object: pet, id: '{{ each.item.id }}', values: { name: x } }
+            YAML);
+
+        self::assertSame([['field' => 'owner', 'op' => 'eq', 'value' => '{{ $trigger.record.id }}'], ['field' => 'name', 'op' => 'not_empty']], $definition->steps[0]->where());
+        self::assertSame(['pets', 'each', 'renamed'], array_map(static fn ($step): string => $step->key, $definition->allSteps()));
+        self::assertEquals($definition, $parser->fromArray($definition->toArray()));
+    }
+
+    public function testReportsTheProblemsOfASearchAndAnIterator(): void
+    {
+        try {
+            (new DefinitionParser())->parse(<<<'YAML'
+                trigger: { on: manual, object: person, label: Pets }
+                steps:
+                  - { key: pets, type: search_records, object: pet, where: [{ field: Owner, op: is, value: 1 }, { field: name, op: in, value: x }], direction: up, limit: 0 }
+                  - { key: each, type: iterator, items: 'pets.records', steps: [] }
+                YAML);
+            self::fail('Refused.');
+        } catch (InvalidWorkflowDefinition $e) {
+            self::assertSame([
+                'steps.0.where.0.field' => ['Required: a machine name, lowercase letters, digits and underscores.'],
+                'steps.0.where.0.op' => ['One of eq, neq, lt, lte, gt, gte, contains, not_contains, starts_with, ends_with, in, between, empty, not_empty.'],
+                'steps.0.where.1.value' => ['A list of values.'],
+                'steps.0.direction' => ['asc or desc.'],
+                'steps.0.limit' => ['A number of records, one at least.'],
+                'steps.1.items' => ['One {{ path }} to a list, e.g. {{ open.records }}.'],
+                'steps.1.steps' => ['Required: a list of steps, one at least.'],
+            ], $e->errors);
+        }
     }
 
     public function testReportsEveryProblemOfAManualTrigger(): void

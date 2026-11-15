@@ -349,8 +349,11 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   [workflow-phase2-plan.md](workflow-phase2-plan.md), in three parts: 2a, the manual trigger
   (`on: manual`, its `label` and `form`; `workflow.<id>.run` made on activation; the **Run** menu
   on a record's page through the Record contract's `RecordActionsInterface`; `/w/<id>/run/<record>`;
-  `workflow:run`; `app.workflow.max_executed_steps`), done on branch `workflow_manual`, waiting for
-  review. Next: 2b (search records and the iterator), then 2c (a grid's selection).
+  `workflow:run`; `app.workflow.max_executed_steps`), done on branch `workflow_manual`, merged into
+  `main` on 2026-11-15. 2b (`search_records` through the Record contract's
+  `RecordFinderInterface::search()`, the `iterator`, `app.workflow.max_records`) done on branch
+  `workflow_search_iterator`, waiting for review. Next: 2c (a grid's selection); then the
+  rbac-bundle fix (`removeItem()` leaving the entity manager's assignments behind).
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

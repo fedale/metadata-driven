@@ -7,6 +7,7 @@ namespace App\Module\Workflow\Application;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Workflow\Application\Definition\Definition;
 use App\Module\Workflow\Application\Definition\FormInput;
+use App\Module\Workflow\Application\Definition\Step;
 use App\Module\Workflow\Application\Definition\StepType;
 use App\Module\Workflow\Application\Definition\TriggerEvent;
 
@@ -46,12 +47,23 @@ final class PathCatalog
         $steps = [];
         foreach ($definition->allSteps() as $step) {
             $key = $step->key;
+            $itemObject = StepType::Iterator === $step->type ? $this->itemObject($definition, $step) : null;
             $steps[$key] = match ($step->type) {
                 StepType::If => [$key.'.branch'],
                 StepType::Filter => [$key.'.passed'],
                 StepType::Refuse => [],
                 StepType::SetValues => array_map(static fn (string $field): string => $key.'.'.$field, array_keys($step->values())),
                 StepType::DeleteRecord => [$key.'.id'],
+                StepType::SearchRecords => [
+                    $key.'.records', $key.'.count', $key.'.total', $key.'.first.id',
+                    ...array_map(static fn (string $field): string => $key.'.first.'.$field, $this->fields((string) $step->string('object'))),
+                ],
+                StepType::Iterator => [
+                    $key.'.item',
+                    ...(null === $itemObject ? [] : [$key.'.item.id', ...array_map(static fn (string $field): string => $key.'.item.'.$field, $this->fields($itemObject))]),
+                    $key.'.index',
+                    $key.'.count',
+                ],
                 default => [
                     $key.'.id',
                     ...array_map(static fn (string $field): string => $key.'.'.$field, $this->fields((string) $step->string('object'))),
@@ -61,6 +73,23 @@ final class PathCatalog
         }
 
         return ['trigger' => $trigger, 'context' => $context, 'steps' => array_filter($steps, static fn (array $paths): bool => [] !== $paths)];
+    }
+
+    /**
+     * The object of an iterator's items, when it runs on a search's records.
+     */
+    private function itemObject(Definition $definition, Step $iterator): ?string
+    {
+        if (1 !== preg_match('/^\{\{\s*([a-z][a-z0-9_]*)\.records\s*\}\}$/', (string) $iterator->string('items'), $match)) {
+            return null;
+        }
+        foreach ($definition->allSteps() as $step) {
+            if ($match[1] === $step->key && StepType::SearchRecords === $step->type) {
+                return $step->string('object');
+            }
+        }
+
+        return null;
     }
 
     /**

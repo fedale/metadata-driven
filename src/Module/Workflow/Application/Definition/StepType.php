@@ -14,6 +14,8 @@ enum StepType: string
     case UpsertRecord = 'upsert_record';
     case SetValues = 'set_values';
     case Refuse = 'refuse';
+    case SearchRecords = 'search_records';
+    case Iterator = 'iterator';
 
     /**
      * Whether the step writes records: it needs a permission, and may act as a role.
@@ -21,6 +23,14 @@ enum StepType: string
     public function writes(): bool
     {
         return \in_array($this, [self::CreateRecord, self::UpdateRecord, self::DeleteRecord, self::UpsertRecord], true);
+    }
+
+    /**
+     * Whether the step reads records: it needs their read permission, and may act as a role.
+     */
+    public function reads(): bool
+    {
+        return self::SearchRecords === $this;
     }
 
     /**
@@ -41,6 +51,8 @@ enum StepType: string
             self::UpsertRecord => ['object' => true, 'match' => true, 'values' => true, ...$writing],
             self::SetValues => ['values' => true],
             self::Refuse => ['message' => true],
+            self::SearchRecords => ['object' => true, 'where' => false, 'sort' => false, 'direction' => false, 'limit' => false, 'act_as' => false],
+            self::Iterator => ['items' => true, 'steps' => true],
         };
     }
 }

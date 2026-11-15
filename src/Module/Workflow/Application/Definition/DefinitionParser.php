@@ -235,6 +235,7 @@ final class DefinitionParser
 
         $options = [];
         $branches = [];
+        $steps = [];
         $when = null;
         foreach ($type->options() as $option => $required) {
             if (!\array_key_exists($option, $step)) {
@@ -250,11 +251,17 @@ final class DefinitionParser
                 'values' => $options[$option] = $this->values($value, $at),
                 'act_as' => $options[$option] = $this->role($value, $at),
                 'emit_events' => $options[$option] = $this->flag($value, $at),
+                'where' => $options[$option] = $this->where($value, $at),
+                'sort' => $options[$option] = 'id' === $value ? 'id' : $this->name($value, $at),
+                'direction' => $options[$option] = \in_array($value, ['asc', 'desc'], true) ? $value : $this->error($at, 'asc or desc.'),
+                'limit' => $options[$option] = \is_int($value) && $value > 0 ? $value : $this->error($at, 'A number of records, one at least.'),
+                'items' => $options[$option] = \is_string($value) && 1 === preg_match('/^\{\{\s*'.self::PATH.'\s*\}\}$/', $value) ? $value : $this->error($at, 'One {{ path }} to a list, e.g. {{ open.records }}.'),
+                'steps' => $steps = $this->steps($value, $at, $timing),
                 default => null,
             };
         }
 
-        return null === $key ? null : new Step($key, $type, $options, $branches, $when);
+        return null === $key ? null : new Step($key, $type, array_filter($options, static fn (mixed $value): bool => null !== $value), $branches, $when, $steps);
     }
 
     /**
@@ -340,6 +347,53 @@ final class DefinitionParser
         }
 
         return null === $field ? null : Condition::test($field, $operator, $value);
+    }
+
+    /**
+     * A search's tests: on fields of the object searched, all of which must hold.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function where(mixed $where, string $path): array
+    {
+        if (!\is_array($where) || !array_is_list($where) || [] === $where) {
+            $this->error($path, 'A list of tests, { field, op, value }, all of which must hold.');
+
+            return [];
+        }
+        $tests = [];
+        foreach ($where as $i => $test) {
+            $at = $path.'.'.$i;
+            if (!\is_array($test)) {
+                $this->error($at, 'A test: { field, op, value }.');
+                continue;
+            }
+            $this->unknownKeys($test, ['field', 'op', 'value'], $at);
+            $field = 'id' === ($test['field'] ?? null) ? 'id' : $this->name($test['field'] ?? null, $at.'.field');
+            $operator = $test['op'] ?? null;
+            if (!\is_string($operator) || !\in_array($operator, Condition::OPERATORS, true)) {
+                $this->error($at.'.op', \sprintf('One of %s.', implode(', ', Condition::OPERATORS)));
+                continue;
+            }
+            if (\in_array($operator, Condition::UNARY, true)) {
+                if (\array_key_exists('value', $test)) {
+                    $this->error($at.'.value', \sprintf('%s takes no value.', $operator));
+                }
+                null === $field ?: $tests[] = ['field' => $field, 'op' => $operator];
+                continue;
+            }
+            $value = $test['value'] ?? null;
+            if (!\array_key_exists('value', $test)) {
+                $this->error($at.'.value', 'Required.');
+            } elseif (\in_array($operator, ['in', 'between'], true) && (!\is_array($value) || !array_is_list($value) || ('between' === $operator && 2 !== \count($value)))) {
+                $this->error($at.'.value', 'between' === $operator ? 'A list of two values: the lowest and the highest.' : 'A list of values.');
+            } else {
+                $this->templates($value, $at.'.value');
+            }
+            null === $field ?: $tests[] = ['field' => $field, 'op' => $operator, 'value' => $value];
+        }
+
+        return $tests;
     }
 
     /**
@@ -450,8 +504,13 @@ final class DefinitionParser
         }
     }
 
-    private function error(string $path, string $message): void
+    /**
+     * @return null what an option it refuses is worth
+     */
+    private function error(string $path, string $message): null
     {
         $this->errors[$path][] = $message;
+
+        return null;
     }
 }
