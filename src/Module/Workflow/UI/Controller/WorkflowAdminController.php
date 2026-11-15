@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Workflow\UI\Controller;
 
 use App\Module\Access\Contract\AccessCheckerInterface;
+use App\Module\Access\Contract\RecordAction;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Contract\RecordLookupInterface;
 use App\Module\Workflow\Application\Definition\Definition;
@@ -287,6 +288,12 @@ final class WorkflowAdminController extends AbstractController
     {
         $definition = (new DefinitionParser())->parse($source);
         $this->validator->validate($definition);
+        // The test shows the record's values: only to whoever may read them.
+        if (!$this->access->canRecords($definition->trigger->object, RecordAction::Read)) {
+            $form->get('test_record')->addError(new FormError($this->translator->trans('admin.workflow.test_cannot_read', ['%object%' => $definition->trigger->object])));
+
+            return null;
+        }
         $record = $form->get('test_record')->getData();
         if (!\is_string($record) || '' === $record) {
             $form->get('test_record')->addError(new FormError($this->translator->trans('admin.workflow.test_choose')));
@@ -395,7 +402,9 @@ final class WorkflowAdminController extends AbstractController
                 'attr' => ['rows' => 24, 'class' => 'md-code-input', 'spellcheck' => 'false'],
             ]);
         if (null !== $workflow) {
-            $records = null === $definition || !$this->metadata->hasObject($definition->trigger->object) ? [] : $this->lookup->search($definition->trigger->object, '', 50);
+            // Their labels only to whoever may read them.
+            $object = $definition?->trigger->object;
+            $records = null === $object || !$this->metadata->hasObject($object) || !$this->access->canRecords($object, RecordAction::Read) ? [] : $this->lookup->search($object, '', 50);
             $builder
                 ->add('test_record', ChoiceType::class, [
                     'label' => 'admin.workflow.test_record',

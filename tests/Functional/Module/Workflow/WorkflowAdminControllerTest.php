@@ -149,6 +149,21 @@ final class WorkflowAdminControllerTest extends WebTestCase
         self::assertSelectorTextNotContains('body', 'Pet of Ada');
     }
 
+    public function testTheTestShowsOnlyTheRecordsTheTesterMayRead(): void
+    {
+        self::signIn($this->client, 'anna@example.com', ['admin.workflows', 'record.pet.create']);
+        self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('person', ['full_name' => 'Ada']));
+        $this->client->request('GET', '/admin/workflows/new');
+        $this->client->submitForm('Create the draft', ['workflow[name]' => 'Welcome', 'workflow[definition]' => self::WELCOME]);
+        $this->client->followRedirect();
+
+        // Anna may not read people: none is offered, and a test is refused.
+        self::assertCount(1, $this->client->getCrawler()->filter('select[name="workflow[test_record]"] option'));
+        $this->client->submitForm('Test on this record');
+        self::assertSelectorTextContains('body', 'You may not read the records of "person": the test would show them.');
+        self::assertSelectorNotExists('#test');
+    }
+
     public function testTheListSetsTheOrderAndAWorkflowIsDeleted(): void
     {
         self::signInAsSuperAdmin($this->client);

@@ -435,6 +435,7 @@ admin:
         test_help: 'Un record dell''oggetto dell''evento: la bozza gira davvero su di lui, poi tutto viene annullato.'
         test: Prova su questo record
         test_choose: Scegli un record su cui provare la bozza.
+        test_cannot_read: 'Non puoi leggere i record di "%object%": la prova li mostrerebbe.'
         test_result: Prova
         test_rolled_back: 'Annullata: non è rimasto niente.'
         test_no_step: Nessun passo eseguito.

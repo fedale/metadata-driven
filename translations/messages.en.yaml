@@ -438,6 +438,7 @@ admin:
         test_help: 'A record of the trigger''s object: the draft runs for real on it, then everything is rolled back.'
         test: Test on this record
         test_choose: Choose a record to test the draft on.
+        test_cannot_read: 'You may not read the records of "%object%": the test would show them.'
         test_result: Test
         test_rolled_back: 'Rolled back: nothing was kept.'
         test_no_step: No step ran.

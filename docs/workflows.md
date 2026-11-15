@@ -35,7 +35,7 @@ steps:
 - **Test on this record**: choose a record of the trigger's object; the draft is saved, checked as
   an activation would, then run on it **for real and rolled back**: each step's input, output and
   error are shown on the page, and nothing is kept (no record written, no run stored). It acts with
-  your permissions; a before-trigger runs as the update of the record with its own values (a create
+  your permissions, and offers only the records you may read (`record.<object>.read`); a before-trigger runs as the update of the record with its own values (a create
   for a trigger on `created`), an after-trigger as the record written. Its writes start no other
   workflow, whatever `emit_events` says, and the limits don't apply.
 - **Versions**: activating a draft makes it the active version, the previous one archived. Editing
