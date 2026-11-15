@@ -8,6 +8,7 @@ use App\Module\FieldType\Contract\Dto\FileUpload;
 use App\Module\Package\Domain\Exception\InstallRefused;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
+use App\Module\Record\Contract\RecordEventScopeInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
 use Fedale\PackageFormat\Document;
 use Fedale\PackageFormat\DocumentKind;
@@ -30,6 +31,7 @@ final class SeedWriter
     public function __construct(
         private readonly RecordManagerInterface $records,
         private readonly SeedRecords $seedRecords,
+        private readonly RecordEventScopeInterface $events,
     ) {
     }
 
@@ -183,9 +185,10 @@ final class SeedWriter
     private function save(Document $seed, int $i, string $objectName, ?string $id, array $values): string
     {
         try {
-            return null === $id
+            // A package's records are installed, not written by anyone: no workflow runs on them.
+            return $this->events->withoutEvents(fn (): string => null === $id
                 ? $this->records->create(new RecordInput($objectName, $values))->id
-                : $this->records->update($id, new RecordInput($objectName, $values))->id;
+                : $this->records->update($id, new RecordInput($objectName, $values))->id);
         } catch (RecordValidationFailed $e) {
             throw InstallRefused::at($seed->path, self::at($seed, $i), implode(' ', array_map(static fn (string $field, array $messages): string => \sprintf('%s: %s', '' === $field ? 'record' : $field, implode(' ', $messages)), array_keys($e->errors), $e->errors)));
         }

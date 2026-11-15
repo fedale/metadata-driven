@@ -26,6 +26,7 @@ use App\Module\Package\Domain\Repository\PersistenceReset;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Exception\RecordDeleteRestricted;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
+use App\Module\Record\Contract\RecordEventScopeInterface;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
 use App\Shared\Transaction\TransactionRunner;
@@ -77,6 +78,7 @@ final class PackageUpgrader
         private readonly SeedRecords $seedRecords,
         private readonly PersistenceReset $persistence,
         private readonly RecordManagerInterface $records,
+        private readonly RecordEventScopeInterface $recordEvents,
         private readonly RecordFinderInterface $finder,
         private readonly SeedPlanner $seedPlanner,
         private readonly SeedWriter $seedWriter,
@@ -413,7 +415,8 @@ final class PackageUpgrader
         }
         foreach ($seeds->deletes as [$object, $id]) {
             try {
-                $this->records->delete($names->object($object), $id);
+                // A package's records are installed, not written by anyone: no workflow runs on them.
+                $this->recordEvents->withoutEvents(fn () => $this->records->delete($names->object($object), $id));
             } catch (RecordDeleteRestricted $e) {
                 throw UpgradeRefused::at('seeds', \sprintf('record %s of "%s"', $id, $names->object($object)), $e->getMessage());
             }
@@ -480,7 +483,7 @@ final class PackageUpgrader
         $to = $names->field($step['to']);
         foreach ($this->finder->each($object) as $record) {
             try {
-                $this->records->update($record->id, new RecordInput($object, [$to => $record->values[$from] ?? null]));
+                $this->recordEvents->withoutEvents(fn () => $this->records->update($record->id, new RecordInput($object, [$to => $record->values[$from] ?? null])));
             } catch (RecordValidationFailed $e) {
                 throw UpgradeRefused::at(Format::MANIFEST, \sprintf('migration %s', $step['version']), \sprintf('record %s of "%s": %s', $record->id, $object, $e->getMessage()));
             }
