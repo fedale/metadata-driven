@@ -32,7 +32,7 @@ final class MetadataRevisionTest extends KernelTestCase
         $revisions[] = $this->revision();
         $manager->saveView('pet', ViewKind::Grid, 'main', "columns: [name]\n");
         $revisions[] = $this->revision();
-        self::createRegistrationForm($container);                // a composite form
+        self::createRegistrationForm($container);                // a form
         $revisions[] = $this->revision();
         $manager->translate('it', 'object.pet.singular', 'Animale');
         $revisions[] = $this->revision();

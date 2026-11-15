@@ -27,7 +27,7 @@ use Fedale\TemplateFormat\PackageChecker;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * Writes objects, their fields and views, composite forms and their translations as a template.
+ * Writes objects, their fields and views, forms and their translations as a template.
  *
  * Inside the app items point at each other by name; in a template, by id. The ids recorded by a
  * previous export of the same template are kept, so that an object or a field renamed since keeps
@@ -406,7 +406,7 @@ final class TemplateExporter
 
     /**
      * A field naming a field of a required object (dependsVia, throughTarget…), a section of a
-     * composite form joined through one: it must be a field the required template owns, one
+     * form joined through one: it must be a field the required template owns, one
      * added here would not be on the instance installing the export.
      *
      * @param array<string, ObjectDefinitionDto> $objects the exported objects
@@ -445,7 +445,7 @@ final class TemplateExporter
     }
 
     /**
-     * The sections of a composite form's definition joined through a field: their object, the field.
+     * The sections of a form's definition joined through a field: their object, the field.
      *
      * @param array<mixed> $node
      *

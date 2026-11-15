@@ -13,8 +13,8 @@ Objects are defined from the admin UI at `/admin` or from the console.
 |---|---|
 | [Getting started](getting-started.md) | Run the app, then build a small model from scratch: objects, fields, a relation, search |
 | [Admin UI](admin.md) | The no-code builder at `/admin`: objects, fields, labels, search, views, translations, table status |
-| [Composite forms](forms.md) | One form writing a record and its related records (one-to-one and repeatable sections, nested), defined in YAML, laid out with `{token}` layouts |
-| [Views](views.md) | Layouts of the record form (HTML with a `{field}` token per field; composite forms use the same tokens) and columns of the record grid (YAML: order, labels, renderers, virtual columns, sort), from the admin UI or the console |
+| [Forms](forms.md) | One form writing a record and its related records (one-to-one and repeatable sections, nested), defined in YAML, laid out with `{token}` layouts |
+| [Views](views.md) | Layouts of the record form (HTML with a `{field}` token per field; forms use the same tokens) and columns of the record grid (YAML: order, labels, renderers, virtual columns, sort), from the admin UI or the console |
 | [Languages](i18n.md) | Translations of the labels, options and titles, `{t:name}` texts in layouts, the language of each user |
 | [Importing records](import.md) | CSV files into an object, all or nothing: the wizard of the records page (columns mapped, a check first) and `record:import` |
 | [Users and permissions](access.md) | Signing in, users, the permissions of every object, roles |

@@ -25,7 +25,7 @@ Under them, the **Archived** objects, each with **Restore** (see [Renaming and a
 | Unique together | The sets of fields no two records may share all the values of, each with **Remove**; **Make unique together** adds one from the fields ticked (at least two) | `metadata:object:unique` |
 | Table | Whether the table matches the metadata; **Apply** adds what is missing | `schema:sync <object>` |
 | Machine name | Renames the object, its table and everything named after it | `metadata:rename <object> <new-name>` |
-| Archive | Takes the object out of the application, its records kept; refused while a relation or a composite form uses it | `metadata:archive <object>` |
+| Archive | Takes the object out of the application, its records kept; refused while a relation or a form uses it | `metadata:archive <object>` |
 
 The **Table** section never drops anything: differences that would lose data (a column the metadata
 does not define, a column defined differently) are listed, and only
@@ -59,10 +59,10 @@ the **Delete** button; a grid view's errors are all shown at once under its defi
 
 ## Forms — `/admin/forms`
 
-The composite forms: one form writing a record and the records related to it. **New form** starts
+The forms: one form writing a record and the records related to it. **New form** starts
 from an example definition (YAML) and lists every object with its fields and relation fields
 next to the editor; saving reports every error of the definition at once, those of the
-`layout`s included. See [Composite forms](forms.md) and its [Layouts](forms.md#layouts).
+`layout`s included. See [Forms](forms.md) and its [Layouts](forms.md#layouts).
 
 ## Translations — `/admin/translations`
 
@@ -128,7 +128,7 @@ shape the column are shown disabled (see [Changing settings](field-types.md#chan
 field (the object's choice and yes/no fields are offered, each with its values in the help), type
 the values separated by commas, and save; **Always** removes the condition. See
 [Conditions](field-types.md#conditions). **Machine name** renames the field, its column and what
-names it (views and composite forms included); **Archive** takes it out of the forms and grids,
+names it (views and forms included); **Archive** takes it out of the forms and grids,
 its values kept. See [Renaming and archiving](lifecycle.md).
 
 ## What cannot be changed

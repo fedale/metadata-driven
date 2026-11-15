@@ -1,6 +1,6 @@
-# Composite forms
+# Forms
 
-A composite form writes a record **and the records related to it** in one page and one
+A form writes a record **and the records related to it** in one page and one
 transaction: an account, its profile, the phones of the profile, the qualifications of the
 account. It is defined in YAML, stored with the metadata, and checked against the objects when it
 is saved: no code, no deploy.
@@ -102,7 +102,7 @@ this record."). A row removed goes to the bin with its files.
 
 | Key | Required | Description |
 |---|---|---|
-| `name` | yes | Machine name, unique among its siblings; it names the inputs (`composite[sections][phones]...`) |
+| `name` | yes | Machine name, unique among its siblings; it names the inputs (`form[sections][phones]...`) |
 | `label` | yes | The title of the section |
 | `description` | no | A line under the title, at most 300 characters |
 | `object` | yes | The object of its records |
@@ -276,7 +276,7 @@ symfony console metadata:form:delete registration      # the records stay
 
 ## Renamed and archived objects and fields
 
-Renaming an object or a field rewrites the composite forms naming it (`object`, `fields`,
+Renaming an object or a field rewrites the forms naming it (`object`, `fields`,
 `required`, the `{field}` tokens of a `layout`, `via`) and compiles them again: the YAML is written
 again, so its comments are lost; a form not naming it is left as written. An object with a node in
 a form, or a field the form names, cannot be archived until the form no longer uses it. See
@@ -289,10 +289,10 @@ a form, or a field the form names, cannot be archived until the form no longer u
 | Storage | `core.metadata_form`: the YAML as written (`source`) and its compiled form (`definition`, JSONB) |
 | Checks | `FormDefinitionCompiler` (Metadata): YAML → compiled definition, against the objects |
 | Read side | `MetadataRegistryInterface::getForm()`, `FormDefinitionDto` / `FormNodeDto`, cached with the metadata |
-| Writes | `CompositeRecordManagerInterface` (Record): plans and checks the whole tree with `RecordManagerInterface::check()`, then writes it with the record pipeline; a service field is checked when `ServiceFieldDto::isAskedFor()` the record |
-| Page | `CompositeFormController` at `/f/{form}`, `CompositeNodeType` (a node: `values`, `service`, `sections`, a row's `id`; drops the service fields an existing record is not asked), `templates/record/composite.html.twig` (the sheet and its cards), `_composite.html.twig` (a node, a section, a row), `_sheet_header` / `_sheet_footer` (shared with the record form) |
+| Writes | `FormRecordManagerInterface` (Record): plans and checks the whole tree with `RecordManagerInterface::check()`, then writes it with the record pipeline; a service field is checked when `ServiceFieldDto::isAskedFor()` the record |
+| Page | `FormController` at `/f/{form}`, `FormNodeType` (a node: `values`, `service`, `sections`, a row's `id`; drops the service fields an existing record is not asked), `templates/form/page.html.twig` (the sheet and its cards), `form/_node.html.twig` (a node, a section, a row), `record/_sheet_header` / `record/_sheet_footer` (shared with the record form) |
 | Index | The `form-index` Stimulus controller (`assets/controllers/form_index_controller.js`): counts the inputs and rows of each card, marks the one in view |
-| Layouts | Checked and sanitized by `FormDefinitionCompiler` (the `view_layout` sanitizer), `FormNodeDto::$layout`; rendered by the Twig function `composite_form_layout()` (`RecordFormLayout`) |
+| Layouts | Checked and sanitized by `FormDefinitionCompiler` (the `view_layout` sanitizer), `FormNodeDto::$layout`; rendered by the Twig function `form_node_layout()` (`RecordFormLayout`) |
 | Rows | The `gridview-collection` Stimulus controller and the `gv-collection` classes of fedale/gridview-bundle: adds a row from the section's prototype under a fresh key, removes one, keeps `min`/`max` |
 
 ## Not yet

@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Module\Record;
 
 use App\Module\Metadata\Contract\MetadataManagerInterface;
-use App\Module\Record\Contract\CompositeRecordManagerInterface;
-use App\Module\Record\Contract\Dto\CompositeNodeInput;
+use App\Module\Record\Contract\Dto\FormNodeInput;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\Exception\RecordDeleteRestricted;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
+use App\Module\Record\Contract\FormRecordManagerInterface;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
 use App\Tests\Support\CreatesTaggedContacts;
@@ -157,17 +157,17 @@ final class ManyToManyRecordsTest extends KernelTestCase
         self::assertSame([], $this->records->update($acme->id, new RecordInput('contact', ['kind' => 'person']))->get('tags'));
     }
 
-    public function testACompositeFormWritesTheLinks(): void
+    public function testAFormWritesTheLinks(): void
     {
         $vip = $this->tag('VIP');
         $press = $this->tag('Press');
         self::getContainer()->get(MetadataManagerInterface::class)->saveForm('contact_card', "label: Contact card\nobject: contact\nfields: [full_name, tags]\n");
-        $forms = self::getContainer()->get(CompositeRecordManagerInterface::class);
+        $forms = self::getContainer()->get(FormRecordManagerInterface::class);
 
-        $id = $forms->save('contact_card', null, new CompositeNodeInput(null, ['full_name' => 'Anna Rossi', 'tags' => [$vip, $press]], [], []));
+        $id = $forms->save('contact_card', null, new FormNodeInput(null, ['full_name' => 'Anna Rossi', 'tags' => [$vip, $press]], [], []));
         self::assertEqualsCanonicalizing([$vip, $press], $forms->read('contact_card', $id)?->record->get('tags'));
 
-        $forms->save('contact_card', $id, new CompositeNodeInput($id, ['full_name' => 'Anna Rossi', 'tags' => [$press]], [], []));
+        $forms->save('contact_card', $id, new FormNodeInput($id, ['full_name' => 'Anna Rossi', 'tags' => [$press]], [], []));
         self::assertSame([$press], $this->finder()->find('contact', $id)?->get('tags'));
     }
 

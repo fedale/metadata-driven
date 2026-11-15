@@ -4,7 +4,7 @@
  * The same grammar as fedale/gridview-bundle, whose stylesheet (grid.scss) comes first:
  *   - gv-*  generic components, from the bundle: form rows, labels, controls, errors, required
  *           marker (gv_form_theme), gv-btn, gv-switch, gv-segmented, gv-password-*, gv-collection;
- *   - md-*  components of this application only (page, top bar, admin, composite forms),
+ *   - md-*  components of this application only (page, top bar, admin, forms),
  *           named block__element--modifier;
  *   - every colour and size from the --gv-* design tokens, defined on <body data-gv-scope>:
  *     the grid's theme and dark mode apply to the whole page.
@@ -164,7 +164,7 @@ a:hover { color: var(--gv-color-link-hover); }
 /* ── Forms: the rows come from gv_form_theme; the form only sets the width ── */
 
 .md-form { max-width: 32rem; }
-.md-form--composite { max-width: 44rem; }
+.md-form--page { max-width: 44rem; }
 .md-form--wide { max-width: none; }
 .md-form fieldset:not(.gv-collection__row),
 .md-sheet fieldset:not(.gv-collection__row) {
@@ -310,7 +310,7 @@ a:hover { color: var(--gv-color-link-hover); }
 .md-card__header { display: flex; gap: .75rem; align-items: baseline; margin-bottom: 1.25rem; }
 .md-card__number { font: .8rem/1 var(--md-font-mono); color: var(--gv-color-text-muted); }
 .md-card__title { margin: 0; font-size: 1.2rem; font-weight: 600; }
-.md-card__description, .md-composite__description { margin: .2rem 0 0; font-size: .875rem; color: var(--gv-color-text-muted); }
+.md-card__description, .md-form-section__description { margin: .2rem 0 0; font-size: .875rem; color: var(--gv-color-text-muted); }
 .md-card > .md-related, .md-card ul { margin-bottom: 0; }
 
 /* The fields of a node without a layout, on "columns" columns; one on a narrow screen. */
@@ -360,9 +360,9 @@ a:hover { color: var(--gv-color-link-hover); }
 .md-view-layout { margin-bottom: 1.1rem; }
 .md-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 0 1.5rem; }
 
-/* A section of a composite form: a framed group, titled. */
-.md-composite__section { min-width: 0; }
-.md-composite__title { font-weight: 600; }
+/* A section of a form: a framed group, titled. */
+.md-form-section { min-width: 0; }
+.md-form-section__title { font-weight: 600; }
 
 /* A textarea holding code (YAML, HTML). */
 .md-code-input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85rem; }

@@ -13,9 +13,9 @@ use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Exception\FormDefinitionNotFound;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Application\CascadeTargets;
-use App\Module\Record\Contract\CompositeRecordManagerInterface;
-use App\Module\Record\Contract\Exception\CompositeValidationFailed;
-use App\Module\Record\UI\Form\CompositeFormFactory;
+use App\Module\Record\Contract\Exception\FormValidationFailed;
+use App\Module\Record\Contract\FormRecordManagerInterface;
+use App\Module\Record\UI\Form\FormDefinitionFormFactory;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Form\FormInterface;
@@ -26,7 +26,7 @@ use Symfony\Component\Routing\Requirement\Requirement;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * The pages of the composite forms: one form writing a record and the records related to it.
+ * The pages of the forms: one form writing a record and the records related to it.
  *
  * Opening a form needs the read permission on every object it touches; saving it, the
  * create permission (a new form) or the create, update and delete permissions (an existing
@@ -34,15 +34,15 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  * cascade to the records of other objects: saving an existing form also needs the delete
  * permission on each of them.
  */
-#[Route('/f/{form}', name: 'composite_', requirements: ['form' => '[a-z][a-z0-9_]*'])]
-final class CompositeFormController extends AbstractController
+#[Route('/f/{form}', name: 'form_', requirements: ['form' => '[a-z][a-z0-9_]*'])]
+final class FormController extends AbstractController
 {
     public function __construct(
         // The labels in the user's language.
         #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
-        private readonly CompositeRecordManagerInterface $records,
-        private readonly CompositeFormFactory $forms,
+        private readonly FormRecordManagerInterface $records,
+        private readonly FormDefinitionFormFactory $forms,
         private readonly AccessCheckerInterface $access,
         private readonly CascadeTargets $cascadeTargets,
         private readonly TranslatorInterface $translator,
@@ -54,20 +54,20 @@ final class CompositeFormController extends AbstractController
     {
         $definition = $this->formOr404($form);
         $this->denyUnless($definition, [RecordAction::Create]);
-        $composite = $this->forms->create($definition, null)->handleRequest($request);
+        $sheet = $this->forms->create($definition, null)->handleRequest($request);
 
-        if ($composite->isSubmitted() && $composite->isValid() && null !== $id = $this->save($definition, null, $composite)) {
+        if ($sheet->isSubmitted() && $sheet->isValid() && null !== $id = $this->save($definition, null, $sheet)) {
             $this->addFlash('success', $this->translator->trans('flash.saved', ['%form%' => $definition->label]));
 
             // "Save and new" (the `_action` of its button) opens an empty form again.
             if ('save_new' === $request->request->get('_action')) {
-                return $this->redirectToRoute('composite_new', ['form' => $definition->name], Response::HTTP_SEE_OTHER);
+                return $this->redirectToRoute('form_new', ['form' => $definition->name], Response::HTTP_SEE_OTHER);
             }
 
-            return $this->redirectToRoute('composite_edit', ['form' => $definition->name, 'id' => $id], Response::HTTP_SEE_OTHER);
+            return $this->redirectToRoute('form_edit', ['form' => $definition->name, 'id' => $id], Response::HTTP_SEE_OTHER);
         }
 
-        return $this->render('record/composite.html.twig', [...$this->page($definition), 'form' => $composite, 'id' => null, 'can_save' => true]);
+        return $this->render('form/page.html.twig', [...$this->page($definition), 'form' => $sheet, 'id' => null, 'can_save' => true]);
     }
 
     #[Route('/{id}/edit', name: 'edit', requirements: ['id' => Requirement::UUID], methods: ['GET', 'POST'])]
@@ -80,15 +80,15 @@ final class CompositeFormController extends AbstractController
             throw $this->createAccessDeniedException(\sprintf('Saving form "%s" may delete records you may not delete.', $definition->name));
         }
         $record = $this->records->read($definition->name, $id) ?? throw $this->createNotFoundException(\sprintf('Record "%s" of object "%s" does not exist.', $id, $definition->root->object));
-        $composite = $this->forms->create($definition, $record, readOnly: !$canSave)->handleRequest($request);
+        $sheet = $this->forms->create($definition, $record, readOnly: !$canSave)->handleRequest($request);
 
-        if ($composite->isSubmitted() && $composite->isValid() && null !== $this->save($definition, $id, $composite)) {
+        if ($sheet->isSubmitted() && $sheet->isValid() && null !== $this->save($definition, $id, $sheet)) {
             $this->addFlash('success', $this->translator->trans('flash.saved', ['%form%' => $definition->label]));
 
-            return $this->redirectToRoute('composite_edit', ['form' => $definition->name, 'id' => $id], Response::HTTP_SEE_OTHER);
+            return $this->redirectToRoute('form_edit', ['form' => $definition->name, 'id' => $id], Response::HTTP_SEE_OTHER);
         }
 
-        return $this->render('record/composite.html.twig', [...$this->page($definition), 'form' => $composite, 'id' => $id, 'can_save' => $canSave]);
+        return $this->render('form/page.html.twig', [...$this->page($definition), 'form' => $sheet, 'id' => $id, 'can_save' => $canSave]);
     }
 
     /**
@@ -107,16 +107,16 @@ final class CompositeFormController extends AbstractController
     }
 
     /**
-     * @param FormInterface<array<string, mixed>> $composite
+     * @param FormInterface<array<string, mixed>> $sheet
      *
      * @return string|null the id of the root record; null when the input was refused (errors added)
      */
-    private function save(FormDefinitionDto $definition, ?string $id, FormInterface $composite): ?string
+    private function save(FormDefinitionDto $definition, ?string $id, FormInterface $sheet): ?string
     {
         try {
-            return $this->records->save($definition->name, $id, $this->forms->input($definition->root, $composite->getData()));
-        } catch (CompositeValidationFailed $failure) {
-            $this->forms->addErrors($composite, $failure);
+            return $this->records->save($definition->name, $id, $this->forms->input($definition->root, $sheet->getData()));
+        } catch (FormValidationFailed $failure) {
+            $this->forms->addErrors($sheet, $failure);
 
             return null;
         }

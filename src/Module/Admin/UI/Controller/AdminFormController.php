@@ -24,7 +24,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * The composite forms of the no-code builder: each one is written in YAML, checked against
+ * The forms of the no-code builder: each one is written in YAML, checked against
  * the objects when it is saved.
  */
 #[Route('/admin/forms', name: 'admin_form_')]
@@ -74,9 +74,9 @@ final class AdminFormController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             $name = $this->text($form, 'name');
             if ($this->metadata->hasForm($name)) {
-                $form->get('name')->addError(new FormError($this->translator->trans('admin.composite.exists', ['%name%' => $name])));
+                $form->get('name')->addError(new FormError($this->translator->trans('admin.form.exists', ['%name%' => $name])));
             } elseif ($this->save($form, $name)) {
-                $this->addFlash('success', $this->translator->trans('admin.composite.created', ['%name%' => $name]));
+                $this->addFlash('success', $this->translator->trans('admin.form.created', ['%name%' => $name]));
 
                 return $this->redirectToRoute('admin_form_edit', ['form' => $name], Response::HTTP_SEE_OTHER);
             }
@@ -93,7 +93,7 @@ final class AdminFormController extends AbstractController
         $editor = $this->definitionForm($definition)->handleRequest($request);
 
         if ($editor->isSubmitted() && $editor->isValid() && $this->save($editor, $definition->name)) {
-            $this->addFlash('success', $this->translator->trans('admin.composite.saved'));
+            $this->addFlash('success', $this->translator->trans('admin.form.saved'));
 
             return $this->redirectToRoute('admin_form_edit', ['form' => $definition->name], Response::HTTP_SEE_OTHER);
         }
@@ -115,7 +115,7 @@ final class AdminFormController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             try {
                 $this->manager->deleteForm($definition->name);
-                $this->addFlash('success', $this->translator->trans('admin.composite.deleted', ['%name%' => $definition->name]));
+                $this->addFlash('success', $this->translator->trans('admin.form.deleted', ['%name%' => $definition->name]));
             } catch (MetadataException $e) {
                 $this->addFlash('error', $e->getMessage());
             }
@@ -156,12 +156,12 @@ final class AdminFormController extends AbstractController
     {
         $builder = $this->forms->createNamedBuilder('form_definition', FormType::class, ['definition' => $definition->source ?? self::EXAMPLE]);
         if (null === $definition) {
-            $builder->add('name', TextType::class, ['label' => 'admin.machine_name', 'help' => 'admin.composite.name_help']);
+            $builder->add('name', TextType::class, ['label' => 'admin.machine_name', 'help' => 'admin.form.name_help']);
         }
 
         return $builder
             ->add('definition', TextareaType::class, [
-                'label' => 'admin.composite.definition',
+                'label' => 'admin.form.definition',
                 'attr' => ['rows' => 24, 'class' => 'md-code-input', 'spellcheck' => 'false'],
             ])
             ->getForm();

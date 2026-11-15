@@ -8,7 +8,7 @@ final readonly class ExportTemplateCommand
 {
     /**
      * @param list<string>               $objects the objects exported, with their fields and views
-     * @param list<string>               $forms   the composite forms exported; their objects must be exported too
+     * @param list<string>               $forms   the forms exported; their objects must be exported too
      * @param array<string, string|null> $seeds   the objects whose records are exported, each with
      *                                            its key field (null: its first unique field)
      */

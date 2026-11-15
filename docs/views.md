@@ -274,8 +274,8 @@ Layouts are not Twig. Only the `{field}` and `{t:name}` tokens are replaced: `{{
 functions are kept as plain text. A layout written in the admin UI therefore cannot run code on
 the server.
 
-A composite form is laid out the same way, with a `layout` in its definition: see
-[Composite forms](forms.md#layouts).
+A form is laid out the same way, with a `layout` in its definition: see
+[Forms](forms.md#layouts).
 
 ## Not yet
 

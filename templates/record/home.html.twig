@@ -22,7 +22,7 @@
         <h2>{{ 'home.forms'|trans }}</h2>
         <ul class="md-link-list">
             {% for form in forms %}
-                <li><a href="{{ path('composite_new', {form: form.name}) }}">{{ form.label }}</a></li>
+                <li><a href="{{ path('form_new', {form: form.name}) }}">{{ form.label }}</a></li>
             {% endfor %}
         </ul>
     {% endif %}

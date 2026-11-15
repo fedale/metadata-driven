@@ -11,7 +11,7 @@ use App\Tests\Support\CreatesRegistrationForm;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
- * The layouts of a composite form: sanitized when the form is saved, their tokens checked
+ * The layouts of a form: sanitized when the form is saved, their tokens checked
  * against the fields, service fields and sections of their node.
  */
 final class FormLayoutTest extends KernelTestCase

@@ -9,8 +9,8 @@ use App\Module\Metadata\Application\Command\CreateObjectCommand;
 use App\Module\Metadata\Application\Handler\CreateFieldHandler;
 use App\Module\Metadata\Application\Handler\CreateObjectHandler;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
-use App\Module\Record\Contract\CompositeRecordManagerInterface;
-use App\Module\Record\Contract\Dto\CompositeNodeInput;
+use App\Module\Record\Contract\Dto\FormNodeInput;
+use App\Module\Record\Contract\FormRecordManagerInterface;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Tests\Support\CreatesRegistrationForm;
 use App\Tests\Support\SignsIn;
@@ -19,10 +19,10 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\DomCrawler\Crawler;
 
 /**
- * The registration composite form driven through HTTP, as a browser would: the rows added
+ * The registration form driven through HTTP, as a browser would: the rows added
  * with "+" are posted with keys of their own, the rows removed are not posted.
  */
-final class CompositeFormControllerTest extends WebTestCase
+final class FormControllerTest extends WebTestCase
 {
     use CreatesRegistrationForm;
     use SignsIn;
@@ -46,23 +46,23 @@ final class CompositeFormControllerTest extends WebTestCase
         self::assertSame(['Account', 'Profile', 'Qualifications'], $crawler->filter('.md-card__title')->each(static fn ($title): string => $title->text()));
         self::assertSame(['01', '02', '03'], $crawler->filter('.md-index__number')->each(static fn ($number): string => $number->text()));
         self::assertSame('#part-profile', $crawler->filter('.md-index__item')->eq(1)->attr('href'));
-        self::assertSelectorTextContains('#part-profile #section-composite_sections_profile_sections_phones legend', 'Phones');
+        self::assertSelectorTextContains('#part-profile #section-form_sections_profile_sections_phones legend', 'Phones');
         // Phones need one row: it is there, with the defaults of its fields.
-        self::assertSame('+39', $crawler->filter('select[name="composite[sections][profile][sections][phones][0][values][prefix]"] option[selected]')->attr('value'));
+        self::assertSame('+39', $crawler->filter('select[name="form[sections][profile][sections][phones][0][values][prefix]"] option[selected]')->attr('value'));
         self::assertStringContainsString('__phones__', (string) $crawler->filter('[data-gridview-collection-prototype-name-value="__phones__"]')->attr('data-gridview-collection-prototype-value'));
         // "inline: true": prefix, number and type on one line.
-        self::assertCount(3, $crawler->filter('.gv-collection__row--inline [name^="composite[sections][profile][sections][phones][0][values]"]'));
+        self::assertCount(3, $crawler->filter('.gv-collection__row--inline [name^="form[sections][profile][sections][phones][0][values]"]'));
         // An inline row shows its labels as placeholders, the required ones marked.
-        self::assertSame('Number *', $crawler->filter('input[name="composite[sections][profile][sections][phones][0][values][number]"]')->attr('placeholder'));
+        self::assertSame('Number *', $crawler->filter('input[name="form[sections][profile][sections][phones][0][values][number]"]')->attr('placeholder'));
         // The city is required by the form only: marked all the same.
-        self::assertStringContainsString('required', (string) $crawler->filter('label[for="composite_sections_profile_values_city"]')->attr('class'));
-        self::assertStringNotContainsString('required', (string) $crawler->filter('label[for="composite_sections_profile_values_zipcode"]')->attr('class'));
-        self::assertCount(0, $crawler->filter('[name^="composite[sections][qualifications]"]'));
+        self::assertStringContainsString('required', (string) $crawler->filter('label[for="form_sections_profile_values_city"]')->attr('class'));
+        self::assertStringNotContainsString('required', (string) $crawler->filter('label[for="form_sections_profile_values_zipcode"]')->attr('class'));
+        self::assertCount(0, $crawler->filter('[name^="form[sections][qualifications]"]'));
         // A new account needs its password: required, without the "keep it" help.
-        self::assertSame('required', $crawler->filter('input[name="composite[values][password][first]"]')->attr('required'));
+        self::assertSame('required', $crawler->filter('input[name="form[values][password][first]"]')->attr('required'));
         self::assertSelectorTextNotContains('main form', 'Leave empty to keep the current password.');
 
-        $this->client->request('POST', '/f/registration/new', array_replace_recursive($this->values($crawler), ['composite' => [
+        $this->client->request('POST', '/f/registration/new', array_replace_recursive($this->values($crawler), ['form' => [
             'values' => ['username' => 'mario', 'email' => 'mario@example.com', 'firstname' => 'Mario', 'lastname' => 'Rossi', 'password' => ['first' => 'secret123', 'second' => 'secret123'], 'active' => '1'],
             'service' => ['terms' => '1'],
             'sections' => [
@@ -83,18 +83,18 @@ final class CompositeFormControllerTest extends WebTestCase
         self::assertResponseRedirects('/f/registration/'.$account->id.'/edit', 303);
         $crawler = $this->client->followRedirect();
         self::assertSelectorTextContains('.md-flash--success', 'User registration saved.');
-        self::assertSame('Milano', $crawler->filter('input[name="composite[sections][profile][values][city]"]')->attr('value'));
+        self::assertSame('Milano', $crawler->filter('input[name="form[sections][profile][values][city]"]')->attr('value'));
         self::assertSame(['333 123 4567', '044 123 45 67'], $this->numbers($crawler));
-        self::assertSame('Computer engineering', $crawler->filter('input[name="composite[sections][qualifications][0][values][title]"]')->attr('value'));
+        self::assertSame('Computer engineering', $crawler->filter('input[name="form[sections][qualifications][0][values][title]"]')->attr('value'));
 
         // Remove the office phone ("Remove" drops its inputs); the password left empty is kept.
         $form = $crawler->selectButton('Save')->form();
         foreach (array_keys($form->all()) as $name) {
-            if (str_starts_with($name, 'composite[sections][profile][sections][phones][1]')) {
+            if (str_starts_with($name, 'form[sections][profile][sections][phones][1]')) {
                 $form->remove($name);
             }
         }
-        $form->setValues(['composite[service][terms]' => '1']);
+        $form->setValues(['form[service][terms]' => '1']);
         $this->client->submit($form);
         self::assertResponseRedirects();
         self::assertSame(['333 123 4567'], $this->numbers($this->client->followRedirect()));
@@ -128,25 +128,25 @@ final class CompositeFormControllerTest extends WebTestCase
         $crawler = $this->client->request('GET', '/f/registration/new');
         self::assertResponseIsSuccessful();
         $layout = $crawler->filter('#part-root > .md-view-layout');
-        self::assertCount(1, $layout->filter('.md-columns > fieldset [name="composite[values][username]"]'));
-        self::assertCount(1, $layout->filter('.md-columns > fieldset [name="composite[service][terms]"]'));
-        self::assertCount(1, $layout->filter('.md-columns > div [name="composite[values][firstname]"]'));
+        self::assertCount(1, $layout->filter('.md-columns > fieldset [name="form[values][username]"]'));
+        self::assertCount(1, $layout->filter('.md-columns > fieldset [name="form[service][terms]"]'));
+        self::assertCount(1, $layout->filter('.md-columns > div [name="form[values][firstname]"]'));
         // A section of the root is a card of its own, with its own layout inside it.
-        self::assertCount(1, $crawler->filter('#part-profile > .md-view-layout [name="composite[sections][profile][values][city]"]'));
+        self::assertCount(1, $crawler->filter('#part-profile > .md-view-layout [name="form[sections][profile][values][city]"]'));
         self::assertSelectorTextContains('#part-profile .md-muted', 'Where you live');
         // What a layout leaves out follows it: the account's last name, the profile's gender
         // and phones.
-        self::assertCount(0, $layout->filter('[name="composite[values][lastname]"]'));
-        self::assertCount(1, $crawler->filter('#part-root [name="composite[values][lastname]"]'));
-        self::assertCount(1, $crawler->filter('#part-profile #composite_sections_profile_values_gender'));
-        self::assertCount(1, $crawler->filter('#part-profile [name="composite[sections][profile][sections][phones][0][values][number]"]'));
+        self::assertCount(0, $layout->filter('[name="form[values][lastname]"]'));
+        self::assertCount(1, $crawler->filter('#part-root [name="form[values][lastname]"]'));
+        self::assertCount(1, $crawler->filter('#part-profile #form_sections_profile_values_gender'));
+        self::assertCount(1, $crawler->filter('#part-profile [name="form[sections][profile][sections][phones][0][values][number]"]'));
         self::assertCount(1, $crawler->filter('#part-qualifications .gv-collection'));
         // Each row of a section follows the section's layout, the rows added with "+" too.
         $prototype = (string) $crawler->filter('[data-gridview-collection-prototype-name-value="__qualifications__"]')->attr('data-gridview-collection-prototype-value');
-        self::assertMatchesRegularExpression('/class="md-columns">.*name="composite\[sections\]\[qualifications\]\[__qualifications__\]\[values\]\[title\]"/s', $prototype);
+        self::assertMatchesRegularExpression('/class="md-columns">.*name="form\[sections\]\[qualifications\]\[__qualifications__\]\[values\]\[title\]"/s', $prototype);
 
         // The names of the inputs do not change: the form saves as before.
-        $this->client->request('POST', '/f/registration/new', array_replace_recursive($this->values($crawler), ['composite' => [
+        $this->client->request('POST', '/f/registration/new', array_replace_recursive($this->values($crawler), ['form' => [
             'values' => ['username' => 'mario', 'email' => 'mario@example.com', 'firstname' => 'Mario', 'lastname' => 'Rossi', 'password' => ['first' => 'secret123', 'second' => 'secret123']],
             'service' => ['terms' => '1'],
             'sections' => ['profile' => [
@@ -166,9 +166,9 @@ final class CompositeFormControllerTest extends WebTestCase
         ));
         self::signInAsSuperAdmin($this->client);
         $crawler = $this->client->request('GET', '/f/registration/new');
-        self::assertCount(1, $crawler->filter('[name="composite[service][terms]"]'));
+        self::assertCount(1, $crawler->filter('[name="form[service][terms]"]'));
 
-        $this->client->request('POST', '/f/registration/new', array_replace_recursive($this->values($crawler), ['composite' => [
+        $this->client->request('POST', '/f/registration/new', array_replace_recursive($this->values($crawler), ['form' => [
             'values' => ['username' => 'mario', 'email' => 'mario@example.com', 'firstname' => 'Mario', 'lastname' => 'Rossi', 'password' => ['first' => 'secret123', 'second' => 'secret123']],
             'service' => ['terms' => '1'],
             'sections' => [
@@ -181,8 +181,8 @@ final class CompositeFormControllerTest extends WebTestCase
 
         // The terms are not asked again, nor is "earned" on the saved row; a row added with "+"
         // is new, and asks it.
-        self::assertCount(0, $crawler->filter('[name="composite[service][terms]"]'));
-        self::assertCount(0, $crawler->filter('[name="composite[sections][qualifications][0][service][earned]"]'));
+        self::assertCount(0, $crawler->filter('[name="form[service][terms]"]'));
+        self::assertCount(0, $crawler->filter('[name="form[sections][qualifications][0][service][earned]"]'));
         self::assertStringContainsString('[__qualifications__][service][earned]', (string) $crawler->filter('[data-gridview-collection-prototype-name-value="__qualifications__"]')->attr('data-gridview-collection-prototype-value'));
 
         $this->client->submit($crawler->selectButton('Save')->form());
@@ -195,7 +195,7 @@ final class CompositeFormControllerTest extends WebTestCase
         $crawler = $this->client->request('GET', '/f/registration/new');
         self::assertCount(2, $crawler->filter('button[name="_action"][value="save_new"]'));
 
-        $this->client->request('POST', '/f/registration/new', array_replace_recursive($this->values($crawler), ['_action' => 'save_new', 'composite' => [
+        $this->client->request('POST', '/f/registration/new', array_replace_recursive($this->values($crawler), ['_action' => 'save_new', 'form' => [
             'values' => ['username' => 'mario', 'email' => 'mario@example.com', 'firstname' => 'Mario', 'lastname' => 'Rossi', 'password' => ['first' => 'secret123', 'second' => 'secret123']],
             'service' => ['terms' => '1'],
             'sections' => ['profile' => [
@@ -207,7 +207,7 @@ final class CompositeFormControllerTest extends WebTestCase
         self::assertResponseRedirects('/f/registration/new', 303);
         $crawler = $this->client->followRedirect();
         self::assertSelectorTextContains('.md-flash--success', 'User registration saved.');
-        self::assertSame('', (string) $crawler->filter('input[name="composite[values][username]"]')->attr('value'));
+        self::assertSame('', (string) $crawler->filter('input[name="form[values][username]"]')->attr('value'));
         self::assertCount(1, self::getContainer()->get(RecordFinderInterface::class)->latest('account', 1));
 
         // The edit page of the saved record does not offer it.
@@ -220,17 +220,17 @@ final class CompositeFormControllerTest extends WebTestCase
     {
         self::signInAsSuperAdmin($this->client);
         $form = $this->client->request('GET', '/f/registration/new')->selectButton('Save')->form([
-            'composite[values][username]' => 'mario',
-            'composite[sections][profile][values][zipcode]' => '123',
-            'composite[sections][profile][sections][phones][0][values][number]' => 'call me',
+            'form[values][username]' => 'mario',
+            'form[sections][profile][values][zipcode]' => '123',
+            'form[sections][profile][sections][phones][0][values][number]' => 'call me',
         ]);
 
         $crawler = $this->client->submit($form);
         self::assertResponseStatusCodeSame(422);
-        self::assertStringContainsString('This value is required.', $this->errorsOf($crawler, 'composite[values][email]'));
+        self::assertStringContainsString('This value is required.', $this->errorsOf($crawler, 'form[values][email]'));
         self::assertStringContainsString('This box must be checked.', $crawler->filter('main form')->text());
-        self::assertStringContainsString('This value is not valid.', $this->errorsOf($crawler, 'composite[sections][profile][values][zipcode]'));
-        self::assertStringContainsString('not a valid phone number', $this->errorsOf($crawler, 'composite[sections][profile][sections][phones][0][values][number]'));
+        self::assertStringContainsString('This value is not valid.', $this->errorsOf($crawler, 'form[sections][profile][values][zipcode]'));
+        self::assertStringContainsString('not a valid phone number', $this->errorsOf($crawler, 'form[sections][profile][sections][phones][0][values][number]'));
         self::assertSame([], self::getContainer()->get(RecordFinderInterface::class)->latest('account'));
     }
 
@@ -250,7 +250,7 @@ final class CompositeFormControllerTest extends WebTestCase
         self::signInAsSuperAdmin($this->client);
         $crawler = $this->client->request('GET', '/f/registration/new');
 
-        self::assertSame('machine-names', $crawler->filter('form#composite-form')->attr('data-controller'));
+        self::assertSame('machine-names', $crawler->filter('form#form-sheet')->attr('data-controller'));
         self::assertSame('false', $crawler->filter('.md-sheet__machine-names')->attr('aria-pressed'));
         // The names the controller shows: those of the rows, service fields included.
         self::assertCount(1, $crawler->filter('[data-gv-field="email"]'));
@@ -269,7 +269,7 @@ final class CompositeFormControllerTest extends WebTestCase
         $crawler = $this->client->request('GET', '/f/registration/new');
 
         self::assertResponseIsSuccessful();
-        self::assertNull($crawler->filter('form#composite-form')->attr('data-controller'));
+        self::assertNull($crawler->filter('form#form-sheet')->attr('data-controller'));
         self::assertSelectorNotExists('.md-sheet__machine-names');
     }
 
@@ -295,17 +295,17 @@ final class CompositeFormControllerTest extends WebTestCase
             }
         }
         self::signIn($this->client, 'clerk@example.com', [...$permissions, 'record.call.read']);
-        $id = $container->get(CompositeRecordManagerInterface::class)->save('registration', null, new CompositeNodeInput(
+        $id = $container->get(FormRecordManagerInterface::class)->save('registration', null, new FormNodeInput(
             values: ['username' => 'mario', 'email' => 'mario@example.com', 'firstname' => 'Mario', 'lastname' => 'Rossi', 'password' => 'secret123'],
             service: ['terms' => true],
-            sections: ['profile' => new CompositeNodeInput(values: ['city' => 'Milano'], sections: ['phones' => [new CompositeNodeInput(values: ['number' => '333 123 4567'])]])],
+            sections: ['profile' => new FormNodeInput(values: ['city' => 'Milano'], sections: ['phones' => [new FormNodeInput(values: ['number' => '333 123 4567'])]])],
         ));
 
         // The page opens read-only; saving it is refused.
         $crawler = $this->client->request('GET', '/f/registration/'.$id.'/edit');
         self::assertResponseIsSuccessful();
         self::assertCount(0, $crawler->selectButton('Save'));
-        $this->client->request('POST', '/f/registration/'.$id.'/edit', ['composite' => []]);
+        $this->client->request('POST', '/f/registration/'.$id.'/edit', ['form' => []]);
         self::assertResponseStatusCodeSame(403);
     }
 

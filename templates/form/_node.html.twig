@@ -1,5 +1,5 @@
 {#
-    Renders a node of a composite form: the fields of its record, its service fields, then
+    Renders a node of a form: the fields of its record, its service fields, then
     its sections, a fieldset each; with a layout, these are placed by its {name} tokens and
     the rest follows. A one-to-many section repeats its rows with the
     gridview-collection controller and the gv-collection classes of fedale/gridview-bundle
@@ -10,16 +10,16 @@
     places nothing.
 #}
 {% macro node(form, node, editable, cards = false) %}
-    {% import _self as composite %}
+    {% import _self as nodes %}
     {{ form_errors(form) }}
     {% if form.id is defined %}{{ form_widget(form.id) }}{% endif %}
     {% if node.layout %}
         {# The sections are rendered first, so that the layout can place them by name. #}
         {% set sections = {} %}
         {% for section in node.sections %}
-            {% set sections = sections|merge({(section.name): cards ? '' : composite.section(form.sections[section.name], section, editable)}) %}
+            {% set sections = sections|merge({(section.name): cards ? '' : nodes.section(form.sections[section.name], section, editable)}) %}
         {% endfor %}
-        <div class="md-view-layout">{{ composite_form_layout(form, node.layout, sections) }}</div>
+        <div class="md-view-layout">{{ form_node_layout(form, node.layout, sections) }}</div>
         {# What the layout leaves out follows it, in the usual order. #}
         {% if not form.values.isRendered %}{{ form_widget(form.values) }}{% endif %}
         {% if form.service is defined and not form.service.isRendered %}{{ form_widget(form.service) }}{% endif %}
@@ -35,7 +35,7 @@
             {% if form.service is defined %}{{ form_widget(form.service) }}{% endif %}
         {% if node.columns > 1 %}</div>{% endif %}
         {% if not cards %}
-            {% for section in node.sections %}{{ composite.section(form.sections[section.name], section, editable) }}{% endfor %}
+            {% for section in node.sections %}{{ nodes.section(form.sections[section.name], section, editable) }}{% endfor %}
         {% endif %}
     {% endif %}
     {% if form.sections is defined and not cards %}{% do form.sections.setRendered %}{% endif %}
@@ -43,29 +43,29 @@
 
 {# A section nested in a node: a framed group, titled. #}
 {% macro section(child, section, editable) %}
-    {% import _self as composite %}
-    <fieldset class="md-composite__section" id="section-{{ child.vars.id }}">
-        <legend class="md-composite__title">{{ section.label }}</legend>
-        {% if section.description %}<p class="md-composite__description">{{ section.description }}</p>{% endif %}
-        {{ composite.section_body(child, section, editable) }}
+    {% import _self as nodes %}
+    <fieldset class="md-form-section" id="section-{{ child.vars.id }}">
+        <legend class="md-form-section__title">{{ section.label }}</legend>
+        {% if section.description %}<p class="md-form-section__description">{{ section.description }}</p>{% endif %}
+        {{ nodes.section_body(child, section, editable) }}
     </fieldset>
 {% endmacro %}
 
 {# The content of a section: its record, or its rows with the buttons adding and removing them. #}
 {% macro section_body(child, section, editable) %}
-    {% import _self as composite %}
+    {% import _self as nodes %}
     {{ form_errors(child) }}
     {% if section.mode.value == 'many' %}
         {% set next = 0 %}
         {% for key, row in child %}{% set next = max(next, key + 1) %}{% endfor %}
         <div class="gv-collection" data-controller="gridview-collection"
-             data-gridview-collection-prototype-value="{{ composite.row(child.vars.prototype, section, editable)|e('html_attr') }}"
+             data-gridview-collection-prototype-value="{{ nodes.row(child.vars.prototype, section, editable)|e('html_attr') }}"
              data-gridview-collection-prototype-name-value="__{{ section.name }}__"
              data-gridview-collection-index-value="{{ next }}"
              data-gridview-collection-min-value="{{ section.min }}"
              data-gridview-collection-max-value="{{ section.max ?? 0 }}">
             <div class="gv-collection__rows" data-gridview-collection-target="list">
-                {% for row in child %}{{ composite.row(row, section, editable) }}{% endfor %}
+                {% for row in child %}{{ nodes.row(row, section, editable) }}{% endfor %}
             </div>
             {% if editable %}
                 <button type="button" class="gv-btn gv-collection__add" data-gridview-collection-target="add" data-action="gridview-collection#add">
@@ -77,19 +77,19 @@
         {% do child.setRendered %}
     {% elseif section.inline %}
         <div class="gv-collection__row gv-collection__row--inline">
-            <div class="gv-collection__fields">{{ composite.node(child, section, editable) }}</div>
+            <div class="gv-collection__fields">{{ nodes.node(child, section, editable) }}</div>
         </div>
     {% else %}
-        {{ composite.node(child, section, editable) }}
+        {{ nodes.node(child, section, editable) }}
     {% endif %}
 {% endmacro %}
 
 {% macro row(form, section, editable) %}
-    {% import _self as composite %}
+    {% import _self as nodes %}
     {% if section.inline %}
         {# The fields on one line, their labels kept for screen readers; "×" at the end. #}
         <fieldset class="gv-collection__row gv-collection__row--inline" data-gridview-collection-target="row">
-            <div class="gv-collection__fields">{{ composite.node(form, section, editable) }}</div>
+            <div class="gv-collection__fields">{{ nodes.node(form, section, editable) }}</div>
             {% if editable %}
                 <button type="button" class="gv-btn gv-collection__remove" data-action="gridview-collection#remove" aria-label="{{ 'form.remove'|trans }}">×</button>
             {% endif %}
@@ -103,7 +103,7 @@
                     <button type="button" class="gv-btn gv-collection__remove md-row__remove" data-action="gridview-collection#remove">{{ 'form.remove'|trans }}</button>
                 {% endif %}
             </div>
-            <div class="md-row__body">{{ composite.node(form, section, editable) }}</div>
+            <div class="md-row__body">{{ nodes.node(form, section, editable) }}</div>
         </fieldset>
     {% endif %}
 {% endmacro %}

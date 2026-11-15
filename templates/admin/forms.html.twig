@@ -6,12 +6,12 @@
     <p><a href="{{ path('admin_index') }}">&larr; {{ 'admin.objects'|trans }}</a></p>
     <div class="md-page__header">
         <h1>{{ 'admin.forms'|trans }}</h1>
-        <a class="gv-btn gv-btn-primary" href="{{ path('admin_form_new') }}">{{ 'admin.composite.new'|trans }}</a>
+        <a class="gv-btn gv-btn-primary" href="{{ path('admin_form_new') }}">{{ 'admin.form.new'|trans }}</a>
     </div>
-    <p class="gv-muted">{{ 'admin.composite.intro'|trans }}</p>
+    <p class="gv-muted">{{ 'admin.form.intro'|trans }}</p>
 
     {% if forms is empty %}
-        <p class="gv-muted">{{ 'admin.composite.empty'|trans }}</p>
+        <p class="gv-muted">{{ 'admin.form.empty'|trans }}</p>
     {% else %}
         <table class="md-table">
             <thead>
@@ -28,7 +28,7 @@
                         <td><a href="{{ path('admin_form_edit', {form: form.name}) }}">{{ form.label }}</a></td>
                         <td><code>{{ form.name }}</code></td>
                         <td>{{ form.root.objects|join(', ') }}</td>
-                        <td><a href="{{ path('composite_new', {form: form.name}) }}">{{ 'admin.open'|trans }}</a></td>
+                        <td><a href="{{ path('form_new', {form: form.name}) }}">{{ 'admin.open'|trans }}</a></td>
                     </tr>
                 {% endfor %}
             </tbody>

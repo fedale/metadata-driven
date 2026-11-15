@@ -89,7 +89,7 @@ symfony console metadata:field:condition qualification hours            # always
 | While the condition is… | The field is… |
 |---|---|
 | met | shown, and required if it is a required field |
-| not met | hidden in every form (it reappears as the deciding field changes, row by row in a composite form), not required, and **emptied** when the record is saved |
+| not met | hidden in every form (it reappears as the deciding field changes, row by row in a form), not required, and **emptied** when the record is saved |
 
 - The deciding field is a `select` (its option values) or a `boolean` (`true` or `false`) of the
   same object. Any other type is refused, and so is a value the field never holds.
@@ -98,7 +98,7 @@ symfony console metadata:field:condition qualification hours            # always
 - Emptied means emptied: a course that becomes a language loses its hours when it is saved, so
   hidden values never linger in the table. On an update that leaves the deciding field out, its
   stored value decides.
-- A form's own `required` list ([composite forms](forms.md#required-fields)) follows the
+- A form's own `required` list ([forms](forms.md#required-fields)) follows the
   conditions too.
 - The condition can be set and changed at any time, from the admin (the field's page, section
   **Condition**) or the console. It changes no column.
@@ -335,7 +335,7 @@ contract.
   downloaded. The filter is a yes/no on whether the record holds a file; the column never sorts,
   and it cannot be joined in a [virtual column](views.md#virtual-columns). The export writes the
   original name.
-- **Not yet**: a file field in a composite form section, and removing the files no record uses
+- **Not yet**: a file field in a form section, and removing the files no record uses
   any more.
 
 ## `relation`
@@ -457,7 +457,7 @@ archiving](lifecycle.md)).
 
 What a `many_to_many` field cannot be: unique, the label of the records, the field deciding a
 [condition](#conditions), part of a cascade (`dependsOn`, `dependsVia`), the `via` of a
-composite form section, a service field. It can have a condition of its own.
+form section, a service field. It can have a condition of its own.
 
 Input and display:
 
@@ -471,7 +471,7 @@ Input and display:
   deleted one. **Required** means at least one record; `max` refuses more ("Choose at most 3
   records.").
 - The form offers an autocomplete over the target's records, picking any number of them; it
-  works in [composite forms](forms.md) too. The record page shows the linked records by their
+  works in [forms](forms.md) too. The record page shows the linked records by their
   label, and the target's page lists the records linking to it, as for a `relation`.
 - A record whose condition stops applying loses its links, as any field loses its value.
 - The grid shows the labels of the linked records, in alphabetical order, joined by ", "
@@ -513,12 +513,12 @@ symfony console metadata:field:create person tags many_to_many Tags \
   filters and exports their labels, the target's page lists the records linking to it. The
   junction's records are not listed again on the record's page nor on the target's: the rows and
   that list show them already. A record
-  read by itself (its page, a composite form, the record a write returns) also carries its
+  read by itself (its page, a form, the record a write returns) also carries its
   **rows**: the junction's live records, oldest first (`RecordOutput::rows('tags')`).
 - **The record form edits the rows inline**, one per line: the target (an autocomplete), then the
   junction's other fields (`role`), in columns headed by their labels, with "+" to add a row and
   "×" to remove one; a row added and
-  left blank is not a link. The same rows appear where a composite form shows the field.
+  left blank is not a link. The same rows appear where a form shows the field.
 - **Writing the field** takes the rows, each a map of the junction's fields with the `id` of its
   junction record when it has one; the junction's field pointing at the record is never given, the
   record sets it:

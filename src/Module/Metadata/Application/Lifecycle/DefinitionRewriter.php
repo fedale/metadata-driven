@@ -7,7 +7,7 @@ namespace App\Module\Metadata\Application\Lifecycle;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * Rewrites the definitions written by hand (form views, grid views, composite forms) when an
+ * Rewrites the definitions written by hand (form views, grid views, forms) when an
  * object or a field they name is renamed. Each method returns the source unchanged when it
  * does not name the old name, so that a source is only rewritten when it has to be.
  *
@@ -28,7 +28,7 @@ final class DefinitionRewriter
     }
 
     /**
-     * A composite form whose nodes name a renamed object.
+     * A form whose nodes name a renamed object.
      */
     public function formObject(string $source, string $old, string $new): string
     {
@@ -44,7 +44,7 @@ final class DefinitionRewriter
     }
 
     /**
-     * A composite form whose nodes of the object name a renamed field: in "fields",
+     * A form whose nodes of the object name a renamed field: in "fields",
      * "required", the layout, or as the "via" of a section.
      */
     public function formField(string $source, string $object, string $old, string $new): string

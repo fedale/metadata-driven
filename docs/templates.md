@@ -1,7 +1,7 @@
 # Templates
 
-A template packages a model: objects with their fields, their form and grid views, composite
-forms, their translations, and records to start with (seeds). You write one from the objects you built, keep it in version
+A template packages a model: objects with their fields, their form and grid views, forms,
+their translations, and records to start with (seeds). You write one from the objects you built, keep it in version
 control, share it, validate it without a database, and install it on another instance.
 
 **Today** a template can be exported, validated, packed, published in a signed index, and
@@ -39,7 +39,7 @@ templates/shop/
 | `release` | Its version, `major.minor.patch` (`1.0.0`) |
 | `directory` | Where to write it |
 | `--object` | An object to export, with its fields and views. Repeat it for each object |
-| `--form` | A composite form to export. The objects it writes must be exported too |
+| `--form` | A form to export. The objects it writes must be exported too |
 | `--label`, `--description` | The title of the template (default: from its name) and a line about it |
 | `--license` | An SPDX identifier such as `MIT` (default `proprietary`) |
 | `--seed` | Export the records of an object as a seed: `category`, or `category:title` to name its key (default: its first unique field). Repeat it for each object |
@@ -89,7 +89,7 @@ spec:                             # the item, as its kind describes it
 
 - **Ids, not names.** Inside the app, items point at each other by name; in a template, by id:
   a relation's `target`, a condition's `field`, the `label_field`, the search fields, the
-  `object` and `via` of a composite form. An id is made of the template's vendor and the item's
+  `object` and `via` of a form. An id is made of the template's vendor and the item's
   names (`acme.product.name`) the first time an item is exported, and the app remembers it:
   rename the field to `title` and the next export still calls it `acme.product.name`, with
   `name: title`. That is how an upgrade will tell a renamed field from a new one.
@@ -98,7 +98,7 @@ spec:                             # the item, as its kind describes it
   and edit.
 - **Views and forms as the app stores them.** A form view's `template` is its HTML layout, a grid
   view's is its YAML, both written as literal blocks; inside them, fields are named by name,
-  within their object. A composite form's `definition` is the YAML it was saved with, `object`
+  within their object. A form's `definition` is the YAML it was saved with, `object`
   and `via` turned into ids (its comments are lost).
 - **Translations, per language.** The labels in every language but the default one (in the
   default language the metadata itself is the text), and the `{t:name}` texts the exported
@@ -195,7 +195,7 @@ objects/product.yaml: spec.fields.5.settings.target: No object of the template h
 objects/product.yaml: spec.fields.6.settings.maxSize: Must be between 1 and 100.
 ```
 
-Whether a composite form fits its objects, or a grid view names fields it can show, is checked
+Whether a form fits its objects, or a grid view names fields it can show, is checked
 by the app when the template is installed.
 
 ## Installing a template
@@ -257,8 +257,8 @@ The constraints are `^1.2` (from 1.2.0 up to, not including, 2.0.0; `^0.3` stays
 `~1.2` (from 1.2.0 up to, not including, 1.3.0) and an exact `1.2.3`.
 
 It then names the required template's objects and fields by their ids, where it would name its
-own: a relation's or a many-to-many field's `target`, a cascade's `dependsVia`, a composite
-form's `object` and `via`. Its seeds point at the records of the required seeds by their keys,
+own: a relation's or a many-to-many field's `target`, a cascade's `dependsVia`, a form's
+`object` and `via`. Its seeds point at the records of the required seeds by their keys,
 as they do within a template:
 
 ```yaml
@@ -293,7 +293,7 @@ symfony console metadata:template:export fedale/registration 1.0.0 templates/reg
 ```
 
 - The references to its items are written with their ids: a relation's `target`, a cascade's
-  `dependsVia`, a composite form's `object` and `via`.
+  `dependsVia`, a form's `object` and `via`.
 - The constraint goes from the version installed up to its next major (`^1.0` for 1.0.0). A new
   version of a template that requires it already keeps the constraint it has while that still
   allows the version installed: an export doesn't narrow what you chose.

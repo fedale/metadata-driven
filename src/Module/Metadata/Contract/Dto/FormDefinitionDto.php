@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Metadata\Contract\Dto;
 
 /**
- * Read-only snapshot of a composite form: one form writing a record and the records related
+ * Read-only snapshot of a form: one form writing a record and the records related
  * to it (one-to-one and one-to-many sections, nested), in one transaction.
  */
 final readonly class FormDefinitionDto

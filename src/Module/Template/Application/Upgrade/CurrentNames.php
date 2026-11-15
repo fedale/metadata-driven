@@ -137,7 +137,7 @@ final class CurrentNames
     }
 
     /**
-     * A node of a composite form's definition, its object and via turned into names.
+     * A node of a form's definition, its object and via turned into names.
      *
      * @param array<mixed> $node
      *

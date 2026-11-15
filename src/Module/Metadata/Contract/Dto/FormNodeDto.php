@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Metadata\Contract\Dto;
 
 /**
- * A node of a composite form: the fields of one object, plus the sections nested in it.
+ * A node of a form: the fields of one object, plus the sections nested in it.
  *
  * The root holds the record the form is about. A section holds the records of another
  * object pointing at the record of its parent node through the relation field "via".

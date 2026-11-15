@@ -14,7 +14,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
-#[AsCommand(name: 'metadata:form:save', description: 'Create or replace a composite form from its YAML definition')]
+#[AsCommand(name: 'metadata:form:save', description: 'Create or replace a form from its YAML definition')]
 final class SaveFormConsoleCommand
 {
     use ReportsViolations;

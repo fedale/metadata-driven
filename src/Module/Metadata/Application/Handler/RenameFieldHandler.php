@@ -22,7 +22,7 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 /**
  * Renames a field and everything naming it, in one transaction: what its object says about it
  * (label field, searched fields, conditions, cascades), the cascades of other objects through
- * it, the views of its object, the composite forms, its translations; the listener of
+ * it, the views of its object, the forms, its translations; the listener of
  * FieldDefinitionRenamed renames its column.
  */
 final class RenameFieldHandler

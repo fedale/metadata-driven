@@ -11,7 +11,7 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
- * Composite forms written and checked from the admin UI.
+ * Forms written and checked from the admin UI.
  */
 final class AdminFormControllerTest extends WebTestCase
 {

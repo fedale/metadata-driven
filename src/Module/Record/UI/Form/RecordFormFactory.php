@@ -189,8 +189,8 @@ final class RecordFormFactory
     }
 
     /**
-     * Adds the control of a field that belongs to no record (a service field of a composite
-     * form). A required checkbox must be checked, as "I accept the terms" asks.
+     * Adds the control of a field that belongs to no record (a service field of a form). A
+     * required checkbox must be checked, as "I accept the terms" asks.
      *
      * @template T
      *
@@ -280,7 +280,7 @@ final class RecordFormFactory
 
     /**
      * Whether the rows of a field going through a junction object are input: the user may
-     * create, update and delete the junction's records, as saving a composite form asks of
+     * create, update and delete the junction's records, as saving a form asks of
      * each of its objects, and delete the records a junction record's deletion cascades to.
      * Otherwise they are only shown, and a form leaves them out.
      */

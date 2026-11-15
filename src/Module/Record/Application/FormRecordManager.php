@@ -11,15 +11,15 @@ use App\Module\Metadata\Contract\Dto\FormNodeMode;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ServiceFieldDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
-use App\Module\Record\Contract\CompositeRecordManagerInterface;
-use App\Module\Record\Contract\Dto\CompositeNodeInput;
-use App\Module\Record\Contract\Dto\CompositeRecord;
+use App\Module\Record\Contract\Dto\FormNodeInput;
+use App\Module\Record\Contract\Dto\FormRecord;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordOutput;
-use App\Module\Record\Contract\Exception\CompositeValidationFailed;
+use App\Module\Record\Contract\Exception\FormValidationFailed;
 use App\Module\Record\Contract\Exception\RecordDeleteRestricted;
 use App\Module\Record\Contract\Exception\RecordNotFound;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
+use App\Module\Record\Contract\FormRecordManagerInterface;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
 use App\Shared\Transaction\TransactionRunner;
@@ -27,14 +27,14 @@ use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
- * Writes a composite form in two passes inside one transaction: the whole input is planned
+ * Writes a form in two passes inside one transaction: the whole input is planned
  * and checked first (so every error is reported at once), then written top-down, each
  * section's records pointing at the record of their parent node through the "via" field.
  *
  * @phpstan-type Plan array{node: FormNodeDto, object: ObjectDefinitionDto, id: string|null, values: array<string, mixed>, path: string, sections: list<SectionPlan>}
  * @phpstan-type SectionPlan array{section: FormNodeDto, path: string, rows: list<mixed>, deletes: list<string>}
  */
-final class CompositeRecordManager implements CompositeRecordManagerInterface
+final class FormRecordManager implements FormRecordManagerInterface
 {
     public const string NOT_IN_FORM_MESSAGE = 'This field is not part of the form.';
     public const string UNKNOWN_ROW_MESSAGE = 'This row does not belong to the record.';
@@ -54,7 +54,7 @@ final class CompositeRecordManager implements CompositeRecordManagerInterface
     ) {
     }
 
-    public function save(string $formName, ?string $rootId, CompositeNodeInput $input): string
+    public function save(string $formName, ?string $rootId, FormNodeInput $input): string
     {
         $root = $this->metadata->getForm($formName)->root;
 
@@ -65,14 +65,14 @@ final class CompositeRecordManager implements CompositeRecordManagerInterface
             $errors = [];
             $plan = $this->plan($root, $input, $rootId, '', $errors);
             if ([] !== $errors) {
-                throw new CompositeValidationFailed($errors);
+                throw new FormValidationFailed($errors);
             }
 
             return $this->write($plan, null);
         });
     }
 
-    public function read(string $formName, string $rootId): ?CompositeRecord
+    public function read(string $formName, string $rootId): ?FormRecord
     {
         $root = $this->metadata->getForm($formName)->root;
         $record = $this->finder->find($root->object, $rootId);
@@ -80,18 +80,18 @@ final class CompositeRecordManager implements CompositeRecordManagerInterface
         return null === $record ? null : $this->compose($root, $record);
     }
 
-    private function compose(FormNodeDto $node, RecordOutput $record): CompositeRecord
+    private function compose(FormNodeDto $node, RecordOutput $record): FormRecord
     {
         $sections = [];
         foreach ($node->sections as $section) {
             $rows = array_map(
-                fn (RecordOutput $row): CompositeRecord => $this->compose($section, $row),
+                fn (RecordOutput $row): FormRecord => $this->compose($section, $row),
                 $this->finder->findReferencing($section->object, (string) $section->via, $record->id),
             );
             $sections[$section->name] = FormNodeMode::Many === $section->mode ? $rows : ($rows[0] ?? null);
         }
 
-        return new CompositeRecord($record, $sections);
+        return new FormRecord($record, $sections);
     }
 
     /**
@@ -99,7 +99,7 @@ final class CompositeRecordManager implements CompositeRecordManagerInterface
      *
      * @return Plan
      */
-    private function plan(FormNodeDto $node, CompositeNodeInput $input, ?string $id, string $path, array &$errors): array
+    private function plan(FormNodeDto $node, FormNodeInput $input, ?string $id, string $path, array &$errors): array
     {
         $object = $this->metadata->getObject($node->object);
         $allowed = array_flip($node->fieldNames($object));
@@ -144,12 +144,12 @@ final class CompositeRecordManager implements CompositeRecordManagerInterface
     }
 
     /**
-     * @param CompositeNodeInput|array<int|string, CompositeNodeInput>|null $input
-     * @param array<string, list<string>>                                   $errors
+     * @param FormNodeInput|array<int|string, FormNodeInput>|null $input
+     * @param array<string, list<string>>                         $errors
      *
      * @return SectionPlan
      */
-    private function planSection(FormNodeDto $section, CompositeNodeInput|array|null $input, ?string $parentId, string $path, array &$errors): array
+    private function planSection(FormNodeDto $section, FormNodeInput|array|null $input, ?string $parentId, string $path, array &$errors): array
     {
         $existing = null === $parentId ? [] : array_map(
             static fn (RecordOutput $record): string => $record->id,
@@ -158,7 +158,7 @@ final class CompositeRecordManager implements CompositeRecordManagerInterface
 
         if (FormNodeMode::One === $section->mode) {
             $rows = [];
-            $row = $input instanceof CompositeNodeInput ? $input : null;
+            $row = $input instanceof FormNodeInput ? $input : null;
             if (null !== $row && ([] !== $existing || !$this->isEmpty($section, $row))) {
                 $rows[] = $this->plan($section, $row, $existing[0] ?? null, $path.'.', $errors);
             }
@@ -210,7 +210,7 @@ final class CompositeRecordManager implements CompositeRecordManagerInterface
             foreach ($e->errors as $field => $messages) {
                 $errors['' === $field ? rtrim($plan['path'], '.') : $plan['path'].'values.'.$field] = $messages;
             }
-            throw new CompositeValidationFailed($errors);
+            throw new FormValidationFailed($errors);
         }
 
         foreach ($plan['sections'] as $section) {
@@ -219,7 +219,7 @@ final class CompositeRecordManager implements CompositeRecordManagerInterface
                 try {
                     $this->records->delete($section['section']->object, $deleted);
                 } catch (RecordDeleteRestricted $e) {
-                    throw new CompositeValidationFailed([$section['path'] => [$e->getMessage()]]);
+                    throw new FormValidationFailed([$section['path'] => [$e->getMessage()]]);
                 }
             }
             /** @var list<Plan> $rows the plans of the section's records */
@@ -236,7 +236,7 @@ final class CompositeRecordManager implements CompositeRecordManagerInterface
      * A node nobody filled in: no id, every value empty or left at its default, and nothing
      * in its sections. Such rows are skipped instead of being refused as incomplete.
      */
-    private function isEmpty(FormNodeDto $node, CompositeNodeInput $input): bool
+    private function isEmpty(FormNodeDto $node, FormNodeInput $input): bool
     {
         if (null !== $input->id) {
             return false;
@@ -255,7 +255,7 @@ final class CompositeRecordManager implements CompositeRecordManagerInterface
         }
         foreach ($node->sections as $section) {
             $sectionInput = $input->sections[$section->name] ?? null;
-            $rows = $sectionInput instanceof CompositeNodeInput ? [$sectionInput] : ($sectionInput ?? []);
+            $rows = $sectionInput instanceof FormNodeInput ? [$sectionInput] : ($sectionInput ?? []);
             foreach ($rows as $row) {
                 if (!$this->isEmpty($section, $row)) {
                     return false;

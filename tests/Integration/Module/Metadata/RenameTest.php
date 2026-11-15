@@ -10,8 +10,8 @@ use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Domain\Repository\TranslationRepository;
-use App\Module\Record\Contract\CompositeRecordManagerInterface;
-use App\Module\Record\Contract\Dto\CompositeNodeInput;
+use App\Module\Record\Contract\Dto\FormNodeInput;
+use App\Module\Record\Contract\FormRecordManagerInterface;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Schema\Contract\SchemaSynchronizerInterface;
 use App\Tests\Support\CreatesPlaces;
@@ -25,7 +25,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 /**
  * Renaming an object or a field renames everything named after it: the table or the column
  * (records kept), the indexes and constraints, the relations, conditions and cascades, the
- * views and composite forms written by hand, the translations and the permissions.
+ * views and forms written by hand, the translations and the permissions.
  */
 final class RenameTest extends KernelTestCase
 {
@@ -53,7 +53,7 @@ final class RenameTest extends KernelTestCase
         $rbac->addChild('ROLE_CLERK', 'record.profile.read');
         $rbac->assign('someone', 'record.profile.update');
 
-        self::assertSame(['composite form "registration"'], $this->manager->renameObject('profile', 'person'));
+        self::assertSame(['form "registration"'], $this->manager->renameObject('profile', 'person'));
 
         self::assertFalse($this->metadata->hasObject('profile'));
         $person = $this->metadata->getObject('person');
@@ -72,7 +72,7 @@ final class RenameTest extends KernelTestCase
         $form = $this->metadata->getForm('registration');
         self::assertSame('person', $form->root->sections[0]->object);
         self::assertStringContainsString('object: person', $form->source);
-        self::assertNotNull(self::getContainer()->get(CompositeRecordManagerInterface::class)->read('registration', $accountId)?->sections['profile']);
+        self::assertNotNull(self::getContainer()->get(FormRecordManagerInterface::class)->read('registration', $accountId)?->sections['profile']);
         // Translations and permissions move, with the roles and users holding them.
         $texts = self::getContainer()->get(TranslationRepository::class);
         self::assertSame('Profilo', $texts->textsOf('it')['object.person.singular'] ?? null);
@@ -99,7 +99,7 @@ final class RenameTest extends KernelTestCase
 
         $rewritten = $this->manager->renameField('account', 'username', 'login');
 
-        self::assertSame(['form view "compact"', 'grid view "list"', 'composite form "registration"'], $rewritten);
+        self::assertSame(['form view "compact"', 'grid view "list"', 'form "registration"'], $rewritten);
         $account = $this->metadata->getObject('account');
         self::assertFalse($account->hasField('username'));
         self::assertSame('login', $account->field('login')->columnName);
@@ -169,11 +169,11 @@ final class RenameTest extends KernelTestCase
 
     private function register(): string
     {
-        return self::getContainer()->get(CompositeRecordManagerInterface::class)->save('registration', null, new CompositeNodeInput(
+        return self::getContainer()->get(FormRecordManagerInterface::class)->save('registration', null, new FormNodeInput(
             values: ['username' => 'mario', 'email' => 'mario@example.com', 'firstname' => 'Mario', 'lastname' => 'Rossi', 'password' => 'secret123', 'active' => true],
             service: ['terms' => true],
             sections: [
-                'profile' => new CompositeNodeInput(values: ['city' => 'Milano'], sections: ['phones' => [new CompositeNodeInput(values: ['number' => '333 123 4567'])]]),
+                'profile' => new FormNodeInput(values: ['city' => 'Milano'], sections: ['phones' => [new FormNodeInput(values: ['number' => '333 123 4567'])]]),
                 'qualifications' => [],
             ],
         ));

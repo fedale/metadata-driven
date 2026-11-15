@@ -11,7 +11,7 @@ final readonly class InstallReport
 {
     /**
      * @param list<string> $objects        the objects created
-     * @param list<string> $forms          the composite forms saved
+     * @param list<string> $forms          the forms saved
      * @param list<string> $skippedLocales languages of the template this instance does not have
      */
     public function __construct(

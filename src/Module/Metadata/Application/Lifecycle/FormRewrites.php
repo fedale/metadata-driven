@@ -8,7 +8,7 @@ use App\Module\Metadata\Application\Form\FormDefinitionCompiler;
 use App\Module\Metadata\Domain\Repository\FormDefinitionRepository;
 
 /**
- * Rewrites the composite forms naming a renamed object or field, inside the transaction of the
+ * Rewrites the forms naming a renamed object or field, inside the transaction of the
  * rename: each changed source is compiled again against the renamed definitions (the registry
  * reads them from the database while a transaction is open) and stored.
  */
@@ -36,7 +36,7 @@ final class FormRewrites
             $compiled = $this->compiler->compile($source);
             $form->redefine($compiled['label'], $source, $compiled['root']);
             $this->forms->save($form);
-            $rewritten[] = \sprintf('composite form "%s"', $form->getName());
+            $rewritten[] = \sprintf('form "%s"', $form->getName());
         }
 
         return $rewritten;

@@ -17,7 +17,7 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'metadata:template:export', description: 'Write objects, their fields and views, composite forms and their translations as a template')]
+#[AsCommand(name: 'metadata:template:export', description: 'Write objects, their fields and views, forms and their translations as a template')]
 final class ExportTemplateConsoleCommand
 {
     public function __construct(
@@ -37,7 +37,7 @@ final class ExportTemplateConsoleCommand
         #[Argument('Its version, major.minor.patch (e.g. 1.0.0)')] string $release,
         #[Argument('A new or empty directory to write it into')] string $directory,
         #[Option('An object to export, with its fields and views (repeatable)')] array $object = [],
-        #[Option('A composite form to export; its objects must be exported too, or belong to another installed template (repeatable)')] array $form = [],
+        #[Option('A form to export; its objects must be exported too, or belong to another installed template (repeatable)')] array $form = [],
         #[Option('The title of the template; default: from its name')] ?string $label = null,
         #[Option('A line about what it is for')] ?string $description = null,
         #[Option('Its license, an SPDX identifier (e.g. MIT)')] string $license = 'proprietary',

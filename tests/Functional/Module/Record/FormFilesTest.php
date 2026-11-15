@@ -19,12 +19,12 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
- * File fields, one file or several, in the nodes of a composite form: the root, a one-to-one
+ * File fields, one file or several, in the nodes of a form: the root, a one-to-one
  * section and the rows of a one-to-many section. Their inputs have nested names
- * (composite[sections][parts][0][values][drawing][upload]); the files go with the request, as a
+ * (form[sections][parts][0][values][drawing][upload]); the files go with the request, as a
  * browser sends them.
  */
-final class CompositeFormFilesTest extends WebTestCase
+final class FormFilesTest extends WebTestCase
 {
     use SignsIn;
     private const string PDF = "%PDF-1.4\n%\xE2\xE3\xCF\xD3\n1 0 obj << /Type /Catalog >> endobj\n";
@@ -96,30 +96,30 @@ final class CompositeFormFilesTest extends WebTestCase
         $crawler = $this->client->request('GET', '/f/catalogue/new');
 
         self::assertResponseIsSuccessful();
-        self::assertSame('multipart/form-data', $crawler->filter('#composite-form')->attr('enctype'));
-        self::assertSame('file', $crawler->filter('input[name="composite[values][manual][upload]"]')->attr('type'));
-        $photos = $crawler->filter('input[name="composite[sections][sheet][values][photos][upload][]"]');
+        self::assertSame('multipart/form-data', $crawler->filter('#form-sheet')->attr('enctype'));
+        self::assertSame('file', $crawler->filter('input[name="form[values][manual][upload]"]')->attr('type'));
+        $photos = $crawler->filter('input[name="form[sections][sheet][values][photos][upload][]"]');
         self::assertSame('multiple', $photos->attr('multiple'));
         self::assertSame('image/*', $photos->attr('accept'));
         self::assertSame('file-list', $crawler->filter('[data-gv-field="photos"] .md-file-list')->attr('data-controller'));
         // A row added with "+" brings its own inputs, from the prototype of the section.
         $prototype = (string) $crawler->filter('[data-gridview-collection-prototype-name-value="__parts__"]')->attr('data-gridview-collection-prototype-value');
-        self::assertStringContainsString('name="composite[sections][parts][__parts__][values][drawing][upload]"', $prototype);
-        self::assertStringContainsString('name="composite[sections][parts][__parts__][values][attachments][upload][]"', $prototype);
+        self::assertStringContainsString('name="form[sections][parts][__parts__][values][drawing][upload]"', $prototype);
+        self::assertStringContainsString('name="form[sections][parts][__parts__][values][attachments][upload][]"', $prototype);
 
         // The prototype alone makes the form send files.
         $crawler = $this->client->request('GET', '/f/parts/new');
         self::assertCount(0, $crawler->filter('input[type="file"]'));
-        self::assertSame('multipart/form-data', $crawler->filter('#composite-form')->attr('enctype'));
+        self::assertSame('multipart/form-data', $crawler->filter('#form-sheet')->attr('enctype'));
     }
 
     public function testSavesTheFilesOfEveryNodeAndKeepsThemOnEdit(): void
     {
         $crawler = $this->client->request('GET', '/f/catalogue/new');
         $this->submit($crawler, [
-            'composite[values][name]' => 'Oslo chair',
-            'composite[sections][parts][0][values][name]' => 'Seat',
-            'composite[sections][parts][3][values][name]' => 'Leg',
+            'form[values][name]' => 'Oslo chair',
+            'form[sections][parts][0][values][name]' => 'Seat',
+            'form[sections][parts][3][values][name]' => 'Leg',
         ], [
             'values' => ['manual' => ['upload' => $this->pdf('assembly.pdf')]],
             'sections' => [
@@ -161,8 +161,8 @@ final class CompositeFormFilesTest extends WebTestCase
         $crawler = $this->client->request('GET', '/f/catalogue/'.$product->id.'/edit');
         $seatKey = $this->rowKey($crawler, 'Seat');
         $this->submit($crawler, [
-            'composite[sections][sheet][values][photos][kept]' => $back.','.$front,
-            \sprintf('composite[sections][parts][%s][values][attachments][kept]', $seatKey) => '',
+            'form[sections][sheet][values][photos][kept]' => $back.','.$front,
+            \sprintf('form[sections][parts][%s][values][attachments][kept]', $seatKey) => '',
         ], ['sections' => ['parts' => [$seatKey => ['values' => ['drawing' => ['upload' => $this->pdf('seat-v2.pdf')]]]]]]);
         self::assertResponseRedirects();
         self::assertSame(['back.png', 'front.png'], $this->names($this->only('product_sheet'), 'photos'));
@@ -173,7 +173,7 @@ final class CompositeFormFilesTest extends WebTestCase
     public function testARowHoldingOnlyAFileIsNotSkipped(): void
     {
         $crawler = $this->client->request('GET', '/f/catalogue/new');
-        $this->submit($crawler, ['composite[values][name]' => 'Oslo chair'], [
+        $this->submit($crawler, ['form[values][name]' => 'Oslo chair'], [
             'sections' => ['parts' => [0 => ['values' => ['drawing' => ['upload' => $this->pdf('seat.pdf')]]]]],
         ]);
 
@@ -186,8 +186,8 @@ final class CompositeFormFilesTest extends WebTestCase
     {
         $crawler = $this->client->request('GET', '/f/catalogue/new');
         $this->submit($crawler, [
-            'composite[values][name]' => 'Oslo chair',
-            'composite[sections][parts][0][values][name]' => 'Seat',
+            'form[values][name]' => 'Oslo chair',
+            'form[sections][parts][0][values][name]' => 'Seat',
         ], [
             'sections' => [
                 'sheet' => ['values' => ['photos' => ['upload' => [$this->png('front.png'), $this->pdf('not-a-photo.png')]]]],
@@ -209,9 +209,9 @@ final class CompositeFormFilesTest extends WebTestCase
     {
         $crawler = $this->client->request('GET', '/f/catalogue/new');
         $this->submit($crawler, [
-            'composite[values][name]' => 'Oslo chair',
-            'composite[sections][parts][0][values][name]' => 'Seat',
-            'composite[sections][parts][1][values][name]' => 'Leg',
+            'form[values][name]' => 'Oslo chair',
+            'form[sections][parts][0][values][name]' => 'Seat',
+            'form[sections][parts][1][values][name]' => 'Leg',
         ], ['sections' => ['parts' => [
             0 => ['values' => ['drawing' => ['upload' => $this->pdf('seat.pdf')], 'attachments' => ['upload' => [$this->pdf('fabric.pdf')]]]],
             1 => ['values' => ['drawing' => ['upload' => $this->pdf('leg.pdf')]]],
@@ -224,8 +224,8 @@ final class CompositeFormFilesTest extends WebTestCase
         $seatKey = $this->rowKey($crawler, 'Seat');
         $legKey = $this->rowKey($crawler, 'Leg');
         $this->submit($crawler, [
-            \sprintf('composite[sections][parts][%s][id]', $seatKey) => $this->part('Leg')->id,
-            \sprintf('composite[sections][parts][%s][id]', $legKey) => $this->part('Seat')->id,
+            \sprintf('form[sections][parts][%s][id]', $seatKey) => $this->part('Leg')->id,
+            \sprintf('form[sections][parts][%s][id]', $legKey) => $this->part('Seat')->id,
         ]);
 
         self::assertResponseIsUnprocessable();
@@ -240,7 +240,7 @@ final class CompositeFormFilesTest extends WebTestCase
      * place: getPhpValues() leaves the file inputs out.
      *
      * @param array<string, string> $values
-     * @param array<string, mixed>  $files  under "composite"
+     * @param array<string, mixed>  $files  under "form"
      */
     private function submit(Crawler $crawler, array $values, array $files = []): void
     {
@@ -256,7 +256,7 @@ final class CompositeFormFilesTest extends WebTestCase
             $added = array_replace_recursive($added, $input);
         }
         $phpValues = array_replace_recursive($form->getPhpValues(), $added);
-        $this->client->request($form->getMethod(), $form->getUri(), $phpValues, [] === $files ? [] : ['composite' => $files]);
+        $this->client->request($form->getMethod(), $form->getUri(), $phpValues, [] === $files ? [] : ['form' => $files]);
     }
 
     /**
@@ -264,7 +264,7 @@ final class CompositeFormFilesTest extends WebTestCase
      */
     private function rowKey(Crawler $crawler, string $name): string
     {
-        $input = $crawler->filter(\sprintf('input[name^="composite[sections][parts]"][name$="[values][name]"][value="%s"]', $name));
+        $input = $crawler->filter(\sprintf('input[name^="form[sections][parts]"][name$="[values][name]"][value="%s"]', $name));
         self::assertCount(1, $input);
         if (1 !== preg_match('/\[parts\]\[(\d+)\]/', (string) $input->attr('name'), $match)) {
             self::fail(\sprintf('No row key in the name of the part "%s".', $name));
@@ -278,7 +278,7 @@ final class CompositeFormFilesTest extends WebTestCase
      */
     private function partField(Crawler $crawler, string $key, string $field): Crawler
     {
-        $row = $crawler->filter(\sprintf('[name="composite[sections][parts][%s][values][name]"]', $key))->closest('.md-row');
+        $row = $crawler->filter(\sprintf('[name="form[sections][parts][%s][values][name]"]', $key))->closest('.md-row');
         self::assertNotNull($row);
         $found = $row->filter(\sprintf('[data-gv-field="%s"]', $field));
         self::assertCount(1, $found);
