@@ -106,6 +106,26 @@ final class WorkflowAdminControllerTest extends WebTestCase
         self::assertSelectorTextContains('body', 'Not running: activate the draft.');
     }
 
+    public function testAChangeNeedsAValidToken(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        $this->client->request('GET', '/admin/workflows/new');
+        $this->client->submitForm('Create the draft', ['workflow[name]' => 'Welcome', 'workflow[definition]' => self::WELCOME]);
+        $this->client->followRedirect();
+        $this->client->submitForm('Save and activate');
+        $workflow = self::getContainer()->get(WorkflowRepository::class)->all()[0];
+        $id = $workflow->getId()->toRfc4122();
+
+        // A cross-site request: no form token, and an origin the stateless CSRF check refuses.
+        $this->client->setServerParameter('HTTP_ORIGIN', 'https://evil.example');
+        $this->client->request('POST', '/admin/workflows/'.$id.'/deactivate', ['deactivate_workflow' => []]);
+        $this->client->request('POST', '/admin/workflows/'.$id.'/delete', ['delete_workflow' => []]);
+
+        $this->client->setServerParameter('HTTP_ORIGIN', 'http://localhost');
+        $this->client->request('GET', '/admin/workflows/'.$id);
+        self::assertSelectorTextContains('body', 'Version 1 is running');
+    }
+
     public function testTheListSetsTheOrderAndAWorkflowIsDeleted(): void
     {
         self::signInAsSuperAdmin($this->client);

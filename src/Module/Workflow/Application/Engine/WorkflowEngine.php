@@ -386,16 +386,18 @@ final class WorkflowEngine implements ResetInterface
     }
 
     /**
-     * No way to more power: the step writes as whoever triggered the event, or as the role it
-     * acts as, which whoever activated the workflow must still be able to give.
+     * No way to more power: the step writes as whoever triggered the event, who must hold the
+     * permission, and so must whoever activated the workflow, still (else the activator would
+     * write through the users who hold it); or as the role it acts as, which the activator must
+     * still be able to give.
      *
      * @throws StepFailed
      */
     private function allow(Step $step, string $object, RecordAction $action, RunLog $run): void
     {
         $permission = Permissions::record($object, $action);
+        $activator = $run->workflow->activatedBy;
         if (null !== $role = $step->actAs()) {
-            $activator = $run->workflow->activatedBy;
             if (null === $activator || !$this->access->userCanGrant($activator, $role)) {
                 throw new StepFailed(\sprintf('It acts as %s, which %s can no longer give.', $role, $activator ?? 'no one'));
             }
@@ -410,6 +412,10 @@ final class WorkflowEngine implements ResetInterface
         }
         if (!$this->access->canRecords($object, $action)) {
             throw new StepFailed(\sprintf('%s does not hold %s.', $this->security->getUser()->getUserIdentifier(), $permission));
+        }
+        // For a permission, canGrant is holding it.
+        if (null === $activator || !$this->access->userCanGrant($activator, $permission)) {
+            throw new StepFailed(\sprintf('%s, who activated it, no longer holds %s.', $activator ?? 'No one', $permission));
         }
     }
 

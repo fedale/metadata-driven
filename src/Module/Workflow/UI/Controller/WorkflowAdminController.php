@@ -142,7 +142,9 @@ final class WorkflowAdminController extends AbstractController
     {
         $this->denyUnlessAllowed();
         $workflow = $this->workflowOr404($id);
-        if ($this->actionForm('deactivate', $workflow)->handleRequest($request)->isSubmitted()) {
+        $form = $this->actionForm('deactivate', $workflow)->handleRequest($request);
+        // Valid: its token checked, as every form that changes something.
+        if ($form->isSubmitted() && $form->isValid()) {
             $this->manager->deactivate($workflow);
             $this->addFlash('success', $this->translator->trans('admin.workflow.deactivated'));
         }
@@ -207,7 +209,8 @@ final class WorkflowAdminController extends AbstractController
     {
         $this->denyUnlessAllowed();
         $version = $this->workflows->findVersion(Uuid::fromString($id)) ?? throw $this->createNotFoundException('No such version.');
-        if ($this->reuseForm($version)->handleRequest($request)->isSubmitted()) {
+        $form = $this->reuseForm($version)->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
             $this->manager->useAsDraft($version);
             $this->addFlash('success', $this->translator->trans('admin.workflow.reused', ['%number%' => $version->getNumber()]));
         }

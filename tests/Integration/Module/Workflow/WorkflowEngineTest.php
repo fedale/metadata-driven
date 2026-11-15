@@ -115,13 +115,14 @@ final class WorkflowEngineTest extends KernelTestCase
 
     public function testAStepGivesNoMorePowerThanWhoeverTriggeredTheEventHas(): void
     {
-        $this->signIn('clerk@example.com');
-        $customer = $this->records->create(new RecordInput('person', ['full_name' => 'Ada']));
+        $this->signIn('owner@example.com');
         $this->workflow('Bill', <<<'YAML'
             trigger: { on: updated, object: person, when: after }
             steps:
               - { key: bill, type: create_record, object: invoice, values: { number: X1, customer: '{{ $trigger.record.id }}' } }
             YAML);
+        $this->signIn('clerk@example.com');
+        $customer = $this->records->create(new RecordInput('person', ['full_name' => 'Ada']));
 
         $this->records->update($customer->id, new RecordInput('person', ['city' => 'Milano']));
 
@@ -130,6 +131,39 @@ final class WorkflowEngineTest extends KernelTestCase
         self::assertSame([], $this->names('invoice'));
         self::assertSame('failed', $this->runs()[0]['status']);
         self::assertSame('clerk@example.com does not hold record.invoice.create.', $this->runs()[0]['error']);
+    }
+
+    public function testItsActivatorMayNotWriteThroughWhoeverTriggersIt(): void
+    {
+        // The clerk may not create invoices: a workflow of theirs may not either, whoever
+        // triggers it.
+        $this->signIn('clerk@example.com');
+        try {
+            $this->workflow('Bill', <<<'YAML'
+                trigger: { on: updated, object: person, when: after }
+                steps: [{ key: bill, type: create_record, object: invoice, values: { number: X1 } }]
+                YAML);
+            self::fail('Refused.');
+        } catch (\App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition $e) {
+            self::assertStringContainsString('You do not hold record.invoice.create', $e->getMessage());
+        }
+
+        // Activated by the owner, then the owner demoted: the step stops, though whoever triggers
+        // it holds the permission.
+        $this->signIn('owner@example.com');
+        $this->workflow('Bill as the owner', <<<'YAML'
+            trigger: { on: updated, object: person, when: after }
+            steps: [{ key: bill, type: create_record, object: invoice, values: { number: X1 } }]
+            YAML);
+        $rbac = self::getContainer()->get(RbacManagerInterface::class);
+        $rbac->assign('clerk@example.com', 'ROLE_OWNER');
+        $rbac->revoke('owner@example.com', 'ROLE_OWNER');
+        $this->signIn('clerk@example.com');
+        $customer = $this->records->create(new RecordInput('person', ['full_name' => 'Ada']));
+        $this->records->update($customer->id, new RecordInput('person', ['city' => 'Milano']));
+
+        self::assertSame([], $this->names('invoice', 'number'));
+        self::assertSame('owner@example.com, who activated it, no longer holds record.invoice.create.', $this->runs()[0]['error']);
     }
 
     public function testARoleStepStopsOnceItsActivatorCanNoLongerGiveTheRole(): void

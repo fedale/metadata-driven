@@ -122,7 +122,9 @@ No way to more power, as the members and roles pages hold to:
 
 - A step that writes acts **as whoever triggered the event**: the user needs the step's
   permission (`record.<object>.create`, `update`, `delete`; both create and update for an
-  upsert), as if they wrote it themselves.
+  upsert), as if they wrote it themselves. So does the person who activated the workflow: on
+  activation, and still at each run. Else they would write, through the users who hold it, what
+  they may not write themselves.
 - A step may act **as a role** instead, `act_as: ROLE_ACCOUNTANT`: a role the person activating
   the workflow may give (checked on activation). At each run the role must give the permission,
   and the person who activated the version must still be able to give the role: demoted, or no
@@ -131,8 +133,8 @@ No way to more power, as the members and roles pages hold to:
   needs an `act_as`.
 - Conditions, `set_values` and `refuse` need no permission.
 
-Defining workflows and seeing their runs, which hold the data of the records they ran on, needs
-`admin.workflows`.
+Defining workflows and seeing their runs needs `admin.workflows`. A run holds the data of the
+records it ran on, whatever object: give `admin.workflows` to whoever may see them.
 
 ## Runs and limits
 

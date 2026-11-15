@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Module\Workflow\Application\Definition;
 
 use App\Module\Access\Contract\AccessCheckerInterface;
+use App\Module\Access\Contract\Permissions;
+use App\Module\Access\Contract\RecordAction;
 use App\Module\Access\Contract\WorkspaceRolesInterface;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
@@ -112,6 +114,16 @@ final class DefinitionValidator
                 $this->error($path.'.values', \sprintf('The value of "%s", the field it matches on, is required.', $match));
             }
         }
+        if (null === $step->actAs() && $step->type->writes() && null !== $target) {
+            // As whoever triggered the event: the person activating must hold it too, or they
+            // would write through the users who do (no way to more power).
+            foreach (self::actions($step->type) as $action) {
+                $permission = Permissions::record($target->name, $action);
+                if (!$this->access->holds($permission)) {
+                    $this->error($path.'.type', \sprintf('You do not hold %s: a step acting as whoever triggered the event may not do what you cannot. Give it an act_as, a role you may give.', $permission));
+                }
+            }
+        }
         if (null !== $role = $step->actAs()) {
             if (!\array_key_exists($role, $this->roles->roles())) {
                 $this->error($path.'.act_as', \sprintf('"%s" is no role of this workspace.', $role));
@@ -186,6 +198,22 @@ final class DefinitionValidator
         if (\in_array($segments[1], ['record', 'before'], true) && null !== $field && 'id' !== $field && null !== $trigger && !isset($trigger->fields[$field])) {
             $this->error($at, \sprintf('Object "%s" has no field "%s".', $trigger->name, $field));
         }
+    }
+
+    /**
+     * The record actions a step that writes needs: an upsert creates or updates.
+     *
+     * @return list<RecordAction>
+     */
+    private static function actions(StepType $type): array
+    {
+        return match ($type) {
+            StepType::CreateRecord => [RecordAction::Create],
+            StepType::UpdateRecord => [RecordAction::Update],
+            StepType::DeleteRecord => [RecordAction::Delete],
+            StepType::UpsertRecord => [RecordAction::Create, RecordAction::Update],
+            default => [],
+        };
     }
 
     private function object(string $name, string $path): ?ObjectDefinitionDto

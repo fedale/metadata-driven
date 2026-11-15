@@ -225,6 +225,13 @@ What differs from the design above, and why:
 - **`workflow:runs:gc` works in its workspace**, as `metadata:files:gc`: every workspace with
   `workspace:run --all`.
 - The run statuses are completed, failed and refused (a before-run that refused its write).
+- **A step acting as whoever triggered the event also needs its activator to hold the
+  permission**, on activation and at each run (found by a security review, 2026-11-15): else an
+  admin with `admin.workflows` could write, through the users who hold a permission, what they
+  may not write themselves. The user's decision stands (the step acts as the triggerer); the rule
+  "no way to more power" now holds for the author too.
+- Left as decided (decision 8 of the plan): the runs, with the data of the records they ran on,
+  are seen by `admin.workflows`, whatever the viewer may read of those objects.
 
 ## Decisions (user, 2026-11-15)
 

@@ -74,11 +74,26 @@ final class DefinitionValidatorTest extends KernelTestCase
         ], $errors);
     }
 
+    public function testAStepAsWhoeverTriggeredItDoesNoMoreThanItsActivatorMay(): void
+    {
+        $errors = $this->errors(<<<'YAML'
+            trigger: { on: updated, object: person, when: after }
+            steps:
+              - { key: gone, type: delete_record, object: person, id: '{{ $trigger.record.id }}' }
+              - { key: as_role, type: delete_record, object: person, id: '{{ $trigger.record.id }}', act_as: ROLE_CLERK }
+            YAML);
+
+        // The step acting as the clerk's role is checked against that role instead.
+        self::assertSame(['steps.0.type' => ['You do not hold record.person.delete: a step acting as whoever triggered the event may not do what you cannot. Give it an act_as, a role you may give.']], $errors);
+    }
+
     private function validate(string $yaml): void
     {
         $access = $this->createStub(AccessCheckerInterface::class);
         // The person activating holds ROLE_CLERK, not ROLE_BOSS.
         $access->method('canGrant')->willReturnCallback(static fn (string $role): bool => 'ROLE_CLERK' === $role);
+        // ...and every permission but deleting people.
+        $access->method('holds')->willReturnCallback(static fn (string $item): bool => 'record.person.delete' !== $item);
         $roles = $this->createStub(WorkspaceRolesInterface::class);
         $roles->method('roles')->willReturn(['ROLE_CLERK' => null, 'ROLE_BOSS' => null]);
 
