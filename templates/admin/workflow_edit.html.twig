@@ -1,0 +1,71 @@
+{% extends 'base.html.twig' %}
+
+{% set heading = workflow ? workflow.name : 'admin.workflow.new'|trans %}
+
+{% block title %}{{ heading }} · {{ 'admin.workflows'|trans }}{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('admin_workflow_index') }}">&larr; {{ 'admin.workflows'|trans }}</a></p>
+    <h1>{{ heading }}</h1>
+
+    {% if workflow %}
+        <p>
+            {% if active %}
+                {{ 'admin.workflow.active_since'|trans({'%number%': active.number, '%by%': active.activatedBy, '%at%': active.activatedAt|date('Y-m-d H:i')}) }}
+            {% else %}
+                <span class="gv-muted">{{ 'admin.workflow.not_running'|trans }}</span>
+            {% endif %}
+            · <a href="{{ path('admin_workflow_versions', {id: workflow.id.toRfc4122}) }}">{{ 'admin.workflow.versions'|trans }}</a>
+            · <a href="{{ path('admin_workflow_runs', {id: workflow.id.toRfc4122}) }}">{{ 'admin.workflow.runs'|trans }}</a>
+        </p>
+        {% if active and draft %}
+            <p class="gv-muted">{{ 'admin.workflow.draft_while_active'|trans({'%number%': draft.number}) }}</p>
+        {% endif %}
+    {% endif %}
+
+    <div class="md-admin__columns">
+        <section class="md-admin__section">
+            {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+                {{ form_errors(form) }}
+                {{ form_row(form.name) }}
+                {{ form_row(form.description) }}
+                {{ form_row(form.definition) }}
+                {% if problems is not empty %}
+                    <ul class="md-problems">
+                        {% for problem in problems %}
+                            <li>{% if problem[0] %}<code>{{ problem[0] }}</code>: {% endif %}{{ problem[1] }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+                {% if workflow %}
+                    {{ form_widget(form.save) }}
+                    {{ form_widget(form.activate) }}
+                {% else %}
+                    <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.workflow.create'|trans }}</button>
+                {% endif %}
+            {{ form_end(form) }}
+
+            {% if workflow %}
+                {% if active %}
+                    {{ form_start(deactivate_form, {attr: {class: 'md-inline-form'}}) }}
+                        <button type="submit" class="gv-btn">{{ 'admin.workflow.deactivate'|trans }}</button>
+                    {{ form_end(deactivate_form) }}
+                {% endif %}
+                {{ form_start(delete_form, {attr: {class: 'md-delete-form', 'data-turbo-confirm': 'admin.workflow.delete_confirm'|trans({'%name%': workflow.name})}}) }}
+                    <button type="submit" class="gv-btn gv-btn-danger">{{ 'admin.delete'|trans }}</button>
+                {{ form_end(delete_form) }}
+            {% endif %}
+        </section>
+
+        <section class="md-admin__section">
+            <h2>{{ 'admin.workflow.reference'|trans }}</h2>
+            <p class="gv-muted">{{ 'admin.workflow.reference_help'|trans|raw }}</p>
+            <dl class="md-facts">
+                {% for object in objects %}
+                    <dt><code>{{ object.name }}</code></dt>
+                    <dd>{{ object.fields|keys|join(', ') }}</dd>
+                {% endfor %}
+            </dl>
+        </section>
+    </div>
+{% endblock %}
