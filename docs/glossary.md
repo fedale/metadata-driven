@@ -47,7 +47,7 @@ code, the commands, the admin UI and the documentation.
 
 | Term | Meaning |
 |---|---|
-| **Package** | A model packaged to be installed in a workspace and upgraded later: objects, fields, views, forms, translations and seeds, as a directory of YAML documents (see [Templates](templates.md)). It extends what a workspace can do; it has nothing to do with graphic templates or Twig |
+| **Package** | A model packaged to be installed in a workspace and upgraded later: objects, fields, views, forms, translations and seeds, as a directory of YAML documents (see [Packages](packages.md)). It extends what a workspace can do; it has nothing to do with graphic templates or Twig |
 | **Manifest** | The package's own description: its name `vendor/name`, version, license, the packages it requires |
 | **Package item** | One element a package installs (an object, a view, a form...), with a stable id made of the package's vendor and the item's name |
 | **Installation** | A package installed in a workspace, at a given version |
@@ -89,4 +89,3 @@ code, the commands, the admin UI and the other guides still say:
 | Here | Still in use |
 |---|---|
 | record | record and row |
-| package, package item, package source | template, template item, template source (`metadata:template:*`, `core.template_*`, the repositories `metadata-driven-templates` and `metadata-driven-template-format`) |

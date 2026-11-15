@@ -1,6 +1,7 @@
 # Plan: renaming the vocabulary
 
-Status: **agreed** (2026-11-15). Phases 1 to 4 merged into `main` (2026-11-15); phase 5 is next.
+Status: **agreed** (2026-11-15). Phases 1 to 4 merged into `main` (2026-11-15); phase 5 done on
+branch `package_rename`, waiting for the user's review.
 The names are recorded in [../glossary.md](../glossary.md); this plan brings the code, the
 database, the commands, the admin UI, the guides and the package format in line with it.
 
@@ -137,7 +138,7 @@ app's installations' snapshots are converted once by `Version20261115120000`. No
 the key `template` of a grid view's virtual columns (a column's text pattern), another meaning
 of the word, not in this plan.
 
-### Phase 5: template → package, in the app
+### Phase 5: template → package, in the app (done)
 
 About 102 files in `src`, 34 in `tests`.
 
@@ -154,6 +155,16 @@ About 102 files in `src`, 34 in `tests`.
 - Env vars `TEMPLATE_CATALOG_URL`, `TEMPLATE_CATALOG_KEY` → `PACKAGE_CATALOG_URL`,
   `PACKAGE_CATALOG_KEY` (`.env`, the catalog's README, production notes).
 - templates.md → packages.md, with the links to it.
+
+Done, in two commits: a view's `source` (`core.metadata_view.template` → `source`,
+`Version20261115130000`), then the rest (`Version20261115140000` renames the tables, the column
+`package_item.package`, their indexes and constraints). Differences from the list above: the
+commands keep "repo" (`metadata:package:repo`, `system:package:repo`, the option `--repo`):
+"repo" is no synonym of template, and `source` already names where a package came from; the
+translation keys are `admin.package_admin.*`. Found on the way: since phase 2 `system:admin`
+ran in the default workspace (only `workspace:*` commands ran as the system): the `system:*`
+commands now run as the system too. Not renamed: a virtual column's `template` (out of this
+plan), Twig's templates, `@template` in PHPDoc, the catalog's repository (phase 6).
 
 ### Phase 6: the catalog and the repositories
 

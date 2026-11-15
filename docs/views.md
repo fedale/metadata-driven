@@ -210,7 +210,7 @@ Column #3: "renderer" must be one of badge, date, truncate.
 "sort": "isbn" is no sortable column of the grid (nor created_at, updated_at).
 ```
 
-Also refused: a field listed twice, a write-only field, a template without tokens or with a
+Also refused: a field listed twice, a write-only field, a package without tokens or with a
 relation, a `many_to_many` or a `file` field, a `many_to_many` or `file` column marked
 `sortable: true`, unknown keys
 and renderer options, a sort direction other than `asc`/`desc`, a
@@ -264,7 +264,7 @@ no longer places it. See [Renaming and archiving](lifecycle.md).
 | Sanitizing | `SaveViewHandler`, with the `view_layout` sanitizer of `config/packages/html_sanitizer.yaml` |
 | Grid definitions | `GridViewCompiler` (Metadata) checks and compiles them; renderer names and options are checked through `GridRendererCatalogInterface`, implemented by `GridRenderers` (Record) |
 | Read side | `ObjectDefinitionDto::$views` and `view(ViewKind $kind, ?string $name)`, served from the cached metadata snapshot; a change drops the cache like any metadata change. A grid view carries `ViewDefinitionDto::$grid` (`GridViewDto`, `GridColumnDto`) |
-| Rendering | Form: the Twig function `record_form_layout(form, template)` (`RecordFormLayout` in the Record module), called before `form_rest()` in `templates/record/form.html.twig`. Grid: `RecordGridFactory::create($object, $view)` builds the columns; `DbalRecordGridSource` filters a virtual column on its fields (passed in the grid's model, checked against the object) |
+| Rendering | Form: the Twig function `record_form_layout(form, layout)` (`RecordFormLayout` in the Record module), called before `form_rest()` in `templates/record/form.html.twig`. Grid: `RecordGridFactory::create($object, $view)` builds the columns; `DbalRecordGridSource` filters a virtual column on its fields (passed in the grid's model, checked against the object) |
 | API | `MetadataManagerInterface::saveView()` / `deleteView()`, the same calls the admin UI uses |
 
 The record pages read the views through the localized registry, with the `{t:name}` tokens

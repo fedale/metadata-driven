@@ -212,8 +212,8 @@ revision bumped by triggers, see `architecture.md`).
   (pull request check with the semver rules, publication on merge to Pages, static site,
   removal with `all`, reports, verified vendors, organizations as owners). Live index
   `https://fedale.github.io/metadata-driven-templates/index.json`, key
-  `ta4QYEX/ZmCA9xA0yPP4sRZLeqYqBvmCXazwXiGadEc=` (`TEMPLATE_CATALOG_URL`,
-  `TEMPLATE_CATALOG_KEY`, the defaults of `.env`; empty in `.env.test`). First template:
+  `ta4QYEX/ZmCA9xA0yPP4sRZLeqYqBvmCXazwXiGadEc=` (`PACKAGE_CATALOG_URL`,
+  `PACKAGE_CATALOG_KEY` since 2026-11-15, `TEMPLATE_CATALOG_*` before, the defaults of `.env`; empty in `.env.test`). First template:
   `fedale/geo-italy` 1.0.0.
 - **Packagist** (2026-11-07): the bundles and the format required in released versions;
   local work on them through composer-link (getting-started.md).
@@ -290,7 +290,11 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   namespace `Fedale\PackageFormat`; the installations' snapshots converted by
   `Version20261115120000`): merged into `main` on 2026-11-15, the app on the released
   2.1.0 from Packagist; the GitHub repository renamed `metadata-driven-package-format`, the old
-  package abandoned in its favour. Next: phase 5 (template → package in the app).
+  package abandoned in its favour. Phase 5 (template → package in the app: `Module/Package`,
+  `core.package_*`, `metadata:package:*`, `system:package:repo`, `/admin/packages`,
+  `PACKAGE_CATALOG_*`, `app.package.*`, a view's `source`, the guide packages.md; migrations
+  `Version20261115130000` and `Version20261115140000`): done on branch `package_rename`
+  (2026-11-15), waiting for the user's review. Next: phase 6 (the catalog and its repository).
 - **CSV import**, (C) only: imports of very large files in the background, with Messenger. (A)
   and (B) are done (see "Done").
 - Admin UI in Italian: still English are the error messages of the metadata and the templates

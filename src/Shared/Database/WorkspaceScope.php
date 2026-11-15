@@ -38,16 +38,16 @@ final class WorkspaceScope
         'metadata_state',
         'schema_change_log',
         'file',
-        'template_installation',
-        'template_item',
-        'template_source',
+        'package_installation',
+        'package_item',
+        'package_source',
     ];
 
     /**
      * Tables of TABLES whose rows may have no workspace: offered to every workspace, read by all of
-     * them, written by the system only (template_source: the indexes the system admin offers).
+     * them, written by the system only (package_source: the indexes the system admin offers).
      */
-    public const array SHARED = ['template_source'];
+    public const array SHARED = ['package_source'];
 
     public static function isScoped(string $table): bool
     {

@@ -44,7 +44,7 @@ final class LocalizedAdminPagesTest extends WebTestCase
             '/admin/forms/new' => 'Nuovo modulo',
             '/admin/translations/it' => 'Traduzioni',
             '/admin/texts' => 'Traduzioni',
-            '/admin/templates' => 'Template',
+            '/admin/packages' => 'Pacchetti',
         ] as $url => $heading) {
             $crawler = $this->client->request('GET', $url);
             self::assertResponseIsSuccessful($url);

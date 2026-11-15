@@ -1,7 +1,7 @@
 framework:
     html_sanitizer:
         sanitizers:
-            # Layouts of the views (metadata_view.template): structure and classes only,
+            # Layouts of the views (metadata_view.source): structure and classes only,
             # no scripts, no inline styles, no event handlers. Injected with #[Target('view_layout')].
             view_layout:
                 allow_safe_elements: true

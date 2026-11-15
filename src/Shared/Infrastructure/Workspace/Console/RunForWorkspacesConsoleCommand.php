@@ -15,7 +15,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Process\Process;
 
 /**
- * Runs a command for several workspaces: workspace:run --all -- metadata:template:upgrade acme/crm.
+ * Runs a command for several workspaces: workspace:run --all -- metadata:package:upgrade acme/crm.
  *
  * One process per workspace, so that nothing one workspace's run leaves in memory (entities, caches,
  * the session's workspace) reaches the next. It carries on past a failure, reports each workspace's

@@ -21,7 +21,7 @@ use Symfony\Component\Uid\Uuid;
  * A workspace is its row of core.workspace, its row of core.metadata_state, its data schema (empty:
  * the Schema module fills it from the workspace's metadata) and its RBAC schema with
  * fedale/rbac-bundle's tables. It starts with no objects, members or permissions: workspace:create
- * adds its permissions, its first admin and a template if asked.
+ * adds its permissions, its first admin and a package if asked.
  */
 final class WorkspaceProvisioner implements WorkspaceAdministration
 {

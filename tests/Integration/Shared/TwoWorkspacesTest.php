@@ -6,9 +6,9 @@ namespace App\Tests\Integration\Shared;
 
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Package\Domain\Repository\PackageSourceRepository;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\RecordManagerInterface;
-use App\Module\Template\Domain\Repository\TemplateSourceRepository;
 use App\Shared\Infrastructure\Workspace\WorkspaceRegistry;
 use App\Shared\Infrastructure\Workspace\WorkspaceSessionSql;
 use App\Shared\Infrastructure\Workspace\WorkspaceSwitcher;
@@ -114,11 +114,11 @@ final class TwoWorkspacesTest extends KernelTestCase
         $container->get(WorkspaceSwitcher::class)->system();
 
         self::assertFalse($container->get(CurrentWorkspace::class)->isSelected());
-        self::assertSame([], $container->get(TemplateSourceRepository::class)->all());
+        self::assertSame([], $container->get(PackageSourceRepository::class)->all());
 
         $this->connection->beginTransaction();
         try {
-            // Not template_source: its rows may have no workspace (shared indexes).
+            // Not package_source: its rows may have no workspace (shared indexes).
             $this->connection->executeStatement(
                 "INSERT INTO core.metadata_translation (id, locale, message_key, text, updated_at) VALUES (?, 'it', 'object.pet.singular', 'Animale', now())",
                 [Uuid::v7()->toRfc4122()],
@@ -145,7 +145,7 @@ final class TwoWorkspacesTest extends KernelTestCase
         try {
             $this->connection->executeStatement('CREATE ROLE workspace_probe NOLOGIN');
             $this->connection->executeStatement('GRANT USAGE ON SCHEMA core TO workspace_probe');
-            $this->connection->executeStatement('GRANT SELECT, INSERT ON core.template_source TO workspace_probe');
+            $this->connection->executeStatement('GRANT SELECT, INSERT ON core.package_source TO workspace_probe');
             $this->connection->executeStatement('SET ROLE workspace_probe');
 
             self::assertSame(['acme'], $this->sourceNames(), 'A workspace sees its own rows.');
@@ -216,7 +216,7 @@ final class TwoWorkspacesTest extends KernelTestCase
     private function insertSource(string $name, ?Workspace $workspace = null): void
     {
         $this->connection->executeStatement(
-            'INSERT INTO core.template_source (id, name, url, added_at, workspace_id) VALUES (?, ?, ?, now(), ?)',
+            'INSERT INTO core.package_source (id, name, url, added_at, workspace_id) VALUES (?, ?, ?, now(), ?)',
             [Uuid::v7()->toRfc4122(), $name, \sprintf('https://%s.example.com/index.json', $name), $workspace?->id],
         );
     }
@@ -227,7 +227,7 @@ final class TwoWorkspacesTest extends KernelTestCase
     private function sourceNames(): array
     {
         /** @var list<string> $names */
-        $names = $this->connection->fetchFirstColumn('SELECT name FROM core.template_source ORDER BY name');
+        $names = $this->connection->fetchFirstColumn('SELECT name FROM core.package_source ORDER BY name');
 
         return $names;
     }

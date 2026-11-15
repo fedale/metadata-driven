@@ -11,8 +11,8 @@
             <thead>
                 <tr>
                     <th scope="col">{{ 'admin.name'|trans }}</th>
-                    <th scope="col">{{ 'admin.template_admin.address'|trans }}</th>
-                    <th scope="col">{{ 'admin.template_admin.signed'|trans }}</th>
+                    <th scope="col">{{ 'admin.package_admin.address'|trans }}</th>
+                    <th scope="col">{{ 'admin.package_admin.signed'|trans }}</th>
                     <th scope="col"><span class="md-visually-hidden">{{ 'admin.actions'|trans }}</span></th>
                 </tr>
             </thead>
@@ -21,10 +21,10 @@
                     <tr>
                         <td>{{ index.name }}</td>
                         <td class="md-file__name">{{ index.url }}</td>
-                        <td>{{ (index.key is null ? 'admin.template_admin.signed_no' : 'admin.template_admin.signed_yes')|trans }}</td>
+                        <td>{{ (index.key is null ? 'admin.package_admin.signed_no' : 'admin.package_admin.signed_yes')|trans }}</td>
                         <td>
                             {% if remove_forms[index.name] %}
-                                {{ form_start(remove_forms[index.name], {attr: {'data-turbo-confirm': 'admin.template_admin.remove_confirm'|trans({'%name%': index.name})}}) }}
+                                {{ form_start(remove_forms[index.name], {attr: {'data-turbo-confirm': 'admin.package_admin.remove_confirm'|trans({'%name%': index.name})}}) }}
                                     <button type="submit" class="gv-btn">{{ 'admin.remove'|trans }}</button>
                                 {{ form_end(remove_forms[index.name]) }}
                             {% endif %}
@@ -35,10 +35,10 @@
         </table>
     {% endif %}
 
-    <h2>{{ 'admin.template_admin.add_index'|trans }}</h2>
+    <h2>{{ 'admin.package_admin.add_index'|trans }}</h2>
     {{ form_start(add_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
         {{ form_errors(add_form) }}
         {{ form_rest(add_form) }}
-        <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.template_admin.add_the_index'|trans }}</button>
+        <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.package_admin.add_the_index'|trans }}</button>
     {{ form_end(add_form) }}
 {% endblock %}

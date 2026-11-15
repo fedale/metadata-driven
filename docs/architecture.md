@@ -7,7 +7,7 @@ from `fedale/gridview-bundle`, the runtime settings from `fedale/setting-bundle`
 
 | Schema | Holds | Managed by |
 |---|---|---|
-| `core` | The workspace registry (`core.workspace`) and who may sign in to each workspace (`core.workspace_membership`); object, field, view and form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the templates installed (`core.template_installation`) and the ids of items in templates (`core.template_item`), the settings of `fedale/setting-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
+| `core` | The workspace registry (`core.workspace`) and who may sign in to each workspace (`core.workspace_membership`); object, field, view and form definitions, the schema change log, users and profiles, the metadata of stored files (`core.file`), the packages installed (`core.package_installation`) and the ids of items in packages (`core.package_item`), the settings of `fedale/setting-bundle`, `doctrine_migration_versions` | Doctrine ORM and migrations |
 | a workspace's data schema (`data` for the first workspace) | One table per object, `c_<object>`, holding the records, and one link table per many-to-many field, `l_<object>__<field>` | The Schema module, from the workspace's metadata |
 | a workspace's RBAC schema (`rbac` for the first workspace) | The tables of `fedale/rbac-bundle` (`auth_*`): the workspace's roles, permissions and assignments | Created with the workspace |
 | `no_workspace_rbac` | The same tables, empty: the RBAC tables of a session with no workspace (the system's, the console's), where the bundle finds tables and no permission | Migrations |
@@ -33,7 +33,7 @@ guide says how to use and deploy them. Under the hood (see also
   tenant ids are integers), its data schema and its RBAC schema, and a status (`active` or
   `suspended`). The installation's first workspace is `default`, with `data` and `rbac`.
 - The core tables whose rows belong to a workspace (the definitions, the schema change log, the
-  files, the templates: `WorkspaceScope::TABLES`) carry a `workspace_id`. Unique names are unique per
+  files, the packages: `WorkspaceScope::TABLES`) carry a `workspace_id`. Unique names are unique per
   workspace: two workspaces may both have an `account` object.
 - **The current workspace is a setting of the PostgreSQL session**, `app.workspace_id`, with the
   `search_path` that goes with it (`WorkspaceSessionSql`). `WorkspaceSwitcher` sets both, and forgets
@@ -68,8 +68,8 @@ guide says how to use and deploy them. Under the hood (see also
   `BYPASSRLS`**: connect the application as an ordinary role in production. The Docker database
   of development connects as a superuser, so there the filters work alone; the tests check the
   policies under a role of their own.
-- **Rows offered to every workspace**: `template_source` (`WorkspaceScope::SHARED`) may have no
-  workspace, an index the system admin offers to all (`workspace:template:repo`, as the system). The
+- **Rows offered to every workspace**: `package_source` (`WorkspaceScope::SHARED`) may have no
+  workspace, an index the system admin offers to all (`system:package:repo`, as the system). The
   `workspace` filter and the policies let every workspace read such a row, and none write it.
 - `CurrentWorkspace` gives the workspace's id and data schema to the code that names record tables
   (the Schema and Record modules).
@@ -132,10 +132,10 @@ A module only sees the `Contract` of the other modules. Two Deptrac rulesets enf
 
 The package format is a library of its own, `fedale/metadata-driven-package-format`
 (`Fedale\PackageFormat`, a repository of the same name, required from Packagist; until 1.2
-`fedale/metadata-driven-template-format`): documents, JSON
+`fedale/metadata-driven-package-format`): documents, JSON
 Schemas, the field type catalog, the structural checks, packages as directories and as
-`.tar.gz` archives, signed indexes. The `Template` module is its only user in the app; the
-template catalog uses it too (see [Templates](templates.md)). It depends on `symfony/yaml` and
+`.tar.gz` archives, signed indexes. The `Package` module is its only user in the app; the
+package catalog uses it too (see [Packages](packages.md)). It depends on `symfony/yaml` and
 `opis/json-schema` only, and has its own tests (`composer qa` in its repository).
 
 | Module | Responsibility | Depends on (contracts) |
@@ -149,7 +149,7 @@ template catalog uses it too (see [Templates](templates.md)). It depends on `sym
 | Admin | The no-code builder at `/admin`, on `MetadataManagerInterface` | Metadata, FieldType, Schema |
 | User | Users and their profiles (with their language), sign-in (Symfony Security), `user:create` | — |
 | Access | The permissions of objects and admin, checked through `fedale/rbac-bundle`; `access:sync` | Metadata |
-| Template | Templates: the export of objects, views, forms and translations (`metadata:template:export`), their validation (`metadata:template:validate`), their install and their upgrades through `MetadataManagerInterface` in one transaction (`metadata:template:install`, `metadata:template:upgrade`, `metadata:template:list`), the installations (`core.template_installation`), the ids items keep in a template (`core.template_item`), the indexes looked into (`core.template_source`), downloads over https (`symfony/http-client`) checked against their checksum and signature; the admin pages at `/admin/templates`; the records of seeds, through the record pipeline; built on `Fedale\TemplateFormat` | Metadata, Record, FieldType, File, Access |
+| Package | Packages: the export of objects, views, forms and translations (`metadata:package:export`), their validation (`metadata:package:validate`), their install and their upgrades through `MetadataManagerInterface` in one transaction (`metadata:package:install`, `metadata:package:upgrade`, `metadata:package:list`), the installations (`core.package_installation`), the ids items keep in a package (`core.package_item`), the indexes looked into (`core.package_source`), downloads over https (`symfony/http-client`) checked against their checksum and signature; the admin pages at `/admin/packages`; the records of seeds, through the record pipeline; built on `Fedale\PackageFormat` | Metadata, Record, FieldType, File, Access |
 | File | Stored files: their bytes in the `record_files` Flysystem storage, keyed by their SHA-256 (the same bytes are stored once), their metadata in `core.file`, the type detected from the content; their thumbnails (`imagine/imagine`, GD); the GC, `metadata:files:gc`, which finds the references in the foreign keys to `core.file` (no other module needed); `FileStorageInterface`, `ThumbnailerInterface` | — |
 | Settings | Reserved for the next phases | |
 
@@ -185,7 +185,7 @@ The cache keys of the metadata (the snapshot of the objects, the forms, the
 translations) carry the **metadata revision** and the **instance's id**, the current workspace's
 row of `core.metadata_state`, read once per request (`MetadataRevision`). Triggers on the
 metadata tables bump the revision of the workspace whose rows changed, in the transaction of every
-write, whatever makes it (the admin, the console, a template, a migration), so:
+write, whatever makes it (the admin, the console, a package, a migration), so:
 
 - a change made on one server reaches every server at its next request, whatever cache each one
   keeps (the filesystem by default): their keys have changed;

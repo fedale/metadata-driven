@@ -10,7 +10,7 @@ something happens, run a series of actions, configured without code.
    workspace (the events of the platform, such as a workspace created).
 2. **Execution**: in the request or in the background, depending on the step.
 3. **Permissions**: a step acts with the permissions of whoever triggered the event, by default.
-4. **Where they are configured**: pages of the admin. Their inclusion in templates, as YAML, is
+4. **Where they are configured**: pages of the admin. Their inclusion in packages, as YAML, is
    undecided: the definition is designed to be exported anyway, so that it costs little later.
 5. **States** (a status field whose transitions are allowed per role) come after the event
    hooks, as their own phase; the user agreed to start with the hooks.
@@ -56,7 +56,7 @@ for later.
 ## Concepts
 
 - A **workflow** belongs to a workspace (its admins'), or to the installation (the operator's: no
-  workspace, as the shared template indexes). It has a name, a description, a status, and versions.
+  workspace, as the shared package indexes). It has a name, a description, a status, and versions.
 - A **version** holds the definition: one trigger, then steps. Only the active version runs.
 - A **step** has a key (unique in the version, the name of its output on the data chain), a type,
   options (with `{{ … }}`), and, for the branching steps, the steps of each branch.
@@ -78,7 +78,7 @@ for later.
 **When record events fire.** At the end of the write that made them, **once per record**:
 a form writing an account, its profile and its phones gives three events, after the
 whole form is written, never in the middle. Through `RecordManager` (`create()`,
-`update()`, `delete()`): every write goes there (forms, forms, imports, templates'
+`update()`, `delete()`): every write goes there (forms, forms, imports, packages'
 seeds), and so does a delete's cascade, one event per record deleted. No event exists today: the
 Record module starts dispatching them (its contract), the Workflow module listens.
 
@@ -101,7 +101,7 @@ error step, its message shown to the user). They are kept small: no waiting, no 
 | Search records | with the grid's filters, up to 200 records | 2 |
 | Iterator | the steps inside it for each item of a list | 2 |
 | Form | asks the person running a manual workflow | 2 |
-| Install template, assign role | the operator's platform workflows | 3 |
+| Install package, assign role | the operator's platform workflows | 3 |
 | HTTP request | to an external URL, in the background, with retries | 4 |
 | Wait | a duration, or until a date | 4 |
 | Send email, notification | when the application sends email (put off by the user) | 6 |
@@ -163,12 +163,12 @@ The rule that the members and roles pages hold to, applied here: **no way to mor
 
 - A new module, **Workflow** (`src/Module/Workflow/`), with the usual layers. It sees only the
   contracts of the others (deptrac): the Record module's events and record manager, the
-  metadata, Access (`canGrant()`, the roles), Template (phase 3), Shared's workspace ports.
+  metadata, Access (`canGrant()`, the roles), Package (phase 3), Shared's workspace ports.
 - Tables in `core`, with a `workspace_id` and row-level security, as the other workspace tables
   (`WorkspaceScope`): `workflow`, `workflow_version` (the definition as JSON), `workflow_run`,
   `workflow_run_step`, `workflow_usage`. The operator's workflows have no workspace, as the shared
-  template indexes: read by the landlord, never by a workspace.
-- The definition is a JSON document (trigger, steps), so that YAML in templates (decision 4) is a
+  package indexes: read by the landlord, never by a workspace.
+- The definition is a JSON document (trigger, steps), so that YAML in packages (decision 4) is a
   serialization away.
 
 ### The admin
@@ -178,7 +178,7 @@ The rule that the members and roles pages hold to, applied here: **no way to mor
 - the list: name, trigger, status, last run, runs that failed;
 - the editor: the trigger, then the steps as an ordered list, branches indented under their
   if/else; a **variable picker** for the `{{ }}` of each option; "test" on the draft against a
-  record chosen by the admin (nothing written: a dry run, as the template upgrades' `--dry-run`);
+  record chosen by the admin (nothing written: a dry run, as the package upgrades' `--dry-run`);
 - versions: publish the draft, deactivate, "use as draft" on an archived version;
 - the runs: filtered by status and date, each with its steps' inputs, outputs and errors.
 
@@ -196,7 +196,7 @@ One branch each, reviewed before the next.
 2. **Manual workflows**: buttons on a record's page and on a grid's selection, a command; forms;
    search records; iterator.
 3. **The operator's workflows**: platform events (a workspace created, a member added), install a
-   template, assign a role; the console's page. The user's SaaS case: an app installed with every
+   package, assign a role; the console's page. The user's SaaS case: an app installed with every
    new workspace.
 4. **The background**: Symfony Messenger (a dependency to add, with its worker); after-triggers
    there; HTTP requests; waits; retries; queued runs past the limits.
@@ -204,7 +204,7 @@ One branch each, reviewed before the next.
    roles and guarded by conditions, shown as buttons; a transition is a trigger.
 6. **Later**: schedules, incoming webhooks (with the REST API), sub-workflows, email and
    notifications (with email sending), quotas per plan, export and import (as JSON, inactive on
-   import), templates carrying workflows.
+   import), packages carrying workflows.
 
 ## Decisions on the open points (user, 2026-11-13)
 

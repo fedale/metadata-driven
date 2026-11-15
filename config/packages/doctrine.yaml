@@ -46,12 +46,12 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Module/File/Infrastructure/Doctrine/Mapping'
                 prefix: 'App\Module\File\Domain\Model'
                 alias: File
-            Template:
+            Package:
                 type: xml
                 is_bundle: false
-                dir: '%kernel.project_dir%/src/Module/Template/Infrastructure/Doctrine/Mapping'
-                prefix: 'App\Module\Template\Domain\Model'
-                alias: Template
+                dir: '%kernel.project_dir%/src/Module/Package/Infrastructure/Doctrine/Mapping'
+                prefix: 'App\Module\Package\Domain\Model'
+                alias: Package
             User:
                 type: xml
                 is_bundle: false
