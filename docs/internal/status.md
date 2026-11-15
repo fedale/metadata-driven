@@ -300,8 +300,11 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   (2026-11-15), merged into `main` on 2026-11-15. Phase 6 (the catalog): its branch
   `package_rename` (sources moved to `packages/`, unchanged; the tools on the format library
   2.1; a new version must be v2) and the app's `catalog_rename` (the stored addresses moved by
-  `Version20261115150000`), waiting for the repository's rename on GitHub and the catalog's pull
-  request.
+  `Version20261115150000`): done on 2026-11-15, the catalog's pull request #14 merged and
+  published (the index at `fedale.github.io/metadata-driven-packages`, its key `packages`, the
+  two v1 versions with their checksums and signatures unchanged), the app's branch merged. The
+  rename is complete; left: "row" where the guides still use it for a record, and a virtual
+  column's `template` key, outside the plan.
 - **CSV import**, (C) only: imports of very large files in the background, with Messenger. (A)
   and (B) are done (see "Done").
 - Admin UI in Italian: still English are the error messages of the metadata and the templates

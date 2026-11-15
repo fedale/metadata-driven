@@ -1,7 +1,6 @@
 # Plan: renaming the vocabulary
 
-Status: **agreed** (2026-11-15). Phases 1 to 5 merged into `main` (2026-11-15); phase 6 done on
-branches, waiting for the catalog repository's rename and pull request.
+Status: **done** (2026-11-15): the six phases merged, the catalog published under its new name.
 The names are recorded in [../glossary.md](../glossary.md); this plan brings the code, the
 database, the commands, the admin UI, the guides and the package format in line with it.
 
@@ -166,7 +165,7 @@ ran in the default workspace (only `workspace:*` commands ran as the system): th
 commands now run as the system too. Not renamed: a virtual column's `template` (out of this
 plan), Twig's templates, `@template` in PHPDoc, the catalog's repository (phase 6).
 
-### Phase 6: the catalog and the repositories (done, not published)
+### Phase 6: the catalog and the repositories (done)
 
 - The catalog (`metadata-driven-templates`): `templates/` → `packages/`, `fedale/geo-italy` and
   `fedale/registration` converted to v2, packed, signed and published again; its CI and README.
