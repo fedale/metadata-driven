@@ -1,0 +1,199 @@
+{# The visual editor of a workflow's draft (WorkflowEditor, a live component): the trigger, then the
+   steps, each branch of an if indented under it. Paths name a place in the model, as in the
+   definition: "steps.0.branches.1.steps". #}
+{% import _self as editor %}
+
+{% macro problems(list) %}
+    {% if list is not empty %}<ul class="md-problems">{% for message in list %}<li>{{ message }}</li>{% endfor %}</ul>{% endif %}
+{% endmacro %}
+
+{% macro add_step(at, this) %}
+    <p class="md-workflow-add">
+        <span class="gv-muted">{{ 'admin.workflow.add_step'|trans }}</span>
+        {% for type in this.stepTypes %}
+            <button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="addStep" data-live-at-param="{{ at }}" data-live-type-param="{{ type }}">{{ ('admin.workflow.type_' ~ type)|trans }}</button>
+        {% endfor %}
+    </p>
+{% endmacro %}
+
+{% macro condition(cond, at, this) %}
+    {% import _self as editor %}
+    {% if cond.raw %}
+        <pre class="md-code">{{ cond.raw }}</pre>
+        <p class="gv-muted">{{ 'admin.workflow.condition_in_yaml'|trans }}</p>
+    {% else %}
+        <div class="md-workflow-condition">
+            {% if cond.tests|length > 1 %}
+                <select data-model="model.{{ at }}.join" aria-label="{{ 'admin.workflow.join'|trans }}">
+                    <option value="all" {{ cond.join == 'all' ? 'selected' }}>{{ 'admin.workflow.join_all'|trans }}</option>
+                    <option value="any" {{ cond.join == 'any' ? 'selected' }}>{{ 'admin.workflow.join_any'|trans }}</option>
+                </select>
+            {% endif %}
+            {% for t, test in cond.tests %}
+                <div class="md-workflow-row">
+                    <input type="text" data-model="model.{{ at }}.tests.{{ t }}.field" value="{{ test.field }}" aria-label="{{ 'admin.workflow.test_field'|trans }}" class="md-code-input">
+                    <select data-model="model.{{ at }}.tests.{{ t }}.op" aria-label="{{ 'admin.workflow.test_op'|trans }}">
+                        {% for op in this.operators %}<option value="{{ op }}" {{ test.op == op ? 'selected' }}>{{ op }}</option>{% endfor %}
+                    </select>
+                    {% if test.op not in ['empty', 'not_empty'] %}
+                        <input type="text" data-model="model.{{ at }}.tests.{{ t }}.value" value="{{ test.value }}" aria-label="{{ 'admin.workflow.test_value'|trans }}">
+                    {% endif %}
+                    <button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="removeTest" data-live-at-param="{{ at }}" data-live-index-param="{{ t }}" aria-label="{{ 'admin.workflow.remove'|trans }}">✕</button>
+                </div>
+            {% endfor %}
+            <button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="addTest" data-live-at-param="{{ at }}">{{ 'admin.workflow.add_test'|trans }}</button>
+        </div>
+    {% endif %}
+{% endmacro %}
+
+{% macro values(step, at, object, this) %}
+    {% set fields = this.fieldsOf(object) %}
+    {% for v, row in step.values %}
+        <div class="md-workflow-row">
+            <select data-model="model.{{ at }}.values.{{ v }}.field" aria-label="{{ 'admin.workflow.value_field'|trans }}">
+                <option value="">—</option>
+                {% for field in fields %}<option value="{{ field }}" {{ row.field == field ? 'selected' }}>{{ field }}</option>{% endfor %}
+            </select>
+            <input type="text" data-model="model.{{ at }}.values.{{ v }}.value" value="{{ row.value }}" aria-label="{{ 'admin.workflow.value'|trans }}">
+            <button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="removeValue" data-live-at-param="{{ at }}" data-live-index-param="{{ v }}" aria-label="{{ 'admin.workflow.remove'|trans }}">✕</button>
+        </div>
+    {% endfor %}
+    <button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="addValue" data-live-at-param="{{ at }}">{{ 'admin.workflow.add_value'|trans }}</button>
+{% endmacro %}
+
+{% macro steps(steps, at, this) %}
+    {% import _self as editor %}
+    {% for i, step in steps %}
+        {% set path = at ~ '.' ~ i %}
+        <div class="md-workflow-step">
+            <div class="md-workflow-step__head">
+                <strong>{{ ('admin.workflow.type_' ~ step.type)|trans }}</strong>
+                <input type="text" data-model="model.{{ path }}.key" value="{{ step.key }}" aria-label="{{ 'admin.workflow.key'|trans }}" class="md-code-input">
+                <span class="md-workflow-step__moves">
+                    {% if not loop.first %}<button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="moveStep" data-live-at-param="{{ path }}" data-live-by-param="-1" aria-label="{{ 'admin.workflow.move_up'|trans }}">↑</button>{% endif %}
+                    {% if not loop.last %}<button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="moveStep" data-live-at-param="{{ path }}" data-live-by-param="1" aria-label="{{ 'admin.workflow.move_down'|trans }}">↓</button>{% endif %}
+                    <button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="removeStep" data-live-at-param="{{ path }}" aria-label="{{ 'admin.workflow.remove'|trans }}">✕</button>
+                </span>
+            </div>
+            {{ editor.problems(this.problemsAt(path)|filter(message => not (message starts with path ~ '.branches.'))) }}
+
+            {% if step.type in ['create_record', 'update_record', 'delete_record', 'upsert_record'] %}
+                <div class="md-workflow-row">
+                    <label>{{ 'admin.workflow.object'|trans }}
+                        <select data-model="model.{{ path }}.object">
+                            <option value="">—</option>
+                            {% for object in this.objects %}<option value="{{ object.name }}" {{ step.object == object.name ? 'selected' }}>{{ object.name }}</option>{% endfor %}
+                        </select>
+                    </label>
+                    {% if step.type in ['update_record', 'delete_record'] %}
+                        <label>{{ 'admin.workflow.record_id'|trans }} <input type="text" data-model="model.{{ path }}.id" value="{{ step.id }}" class="md-code-input"></label>
+                    {% endif %}
+                    {% if step.type == 'upsert_record' %}
+                        <label>{{ 'admin.workflow.match'|trans }}
+                            <select data-model="model.{{ path }}.match">
+                                <option value="">—</option>
+                                {% for field in this.fieldsOf(step.object) %}<option value="{{ field }}" {{ step.match == field ? 'selected' }}>{{ field }}</option>{% endfor %}
+                            </select>
+                        </label>
+                    {% endif %}
+                </div>
+                {% if step.type != 'delete_record' %}{{ editor.values(step, path, step.object, this) }}{% endif %}
+                <div class="md-workflow-row">
+                    <label>{{ 'admin.workflow.act_as'|trans }}
+                        <select data-model="model.{{ path }}.act_as">
+                            <option value="">{{ 'admin.workflow.act_as_triggerer'|trans }}</option>
+                            {% for role in this.roles %}<option value="{{ role }}" {{ step.act_as == role ? 'selected' }}>{{ role }}</option>{% endfor %}
+                        </select>
+                    </label>
+                    <label><input type="checkbox" data-model="model.{{ path }}.emit_events" {{ step.emit_events ? 'checked' }}> {{ 'admin.workflow.emit_events'|trans }}</label>
+                </div>
+            {% elseif step.type == 'set_values' %}
+                {{ editor.values(step, path, this.model.trigger.object, this) }}
+            {% elseif step.type == 'refuse' %}
+                <label>{{ 'admin.workflow.message'|trans }} <input type="text" data-model="model.{{ path }}.message" value="{{ step.message }}"></label>
+            {% elseif step.type == 'filter' %}
+                {% if step.when %}{{ editor.condition(step.when, path ~ '.when', this) }}{% endif %}
+            {% elseif step.type == 'if' %}
+                {% for b, branch in step.branches %}
+                    {% set branch_path = path ~ '.branches.' ~ b %}
+                    <div class="md-workflow-branch">
+                        <div class="md-workflow-step__head">
+                            <strong>{{ branch.when ? (loop.first ? 'admin.workflow.branch_if' : 'admin.workflow.branch_else_if')|trans : 'admin.workflow.branch_else'|trans }}</strong>
+                            <button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="removeBranch" data-live-at-param="{{ path }}" data-live-index-param="{{ b }}" aria-label="{{ 'admin.workflow.remove'|trans }}">✕</button>
+                        </div>
+                        {% if branch.when %}{{ editor.condition(branch.when, branch_path ~ '.when', this) }}{% endif %}
+                        {{ editor.problems(this.problemsAt(branch_path)|filter(message => not (message starts with branch_path ~ '.steps.'))) }}
+                        {{ editor.steps(branch.steps, branch_path ~ '.steps', this) }}
+                        {{ editor.add_step(branch_path ~ '.steps', this) }}
+                    </div>
+                {% endfor %}
+                <button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="addBranch" data-live-at-param="{{ path }}">{{ 'admin.workflow.add_branch'|trans }}</button>
+            {% endif %}
+        </div>
+    {% endfor %}
+{% endmacro %}
+
+<div {{ attributes }} class="md-workflow-editor">
+    <div class="md-form">
+        <label>{{ 'admin.workflow.name'|trans }} <input type="text" data-model="name" value="{{ name }}"></label>
+        {{ editor.problems(this.problemsAt('name')) }}
+        <label>{{ 'admin.workflow.description'|trans }} <input type="text" data-model="description" value="{{ description }}"></label>
+    </div>
+
+    {{ editor.problems(this.problemsAt('')|filter(message => not (message starts with 'steps.') and not (message starts with 'trigger.'))) }}
+
+    <h2>{{ 'admin.workflow.trigger'|trans }}</h2>
+    <div class="md-workflow-step">
+        <div class="md-workflow-row">
+            <label>{{ 'admin.workflow.on'|trans }}
+                <select data-model="model.trigger.on">
+                    {% for event in this.triggerEvents %}<option value="{{ event }}" {{ model.trigger.on == event ? 'selected' }}>{{ ('admin.workflow.on_' ~ event)|trans }}</option>{% endfor %}
+                </select>
+            </label>
+            <label>{{ 'admin.workflow.object'|trans }}
+                <select data-model="model.trigger.object">
+                    <option value="">—</option>
+                    {% for object in this.objects %}<option value="{{ object.name }}" {{ model.trigger.object == object.name ? 'selected' }}>{{ object.name }}</option>{% endfor %}
+                </select>
+            </label>
+            <label>{{ 'admin.workflow.when'|trans }}
+                <select data-model="model.trigger.when">
+                    <option value="before" {{ model.trigger.when == 'before' ? 'selected' }}>{{ 'admin.workflow.when_before'|trans }}</option>
+                    <option value="after" {{ model.trigger.when == 'after' ? 'selected' }}>{{ 'admin.workflow.when_after'|trans }}</option>
+                </select>
+            </label>
+        </div>
+        {% if model.trigger.on in ['updated', 'created_or_updated'] %}
+            <fieldset class="md-workflow-row">
+                <legend class="gv-muted">{{ 'admin.workflow.fields_changed'|trans }}</legend>
+                {% for field in this.fieldsOf(model.trigger.object) %}
+                    <label><input type="checkbox" data-model="model.trigger.fields" value="{{ field }}" {{ field in model.trigger.fields ? 'checked' }}> {{ field }}</label>
+                {% endfor %}
+            </fieldset>
+        {% endif %}
+        {{ editor.problems(this.problemsAt('trigger')) }}
+    </div>
+
+    <h2>{{ 'admin.workflow.steps'|trans }}</h2>
+    {{ editor.problems(this.problemsAt('steps')|filter(message => message starts with 'steps:')) }}
+    {{ editor.steps(model.steps, 'steps', this) }}
+    {{ editor.add_step('steps', this) }}
+
+    <p class="gv-muted">{{ 'admin.workflow.visual_rewrites'|trans }}</p>
+    <p>
+        <button type="button" class="gv-btn" data-action="live#action" data-live-action-param="save">{{ 'admin.workflow.save_draft'|trans }}</button>
+        <button type="button" class="gv-btn gv-btn-primary" data-action="live#action" data-live-action-param="activate">{{ 'admin.workflow.save_activate'|trans }}</button>
+    </p>
+
+    <div class="md-workflow-test">
+        <label>{{ 'admin.workflow.test_record'|trans }}
+            <select data-model="testRecord">
+                <option value="">—</option>
+                {% for record in this.records %}<option value="{{ record.id }}" {{ testRecord == record.id ? 'selected' }}>{{ record.label }} · {{ record.id|slice(0, 8) }}</option>{% endfor %}
+            </select>
+        </label>
+        <button type="button" class="gv-btn" data-action="live#action" data-live-action-param="runTest">{{ 'admin.workflow.test'|trans }}</button>
+    </div>
+    {% if testError %}<ul class="md-problems"><li>{{ testError }}</li></ul>{% endif %}
+    {% if test %}{{ include('admin/_workflow_test.html.twig', {test: test}) }}{% endif %}
+</div>

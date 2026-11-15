@@ -27,9 +27,17 @@ steps:
 - **The list**: each workflow with its trigger, its active version, its last run and the runs that
   failed in the last day. The workflows of one event run **in the list's order**: ↑ and ↓ move
   one.
-- **The editor**: the name, a description, and the definition of the **draft**. *Save the draft*
-  keeps it as written, comments included; *Save and activate* checks it first, and lists every
-  problem by its place in the definition (`steps.0.branches.1.steps.0.values.note: …`).
+- **The editor**, in two tabs, both working on the **draft**:
+  - **Visual** (the default): the trigger, then the steps as a list, each with its options; the
+    branches of an `if` indented under it, with their steps. Steps are added by type, moved and
+    removed; values are rows of a field and a text; a condition is *all of* or *any of* a list of
+    tests (a condition nested deeper shows as YAML, to edit in the YAML tab). Saving writes the
+    draft's YAML again: comments written in the YAML tab are lost.
+  - **YAML**: the definition as text, comments kept.
+
+  *Save the draft* keeps it; *Save and activate* checks it first, and lists every problem by its
+  place in the definition (`steps.0.branches.1.steps.0.values.note: …`), under the step it
+  concerns in the visual tab.
 - **Variables**: next to the editor, the paths the draft can read (the trigger's record and its
   fields, the run's context, each step's output); a click puts `{{ path }}` where the cursor is.
 - **Test on this record**: choose a record of the trigger's object; the draft is saved, checked as
@@ -175,5 +183,4 @@ rolled back. The steps run are counted per workspace and day.
 
 Manual workflows (a button on a record or a selection), search and iterator steps, forms asking
 for input (phase 2); the system admin's workflows on platform events (phase 3); the background,
-HTTP requests, waits (phase 4); states (phase 5); a visual editor, the steps as a list with their
-branches (phase 1b, part 2). See [the plan](internal/workflow-plan.md).
+HTTP requests, waits (phase 4); states (phase 5). See [the plan](internal/workflow-plan.md).

@@ -5,17 +5,16 @@ declare(strict_types=1);
 namespace App\Module\Workflow\UI\Controller;
 
 use App\Module\Access\Contract\AccessCheckerInterface;
-use App\Module\Access\Contract\RecordAction;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
-use App\Module\Record\Contract\RecordLookupInterface;
 use App\Module\Workflow\Application\Definition\Definition;
 use App\Module\Workflow\Application\Definition\DefinitionParser;
-use App\Module\Workflow\Application\Definition\DefinitionValidator;
+use App\Module\Workflow\Application\EditorModel;
 use App\Module\Workflow\Application\Engine\RunLog;
-use App\Module\Workflow\Application\Engine\WorkflowEngine;
 use App\Module\Workflow\Application\PathCatalog;
 use App\Module\Workflow\Application\RunQueries;
+use App\Module\Workflow\Application\TestRefused;
 use App\Module\Workflow\Application\WorkflowManager;
+use App\Module\Workflow\Application\WorkflowTester;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
 use App\Module\Workflow\Domain\Model\VersionStatus;
 use App\Module\Workflow\Domain\Model\Workflow;
@@ -69,9 +68,7 @@ final class WorkflowAdminController extends AbstractController
         private readonly FormFactoryInterface $forms,
         private readonly TranslatorInterface $translator,
         private readonly PathCatalog $paths,
-        private readonly DefinitionValidator $validator,
-        private readonly WorkflowEngine $engine,
-        private readonly RecordLookupInterface $lookup,
+        private readonly WorkflowTester $tester,
     ) {
     }
 
@@ -149,6 +146,9 @@ final class WorkflowAdminController extends AbstractController
 
         return $this->render('admin/workflow_edit.html.twig', [
             ...$this->editorPage($workflow, $form, $problems, $definition, $test),
+            // The visual editor by default; the YAML when asked, after the YAML form was sent, or
+            // when the YAML cannot be read.
+            'mode' => 'yaml' === $request->query->getString('mode') || $form->isSubmitted() ? 'yaml' : (null === EditorModel::fromSource($source) ? 'unreadable' : 'visual'),
             'active' => $active,
             'draft' => $this->manager->draft($workflow),
             'deactivate_form' => $this->actionForm('deactivate', $workflow)->createView(),
@@ -277,8 +277,8 @@ final class WorkflowAdminController extends AbstractController
     }
 
     /**
-     * Checks the draft as an activation would, then runs it against the chosen record and rolls
-     * it back.
+     * The test of the saved draft on the chosen record (WorkflowTester): its result, or null with
+     * an error on the record's input.
      *
      * @param FormInterface<mixed> $form
      *
@@ -286,22 +286,14 @@ final class WorkflowAdminController extends AbstractController
      */
     private function test(FormInterface $form, Workflow $workflow, string $source): ?RunLog
     {
-        $definition = (new DefinitionParser())->parse($source);
-        $this->validator->validate($definition);
-        // The test shows the record's values: only to whoever may read them.
-        if (!$this->access->canRecords($definition->trigger->object, RecordAction::Read)) {
-            $form->get('test_record')->addError(new FormError($this->translator->trans('admin.workflow.test_cannot_read', ['%object%' => $definition->trigger->object])));
-
-            return null;
-        }
         $record = $form->get('test_record')->getData();
-        if (!\is_string($record) || '' === $record) {
-            $form->get('test_record')->addError(new FormError($this->translator->trans('admin.workflow.test_choose')));
+        try {
+            return $this->tester->test($workflow->getName(), $source, \is_string($record) ? $record : null);
+        } catch (TestRefused $e) {
+            $form->get('test_record')->addError(new FormError($this->translator->trans('admin.workflow.test_'.$e->reason, ['%object%' => $e->object])));
 
             return null;
         }
-
-        return $this->engine->dryRun($definition, $workflow->getName(), $record);
     }
 
     /**
@@ -402,9 +394,7 @@ final class WorkflowAdminController extends AbstractController
                 'attr' => ['rows' => 24, 'class' => 'md-code-input', 'spellcheck' => 'false'],
             ]);
         if (null !== $workflow) {
-            // Their labels only to whoever may read them.
-            $object = $definition?->trigger->object;
-            $records = null === $object || !$this->metadata->hasObject($object) || !$this->access->canRecords($object, RecordAction::Read) ? [] : $this->lookup->search($object, '', 50);
+            $records = $this->tester->records($definition);
             $builder
                 ->add('test_record', ChoiceType::class, [
                     'label' => 'admin.workflow.test_record',
