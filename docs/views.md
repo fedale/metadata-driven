@@ -259,7 +259,7 @@ no longer places it. See [Renaming and archiving](lifecycle.md).
 
 | Piece | Where |
 |---|---|
-| Storage | `core.metadata_view`: `object_id` (cascade on delete), `kind`, `name`, `template` (form: the sanitized HTML; grid: the YAML as written), `definition` (grid: the compiled definition, JSONB), `is_default`; unique on `(object_id, kind, name)` |
+| Storage | `core.metadata_view`: `object_id` (cascade on delete), `kind`, `name`, `source` (form: the sanitized HTML; grid: the YAML as written), `definition` (grid: the compiled definition, JSONB), `is_default`; unique on `(object_id, kind, name)` |
 | Model | `ViewDefinition`, part of the `ObjectDefinition` aggregate like the fields; `ObjectDefinition::saveView()` checks the tokens and keeps one default per kind |
 | Sanitizing | `SaveViewHandler`, with the `view_layout` sanitizer of `config/packages/html_sanitizer.yaml` |
 | Grid definitions | `GridViewCompiler` (Metadata) checks and compiles them; renderer names and options are checked through `GridRendererCatalogInterface`, implemented by `GridRenderers` (Record) |

@@ -58,7 +58,7 @@ final class TemplateInstallerTest extends KernelTestCase
         self::assertSame(['kind', ['chair']], [$condition->field, $condition->values]);
         self::assertTrue($product->field('sku')->isUnique);
         self::assertSame(20, $product->field('sku')->settings['maxLength']);
-        self::assertStringContainsString('{t:identity}', (string) $product->view(ViewKind::Form)?->template);
+        self::assertStringContainsString('{t:identity}', (string) $product->view(ViewKind::Form)?->source);
         self::assertSame('category', $registry->getForm('catalogue')->root->object);
         self::assertSame('category', $registry->getForm('catalogue')->root->sections[0]->via);
 

@@ -12,7 +12,7 @@
 
         <field name="kind" length="20" enum-type="App\Module\Metadata\Contract\Dto\ViewKind"/>
         <field name="name" length="50"/>
-        <field name="template" type="text"/>
+        <field name="source" type="text"/>
         <field name="definition" type="json" nullable="true">
             <options>
                 <option name="jsonb">true</option>

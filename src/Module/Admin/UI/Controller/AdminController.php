@@ -464,7 +464,7 @@ final class AdminController extends AbstractController
             $object->name,
             $kind,
             $name,
-            $this->text($form, 'template'),
+            $this->text($form, 'source'),
             true === $form->get('isDefault')->getData(),
         ));
     }
@@ -626,7 +626,7 @@ final class AdminController extends AbstractController
         $builder = $this->forms->createNamedBuilder('view', FormType::class, [
             'name' => $view?->name,
             'kind' => $view->kind ?? ViewKind::Form,
-            'template' => $view?->template,
+            'source' => $view?->source,
             'isDefault' => $view?->isDefault,
         ]);
         if (null === $view) {
@@ -639,7 +639,7 @@ final class AdminController extends AbstractController
         }
 
         return $builder
-            ->add('template', TextareaType::class, [
+            ->add('source', TextareaType::class, [
                 'label' => match ($view?->kind) {
                     ViewKind::Form => 'admin.view.layout',
                     ViewKind::Grid => 'admin.view.grid_definition',

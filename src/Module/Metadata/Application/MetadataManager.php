@@ -169,9 +169,9 @@ final class MetadataManager implements MetadataManagerInterface
         ($this->configureUniqueTogether)($this->valid(new ConfigureUniqueTogetherCommand($objectName, $fields, remove: true)));
     }
 
-    public function saveView(string $objectName, ViewKind $kind, string $name, string $template, bool $isDefault = false): string
+    public function saveView(string $objectName, ViewKind $kind, string $name, string $source, bool $isDefault = false): string
     {
-        return ($this->saveView)($this->valid(new SaveViewCommand($objectName, $name, $template, $kind, $isDefault)));
+        return ($this->saveView)($this->valid(new SaveViewCommand($objectName, $name, $source, $kind, $isDefault)));
     }
 
     public function deleteView(string $objectName, ViewKind $kind, string $name): void

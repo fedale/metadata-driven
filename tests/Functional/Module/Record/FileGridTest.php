@@ -175,7 +175,7 @@ final class FileGridTest extends WebTestCase
                 $manager->saveView('product', ViewKind::Grid, 'main', $source);
                 self::fail('The grid view should have been refused.');
             } catch (MetadataInputInvalid $e) {
-                self::assertContains($error, $e->errors['template'] ?? []);
+                self::assertContains($error, $e->errors['source'] ?? []);
             }
         }
     }

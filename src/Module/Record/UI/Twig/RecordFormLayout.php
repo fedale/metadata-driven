@@ -19,17 +19,17 @@ use Twig\Environment;
 final class RecordFormLayout
 {
     /**
-     * @param string $template sanitized when the view was saved: printed as it is
+     * @param string $layout sanitized when the view was saved: printed as it is
      */
     #[AsTwigFunction('record_form_layout', needsEnvironment: true, isSafe: ['html'])]
-    public function render(Environment $twig, FormView $form, string $template): string
+    public function render(Environment $twig, FormView $form, string $layout): string
     {
         $renderer = $twig->getRuntime(FormRenderer::class);
 
         return (string) preg_replace_callback(
             ViewDefinitionDto::TOKEN_PATTERN,
             static fn (array $token): string => isset($form[$token[1]]) ? $renderer->searchAndRenderBlock($form[$token[1]], 'row') : '',
-            $template,
+            $layout,
         );
     }
 
@@ -38,11 +38,11 @@ final class RecordFormLayout
      * (under "values") or of a service field (under "service"), or the section already rendered
      * under that name. The rows placed are marked rendered, as above.
      *
-     * @param string                            $template sanitized when the form was saved: printed as it is
+     * @param string                            $layout   sanitized when the form was saved: printed as it is
      * @param array<string, string|\Stringable> $sections the HTML of each section, by name
      */
     #[AsTwigFunction('form_node_layout', needsEnvironment: true, isSafe: ['html'])]
-    public function renderFormNode(Environment $twig, FormView $node, string $template, array $sections): string
+    public function renderFormNode(Environment $twig, FormView $node, string $layout, array $sections): string
     {
         $renderer = $twig->getRuntime(FormRenderer::class);
 
@@ -57,7 +57,7 @@ final class RecordFormLayout
 
                 return (string) ($sections[$token[1]] ?? '');
             },
-            $template,
+            $layout,
         );
     }
 }

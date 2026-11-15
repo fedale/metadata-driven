@@ -142,7 +142,7 @@ final class MetadataUsages
     private static function viewUses(ViewDefinitionDto $view, string $fieldName): bool
     {
         if (ViewKind::Form === $view->kind) {
-            return \in_array($fieldName, ViewDefinitionDto::tokens($view->template), true);
+            return \in_array($fieldName, ViewDefinitionDto::tokens($view->source), true);
         }
         foreach ($view->grid->columns ?? [] as $column) {
             if ($column->field === $fieldName || \in_array($fieldName, $column->sources, true)) {

@@ -121,14 +121,14 @@ interface MetadataManagerInterface
     public function removeUniqueTogether(string $objectName, array $fields): void;
 
     /**
-     * Creates the view, or replaces the template of the existing one with that kind and name.
+     * Creates the view, or replaces the source of the existing one with that kind and name.
      *
-     * @param string $template  HTML with {field} tokens; sanitized before it is stored
+     * @param string $source    HTML with {field} tokens; sanitized before it is stored
      * @param bool   $isDefault make it the default of its kind (the first view of a kind always is)
      *
      * @return string the id of the view
      */
-    public function saveView(string $objectName, ViewKind $kind, string $name, string $template, bool $isDefault = false): string;
+    public function saveView(string $objectName, ViewKind $kind, string $name, string $source, bool $isDefault = false): string;
 
     public function deleteView(string $objectName, ViewKind $kind, string $name): void;
 

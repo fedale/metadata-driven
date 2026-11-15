@@ -16,14 +16,14 @@ final readonly class ViewDefinitionDto
     public const string TEXT_TOKEN_PATTERN = '/\{\s*t:([a-z][a-z0-9_]*)\s*\}/';
 
     /**
-     * @param string           $template sanitized HTML with {field} tokens (form), the YAML source (grid)
-     * @param GridViewDto|null $grid     the compiled definition of a grid view
+     * @param string           $source sanitized HTML with {field} tokens (form), the YAML (grid)
+     * @param GridViewDto|null $grid   the compiled definition of a grid view
      */
     public function __construct(
         public string $id,
         public ViewKind $kind,
         public string $name,
-        public string $template,
+        public string $source,
         public bool $isDefault,
         public ?GridViewDto $grid = null,
     ) {
@@ -32,9 +32,9 @@ final readonly class ViewDefinitionDto
     /**
      * @return list<string> the field names of the tokens, in order of appearance
      */
-    public static function tokens(string $template): array
+    public static function tokens(string $text): array
     {
-        preg_match_all(self::TOKEN_PATTERN, $template, $matches);
+        preg_match_all(self::TOKEN_PATTERN, $text, $matches);
 
         return $matches[1];
     }
@@ -42,9 +42,9 @@ final readonly class ViewDefinitionDto
     /**
      * @return list<string> the names of the {t:name} tokens, in order of appearance
      */
-    public static function textTokens(string $template): array
+    public static function textTokens(string $text): array
     {
-        preg_match_all(self::TEXT_TOKEN_PATTERN, $template, $matches);
+        preg_match_all(self::TEXT_TOKEN_PATTERN, $text, $matches);
 
         return $matches[1];
     }

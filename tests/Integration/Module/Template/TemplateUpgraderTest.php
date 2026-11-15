@@ -57,7 +57,7 @@ final class TemplateUpgraderTest extends KernelTestCase
         // Renamed, not replaced: the column and its values followed.
         $codes = array_map(static fn ($record): mixed => $record->values['code'], iterator_to_array(self::getContainer()->get(RecordFinderInterface::class)->each('product'), false));
         self::assertEqualsCanonicalizing(['OSL-01', 'BRG-02'], $codes);
-        self::assertStringContainsString('{code}', (string) $product->view(ViewKind::Form)?->template);
+        self::assertStringContainsString('{code}', (string) $product->view(ViewKind::Form)?->source);
         self::assertNull($product->view(ViewKind::Grid));
         self::assertSame('Peso', $this->italian()['field.product.weight']);
         self::assertSame('2.0.0', self::getContainer()->get(TemplateInstallationRepository::class)->findByName('acme/shop')?->getVersion());

@@ -286,7 +286,7 @@ final class TemplateExporter
             'default' => $view->isDefault,
             // As the app stores it: the sanitized HTML of a form view, the YAML of a grid view.
             // Both name fields by name, within their object.
-            'source' => $view->template,
+            'source' => $view->source,
         ], \sprintf('views/%s.%s.%s.yaml', $object->name, $view->kind->value, $view->name));
     }
 
@@ -339,7 +339,7 @@ final class TemplateExporter
         $used = [];
         foreach ($objects as $object) {
             foreach ($object->views as $view) {
-                $used = [...$used, ...ViewDefinitionDto::textTokens($view->template)];
+                $used = [...$used, ...ViewDefinitionDto::textTokens($view->source)];
             }
         }
         foreach ($forms as $form) {

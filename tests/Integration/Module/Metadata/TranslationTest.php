@@ -75,12 +75,12 @@ final class TranslationTest extends KernelTestCase
 
         $view = $this->localized('it')->getObject('pet')->view(ViewKind::Form);
         // Not translated in Italian: the English text.
-        self::assertSame('<fieldset><legend>Identità</legend>{name} {chip_code}</fieldset><p>Kind</p>', $view?->template);
-        self::assertSame('Identity &amp; chip', $this->textOf($this->localized('en')->getObject('pet')->view(ViewKind::Form)->template ?? ''));
+        self::assertSame('<fieldset><legend>Identità</legend>{name} {chip_code}</fieldset><p>Kind</p>', $view?->source);
+        self::assertSame('Identity &amp; chip', $this->textOf($this->localized('en')->getObject('pet')->view(ViewKind::Form)->source ?? ''));
         self::assertSame('Identità', $this->localized('it')->getObject('pet')->view(ViewKind::Grid)?->grid?->column('name')?->label);
 
         // The views keep the tokens as written.
-        self::assertStringContainsString('{t:identity}', self::getContainer()->get(MetadataRegistryInterface::class)->getObject('pet')->view(ViewKind::Form)->template ?? '');
+        self::assertStringContainsString('{t:identity}', self::getContainer()->get(MetadataRegistryInterface::class)->getObject('pet')->view(ViewKind::Form)->source ?? '');
 
         $texts = array_values(array_filter(
             self::getContainer()->get(MetadataTranslationsInterface::class)->entries('it'),
@@ -108,13 +108,13 @@ final class TranslationTest extends KernelTestCase
             $this->manager()->saveView('pet', ViewKind::Form, 'main', '<h2>{t:sign_in}</h2>{name}');
             self::fail('The text is not defined.');
         } catch (MetadataInputInvalid $e) {
-            self::assertSame(['template' => ['View "main": '.$missing]], $e->errors);
+            self::assertSame(['source' => ['View "main": '.$missing]], $e->errors);
         }
         try {
             $this->manager()->saveView('pet', ViewKind::Grid, 'main', "columns:\n  - { field: name, label: '{t:sign_in}' }");
             self::fail('The text is not defined.');
         } catch (MetadataInputInvalid $e) {
-            self::assertSame(['template' => ['Column #1: '.$missing]], $e->errors);
+            self::assertSame(['source' => ['Column #1: '.$missing]], $e->errors);
         }
         try {
             $this->manager()->saveForm('registration', self::REGISTRATION_FORM."\nlayout: '<h2>{t:sign_in}</h2>'");
