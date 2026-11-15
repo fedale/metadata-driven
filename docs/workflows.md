@@ -175,5 +175,5 @@ rolled back. The steps run are counted per workspace and day.
 
 Manual workflows (a button on a record or a selection), search and iterator steps, forms asking
 for input (phase 2); the system admin's workflows on platform events (phase 3); the background,
-HTTP requests, waits (phase 4); states (phase 5); a visual editor with a variable picker and a
-visual editor, steps as a list with their branches (phase 1b, part 2). See [the plan](internal/workflow-plan.md).
+HTTP requests, waits (phase 4); states (phase 5); a visual editor, the steps as a list with their
+branches (phase 1b, part 2). See [the plan](internal/workflow-plan.md).
