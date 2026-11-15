@@ -14,8 +14,9 @@ database, the commands, the admin UI, the guides and the package format in line 
    stay**, as in Twenty and Salesforce. The renames of 2026-11-14 to entity, form layout and grid
    layout are dropped.
 3. **2026-11-15**, the open questions: old commands and URLs are removed at once, with no
-   aliases; the repositories are renamed (phase 6); `no_tenant_rbac` keeps its name; **tenant
-   becomes workspace**, as in Twenty (phase 3); the order of the phases is the one below.
+   aliases; the repositories are renamed (phase 6); **tenant becomes workspace**, as in Twenty
+   (phase 3), and `no_tenant_rbac` becomes `no_workspace_rbac` with it; the order of the phases
+   is the one below.
 
 | Old | New |
 |---|---|
@@ -64,7 +65,6 @@ About 46 files. **After `rbac_tenancy` is merged**: that branch touches the same
 - `core.app_user.is_operator` → `is_system_admin` (migration).
 - Command `tenant:operator [grant|revoke]` → `system:admin [grant|revoke]`.
 - The console stays on `console.<base host>` and is called "the system console".
-- The RBAC schema `no_tenant_rbac` keeps its name.
 - Guides: multi-tenancy.md, access.md, console.md; the rbac-bundle's docs if they say
   "landlord".
 
@@ -80,6 +80,8 @@ After phase 2: both touch `Shared/Tenant`.
   `core.workspace_membership`, `core.workspace_invitation`; the columns `tenant_id` →
   `workspace_id` in every `core` table, with their indexes, constraints and the function
   `core.set_tenant_id` → `core.set_workspace_id`; the session variable it reads.
+- The RBAC schema of the sessions with no workspace, `no_tenant_rbac` → `no_workspace_rbac`,
+  and the `search_path` that names it.
 - Commands `tenant:create|delete|list|suspend|resume|run|files:move|member:*` →
   `workspace:*`; the option `--tenant` → `--workspace`.
 - The console's pages `/console/tenants/...` → `/console/workspaces/...`; the hosts do not
