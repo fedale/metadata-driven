@@ -21,6 +21,10 @@ enum StepType: string
     case Wait = 'wait';
     case HttpRequest = 'http_request';
     case Transition = 'transition';
+    /** Runs another workflow, on a called trigger, inside this run: its output, what it returns. */
+    case RunWorkflow = 'run_workflow';
+    /** A called workflow's end: the values its caller's run_workflow step outputs. */
+    case Return = 'return';
 
     /**
      * Whether the step is the platform's: only a system workflow takes it, and takes no other
@@ -79,6 +83,8 @@ enum StepType: string
             self::AssignRole => ['email' => true, 'role' => true],
             self::Wait => ['for' => false, 'until' => false],
             self::Transition => ['object' => true, 'id' => true, 'field' => true, 'name' => true, ...$writing],
+            self::RunWorkflow => ['workflow' => true, 'input' => false],
+            self::Return => ['values' => false],
             self::HttpRequest => ['url' => true, 'method' => false, 'headers' => false, 'body' => false, 'timeout' => false, 'retries' => false, 'fail_on_error' => false],
         };
     }

@@ -28,6 +28,7 @@ use App\Module\Record\Contract\RecordManagerInterface;
 use App\Module\Record\Contract\RecordTransitionsInterface;
 use App\Module\Workflow\Application\Definition\Definition;
 use App\Module\Workflow\Application\Definition\DefinitionParser;
+use App\Module\Workflow\Application\Definition\FormInput;
 use App\Module\Workflow\Application\Definition\Step;
 use App\Module\Workflow\Application\Definition\StepType;
 use App\Module\Workflow\Application\Definition\Timing;
@@ -685,7 +686,7 @@ final class WorkflowEngine implements ResetInterface
             if (!$this->step($step, $chain, $run, $writing)) {
                 return false;
             }
-            if (RunLog::COMPLETED !== $run->status) {
+            if (RunLog::COMPLETED !== $run->status || null !== $run->returned) {
                 return false;
             }
         }
@@ -726,7 +727,10 @@ final class WorkflowEngine implements ResetInterface
                 StepType::SearchRecords => $this->search($step, $chain, $run),
                 StepType::InstallPackage, StepType::AssignRole => $this->platform($step, $chain),
                 StepType::Wait => $this->wait($step, $chain, $run),
-                StepType::HttpRequest => $this->request($step, $chain),
+                // A called workflow's, in a write: as in a workflow run before it.
+                StepType::HttpRequest => null === $writing ? $this->request($step, $chain) : throw new StepFailed('No call to the outside in a write: no http_request in a workflow called before the write.'),
+                StepType::RunWorkflow => $this->call($step, $chain, $run, $writing),
+                StepType::Return => $this->giveBack($step, $chain, $run),
                 StepType::Transition => $this->takeTransition($step, $chain, $run),
                 default => $this->write($step, $chain, $run),
             };
@@ -765,7 +769,7 @@ final class WorkflowEngine implements ResetInterface
         foreach ($items as $index => $item) {
             $chain->set($step->key, ['item' => $item, 'index' => $index]);
             $this->steps($step->steps, $chain, $run, $writing);
-            if (RunLog::COMPLETED !== $run->status) {
+            if (RunLog::COMPLETED !== $run->status || null !== $run->returned) {
                 return false;
             }
             // A filter that stopped skips this item only.
@@ -850,6 +854,100 @@ final class WorkflowEngine implements ResetInterface
         $run->wait($until, (false === $index ? \count($run->workflow->definition->steps) : $index) + 1);
 
         return [$input, $output, false];
+    }
+
+    /**
+     * Runs a workflow on called inside this run, in its transaction: its steps as whoever
+     * triggered this run (or as their roles), one level deeper; its own run logged. What it
+     * returns is the step's output. Its refuse refuses the write this run guards, if any; its
+     * failure fails the step. Whoever activated this workflow must hold the permission to run it.
+     *
+     * @return array{array<string, mixed>, array<string, mixed>|null, bool}
+     *
+     * @throws StepFailed
+     */
+    private function call(Step $step, DataChain $chain, RunLog $run, ?RecordWriting $writing): array
+    {
+        $name = (string) $step->string('workflow');
+        $called = $this->workflows->byName($name);
+        if (null === $called || !$called->definition->trigger->isCalled()) {
+            throw new StepFailed(\sprintf('There is no active workflow "%s" on called.', $name));
+        }
+        $activator = $run->workflow->activatedBy;
+        if (null === $activator || !$this->access->userCanGrant($activator, Permissions::workflowRun($called->workflowId))) {
+            throw new StepFailed(\sprintf('%s, who activated it, may not run "%s".', $activator ?? 'No one', $name));
+        }
+        $given = $chain->values($step->input());
+        $inputs = $called->definition->trigger->form;
+        if ([] !== $unknown = array_diff(array_keys($given), array_map(static fn (FormInput $input): string => $input->name, $inputs))) {
+            throw new StepFailed(\sprintf('"%s" takes no input %s.', $name, implode(', ', $unknown)));
+        }
+        $input = [];
+        foreach ($inputs as $formInput) {
+            try {
+                $input[$formInput->name] = $formInput->answer($given[$formInput->name] ?? null);
+            } catch (\InvalidArgumentException $e) {
+                throw new StepFailed(\sprintf('The input "%s" of "%s": %s', $formInput->name, $name, $e->getMessage()), 0, $e);
+            }
+        }
+        $sub = new RunLog($called, '', null, TriggerEvent::Called->value, TriggerEvent::Called->value, $run->triggeredBy, $run->depth + 1, new \DateTimeImmutable());
+        if (null !== $refusal = $this->tooDeep($sub)) {
+            throw new StepFailed($refusal);
+        }
+        if (!$this->dryRun) {
+            // A run of its own: it counts for the limit.
+            ++$this->pending;
+            if (null !== $refusal = $this->tooMany()) {
+                --$this->pending;
+                throw new StepFailed($refusal);
+            }
+        }
+        $now = new \DateTimeImmutable();
+        $subChain = new DataChain([
+            '$trigger' => ['input' => $input],
+            '$user' => $chain->get('$user'),
+            '$workspace' => $chain->get('$workspace'),
+            '$now' => $now->format(\DateTimeInterface::ATOM),
+            '$today' => $now->format('Y-m-d'),
+            '$last' => null,
+        ]);
+        try {
+            $this->steps($called->definition->steps, $subChain, $sub, $writing);
+            $sub->end($sub->status, $sub->error);
+        } catch (StepFailed $e) {
+            $sub->end(RunLog::FAILED, $e->getMessage());
+        } finally {
+            $sub->chain = $subChain->toArray();
+            if (!$this->dryRun) {
+                // Stored as its caller is: once the transaction they ran in ended.
+                $this->transactions->whenDone(fn () => $this->store($sub));
+            }
+        }
+        $logged = ['workflow' => $name, 'input' => $input, 'run' => $sub->id];
+        if (RunLog::REFUSED === $sub->status) {
+            // It guarded the write this run guards: refused, as by a refuse of this run's.
+            $run->end(RunLog::REFUSED, $sub->error);
+
+            return [$logged, null, false];
+        }
+        if (RunLog::COMPLETED !== $sub->status) {
+            throw new StepFailed(\sprintf('"%s" failed: %s', $name, $sub->error ?? 'no reason given.'));
+        }
+
+        return [$logged, $sub->returned ?? [], true];
+    }
+
+    /**
+     * A called workflow's end: the values its caller's step outputs.
+     *
+     * @return array{array<string, mixed>, array<string, mixed>, bool}
+     */
+    private function giveBack(Step $step, DataChain $chain, RunLog $run): array
+    {
+        $values = $chain->values($step->values());
+        $run->returned = $values;
+
+        return [$values, $values, false];
     }
 
     /**

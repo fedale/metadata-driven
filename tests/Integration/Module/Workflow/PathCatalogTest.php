@@ -44,6 +44,25 @@ final class PathCatalogTest extends KernelTestCase
         self::assertSame(['$trigger.object', '$trigger.action', '$trigger.record.id', '$trigger.record.name', '$trigger.record.owner', '$trigger.input.name'], $paths['trigger']);
     }
 
+    public function testACalledWorkflowOffersItsInputAndACallerWhatItReturns(): void
+    {
+        self::createRelatedObjects(self::getContainer());
+        $catalog = self::getContainer()->get(PathCatalog::class);
+        $paths = $catalog->paths((new DefinitionParser())->parse(<<<'YAML'
+            trigger: { on: called, input: [{ name: owner, type: text }] }
+            steps: [{ key: back, type: return, values: { name: x } }]
+            YAML));
+        self::assertSame(['$trigger.input.owner'], $paths['trigger']);
+        self::assertSame([], $paths['steps']);
+
+        // A caller of a workflow there is not: nothing it returns (SubWorkflowsTest for one that is).
+        $paths = $catalog->paths((new DefinitionParser())->parse(<<<'YAML'
+            trigger: { on: manual, object: pet, label: Go }
+            steps: [{ key: naming, type: run_workflow, workflow: Nobody }]
+            YAML));
+        self::assertSame([], $paths['steps']);
+    }
+
     public function testASearchAndAnIteratorOfferTheirRecords(): void
     {
         self::createRelatedObjects(self::getContainer());

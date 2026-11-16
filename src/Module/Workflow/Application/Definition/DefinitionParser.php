@@ -49,6 +49,9 @@ final class DefinitionParser
     /** The definition read is on a platform event: the system admin's steps only. */
     private bool $platform = false;
 
+    /** The definition read is called by other workflows: run inside their runs, it may return. */
+    private bool $called = false;
+
     /**
      * @throws InvalidWorkflowDefinition
      */
@@ -72,7 +75,8 @@ final class DefinitionParser
     {
         [$this->errors, $this->keys, $this->count] = [[], [], 0];
         // A run no write waits for: as a manual one's, its steps after the fact.
-        $this->manual = \is_array($data['trigger'] ?? null) && \in_array($data['trigger']['on'] ?? null, ['manual', 'schedule', 'webhook'], true);
+        $this->manual = \is_array($data['trigger'] ?? null) && \in_array($data['trigger']['on'] ?? null, ['manual', 'schedule', 'webhook', 'called'], true);
+        $this->called = \is_array($data['trigger'] ?? null) && 'called' === ($data['trigger']['on'] ?? null);
         $this->platform = \is_array($data['trigger'] ?? null) && \is_string($data['trigger']['on'] ?? null) && true === TriggerEvent::tryFrom($data['trigger']['on'])?->isPlatform();
 
         $this->unknownKeys($data, ['trigger', 'steps'], '');
@@ -108,6 +112,9 @@ final class DefinitionParser
         }
         if (TriggerEvent::Manual === $on) {
             return $this->manualTrigger($trigger);
+        }
+        if (TriggerEvent::Called === $on) {
+            return $this->calledTrigger($trigger);
         }
         if (TriggerEvent::Webhook === $on) {
             // A request to its address: nothing to name but the event.
@@ -187,7 +194,37 @@ final class DefinitionParser
         return null === $object || null === $label ? null : new Trigger(TriggerEvent::Manual, $object, Timing::After, [], $label, $form, $selection);
     }
 
-    private function formInput(mixed $input, string $path): ?FormInput
+    /**
+     * A called trigger: the inputs its callers give, as a manual trigger's form (a label is
+     * optional: no one is asked).
+     *
+     * @param array<mixed> $trigger
+     */
+    private function calledTrigger(array $trigger): Trigger
+    {
+        $this->unknownKeys($trigger, ['on', 'input'], 'trigger');
+        $inputs = [];
+        if (\array_key_exists('input', $trigger)) {
+            if (!\is_array($trigger['input']) || !array_is_list($trigger['input'])) {
+                $this->error('trigger.input', 'A list of inputs, each with name and type.');
+            } else {
+                $names = [];
+                foreach ($trigger['input'] as $i => $input) {
+                    $input = $this->formInput($input, 'trigger.input.'.$i, false);
+                    if (null !== $input && isset($names[$input->name])) {
+                        $this->error('trigger.input.'.$i.'.name', \sprintf('"%s" names another input already.', $input->name));
+                    } elseif (null !== $input) {
+                        $names[$input->name] = true;
+                        $inputs[] = $input;
+                    }
+                }
+            }
+        }
+
+        return new Trigger(TriggerEvent::Called, '', Timing::After, [], form: $inputs);
+    }
+
+    private function formInput(mixed $input, string $path, bool $labelled = true): ?FormInput
     {
         if (!\is_array($input)) {
             $this->error($path, 'An input is a map with name, label and type.');
@@ -197,6 +234,9 @@ final class DefinitionParser
         $this->unknownKeys($input, ['name', 'label', 'type', 'required', 'options'], $path);
         $name = $this->name($input['name'] ?? null, $path.'.name');
         $label = \is_string($input['label'] ?? null) && '' !== trim($input['label']) ? trim($input['label']) : null;
+        if (null === $label && !$labelled && !\array_key_exists('label', $input) && \is_string($name)) {
+            $label = $name;
+        }
         if (null === $label) {
             $this->error($path.'.label', 'Required: the text shown next to it.');
         }
@@ -289,9 +329,15 @@ final class DefinitionParser
             if (Timing::Before === $timing && !$this->manual) {
                 $this->error($path.'.type', 'A write waits for no one: no wait in a workflow run before the write.');
             }
+            if ($this->called) {
+                $this->error($path.'.type', 'A called workflow runs inside its caller\'s run, which waits for no one: no wait.');
+            }
             if (1 !== preg_match('/^steps\.\d+$/', $path)) {
                 $this->error($path.'.type', 'A wait is one of the first steps: not inside an if or an iterator, which it would have to resume halfway through.');
             }
+        }
+        if (StepType::Return === $type && !$this->called) {
+            $this->error($path.'.type', 'return gives a called workflow\'s values to its caller: only in a workflow on called.');
         }
         if ((Timing::After === $timing || $this->manual) && StepType::SetValues === $type) {
             $this->error($path.'.type', 'set_values changes the values being written: only in a workflow run before the write.');
@@ -331,6 +377,8 @@ final class DefinitionParser
                 'limit' => $options[$option] = \is_int($value) && $value > 0 ? $value : $this->error($at, 'A number of records, one at least.'),
                 'items' => $options[$option] = \is_string($value) && 1 === preg_match('/^\{\{\s*'.self::PATH.'\s*\}\}$/', $value) ? $value : $this->error($at, 'One {{ path }} to a list, e.g. {{ open.records }}.'),
                 'steps' => $steps = $this->steps($value, $at, $timing),
+                'workflow' => $options[$option] = \is_string($value) && 1 === preg_match('/^\S(.{0,98}\S)?$/u', $value) && !str_contains($value, '{{') ? $value : $this->error($at, 'The name of a workflow on called, as written: no {{ … }}.'),
+                'input' => $options[$option] = $this->inputs($value, $at),
                 default => null,
             };
         }
@@ -526,6 +574,31 @@ final class DefinitionParser
             }
             $this->templates($value, $path.'.'.$field);
             $parsed[$field] = $value;
+        }
+
+        return $parsed;
+    }
+
+    /**
+     * The input a run_workflow step gives: names of the called workflow's inputs to values.
+     *
+     * @return array<string, mixed>
+     */
+    private function inputs(mixed $inputs, string $path): array
+    {
+        if (!\is_array($inputs) || (array_is_list($inputs) && [] !== $inputs)) {
+            $this->error($path, 'A map of the called workflow\'s inputs to values.');
+
+            return [];
+        }
+        $parsed = [];
+        foreach ($inputs as $name => $value) {
+            $name = (string) $name;
+            if (null === $this->name($name, $path.'.'.$name)) {
+                continue;
+            }
+            $this->templates($value, $path.'.'.$name);
+            $parsed[$name] = $value;
         }
 
         return $parsed;

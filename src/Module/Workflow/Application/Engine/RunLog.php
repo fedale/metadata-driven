@@ -35,6 +35,9 @@ final class RunLog
 
     public ?int $resumeStep = null;
 
+    /** @var array<string, mixed>|null a called workflow's: the values its return step gave, which end the run */
+    public ?array $returned = null;
+
     /** The steps logged before this part of the run (a resumed run's), already stored. */
     public int $stepOffset = 0;
 

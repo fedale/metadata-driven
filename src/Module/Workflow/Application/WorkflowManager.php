@@ -99,10 +99,10 @@ final class WorkflowManager
             $active?->archive();
             $draft->activate($definition->toArray(), $activator, new \DateTimeImmutable());
             $this->workflows->save(...array_filter([$active, $draft]));
-            // Who may run a manual workflow: given on the roles page. A workflow no longer
-            // manual takes it from every role.
+            // Who may run a manual workflow, or call a called one from theirs: given on the roles
+            // page. A workflow no longer either takes it from every role.
             $permission = Permissions::workflowRun($workflow->getId()->toRfc4122());
-            if ($definition->trigger->isManual()) {
+            if ($definition->trigger->isManual() || $definition->trigger->isCalled()) {
                 $this->permissions->ensurePermission($permission, $workflow->getName());
             } else {
                 $this->permissions->removePermission($permission);

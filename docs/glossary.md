@@ -48,7 +48,7 @@ code, the commands, the admin UI and the documentation.
 | Term | Meaning |
 |---|---|
 | **Workflow** | A series of steps run when something happens to a record of an object (see [Workflows](workflows.md)) |
-| **Trigger** | What starts a workflow: a record created, updated or deleted, **before** the write (it may change or refuse it) or **after** it; or someone, from a record's page or a command (a **manual** workflow, its **form** asked first); or the platform, for the system admin's workflows (a workspace created, a member added) |
+| **Trigger** | What starts a workflow: a record created, updated or deleted, **before** the write (it may change or refuse it) or **after** it; or someone, from a record's page or a command (a **manual** workflow, its **form** asked first); or another workflow, by its `run_workflow` step (a **called** workflow, a sub-workflow, which may `return` values); a time come, a request from outside; or the platform, for the system admin's workflows (a workspace created, a member added) |
 | **Step** | One thing a workflow does: a condition (`if`, `filter`), a write (`create_record`…), `set_values`, `refuse`, a search (`search_records`), an `iterator` over a list; its output is read by its **key** |
 | **Version** | One definition of a workflow: a **draft** being written, the **active** one that runs, the deactivated and archived ones before |
 | **Run** | One execution of a workflow's active version: its steps and the data it read and wrote; completed, failed or refused |
