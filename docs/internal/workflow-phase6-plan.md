@@ -47,4 +47,7 @@ Decisions (user, 2026-11-16): a key of their own, `WORKFLOW_SECRETS_KEY`; read i
 
 ### Done (2026-11-16, branch `workflow_secrets`)
 
-As planned. The tests' key is a parameter of `when@test` (`app.workflow.secrets_key`).
+As planned. The tests' key is a parameter of `when@test` (`app.workflow.secrets_key`). The
+security review asked, and got, every form of a secret masked (as it is, in an address, in JSON,
+in base64), the error a request wraps not chained, and a network's error of a request that read a
+secret told by its host only.

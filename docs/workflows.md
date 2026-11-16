@@ -313,7 +313,9 @@ steps:
   never shown again once written. `{{ $secrets.crm_token }}` reads one in a request's `url`,
   `headers` and `body` only (anywhere else the activation refuses it: it could be written down in
   a record or a message); each value is `[secret]` in the run's log, its answer and its errors
-  included, and never in the run's data. A secret missing fails the activation; one deleted
+  included, whether written as it is, encoded in an address, escaped in JSON or in base64; and
+  never in the run's data. A request that read a secret and got no answer says so with its host
+  only (the network's error tells the address as sent). A secret missing fails the activation; one deleted
   since, the step. The system admin's workflows have none.
 
 A step that writes outputs the record as written (`{{ reminder.id }}`); an `if`, the branch it
