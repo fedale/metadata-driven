@@ -5,7 +5,7 @@
 {% block title %}{{ heading }} · {{ 'admin.workflows'|trans }}{% endblock %}
 
 {% block body %}
-    <p><a href="{{ path('admin_workflow_index') }}">&larr; {{ 'admin.workflows'|trans }}</a></p>
+    <p><a href="{{ path(wf ~ 'index') }}">&larr; {{ 'admin.workflows'|trans }}</a></p>
     <h1>{{ heading }}</h1>
 
     {% if workflow %}
@@ -15,8 +15,8 @@
             {% else %}
                 <span class="gv-muted">{{ 'admin.workflow.not_running'|trans }}</span>
             {% endif %}
-            · <a href="{{ path('admin_workflow_versions', {id: workflow.id.toRfc4122}) }}">{{ 'admin.workflow.versions'|trans }}</a>
-            · <a href="{{ path('admin_workflow_runs', {id: workflow.id.toRfc4122}) }}">{{ 'admin.workflow.runs'|trans }}</a>
+            · <a href="{{ path(wf ~ 'versions', {id: workflow.id.toRfc4122}) }}">{{ 'admin.workflow.versions'|trans }}</a>
+            · <a href="{{ path(wf ~ 'runs', {id: workflow.id.toRfc4122}) }}">{{ 'admin.workflow.runs'|trans }}</a>
         </p>
         {% if active and draft %}
             <p class="gv-muted">{{ 'admin.workflow.draft_while_active'|trans({'%number%': draft.number}) }}</p>
@@ -25,15 +25,15 @@
 
     {% if workflow %}
         <nav class="md-tabs" aria-label="{{ 'admin.workflow.editors'|trans }}">
-            <a href="{{ path('admin_workflow_edit', {id: workflow.id.toRfc4122}) }}" {{ mode != 'yaml' ? 'aria-current="page"' }}>{{ 'admin.workflow.tab_visual'|trans }}</a>
-            <a href="{{ path('admin_workflow_edit', {id: workflow.id.toRfc4122, mode: 'yaml'}) }}" {{ mode == 'yaml' ? 'aria-current="page"' }}>{{ 'admin.workflow.tab_yaml'|trans }}</a>
+            <a href="{{ path(wf ~ 'edit', {id: workflow.id.toRfc4122}) }}" {{ mode != 'yaml' ? 'aria-current="page"' }}>{{ 'admin.workflow.tab_visual'|trans }}</a>
+            <a href="{{ path(wf ~ 'edit', {id: workflow.id.toRfc4122, mode: 'yaml'}) }}" {{ mode == 'yaml' ? 'aria-current="page"' }}>{{ 'admin.workflow.tab_yaml'|trans }}</a>
         </nav>
     {% endif %}
 
     <div class="md-admin__columns" data-controller="variable-picker">
         <section class="md-admin__section">
             {% if workflow and mode == 'visual' %}
-                {{ component('WorkflowEditor', {workflowId: workflow.id.toRfc4122}) }}
+                {{ component('WorkflowEditor', {workflowId: workflow.id.toRfc4122, console: wf_console}) }}
             {% else %}
             {% if workflow and mode == 'unreadable' %}<p class="md-problems">{{ 'admin.workflow.yaml_unreadable'|trans }}</p>{% endif %}
             {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
@@ -51,10 +51,12 @@
                 {% if workflow %}
                     {{ form_widget(form.save) }}
                     {{ form_widget(form.activate) }}
-                    <div class="md-workflow-test">
-                        {{ form_row(form.test_record) }}
-                        {{ form_widget(form.test) }}
-                    </div>
+                    {% if form.test is defined %}
+                        <div class="md-workflow-test">
+                            {{ form_row(form.test_record) }}
+                            {{ form_widget(form.test) }}
+                        </div>
+                    {% endif %}
                 {% else %}
                     <button type="submit" class="gv-btn gv-btn-primary">{{ 'admin.workflow.create'|trans }}</button>
                 {% endif %}

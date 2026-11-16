@@ -6,11 +6,14 @@ namespace App\Module\Workflow\Infrastructure\Dbal;
 
 use App\Module\Workflow\Application\Definition\DefinitionParser;
 use App\Module\Workflow\Application\Definition\Timing;
+use App\Module\Workflow\Application\Definition\TriggerEvent;
 use App\Module\Workflow\Application\Engine\ActiveWorkflow;
 use App\Module\Workflow\Application\Engine\ActiveWorkflows;
 use App\Shared\Database\WorkspaceScope;
+use App\Shared\Workspace\WorkspaceSwitched;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Service\ResetInterface;
 
@@ -46,6 +49,12 @@ final class DbalActiveWorkflows implements ActiveWorkflows, ResetInterface
         return $this->read[$object.'|manual'] ??= $this->select("v.definition -> 'trigger' ->> 'object' = ? AND v.definition -> 'trigger' ->> 'on' = 'manual'", [$object]);
     }
 
+    public function onPlatform(TriggerEvent $on): array
+    {
+        // Not kept: read once per event, after the response, in the system session.
+        return $this->select("v.definition -> 'trigger' ->> 'on' = ?", [$on->value]);
+    }
+
     public function byId(string $workflowId): ?ActiveWorkflow
     {
         if (!Uuid::isValid($workflowId)) {
@@ -55,6 +64,10 @@ final class DbalActiveWorkflows implements ActiveWorkflows, ResetInterface
         return $this->select('w.id = ?', [$workflowId])[0] ?? null;
     }
 
+    /**
+     * What was read was another workspace's, or the system's.
+     */
+    #[AsEventListener(event: WorkspaceSwitched::class)]
     public function forget(): void
     {
         $this->read = [];
@@ -75,9 +88,9 @@ final class DbalActiveWorkflows implements ActiveWorkflows, ResetInterface
         $rows = $this->connection->fetchAllAssociative(\sprintf(
             "SELECT w.id, w.name, v.id AS version_id, v.activated_by, v.definition
              FROM core.workflow_version v JOIN core.workflow w ON w.id = v.workflow_id
-             WHERE v.status = 'active' AND v.workspace_id = %s AND %s
+             WHERE v.status = 'active' AND %s AND %s
              ORDER BY w.position, w.name",
-            WorkspaceScope::CURRENT,
+            WorkspaceScope::currentOrSystem('v.workspace_id'),
             $where,
         ), $parameters);
 

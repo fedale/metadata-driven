@@ -54,6 +54,21 @@ final class WorkspaceScope
      */
     public const array SHARED = ['package_source'];
 
+    /**
+     * Tables of TABLES whose rows with no workspace are the system's: the system admin's workflows
+     * and their runs, seen by the system session only.
+     */
+    public const array SYSTEM_OWNED = ['workflow', 'workflow_version', 'workflow_run', 'workflow_run_step'];
+
+    /**
+     * The current workspace's rows, or with none (the system session) the system's: the condition
+     * on a SYSTEM_OWNED table, for the column given.
+     */
+    public static function currentOrSystem(string $column): string
+    {
+        return \sprintf('%s IS NOT DISTINCT FROM %s', $column, self::CURRENT);
+    }
+
     public static function isScoped(string $table): bool
     {
         return \in_array($table, self::TABLES, true);
@@ -62,5 +77,10 @@ final class WorkspaceScope
     public static function isShared(string $table): bool
     {
         return \in_array($table, self::SHARED, true);
+    }
+
+    public static function isSystemOwned(string $table): bool
+    {
+        return \in_array($table, self::SYSTEM_OWNED, true);
     }
 }

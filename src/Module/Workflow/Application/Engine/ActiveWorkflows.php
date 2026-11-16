@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Workflow\Application\Engine;
 
 use App\Module\Workflow\Application\Definition\Timing;
+use App\Module\Workflow\Application\Definition\TriggerEvent;
 
 /**
  * The active workflows of the current workspace, by the object and the moment of their trigger,
@@ -23,6 +24,14 @@ interface ActiveWorkflows
      * @return list<ActiveWorkflow>
      */
     public function manualOn(string $object): array;
+
+    /**
+     * The system's active workflows on a platform event, in the order of the list: read in the
+     * system session.
+     *
+     * @return list<ActiveWorkflow>
+     */
+    public function onPlatform(TriggerEvent $on): array;
 
     /**
      * A workflow's active version, whatever its trigger; null when it has none.

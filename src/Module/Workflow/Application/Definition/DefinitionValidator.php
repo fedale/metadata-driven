@@ -11,6 +11,7 @@ use App\Module\Access\Contract\WorkspaceRolesInterface;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
+use App\Shared\Workspace\CurrentWorkspace;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
@@ -40,6 +41,7 @@ final class DefinitionValidator
         private readonly WorkspaceRolesInterface $roles,
         #[Autowire('%app.workflow.max_records%')]
         private readonly int $maxRecords = 200,
+        private readonly ?CurrentWorkspace $workspace = null,
     ) {
     }
 
@@ -51,7 +53,18 @@ final class DefinitionValidator
         $this->errors = [];
         $this->itemObjects = [];
         $trigger = $definition->trigger;
-        $object = $this->object($trigger->object, 'trigger.object');
+        // The platform's events are the system admin's, in the console; the others a workspace's.
+        $inWorkspace = $this->workspace?->isSelected() ?? true;
+        if ($trigger->isPlatform() && $inWorkspace) {
+            $this->error('trigger.on', 'The platform\'s events are the system admin\'s: a workflow on them is defined in the system console.');
+        } elseif (!$trigger->isPlatform() && !$inWorkspace) {
+            $this->error('trigger.on', \sprintf('The system console\'s workflows run on the platform\'s events: %s.', implode(', ', array_column(array_filter(TriggerEvent::cases(), static fn (TriggerEvent $on): bool => $on->isPlatform()), 'value'))));
+        }
+        if ([] !== $this->errors) {
+            // In the wrong place: nothing it names is there to check.
+            throw new InvalidWorkflowDefinition($this->errors);
+        }
+        $object = $trigger->isPlatform() ? null : $this->object($trigger->object, 'trigger.object');
         if (null !== $object) {
             foreach ($trigger->fields as $i => $field) {
                 if (!isset($object->fields[$field])) {
@@ -129,7 +142,7 @@ final class DefinitionValidator
                 $this->itemObjects[$step->key] = $definition->trigger->object;
             }
         }
-        foreach (['id', 'message'] as $option) {
+        foreach (['id', 'message', 'email'] as $option) {
             if (null !== $step->string($option)) {
                 $this->paths($step->string($option), $path.'.'.$option, $definition, $trigger, $before);
             }
@@ -148,7 +161,7 @@ final class DefinitionValidator
                 TriggerEvent::Created => [RecordAction::Create],
                 TriggerEvent::Updated => [RecordAction::Update],
                 TriggerEvent::CreatedOrUpdated => [RecordAction::Create, RecordAction::Update],
-                TriggerEvent::Deleted, TriggerEvent::Manual => [],
+                TriggerEvent::Deleted, TriggerEvent::Manual, TriggerEvent::WorkspaceCreated, TriggerEvent::MemberAdded => [],
             };
             if (TriggerEvent::Deleted === $definition->trigger->on) {
                 $this->error($path.'.type', 'set_values changes the values being written: a delete writes none.');
@@ -240,12 +253,22 @@ final class DefinitionValidator
         }
         $manual = $definition->trigger->isManual();
         $holds = match (true) {
+            TriggerEvent::WorkspaceCreated === $definition->trigger->on => ['workspace'],
+            TriggerEvent::MemberAdded === $definition->trigger->on => ['workspace', 'member'],
             $definition->trigger->runsOnAll() => ['object', 'action', 'records', 'input'],
             $manual => ['object', 'action', 'record', 'input'],
             default => ['object', 'action', 'record', 'before', 'changed'],
         };
         if (!\in_array($segments[1], $holds, true)) {
             $this->error($at, \sprintf('$trigger holds %s: not "%s".', implode(', ', $holds), $segments[1]));
+
+            return;
+        }
+        $platform = ['workspace' => ['id', 'slug', 'name'], 'member' => ['email']];
+        if (isset($platform[$segments[1]])) {
+            if (isset($segments[2]) && !\in_array($segments[2], $platform[$segments[1]], true)) {
+                $this->error($at, \sprintf('$trigger.%s holds %s: not "%s".', $segments[1], implode(', ', $platform[$segments[1]]), $segments[2]));
+            }
 
             return;
         }

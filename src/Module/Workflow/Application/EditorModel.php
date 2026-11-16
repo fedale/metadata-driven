@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Workflow\Application;
 
 use App\Module\Workflow\Application\Definition\StepType;
+use App\Module\Workflow\Application\Definition\TriggerEvent;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
@@ -19,7 +20,7 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class EditorModel
 {
-    private const array STEP_OPTIONS = ['object' => '', 'id' => '', 'match' => '', 'message' => '', 'act_as' => '', 'emit_events' => false, 'items' => '', 'sort' => '', 'direction' => '', 'limit' => ''];
+    private const array STEP_OPTIONS = ['object' => '', 'id' => '', 'match' => '', 'message' => '', 'act_as' => '', 'emit_events' => false, 'items' => '', 'sort' => '', 'direction' => '', 'limit' => '', 'package' => '', 'repo' => '', 'email' => '', 'role' => ''];
 
     /**
      * @return array<string, mixed>|null null when the YAML cannot be read
@@ -65,12 +66,13 @@ final class EditorModel
     public static function toSource(array $model): string
     {
         $trigger = \is_array($model['trigger'] ?? null) ? $model['trigger'] : [];
-        $data = ['trigger' => 'manual' === ($trigger['on'] ?? null) ? self::manualTo($trigger) : array_filter([
+        $on = TriggerEvent::tryFrom(self::text($trigger['on'] ?? ''));
+        $data = ['trigger' => true === $on?->isPlatform() ? ['on' => $on->value] : ('manual' === ($trigger['on'] ?? null) ? self::manualTo($trigger) : array_filter([
             'on' => self::text($trigger['on'] ?? ''),
             'object' => self::text($trigger['object'] ?? ''),
             'when' => self::text($trigger['when'] ?? ''),
             'fields' => \in_array($trigger['on'] ?? null, ['updated', 'created_or_updated'], true) && \is_array($trigger['fields'] ?? null) ? array_values(array_filter(array_map(self::text(...), $trigger['fields']))) : [],
-        ], static fn (mixed $value): bool => '' !== $value && [] !== $value)];
+        ], static fn (mixed $value): bool => '' !== $value && [] !== $value))];
         $data['steps'] = self::stepsTo(\is_array($model['steps'] ?? null) ? $model['steps'] : []);
 
         return Yaml::dump($data, 12, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK);

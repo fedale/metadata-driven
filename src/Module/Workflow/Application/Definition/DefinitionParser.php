@@ -39,6 +39,9 @@ final class DefinitionParser
     /** The definition read has a manual trigger: no write for set_values to change. */
     private bool $manual = false;
 
+    /** The definition read is on a platform event: the system admin's steps only. */
+    private bool $platform = false;
+
     /**
      * @throws InvalidWorkflowDefinition
      */
@@ -62,6 +65,7 @@ final class DefinitionParser
     {
         [$this->errors, $this->keys, $this->count] = [[], [], 0];
         $this->manual = \is_array($data['trigger'] ?? null) && 'manual' === ($data['trigger']['on'] ?? null);
+        $this->platform = \is_array($data['trigger'] ?? null) && \is_string($data['trigger']['on'] ?? null) && true === TriggerEvent::tryFrom($data['trigger']['on'])?->isPlatform();
 
         $this->unknownKeys($data, ['trigger', 'steps'], '');
         $trigger = $this->trigger($data['trigger'] ?? null);
@@ -87,6 +91,12 @@ final class DefinitionParser
         $on = \is_string($trigger['on'] ?? null) ? TriggerEvent::tryFrom($trigger['on']) : null;
         if (null === $on) {
             $this->error('trigger.on', \sprintf('One of %s.', implode(', ', array_column(TriggerEvent::cases(), 'value'))));
+        }
+        if (true === $on?->isPlatform()) {
+            // The platform's: nothing to name but the event.
+            $this->unknownKeys($trigger, ['on'], 'trigger');
+
+            return new Trigger($on, '', Timing::After, []);
         }
         if (TriggerEvent::Manual === $on) {
             return $this->manualTrigger($trigger);
@@ -234,6 +244,11 @@ final class DefinitionParser
                 $this->error($path.'.'.$option, 'Required.');
             }
         }
+        if ($this->platform && !$type->forPlatform()) {
+            $this->error($path.'.type', 'A workflow on the platform\'s events takes if, filter, refuse, install_package and assign_role only.');
+        } elseif (!$this->platform && $type->isPlatform()) {
+            $this->error($path.'.type', \sprintf('%s is a step of the system admin\'s workflows, on the platform\'s events.', $type->value));
+        }
         if ((Timing::After === $timing || $this->manual) && StepType::SetValues === $type) {
             $this->error($path.'.type', 'set_values changes the values being written: only in a workflow run before the write.');
         }
@@ -254,7 +269,10 @@ final class DefinitionParser
                 'object', 'match' => $options[$option] = $this->name($value, $at),
                 'id', 'message' => $options[$option] = $this->text($value, $at),
                 'values' => $options[$option] = $this->values($value, $at),
-                'act_as' => $options[$option] = $this->role($value, $at),
+                'act_as', 'role' => $options[$option] = $this->role($value, $at),
+                'package' => $options[$option] = \is_string($value) && 1 === preg_match('/^[a-z0-9][a-z0-9_.-]*\/[a-z0-9][a-z0-9_.-]*(@[0-9A-Za-z.+-]+)?$/', $value) ? $value : $this->error($at, 'A package of the indexes: vendor/name, or vendor/name@1.0.0.'),
+                'repo' => $options[$option] = \is_string($value) && '' !== trim($value) ? trim($value) : $this->error($at, 'The name of an index (metadata:package:repo list).'),
+                'email' => $options[$option] = $this->text($value, $at),
                 'emit_events' => $options[$option] = $this->flag($value, $at),
                 'where' => $options[$option] = $this->where($value, $at),
                 'sort' => $options[$option] = 'id' === $value ? 'id' : $this->name($value, $at),

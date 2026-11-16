@@ -53,6 +53,21 @@ final class WorkspaceSwitcher implements ResetInterface, WorkspaceSessions
         }
     }
 
+    public function asSystem(callable $work): mixed
+    {
+        $previous = $this->current->workspace();
+        $system = $this->state->isSystem();
+        if ($system) {
+            return $work();
+        }
+        $this->system();
+        try {
+            return $work();
+        } finally {
+            null !== $previous ? $this->switchTo($previous) : $this->leave();
+        }
+    }
+
     /**
      * The SQL putting a session at its baseline.
      */

@@ -64,6 +64,16 @@ steps:
   another prefix; the visual editor offers the platform's triggers and steps there only. The test
   on a record is not offered for them (no record).
 
+## Done (2026-11-16, branch `workflow_system`)
+
+As planned. On the way: the activation checks where a workflow is defined (a platform trigger in a
+workspace, a record trigger in the console: refused before anything else is checked, the
+console's session having no objects); the picker offers the platform's paths without reading any
+metadata; the run's usage is counted per workspace only (none for the system's); the active
+workflows read for a request are forgotten on a workspace switch; no test on a record in the
+console; the console's top bar links its workflows. The rbac-bundle and the policies: the tests'
+database user bypasses row-level security, so the tests check through the application's queries.
+
 ## Not in this phase
 
 Other platform events (a workspace suspended, deleted), record steps in system workflows, a test
