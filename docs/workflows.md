@@ -60,7 +60,7 @@ steps:
 
 | Key | Value |
 |---|---|
-| `on` | `created`, `updated`, `created_or_updated`, `deleted`; `transitioned` (see [Transitions](#transitions)); `manual` (see [Manual workflows](#manual-workflows)); `schedule` (see [Schedules](#schedules)) |
+| `on` | `created`, `updated`, `created_or_updated`, `deleted`; `transitioned` (see [Transitions](#transitions)); `manual` (see [Manual workflows](#manual-workflows)); `schedule` (see [Schedules](#schedules)); `webhook` (see [Webhooks](#webhooks)) |
 | `object` | The object whose records start it |
 | `when` | `before`: in the write's transaction, before it; `after`: once the write is committed. Not for `manual` |
 | `fields` | `updated` and `created_or_updated` only: run on an update only when one of these fields changes |
@@ -188,6 +188,27 @@ steps:
   `scheduler_workflows` transport, consumed by **one** worker: see
   [Getting started](getting-started.md#run-the-app)). A minute missed while it was down runs no
   workflow afterwards, but the last one.
+
+### Webhooks
+
+```yaml
+# A lead from the site's form: the site posts it to the workflow's address.
+trigger: { on: webhook }
+steps:
+  - { key: lead, type: create_record, object: lead, values: { email: '{{ $trigger.body.email }}', source: '{{ $trigger.query.from }}' }, act_as: ROLE_SALES }
+```
+
+- **Its address** is made on the workflow's page (*Make its address*), on the workspace's host:
+  `https://acme.example.com/hooks/<workflow id>/<token>`. It is shown **once**, in the message
+  that follows: give it to the system that will call it. Its token is kept hashed; lost, make a
+  new address, and the old one answers no more.
+- A **POST** to it: `202`, and the run goes to the worker. `$trigger.body` is the body, JSON
+  decoded (else its text; at most 64 KB), `$trigger.query` the address's parameters. A workflow
+  not active, not on a webhook, or a wrong token: `404`, the same for all. Past the workspace's
+  runs a minute (`app.workflow.runs_per_minute`): `429`, nothing queued.
+- **No one is behind it**: every step that reads or writes records acts as a role (`act_as`).
+  What it receives is anyone's who has the address: check it (a `filter`, a `refuse`) before
+  writing it down.
 
 ### Manual workflows
 
@@ -418,6 +439,7 @@ these triggers or steps, and the console defines no workflow on a record's.
 | The definition | `DefinitionParser` (structure, every problem by its path), `DefinitionValidator` (objects, fields, paths, roles, on activation), stored compiled as JSON (`core.workflow_version.definition`) next to the YAML as written (`source`) |
 | Secrets | `core.workflow_secret` (DBAL, row-level security; migration `Version20261116140000`), `WorkflowSecrets` (`DbalWorkflowSecrets`), sealed by `SecretBox` (libsodium's secret box, `WORKFLOW_SECRETS_KEY`, `workflow:secrets:key`); read on a copy of the run's data for the request only, masked in its log |
 | HTTP | `WorkflowHttp`: Symfony's `HttpClient` through `NoPrivateNetworkHttpClient` (`app.workflow.allow_private_networks`, true in the tests only), the retries and the 1 MB cap |
+| Webhooks | `WebhookController` (`/hooks/<id>/<token>`, its own stateless firewall, `security.yaml`), `WebhookTokens` (`core.workflow_webhook`, the token's SHA-256; migration `Version20261116160000`), `RunWebhook` and `WorkflowEngine::runWebhook()` |
 | Schedules | Symfony Scheduler: `WorkflowSchedule` (`#[AsSchedule('workflows')]`) sends `CheckSchedules` every minute, `ScheduledWorkflows` queues a `RunScheduled` for each workflow due (`dragonmantank/cron-expression`), `WorkflowEngine::runScheduled()` |
 | The queue | Symfony Messenger on Redis (`config/packages/messenger.yaml`, the `async` transport, `failed` for what broke outside a run's steps: `messenger:failed:show`): `RunWorkflow` (an after-run, `WorkflowEngine::runQueued()`), `RunPlatformEvents` (the system admin's); each step checks its permission against whoever triggered it, from their assignments (`AccessCheckerInterface::userCanGrant()`), in a request as in the worker |
 | The engine | `WorkflowEngine` listens to both events, reads the active versions (`ActiveWorkflows`, once per request), runs the steps over a `DataChain`, checks each write's permission (`AccessCheckerInterface::roleGives()`, `userCanGrant()`), and stores each run once its transaction ended (`RunStore`, DBAL) |
@@ -430,5 +452,5 @@ these triggers or steps, and the console defines no workflow on a record's.
 ## Not yet
 
 Other platform events (a workspace suspended or deleted), record steps in the system admin's
-workflows; workflows in packages, incoming webhooks, sub-workflows,
+workflows; workflows in packages, sub-workflows,
 quotas per plan; email and notifications, once the application sends email. See [the plan](internal/workflow-plan.md).

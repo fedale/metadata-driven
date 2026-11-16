@@ -13,6 +13,7 @@ use App\Module\Workflow\Application\Engine\RunLog;
 use App\Module\Workflow\Application\PathCatalog;
 use App\Module\Workflow\Application\RunQueries;
 use App\Module\Workflow\Application\TestRefused;
+use App\Module\Workflow\Application\Webhook\WebhookTokens;
 use App\Module\Workflow\Application\WorkflowManager;
 use App\Module\Workflow\Application\WorkflowTester;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
@@ -62,14 +63,15 @@ abstract class AbstractWorkflowController extends AbstractController
 
     public function __construct(
         protected readonly WorkflowManager $manager,
-        private readonly WorkflowRepository $workflows,
+        protected readonly WorkflowRepository $workflows,
         private readonly RunQueries $runs,
         private readonly MetadataRegistryInterface $metadata,
         protected readonly AccessCheckerInterface $access,
-        private readonly FormFactoryInterface $forms,
-        private readonly TranslatorInterface $translator,
+        protected readonly FormFactoryInterface $forms,
+        protected readonly TranslatorInterface $translator,
         private readonly PathCatalog $paths,
         private readonly WorkflowTester $tester,
+        protected readonly WebhookTokens $webhooks,
     ) {
     }
 
@@ -153,6 +155,10 @@ abstract class AbstractWorkflowController extends AbstractController
             'active' => $active,
             'draft' => $this->manager->draft($workflow),
             'deactivate_form' => $this->actionForm('deactivate', $workflow)->createView(),
+            // A workflow on a webhook: its address, made here, shown once.
+            'webhook' => !$this->isConsole() && true === $definition?->trigger->isWebhook()
+                ? ['made' => $this->webhooks->describe($id), 'form' => $this->actionForm('webhook', $workflow)->createView()]
+                : null,
             'delete_form' => $this->actionForm('delete', $workflow)->createView(),
         ]);
     }

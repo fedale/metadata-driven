@@ -446,6 +446,15 @@ admin:
         type_upsert_record: Crea o modifica un record
         type_set_values: Imposta valori
         type_refuse: Rifiuta
+        webhook_editor: '$trigger.body e $trigger.query: il suo indirizzo si crea in questa pagina, sotto i pulsanti della scheda YAML.'
+        on_webhook: 'una richiesta dall''esterno (webhook)'
+        webhook: 'Il suo indirizzo'
+        webhook_none: 'Nessun indirizzo: creane uno e dallo al sistema che lo chiamerà.'
+        webhook_has: 'Un indirizzo creato il %when% da %who%: mostrato una volta, alla creazione. Perso? Creane uno nuovo.'
+        webhook_make: 'Crea il suo indirizzo'
+        webhook_remake: 'Crea un nuovo indirizzo'
+        webhook_confirm: 'L''indirizzo che ha non risponderà più. Crearne uno nuovo?'
+        webhook_made: 'Il suo indirizzo, mostrato solo ora (POST, corpo JSON): %url%'
         secrets: 'Segreti'
         secrets_intro: 'Token e chiavi per le richieste HTTP dei workflow, cifrati: {{ $secrets.nome }} nell''indirizzo, negli header o nel corpo di una richiesta, da nessun''altra parte. Un valore non viene più mostrato, né scritto nelle run (lì è [secret]).'
         secrets_empty: 'Nessun segreto.'
