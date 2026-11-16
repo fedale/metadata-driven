@@ -58,9 +58,15 @@ final class WorkflowHttp
                 if (is_numeric($length) && (int) $length > self::MAX_RESPONSE_BYTES) {
                     throw new StepFailed(\sprintf('The response of %s is over 1 MB.', $url));
                 }
-                $content = $response->getContent(false);
-                if (\strlen($content) > self::MAX_RESPONSE_BYTES) {
-                    throw new StepFailed(\sprintf('The response of %s is over 1 MB.', $url));
+                // Read a chunk at a time: a body with no length (or a false one) stops at the cap.
+                $content = '';
+                foreach ($this->http->stream($response) as $chunk) {
+                    $content .= $chunk->getContent();
+                    if (\strlen($content) > self::MAX_RESPONSE_BYTES) {
+                        $response->cancel();
+
+                        throw new StepFailed(\sprintf('The response of %s is over 1 MB.', $url));
+                    }
                 }
 
                 return [
