@@ -446,6 +446,20 @@ admin:
         type_upsert_record: Crea o modifica un record
         type_set_values: Imposta valori
         type_refuse: Rifiuta
+        secrets: 'Segreti'
+        secrets_intro: 'Token e chiavi per le richieste HTTP dei workflow, cifrati: {{ $secrets.nome }} nell''indirizzo, negli header o nel corpo di una richiesta, da nessun''altra parte. Un valore non viene più mostrato, né scritto nelle run (lì è [secret]).'
+        secrets_empty: 'Nessun segreto.'
+        secret_name: 'Nome'
+        secret_name_help: 'Lettere minuscole, cifre e trattini bassi: crm_token. Il nome di uno già presente ne sostituisce il valore.'
+        secret_value: 'Valore'
+        secret_value_help: 'Non viene più mostrato, una volta salvato.'
+        secret_use: 'In un workflow'
+        secret_updated: 'Modificato'
+        secret_new: 'Aggiungi o sostituisci un segreto'
+        secret_save: 'Salva il segreto'
+        secret_saved: 'Segreto %name% salvato.'
+        secret_deleted: 'Segreto %name% eliminato: i workflow che lo leggono falliscono finché non torna.'
+        secret_delete_confirm: 'Eliminare il segreto %name%?'
         on_schedule: 'un orario (cron)'
         cron: 'Quando (cron, UTC: minuto ora giorno mese giorno della settimana)'
         type_transition: 'Esegui una transizione'

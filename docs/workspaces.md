@@ -168,6 +168,9 @@ never share a stored file. `workspace:delete` deletes the workspace's directory,
   consumes `scheduler_workflows` (the schedules): two would start each scheduled workflow twice;
   more workers may consume `async` alone. What broke
   outside a run's steps is kept: `messenger:failed:show`, `messenger:failed:retry`.
+- **The workflows' secrets** are encrypted with `WORKFLOW_SECRETS_KEY` (`workflow:secrets:key`),
+  one key for the installation, kept as a real secret (the vault, the environment), never in
+  `.env`: losing it loses every workspace's secrets; changing it, too.
 - **Several web servers** must share the cache of roles and permissions (the `rbac.cache` pool,
   `config/packages/cache.yaml`), e.g. on Redis: a role changed on one server deletes its workspace's
   key there only, and a pool of each server's own would keep the old roles on the others.

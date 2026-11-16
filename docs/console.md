@@ -29,6 +29,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:list`](#metadatalist) | List the objects, or the fields of one object, and what is archived |
 | [`metadata:files:gc`](#metadatafilesgc) | Delete the stored files no record references any more |
 | [`workflow:run`](#workflowrun) | Run a manual workflow, on a record or none, with the answers of its form |
+| [`workflow:secrets:key`](#workflowsecretskey) | Print a new key for `WORKFLOW_SECRETS_KEY` |
 | [`workflow:runs:gc`](#workflowrunsgc) | Delete the runs of the workflows older than the days they are kept |
 | [`record:import`](#recordimport) | Import the rows of a CSV file into an object, all or nothing |
 | [`metadata:package:export`](#metadatapackageexport) | Write objects, their fields and views, forms and their translations as a package |
@@ -755,6 +756,17 @@ Run it on a schedule, for example every night from cron:
 
 ```
 30 3 * * * cd /srv/app && php bin/console metadata:files:gc --no-interaction
+```
+
+## `workflow:secrets:key`
+
+Print a new key for the workflows' [secrets](workflows.md#http-requests), 32 random bytes in
+base64, kept nowhere: set it as `WORKFLOW_SECRETS_KEY`, in `.env.local` or in the vault
+(`secrets:set WORKFLOW_SECRETS_KEY`). Without it, no secret is written nor read. Changing it leaves
+the secrets written with the old one unreadable: write them again.
+
+```
+workflow:secrets:key
 ```
 
 ## `workflow:run`

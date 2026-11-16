@@ -46,6 +46,7 @@ final class WorkspaceScope
         'workflow_run',
         'workflow_run_step',
         'workflow_usage',
+        'workflow_secret',
     ];
 
     /**
