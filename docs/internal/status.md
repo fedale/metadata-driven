@@ -362,7 +362,7 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   planned in [workflow-phase3-plan.md](workflow-phase3-plan.md) (2026-11-16): the system admin's
   workflows (`workspace_created`, `member_added`; `install_package`, `assign_role`; acting as the
   system, run after the response; `/console/workflows`; migration `Version20261116100000`, run
-  `doctrine:migrations:migrate`) done on branch `workflow_system`, waiting for review.
+  `doctrine:migrations:migrate`) done on branch `workflow_system`, merged into `main` on 2026-11-16 (the user reviews phases 1b to 3 at the end).
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`
