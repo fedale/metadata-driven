@@ -355,10 +355,10 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   `workflow_search_iterator`, merged into `main` on 2026-11-15. 2c (the trigger's `selection`,
   `each` or `all`; the grid's bulk bar and the bundle's modal; `RecordSelectionInterface`;
   `/w/<id>/run-selection`; `workflow:run --record` repeatable) done on branch
-  `workflow_selection`, waiting for review: phase 2 complete with it. rbac-bundle: `removeItem()`
-  takes the item's edges and assignments through the entity manager, merged into its `main`
-  (2026-11-15), not tagged yet; once 1.2.2 is out and updated here, the workaround in
-  `PermissionSynchronizer::removePermission()` goes.
+  `workflow_selection`, merged into `main` on 2026-11-16: phase 2 complete with it. A selection
+  needs reading its records, checked before it is read (its count alone would tell). rbac-bundle
+  1.2.2 (2026-11-16): `removeItem()` takes the item's edges and assignments through the entity
+  manager; `PermissionSynchronizer::removePermission()` no longer works around it.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

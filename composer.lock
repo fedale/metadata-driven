@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a50574fd879633028e3897dcb9194a39",
+    "content-hash": "fc3ab8df22dc4565ed36da671ee7e9a4",
     "packages": [
         {
             "name": "composer/semver",
@@ -1338,16 +1338,16 @@
         },
         {
             "name": "fedale/rbac-bundle",
-            "version": "1.2.1",
+            "version": "1.2.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/fedale/rbac-bundle.git",
-                "reference": "82c75eba858f949859923994270c782f3dee54d8"
+                "reference": "c9ceb918fe1df6ae2fc8f70eba2d03f751248445"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/fedale/rbac-bundle/zipball/82c75eba858f949859923994270c782f3dee54d8",
-                "reference": "82c75eba858f949859923994270c782f3dee54d8",
+                "url": "https://api.github.com/repos/fedale/rbac-bundle/zipball/c9ceb918fe1df6ae2fc8f70eba2d03f751248445",
+                "reference": "c9ceb918fe1df6ae2fc8f70eba2d03f751248445",
                 "shasum": ""
             },
             "require": {
@@ -1405,9 +1405,9 @@
             ],
             "support": {
                 "issues": "https://github.com/fedale/rbac-bundle/issues",
-                "source": "https://github.com/fedale/rbac-bundle/tree/1.2.1"
+                "source": "https://github.com/fedale/rbac-bundle/tree/1.2.2"
             },
-            "time": "2026-11-14T09:59:06+00:00"
+            "time": "2026-11-15T18:33:40+00:00"
         },
         {
             "name": "fedale/setting-bundle",
