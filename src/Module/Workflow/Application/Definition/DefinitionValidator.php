@@ -142,7 +142,7 @@ final class DefinitionValidator
                 $this->itemObjects[$step->key] = $definition->trigger->object;
             }
         }
-        foreach (['id', 'message', 'email'] as $option) {
+        foreach (['id', 'message', 'email', 'until'] as $option) {
             if (null !== $step->string($option)) {
                 $this->paths($step->string($option), $path.'.'.$option, $definition, $trigger, $before);
             }

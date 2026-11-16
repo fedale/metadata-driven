@@ -162,6 +162,12 @@
                     {{ editor.steps(step.steps, path ~ '.steps', this) }}
                     {{ editor.add_step(path ~ '.steps', this) }}
                 </div>
+            {% elseif step.type == 'wait' %}
+                {# One of them: a duration, or a date (with {{ … }}). #}
+                <div class="md-workflow-row">
+                    <label>{{ 'admin.workflow.wait_for'|trans }} <input type="text" data-model="model.{{ path }}.for" value="{{ step.for }}" placeholder="30 minutes"></label>
+                    <label>{{ 'admin.workflow.wait_until'|trans }} <input type="text" data-model="model.{{ path }}.until" value="{{ step.until }}" placeholder="{{ '{{ $trigger.record.due_on }}' }}" class="md-code-input"></label>
+                </div>
             {% elseif step.type == 'install_package' %}
                 <div class="md-workflow-row">
                     <label>{{ 'admin.workflow.package'|trans }} <input type="text" data-model="model.{{ path }}.package" value="{{ step.package }}" placeholder="vendor/name@1.0.0" class="md-code-input"></label>

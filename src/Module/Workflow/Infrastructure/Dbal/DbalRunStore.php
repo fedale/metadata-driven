@@ -6,6 +6,7 @@ namespace App\Module\Workflow\Infrastructure\Dbal;
 
 use App\Module\Workflow\Application\Engine\RunLog;
 use App\Module\Workflow\Application\Engine\RunStore;
+use App\Module\Workflow\Application\Engine\WaitingRun;
 use App\Shared\Database\WorkspaceScope;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
@@ -29,27 +30,37 @@ final class DbalRunStore implements RunStore
     public function save(RunLog $run): void
     {
         $this->connection->transactional(function () use ($run): void {
-            $this->connection->insert('core.workflow_run', [
-                'id' => $run->id,
-                'workflow_id' => $run->workflow->workflowId,
-                'version_id' => $run->workflow->versionId,
+            $state = [
                 'status' => $run->status,
-                'object' => $run->object,
-                'record_id' => $run->recordId,
-                'action' => $run->action,
-                'timing' => $run->timing,
-                'triggered_by' => $run->triggeredBy,
-                'depth' => $run->depth,
                 'chain' => self::json($run->chain),
                 'error' => $run->error,
-                'started_at' => $run->startedAt->format(self::TIMESTAMP),
                 'finished_at' => ($run->finishedAt ?? new \DateTimeImmutable())->format(self::TIMESTAMP),
-            ]);
+                'resume_at' => $run->resumeAt?->format(self::TIMESTAMP),
+                'resume_step' => $run->resumeStep,
+            ];
+            if ($run->stepOffset > 0) {
+                // A resumed run: its row again, its new steps after the others.
+                $this->connection->update('core.workflow_run', $state, ['id' => $run->id]);
+            } else {
+                $this->connection->insert('core.workflow_run', [
+                    'id' => $run->id,
+                    'workflow_id' => $run->workflow->workflowId,
+                    'version_id' => $run->workflow->versionId,
+                    'object' => $run->object,
+                    'record_id' => $run->recordId,
+                    'action' => $run->action,
+                    'timing' => $run->timing,
+                    'triggered_by' => $run->triggeredBy,
+                    'depth' => $run->depth,
+                    'started_at' => $run->startedAt->format(self::TIMESTAMP),
+                    ...$state,
+                ]);
+            }
             foreach ($run->steps as $position => $step) {
                 $this->connection->insert('core.workflow_run_step', [
                     'id' => Uuid::v7()->toRfc4122(),
                     'run_id' => $run->id,
-                    'position' => $position,
+                    'position' => $run->stepOffset + $position,
                     'key' => $step['key'],
                     'type' => $step['type'],
                     'status' => $step['status'],
@@ -71,6 +82,34 @@ final class DbalRunStore implements RunStore
         });
     }
 
+    public function waiting(string $id): ?WaitingRun
+    {
+        $row = $this->connection->fetchAssociative(
+            \sprintf("SELECT r.*, (SELECT COUNT(*) FROM core.workflow_run_step s WHERE s.run_id = r.id) AS step_count FROM core.workflow_run r WHERE %s AND r.id = ? AND r.status = 'waiting'", WorkspaceScope::currentOrSystem('r.workspace_id')),
+            [$id],
+        );
+        if (false === $row) {
+            return null;
+        }
+        $chain = json_decode(\is_string($row['chain']) ? $row['chain'] : '{}', true, 512, \JSON_THROW_ON_ERROR);
+
+        return new WaitingRun(
+            self::text($row['id']),
+            self::text($row['workflow_id']),
+            self::text($row['version_id']),
+            self::text($row['object']),
+            \is_string($row['record_id']) ? $row['record_id'] : null,
+            self::text($row['action']),
+            self::text($row['timing']),
+            \is_string($row['triggered_by']) ? $row['triggered_by'] : null,
+            is_numeric($row['depth']) ? (int) $row['depth'] : 1,
+            \is_array($chain) ? array_combine(array_map(strval(...), array_keys($chain)), array_values($chain)) : [],
+            is_numeric($row['resume_step']) ? (int) $row['resume_step'] : 0,
+            is_numeric($row['step_count']) ? (int) $row['step_count'] : 0,
+            new \DateTimeImmutable(self::text($row['started_at'])),
+        );
+    }
+
     public function countSince(\DateTimeImmutable $since): int
     {
         $count = $this->connection->fetchOne(
@@ -84,9 +123,15 @@ final class DbalRunStore implements RunStore
     public function deleteBefore(\DateTimeImmutable $before): int
     {
         return (int) $this->connection->executeStatement(
-            \sprintf('DELETE FROM core.workflow_run WHERE %s AND started_at < ?', WorkspaceScope::currentOrSystem('workspace_id')),
+            // A run that waits is kept until it resumed.
+            \sprintf("DELETE FROM core.workflow_run WHERE %s AND started_at < ? AND status <> 'waiting'", WorkspaceScope::currentOrSystem('workspace_id')),
             [$before->format(self::TIMESTAMP)],
         );
+    }
+
+    private static function text(mixed $value): string
+    {
+        return \is_scalar($value) ? (string) $value : '';
     }
 
     private static function json(mixed $value): string

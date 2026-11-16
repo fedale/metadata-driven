@@ -366,8 +366,11 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   Phase 4 planned in [workflow-phase4-plan.md](workflow-phase4-plan.md) (2026-11-16): 4a, Symfony
   Messenger on Redis (`compose.yaml`'s `redis`, the PHP `redis` extension,
   `MESSENGER_TRANSPORT_DSN` in `.env.local`, the worker `messenger:consume async`), the after-runs
-  and the system admin's in the background, done on branch `workflow_background`, waiting for
-  review. Next: 4b (waits), 4c (HTTP requests).
+  and the system admin's in the background, done on branch `workflow_background`, merged into
+  `main` on 2026-11-16. 4b, the `wait` step (runs `waiting`, resumed by a delayed `ResumeRun`;
+  `cancelled` when their version is no longer active; migration `Version20261116120000`, run
+  `doctrine:migrations:migrate`; `app.workflow.max_wait_days`) done on branch `workflow_wait`,
+  waiting for review. Next: 4c (HTTP requests).
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

@@ -244,7 +244,7 @@ abstract class AbstractWorkflowController extends AbstractController
         $this->denyUnlessAllowed();
         $workflow = $this->workflowOr404($id);
         $status = $request->query->getString('status');
-        $status = \in_array($status, ['completed', 'failed', 'refused'], true) ? $status : null;
+        $status = \in_array($status, ['completed', 'failed', 'refused', 'waiting', 'cancelled'], true) ? $status : null;
 
         return $this->render('admin/workflow_runs.html.twig', [
             'workflow' => $workflow,

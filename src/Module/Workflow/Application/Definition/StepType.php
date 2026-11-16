@@ -18,6 +18,7 @@ enum StepType: string
     case Iterator = 'iterator';
     case InstallPackage = 'install_package';
     case AssignRole = 'assign_role';
+    case Wait = 'wait';
 
     /**
      * Whether the step is the platform's: only a system workflow takes it, and takes no other
@@ -74,6 +75,7 @@ enum StepType: string
             self::Iterator => ['items' => true, 'steps' => true],
             self::InstallPackage => ['package' => true, 'repo' => false],
             self::AssignRole => ['email' => true, 'role' => true],
+            self::Wait => ['for' => false, 'until' => false],
         };
     }
 }

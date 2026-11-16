@@ -72,6 +72,7 @@ final class PathCatalog
                 StepType::Refuse => [],
                 StepType::SetValues => array_map(static fn (string $field): string => $key.'.'.$field, array_keys($step->values())),
                 StepType::DeleteRecord => [$key.'.id'],
+                StepType::Wait => [$key.'.until'],
                 StepType::SearchRecords => [
                     $key.'.records', $key.'.count', $key.'.total', $key.'.first.id',
                     ...array_map(static fn (string $field): string => $key.'.first.'.$field, $this->fields((string) $step->string('object'))),

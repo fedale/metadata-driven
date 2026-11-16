@@ -197,6 +197,11 @@ final class ManualRunController extends AbstractController
 
             return;
         }
+        if (RunLog::WAITING === $run->status) {
+            $this->addFlash('success', $this->translator->trans('workflow.run.waiting', ['%label%' => $label, '%until%' => $run->resumeAt?->format('Y-m-d H:i')]));
+
+            return;
+        }
         $this->addFlash('error', $this->translator->trans('workflow.run.failed', ['%label%' => $label, '%error%' => (string) $run->error]));
     }
 

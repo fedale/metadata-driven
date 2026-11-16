@@ -444,6 +444,9 @@ admin:
         type_upsert_record: Crea o modifica un record
         type_set_values: Imposta valori
         type_refuse: Rifiuta
+        type_wait: 'Attendi'
+        wait_for: 'Per (30 minutes, 2 days)'
+        wait_until: 'Oppure fino a'
         type_install_package: 'Installa un pacchetto'
         type_assign_role: 'Assegna un ruolo'
         on_workspace_created: 'un workspace creato'
@@ -537,6 +540,8 @@ admin:
         run_completed: Completata
         run_failed: Fallita
         run_refused: Rifiutata
+        run_waiting: In attesa
+        run_cancelled: Annullata
         runs_help: 'Conservate 30 giorni. Un''esecuzione rifiutata ha fermato la scrittura che controllava.'
         no_runs: Nessuna esecuzione.
         started: Iniziata
@@ -635,6 +640,7 @@ workflow:
         intro: 'Viene eseguito su questo record (%object%): prima le risposte.'
         submit: Esegui
         completed: '"%label%" eseguito.'
+        waiting: '"%label%" prosegue: attende fino al %until% (UTC), quanto fatto finora è salvato.'
         failed: '"%label%" non riuscito, nulla è stato salvato: %error%'
         done_on: '"%label%" eseguito su %count% record.'
         failed_on: '"%label%" non riuscito su %count% record, nulla di loro è stato salvato: %error%'

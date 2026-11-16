@@ -33,7 +33,7 @@ cs-fix: ## Fix coding standard
 	$(PHP) vendor/bin/php-cs-fixer fix
 
 phpstan: ## Static analysis
-	$(CONSOLE) cache:warmup --env=dev --quiet
+	$(CONSOLE) cache:warmup --env=test --quiet
 	$(PHP) vendor/bin/phpstan analyse --memory-limit=1G --no-progress
 
 deptrac: ## Check layer and module boundaries
