@@ -93,6 +93,7 @@ form:
     save: Save
     save_and_new: Save and new
     cancel: Cancel
+    changed_by_transitions: 'Changed by its transitions only: the buttons at the top.'
     add: '%label%'
     remove: Remove
     choose_option: Choose an option
@@ -121,6 +122,7 @@ flash:
     created: '%object% created.'
     updated: '%object% updated.'
     deleted: '%object% deleted.'
+    transitioned: 'Done: its new state is saved.'
     saved: '%form% saved.'
     cascade_denied: 'Deleting this record also deletes %objects%, which you may not delete.'
 import:

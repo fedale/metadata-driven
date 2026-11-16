@@ -56,6 +56,9 @@ final class FieldSettingsForm
             if (SettingKind::OptionList === $definition->kind) {
                 $settings->get($definition->key)->addModelTransformer(new OptionListTransformer());
             }
+            if (SettingKind::TransitionList === $definition->kind) {
+                $settings->get($definition->key)->addModelTransformer(new TransitionListTransformer());
+            }
         }
         $builder->add($settings);
     }
@@ -117,6 +120,7 @@ final class FieldSettingsForm
                 'placeholder' => 'admin.field.choose_object',
             ]],
             SettingKind::OptionList => [TextareaType::class, ['attr' => ['rows' => 6, 'placeholder' => "dog | Dog\ncat | Cat"]]],
+            SettingKind::TransitionList => [TextareaType::class, ['attr' => ['rows' => 6, 'placeholder' => "send | Send | draft | sent | ROLE_CLERK\npay | Mark as paid | sent | paid"]]],
         };
     }
 

@@ -102,6 +102,10 @@ final class RecordFormFactory
             $widget = $this->fieldTypes->get($field->type)->widget($field->settings);
             $dependsOn = $field->relation()?->dependsOn;
             [$type, $options] = $this->control($field, $widget, $current[$name] ?? null, $isNew, null === $dependsOn ? null : ($current[$dependsOn] ?? null));
+            // A Status: its transitions change it, the buttons of the record's page.
+            if (true === ($widget->options['locked'] ?? false)) {
+                $options = ['disabled' => true, 'required' => false, 'help' => 'form.changed_by_transitions'] + $options;
+            }
             // A checkbox required by the form must be checked (by its object, only set).
             if ($requiredHere && WidgetKind::Checkbox === $widget->kind) {
                 $options['required'] = true;

@@ -92,6 +92,7 @@ form:
     save: Salva
     save_and_new: Salva e crea nuovo
     cancel: Annulla
+    changed_by_transitions: 'Cambia solo con le sue transizioni: i pulsanti in alto.'
     add: '%label%'
     remove: Rimuovi
     choose_option: Scegli un'opzione
@@ -120,6 +121,7 @@ flash:
     created: '%object%: creato.'
     updated: '%object%: aggiornato.'
     deleted: '%object%: eliminato.'
+    transitioned: 'Fatto: il nuovo stato è salvato.'
     saved: '%form%: salvato.'
     cascade_denied: 'Eliminare questo elemento elimina anche %objects%, che non puoi eliminare.'
 import:

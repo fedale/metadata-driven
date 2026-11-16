@@ -38,4 +38,10 @@ interface RecordEventScopeInterface
     public function emitsEvents(): bool;
 
     public function origin(): ?RecordWriteOrigin;
+
+    /**
+     * Whether the write is a package's (withoutEvents(): its seeds, its upgrades), no one's: the
+     * rules of the users' writes (a status changed by its transitions only) are not its.
+     */
+    public function isPackageWrite(): bool;
 }

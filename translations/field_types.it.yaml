@@ -147,6 +147,19 @@ select:
             choices:
                 dropdown: Menu a tendina
                 radio: Pulsanti affiancati
+status:
+    label: Stato
+    description: Uno stato tra una lista fissa, cambiato solo dalle sue transizioni, ognuna permessa ad alcuni ruoli.
+    settings:
+        states:
+            label: Stati
+            help: Il valore salvato e l'etichetta mostrata.
+        initial:
+            label: Stato iniziale
+            help: 'Il valore dello stato in cui parte un nuovo record. Vuoto: il primo.'
+        transitions:
+            label: Transizioni
+            help: 'Una per riga: nome | etichetta | gli stati da cui parte, separati da virgole | lo stato a cui arriva | i ruoli che la possono eseguire, separati da virgole (nessuno: chi può modificare il record).'
 tel:
     label: Telefono
     description: 'Un numero di telefono: cifre, un "+" iniziale facoltativo, spazi, punti, trattini e parentesi.'

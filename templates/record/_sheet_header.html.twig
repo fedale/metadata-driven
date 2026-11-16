@@ -15,6 +15,10 @@
             <button type="button" class="gv-btn md-sheet__machine-names" aria-pressed="false"
                     data-machine-names-target="toggle" data-action="machine-names#toggle">{{ 'form.machine_names'|trans }}</button>
         {% endif %}
+        {# The transitions of its Status fields: each posts its own form, after the record's. #}
+        {% for transition in transitions|default([]) %}
+            <button type="submit" class="gv-btn md-transition" form="md-transition-{{ loop.index }}" formnovalidate>{{ transition.label }}</button>
+        {% endfor %}
         {% if actions|default([]) is not empty %}
             <details class="md-menu">
                 <summary class="gv-btn">{{ 'record.actions'|trans }}</summary>

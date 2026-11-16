@@ -19,10 +19,12 @@ use App\Module\Record\Contract\Dto\ReferencingGroup;
 use App\Module\Record\Contract\Exception\RecordDeleteRestricted;
 use App\Module\Record\Contract\Exception\RecordNotFound;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
+use App\Module\Record\Contract\Exception\TransitionRefused;
 use App\Module\Record\Contract\RecordActionsInterface;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordLookupInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
+use App\Module\Record\Contract\RecordTransitionsInterface;
 use App\Module\Record\UI\Form\RecordFormFactory;
 use App\Module\Record\UI\Grid\RecordGridFactory;
 use Fedale\GridviewBundle\Export\GridExporterRegistry;
@@ -60,6 +62,7 @@ final class RecordController extends AbstractController
         /** @var iterable<RecordActionsInterface> */
         #[AutowireIterator('app.record_actions')]
         private readonly iterable $actions,
+        private readonly RecordTransitionsInterface $transitions,
     ) {
     }
 
@@ -213,7 +216,35 @@ final class RecordController extends AbstractController
             'can_update' => $canUpdate,
             'can_delete' => $this->access->canRecords($definition->name, RecordAction::Delete),
             'actions' => array_merge(...array_map(static fn (RecordActionsInterface $actions): array => $actions->actionsFor($definition->name, $id), [...$this->actions])),
+            'transitions' => $this->transitions->available($definition->name, $record),
         ]);
+    }
+
+    /**
+     * Takes a transition of a Status field: a button of the record's page, its form only its
+     * token (the stateless "submit" one, as the page renders it).
+     */
+    #[Route('/{id}/transition/{field}/{name}', name: 'transition', requirements: ['id' => Requirement::UUID, 'field' => '[a-z][a-z0-9_]*', 'name' => '[a-z][a-z0-9_]*'], methods: ['POST'])]
+    public function transition(string $object, string $id, string $field, string $name, Request $request): Response
+    {
+        $definition = $this->objectFor($object, RecordAction::Update);
+        $form = $this->container->get('form.factory')->createNamedBuilder('transition', options: ['csrf_token_id' => 'submit'])->getForm()->handleRequest($request);
+        if (!$form->isSubmitted() || !$form->isValid()) {
+            throw $this->createAccessDeniedException('The form\'s token is not valid.');
+        }
+        try {
+            $this->transitions->apply($definition->name, $id, $field, $name);
+            $this->addFlash('success', $this->translator->trans('flash.transitioned'));
+        } catch (RecordNotFound $e) {
+            throw $this->createNotFoundException($e->getMessage(), $e);
+        } catch (TransitionRefused $e) {
+            $this->addFlash('error', $e->getMessage());
+        } catch (RecordValidationFailed $failure) {
+            // A workflow before the write refused it, or a field the new state needs.
+            $this->addFlash('error', implode(' ', array_merge(...array_values($failure->errors))));
+        }
+
+        return $this->redirectToRoute('record_edit', ['object' => $definition->name, 'id' => $id], Response::HTTP_SEE_OTHER);
     }
 
     #[Route('/{id}/delete', name: 'delete', requirements: ['id' => Requirement::UUID], methods: ['POST'])]

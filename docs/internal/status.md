@@ -372,7 +372,10 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   `doctrine:migrations:migrate`; `app.workflow.max_wait_days`) done on branch `workflow_wait`,
   merged into `main` on 2026-11-16. 4c, the `http_request` step (`WorkflowHttp`, never a private
   network; retries) done on branch `workflow_http`, waiting for review: phase 4 complete with it.
-  Next on the workflow plan: phase 5, states.
+  Phase 5 planned in [workflow-phase5-plan.md](workflow-phase5-plan.md) (2026-11-16): 5a, the
+  `status` field type (states, transitions with their roles; `StateGuard` in `RecordManager`,
+  `RecordTransitionsInterface`, the buttons of the record's page) done on branch
+  `workflow_states`, waiting for review. Next: 5b (transitions in workflows).
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`
