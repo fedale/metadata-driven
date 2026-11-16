@@ -14,6 +14,8 @@ final class RecordEventScope implements RecordEventScopeInterface, ResetInterfac
 
     private ?RecordWriteOrigin $origin = null;
 
+    private bool $package = false;
+
     public function asRun(string $runId, int $depth, bool $emitEvents, callable $operation): mixed
     {
         return $this->within($emitEvents && $this->emits, new RecordWriteOrigin($runId, $depth), $operation);
@@ -21,7 +23,18 @@ final class RecordEventScope implements RecordEventScopeInterface, ResetInterfac
 
     public function withoutEvents(callable $operation): mixed
     {
-        return $this->within(false, $this->origin, $operation);
+        $previous = $this->package;
+        $this->package = true;
+        try {
+            return $this->within(false, $this->origin, $operation);
+        } finally {
+            $this->package = $previous;
+        }
+    }
+
+    public function isPackageWrite(): bool
+    {
+        return $this->package;
     }
 
     public function emitsEvents(): bool
@@ -38,6 +51,7 @@ final class RecordEventScope implements RecordEventScopeInterface, ResetInterfac
     {
         $this->emits = true;
         $this->origin = null;
+        $this->package = false;
     }
 
     /**

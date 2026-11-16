@@ -14,6 +14,7 @@ missing keys take their default, unknown keys are refused.
 | `tel` | none | `varchar(30)` | phone input | text |
 | `url` | none | `varchar(2048)` | URL input | text (shown as a link) |
 | `select` | `options` (required), `default`, `display` (`dropdown`) | `varchar(100)` | select or buttons side by side | choice |
+| `status` | `states` (required), `initial` (the first), `transitions` | `varchar(100)` | read-only; its transitions as buttons on the record's page | choice |
 | `password` | `minLength` (8), `requireMixedCase`, `requireDigit`, `requireSymbol`, `confirm`, `strengthMeter`, `revealToggle` (all false) | `varchar(255)`, a hash | password input, asked twice with `confirm` | none: never shown |
 | `file` | `accept` (any type), `maxSize` (10 MB), `image` (false), `multiple` (false), `max` | `uuid` + foreign key to `core.file`; with `multiple`, a link table of its own | the current file, an upload input, "Remove the file"; with `multiple`, the list of files to reorder and remove, and an input adding several | yes / no: holds a file or none |
 | `relation` | `target` (required), `onDelete` (`set_null`), `inverseName`, `inverseLabel` | `uuid` + foreign key | autocomplete | choice of records |
@@ -215,6 +216,39 @@ A postal code is a text with a pattern, not a number: a number would drop the le
 - The value is stored; the label is shown in forms, grid cells and exports.
 - A value outside the options is refused: "The value you selected is not a valid choice.".
 - Filters and sort work on the stored value.
+
+## `status`
+
+A record's state, changed by its **transitions** only: an invoice is a draft, then sent, then
+paid; whoever holds one of a transition's roles takes it, with a button on the record's page.
+
+| Setting | Type | Rule |
+|---|---|---|
+| `states` | list of `{value, label}` | as a `select`'s options |
+| `initial` | string or null | one of the states: a new record starts in it (null: the first) |
+| `transitions` | list of `{name, label, from, to, roles}` | `name` lowercase letters, digits, underscores, unique; `from` states of the field, one at least; `to` a state; `roles` role names (`ROLE_…`), none for whoever may update the record |
+
+```json
+{"states": [{"value": "draft", "label": "Draft"}, {"value": "sent", "label": "Sent"}, {"value": "paid", "label": "Paid"}],
+ "transitions": [
+   {"name": "send", "label": "Send", "from": ["draft"], "to": "sent", "roles": ["ROLE_CLERK"]},
+   {"name": "pay", "label": "Mark as paid", "from": ["sent"], "to": "paid", "roles": []},
+   {"name": "reopen", "label": "Reopen", "from": ["sent", "paid"], "to": "draft", "roles": ["ROLE_BOSS"]}]}
+```
+
+On the field's page, the transitions are lines of a text box: `name | label | from, from | to |
+roles, roles` (`send | Send | draft | sent | ROLE_CLERK`).
+
+- **A new record starts in the initial state**: none given, it is set; another given, the write
+  is refused.
+- **Only its transitions change it**: read-only in the forms; an update that changes it some other
+  way (a form, an import, a workflow's `update_record`) is refused, "Changed by its transitions
+  only.". A package's seeds and upgrades, no one's writes, set it as they say.
+- **A transition** is taken from one of its `from` states, by whoever may update the record
+  (`record.<object>.update`) and holds one of its roles; the record's page shows a button for each
+  transition its user may take now. It updates the record as any write: its workflows run, its
+  rules apply.
+- In grids it is a choice: its label shown, filtered by state.
 
 ## `password`
 

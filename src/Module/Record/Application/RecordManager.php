@@ -11,6 +11,7 @@ use App\Module\Metadata\Contract\Dto\ManyToManySettings;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\OnDelete;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Record\Application\State\StateGuard;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordLabel;
 use App\Module\Record\Contract\Dto\RecordOutput;
@@ -56,6 +57,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     public const string LINKED_TWICE_MESSAGE = 'This record is already linked.';
 
     public function __construct(
+        private readonly StateGuard $states,
         // The labels in the user's language.
         #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
@@ -78,7 +80,8 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         // The listeners of RecordWriting first, in the transaction: the values they set are
         // validated as the others.
         $record = $this->transactions->run(function () use ($object, $input, $id): RecordOutput {
-            $values = $this->validValues($object, $this->beforeWrite($object, RecordWriteAction::Create, null, $input, null), null);
+            // The Status fields after the workflows before the write: they may not change one either.
+            $values = $this->validValues($object, $this->states->check($object, RecordWriteAction::Create, null, $this->beforeWrite($object, RecordWriteAction::Create, null, $input, null), null), null);
             $stored = $this->stored($object, $values);
             $now = new \DateTimeImmutable();
             $this->write($object, $values, null, fn () => $this->transactions->run(function () use ($object, $id, $stored, $now): void {
@@ -100,7 +103,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         $before = $this->withRows($object, $found);
 
         [$record, $written] = $this->transactions->run(function () use ($object, $id, $input, $before): array {
-            $values = $this->validValues($object, $this->beforeWrite($object, RecordWriteAction::Update, $id, $input, $before), $id);
+            $values = $this->validValues($object, $this->states->check($object, RecordWriteAction::Update, $id, $this->beforeWrite($object, RecordWriteAction::Update, $id, $input, $before), $before), $id);
             if ([] !== $values) {
                 $stored = $this->stored($object, $values);
                 $now = new \DateTimeImmutable();

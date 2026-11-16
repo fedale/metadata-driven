@@ -44,6 +44,14 @@ States (value | label):          Initial state: draft
   form (`/o/<object>/<id>/transition/<field>/<name>`, its token checked); the result a flash.
 - **Docs**: field-types.md (Status), forms (read-only), workflows (5b), status.
 
+### Done (2026-11-16, branch `workflow_states`)
+
+As planned. On the way: the guard runs after the workflows before the write (so a `set_values`
+changes no status either), and sets the initial state of a new record when none is given (an
+import without the column); a package's write is told by `RecordEventScopeInterface::
+isPackageWrite()` (its `withoutEvents()`), not by the events being off (a workflow's step may turn
+them off, and is held to the rule); the form shows the field disabled, with a help text.
+
 ## 5b: transitions in workflows
 
 - **Trigger**: `on: transitioned`, `object`, `field`, `transition` (optional: any), `when`
