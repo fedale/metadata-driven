@@ -47,6 +47,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\DelayStamp;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
@@ -901,21 +902,51 @@ final class WorkflowEngine implements ResetInterface
             $chain = clone $chain;
             $chain->set('$secrets', $secrets);
         }
+        $forms = self::secretForms($secrets);
         try {
             [$input, $output] = $this->send($step, $chain);
         } catch (StepFailed $e) {
-            throw new StepFailed(\is_string($message = self::maskedValue($e->getMessage(), $secrets)) ? $message : '', 0, $e);
+            if ([] === $forms) {
+                throw $e;
+            }
+            // A network's error tells the address as sent, encoded its own way: of a request that
+            // read a secret, only its host. Masked, and not chained: what it wraps holds it.
+            $message = $e->getPrevious() instanceof TransportExceptionInterface
+                ? \sprintf('The request to %s got no answer.', parse_url($chain->text($step->string('url')), \PHP_URL_HOST) ?: '?')
+                : $e->getMessage();
+            throw new StepFailed(\is_string($masked = self::maskedValue($message, $forms)) ? $masked : '');
         }
 
-        return [self::masked($input, $secrets), self::masked($output, $secrets), true];
+        return [self::masked($input, $forms), self::masked($output, $forms), true];
+    }
+
+    /**
+     * Each secret as it may be written down: as it is, in an address (encoded either way), in
+     * JSON (escaped), in base64 (a header's credentials); the longest first.
+     *
+     * @param array<string, string> $secrets
+     *
+     * @return list<string>
+     */
+    private static function secretForms(array $secrets): array
+    {
+        $forms = [];
+        foreach ($secrets as $secret) {
+            $json = json_encode($secret, \JSON_UNESCAPED_UNICODE);
+            $forms = [...$forms, $secret, rawurlencode($secret), urlencode($secret), \is_string($json) ? substr($json, 1, -1) : $secret, base64_encode($secret), rtrim(base64_encode($secret), '=')];
+        }
+        $forms = array_values(array_unique(array_filter($forms, static fn (string $form): bool => '' !== $form)));
+        usort($forms, static fn (string $a, string $b): int => \strlen($b) <=> \strlen($a));
+
+        return $forms;
     }
 
     /**
      * What may hold a secret, each secret's value replaced by "[secret]": the request and its
      * answer are logged with the run.
      *
-     * @param array<string, mixed>  $values
-     * @param array<string, string> $secrets
+     * @param array<string, mixed> $values
+     * @param list<string>         $secrets each secret's forms (secretForms())
      *
      * @return array<string, mixed>
      */
@@ -925,13 +956,13 @@ final class WorkflowEngine implements ResetInterface
     }
 
     /**
-     * @param array<string, string> $secrets
+     * @param list<string> $secrets each secret's forms (secretForms())
      */
     private static function maskedValue(mixed $value, array $secrets): mixed
     {
         return match (true) {
             [] === $secrets => $value,
-            \is_string($value) => str_replace(array_values($secrets), '[secret]', $value),
+            \is_string($value) => str_replace($secrets, '[secret]', $value),
             \is_array($value) => array_map(static fn (mixed $item): mixed => self::maskedValue($item, $secrets), $value),
             default => $value,
         };
