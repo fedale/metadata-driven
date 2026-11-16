@@ -17,10 +17,10 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
- * The system admin's workflows: the platform's events are kept as they come, and their
- * workflows run once the response is sent (runPending(), on kernel.terminate and
- * console.terminate), in the system session. Switching sessions clears the entity manager: after
- * the response, it disturbs nothing.
+ * The system admin's workflows: the platform's events are kept as they come, sent to the worker
+ * once the response is sent or the command done (takePending(), RunPlatformEvents), and their
+ * workflows run there (run()), in the system session. Switching sessions clears the entity
+ * manager: in the worker, or after the response, it disturbs nothing.
  */
 final class PlatformWorkflows implements ResetInterface
 {
@@ -50,17 +50,40 @@ final class PlatformWorkflows implements ResetInterface
     }
 
     /**
-     * Runs the workflows of the events kept, and forgets them. A workflow that breaks (not a step
-     * failing: the run says so) is logged, and the others run.
+     * The events kept, forgotten here.
+     *
+     * @return list<array{TriggerEvent, string, array<string, mixed>}>
+     */
+    public function takePending(): array
+    {
+        [$events, $this->pending] = [$this->pending, []];
+
+        return $events;
+    }
+
+    /**
+     * Runs the workflows of the events kept, at once: the tests' way.
      *
      * @return list<RunLog>
      */
     public function runPending(): array
     {
-        if ([] === $this->pending) {
+        return $this->run($this->takePending());
+    }
+
+    /**
+     * Runs the workflows of the events. A workflow that breaks (not a step failing: the run says
+     * so) is logged, and the others run.
+     *
+     * @param list<array{TriggerEvent, string, array<string, mixed>}> $events
+     *
+     * @return list<RunLog>
+     */
+    public function run(array $events): array
+    {
+        if ([] === $events) {
             return [];
         }
-        [$events, $this->pending] = [$this->pending, []];
 
         return $this->sessions->asSystem(function () use ($events): array {
             $runs = [];

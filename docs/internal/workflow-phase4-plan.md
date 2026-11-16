@@ -40,6 +40,14 @@ background, waits, HTTP requests.
 - **Ops**: `docs/workflows.md` and `workspaces.md#running-in-production`: the worker under a
   supervisor, restarted on deploy (`messenger:stop-workers`).
 
+### Done (2026-11-16, branch `workflow_background`)
+
+As planned. On the way: the tests' transport is `sync://`, so a message is handled as it is sent
+(a run going back to the queue comes back at once, ten times, then fails); a queued run for the
+current workspace runs without a switch (a switch clears the entity manager); the Flex recipe
+added `MESSENGER_TRANSPORT_DSN` to `.env`, the user's to set (`redis://localhost:6379/messages`);
+the system admin's runs go to the worker from kernel.terminate and console.terminate.
+
 ## 4b: waits
 
 - **`wait`**: `for` (`30 minutes`, `2 days`) or `until` (a date or a date-time, `{{ … }}`), at most

@@ -70,8 +70,11 @@ steps:
 
 **Before** a write, a workflow guards it: it may change the values (`set_values`, validated with
 the others) or refuse the write (`refuse`, its message shown to the user), and a step that fails
-refuses it too. **After** a write, the workflow reacts: its steps run in one transaction, all or
-nothing, and a failure fails the run, never the write.
+refuses it too. **After** a write, the workflow reacts, **in the background**: the write answers
+at once, and its runs wait in a queue for the worker (`messenger:consume async`, see
+[Getting started](getting-started.md#run-the-app)). Each runs in its workspace, as whoever
+triggered the event, its steps in one transaction, all or nothing; a failure fails the run, never
+the write. A version deactivated, or replaced, before its run starts runs no more.
 
 Every write raises its events: a record's form, the forms of several records (one event per
 record, once the whole form is saved), an import, a delete's cascade (one per record deleted). A
@@ -243,7 +246,7 @@ records it ran on, whatever object: give `admin.workflows` to whoever may see th
 | Parameter (`config/services.yaml`) | Default | Meaning |
 |---|---|---|
 | `app.workflow.max_depth` | `3` | The longest chain of runs started by one another's writes (`emit_events`) |
-| `app.workflow.runs_per_minute` | `100` | The runs a workspace may start a minute; beyond, a write a before-workflow guards is refused, the other runs fail |
+| `app.workflow.runs_per_minute` | `100` | The runs a workspace may start a minute; beyond, a write a before-workflow guards is refused, a manual run fails, and an after-run goes back to the queue a minute later (ten times, then it fails) |
 | `app.workflow.max_executed_steps` | `1000` | The steps one run may execute; beyond, the run fails (a definition holds 50 at most) |
 | `app.workflow.max_records` | `200` | The records one search reads, the items one iterator runs on |
 | `app.workflow.runs_keep_days` | `30` | How long the runs are kept |
@@ -291,7 +294,7 @@ steps:
 `if`, `filter` and `refuse` work as anywhere; no other step. They act **as the system**, as the
 console's commands do: no `act_as`, no permission checked; only system admins define them, and
 no workspace sees them or their runs (`$user` is null, `$workspace` the workspace concerned).
-They run **once the response is sent** (or the command done), one after another, each step
+They run **in the background**, once the response is sent (or the command done): one after another, each step
 entering the workspace for what it does there; a failed step fails the run, what the steps before
 it did stays. Their runs are listed on the console's pages. A workspace's workflow may not use
 these triggers or steps, and the console defines no workflow on a record's.
@@ -302,6 +305,7 @@ these triggers or steps, and the console defines no workflow on a record's.
 |---|---|
 | The events | `RecordManager` raises `RecordWriting` before a write, in its transaction, and `RecordWritten` once the outermost transaction committed (`TransactionRunner::whenDone()`); `RecordEventScopeInterface` silences them (a package's seeds) or stamps them with the run they come from (Record contract) |
 | The definition | `DefinitionParser` (structure, every problem by its path), `DefinitionValidator` (objects, fields, paths, roles, on activation), stored compiled as JSON (`core.workflow_version.definition`) next to the YAML as written (`source`) |
+| The queue | Symfony Messenger on Redis (`config/packages/messenger.yaml`, the `async` transport, `failed` for what broke outside a run's steps: `messenger:failed:show`): `RunWorkflow` (an after-run, `WorkflowEngine::runQueued()`), `RunPlatformEvents` (the system admin's); each step checks its permission against whoever triggered it, from their assignments (`AccessCheckerInterface::userCanGrant()`), in a request as in the worker |
 | The engine | `WorkflowEngine` listens to both events, reads the active versions (`ActiveWorkflows`, once per request), runs the steps over a `DataChain`, checks each write's permission (`AccessCheckerInterface::roleGives()`, `userCanGrant()`), and stores each run once its transaction ended (`RunStore`, DBAL) |
 | The tables | `core.workflow`, `core.workflow_version` (ORM); `core.workflow_run`, `core.workflow_run_step`, `core.workflow_usage` (DBAL); each with its `workspace_id` (none for the system admin's) and row-level security |
 | Search | `RecordFinderInterface::search()` (Record contract, `RecordFilter`, `RecordSearchResult`), its SQL in `DbalRecordStore`: identifiers from the metadata, values checked then bound and cast to the column's type |
@@ -313,4 +317,4 @@ these triggers or steps, and the console defines no workflow on a record's.
 
 Other platform events (a workspace suspended or deleted), record steps in the system admin's
 workflows; the background,
-HTTP requests, waits (phase 4); states (phase 5). See [the plan](internal/workflow-plan.md).
+HTTP requests and waits (the rest of phase 4); states (phase 5). See [the plan](internal/workflow-plan.md).
