@@ -118,6 +118,24 @@ final class HttpRequestTest extends KernelTestCase
         }
     }
 
+    public function testAnAnswerOverOneMegabyteStopsThere(): void
+    {
+        // No length announced: the body comes in chunks, and the reading stops past the cap.
+        $chunks = static function (): \Generator {
+            for ($i = 0; $i < 2048; ++$i) {
+                yield str_repeat('x', 1024);
+            }
+        };
+        $http = new WorkflowHttp(new MockHttpClient(new MockResponse($chunks())), allowPrivateNetworks: true, retryDelayMs: 0);
+
+        try {
+            $http->send('GET', 'https://api.example.test/huge', [], 0);
+            self::fail('Refused.');
+        } catch (StepFailed $e) {
+            self::assertSame('The response of https://api.example.test/huge is over 1 MB.', $e->getMessage());
+        }
+    }
+
     public function testNoRequestInAWrite(): void
     {
         try {

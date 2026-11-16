@@ -84,7 +84,8 @@ As planned. On the way: the request is `WorkflowHttp`'s (the guard tested on its
 Package module's); the tests answer through the fake server (`FakePackageServer::answer()`,
 `answerAny()`); in the visual editor the headers and the body are YAML on one line; the
 security review of 4b asked, and got, a resumed run's `$user` as it is now and the per-minute
-limit on resuming.
+limit on resuming. The review of 4c asked that the 1 MB cap stop the reading itself (a body with no
+length announced): the response is read a chunk at a time, cancelled past the cap.
 
 ## Not in this phase
 
