@@ -142,6 +142,11 @@ final class DefinitionValidator
                 $this->itemObjects[$step->key] = $definition->trigger->object;
             }
         }
+        if (StepType::HttpRequest === $step->type) {
+            foreach (['url', 'headers', 'body'] as $option) {
+                $this->paths($step->options[$option] ?? null, $path.'.'.$option, $definition, $trigger, $before);
+            }
+        }
         foreach (['id', 'message', 'email', 'until'] as $option) {
             if (null !== $step->string($option)) {
                 $this->paths($step->string($option), $path.'.'.$option, $definition, $trigger, $before);

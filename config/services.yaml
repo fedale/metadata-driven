@@ -29,6 +29,10 @@ parameters:
     app.workflow.max_records: 200
     # The longest a run waits (the wait step).
     app.workflow.max_wait_days: 30
+    # The first pause before an HTTP request is tried again, in milliseconds; doubled each time.
+    app.workflow.http_retry_delay_ms: 1000
+    # Never in production: an HTTP request of a workflow reaching the server's own network.
+    app.workflow.allow_private_networks: false
     app.workflow.runs_keep_days: 30
     # Workspaces (docs/architecture.md, "Workspaces"). A request for <slug>.<base host> is for that
     # workspace's; one for the base host itself, or for any other host, and a command without
@@ -95,6 +99,8 @@ when@test:
         # The fake package server's hosts resolve nowhere: the guard against private networks
         # would block them. PackageSourcesTest checks the guard itself.
         app.package.allow_private_networks: true
+        app.workflow.allow_private_networks: true
+        app.workflow.http_retry_delay_ms: 0
         app.import.drafts_dir: '%kernel.cache_dir%/imports'
         # Tests have no request or command to name a workspace: every connection starts in the
         # installation's first one.

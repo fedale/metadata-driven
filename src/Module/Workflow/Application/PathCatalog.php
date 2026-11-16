@@ -44,6 +44,7 @@ final class PathCatalog
                     StepType::Filter => [$step->key.'.passed'],
                     StepType::InstallPackage => [$step->key.'.installed'],
                     StepType::AssignRole => [$step->key.'.given'],
+                    StepType::HttpRequest => [$step->key.'.status', $step->key.'.body', $step->key.'.headers'],
                     default => [],
                 };
             }
@@ -73,6 +74,7 @@ final class PathCatalog
                 StepType::SetValues => array_map(static fn (string $field): string => $key.'.'.$field, array_keys($step->values())),
                 StepType::DeleteRecord => [$key.'.id'],
                 StepType::Wait => [$key.'.until'],
+                StepType::HttpRequest => [$key.'.status', $key.'.body', $key.'.headers'],
                 StepType::SearchRecords => [
                     $key.'.records', $key.'.count', $key.'.total', $key.'.first.id',
                     ...array_map(static fn (string $field): string => $key.'.first.'.$field, $this->fields((string) $step->string('object'))),

@@ -107,7 +107,7 @@ final class DefinitionParserTest extends TestCase
             'trigger.fields' => ['Only for a trigger on updated or created_or_updated: the fields whose change runs it.'],
         ]];
         yield 'steps' => ["trigger: { on: created, object: invoice, when: after }\nsteps:\n  - { key: a, type: fly }\n  - { key: a, type: refuse, message: no, extra: 1 }\n  - { key: Bad, type: create_record, object: invoice }\n  - { key: c, type: set_values, values: { x: 1 } }", [
-            'steps.0.type' => ['One of if, filter, create_record, update_record, delete_record, upsert_record, set_values, refuse, search_records, iterator, install_package, assign_role, wait.'],
+            'steps.0.type' => ['One of if, filter, create_record, update_record, delete_record, upsert_record, set_values, refuse, search_records, iterator, install_package, assign_role, wait, http_request.'],
             'steps.1.key' => ['"a" names another step already.'],
             'steps.1.extra' => ['Unknown: here, key, type, message.'],
             'steps.2.key' => ["Required: lowercase letters, digits and underscores, starting with a letter; it names the step's output."],

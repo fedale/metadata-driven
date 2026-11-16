@@ -447,6 +447,14 @@ admin:
         type_upsert_record: Create or update a record
         type_set_values: Set values
         type_refuse: Refuse
+        type_http_request: 'HTTP request'
+        http_method: 'Method'
+        http_url: 'Address'
+        http_headers: 'Headers (YAML)'
+        http_body: 'Body (YAML map, or a text)'
+        http_timeout: 'Timeout (s)'
+        http_retries: 'Retries'
+        http_fail_on_error: 'a status of 400 or more fails the step'
         type_wait: 'Wait'
         wait_for: 'For (30 minutes, 2 days)'
         wait_until: 'Or until'

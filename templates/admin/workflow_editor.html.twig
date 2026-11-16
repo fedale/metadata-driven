@@ -168,6 +168,25 @@
                     <label>{{ 'admin.workflow.wait_for'|trans }} <input type="text" data-model="model.{{ path }}.for" value="{{ step.for }}" placeholder="30 minutes"></label>
                     <label>{{ 'admin.workflow.wait_until'|trans }} <input type="text" data-model="model.{{ path }}.until" value="{{ step.until }}" placeholder="{{ '{{ $trigger.record.due_on }}' }}" class="md-code-input"></label>
                 </div>
+            {% elseif step.type == 'http_request' %}
+                <div class="md-workflow-row">
+                    <label>{{ 'admin.workflow.http_method'|trans }}
+                        <select data-model="model.{{ path }}.method">
+                            {% for method in ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] %}<option value="{{ method }}" {{ (step.method ?: 'GET') == method ? 'selected' }}>{{ method }}</option>{% endfor %}
+                        </select>
+                    </label>
+                    <label>{{ 'admin.workflow.http_url'|trans }} <input type="text" data-model="model.{{ path }}.url" value="{{ step.url }}" placeholder="https://api.example.com/{{ '{{ $trigger.record.id }}' }}" class="md-code-input"></label>
+                </div>
+                {# Maps written as YAML on one line, e.g. { Authorization: 'Bearer …' }. #}
+                <div class="md-workflow-row">
+                    <label>{{ 'admin.workflow.http_headers'|trans }} <input type="text" data-model="model.{{ path }}.headers" value="{{ step.headers }}" placeholder="{ Accept: application/json }" class="md-code-input"></label>
+                    <label>{{ 'admin.workflow.http_body'|trans }} <input type="text" data-model="model.{{ path }}.body" value="{{ step.body }}" placeholder="{ id: '{{ '{{ $trigger.record.id }}' }}' }" class="md-code-input"></label>
+                </div>
+                <div class="md-workflow-row">
+                    <label>{{ 'admin.workflow.http_timeout'|trans }} <input type="number" min="1" max="30" data-model="model.{{ path }}.timeout" value="{{ step.timeout }}"></label>
+                    <label>{{ 'admin.workflow.http_retries'|trans }} <input type="number" min="0" max="3" data-model="model.{{ path }}.retries" value="{{ step.retries }}"></label>
+                    <label><input type="checkbox" data-model="model.{{ path }}.fail_on_error" {{ step.fail_on_error ? 'checked' }}> {{ 'admin.workflow.http_fail_on_error'|trans }}</label>
+                </div>
             {% elseif step.type == 'install_package' %}
                 <div class="md-workflow-row">
                     <label>{{ 'admin.workflow.package'|trans }} <input type="text" data-model="model.{{ path }}.package" value="{{ step.package }}" placeholder="vendor/name@1.0.0" class="md-code-input"></label>

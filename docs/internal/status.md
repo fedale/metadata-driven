@@ -370,7 +370,9 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   `main` on 2026-11-16. 4b, the `wait` step (runs `waiting`, resumed by a delayed `ResumeRun`;
   `cancelled` when their version is no longer active; migration `Version20261116120000`, run
   `doctrine:migrations:migrate`; `app.workflow.max_wait_days`) done on branch `workflow_wait`,
-  waiting for review. Next: 4c (HTTP requests).
+  merged into `main` on 2026-11-16. 4c, the `http_request` step (`WorkflowHttp`, never a private
+  network; retries) done on branch `workflow_http`, waiting for review: phase 4 complete with it.
+  Next on the workflow plan: phase 5, states.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

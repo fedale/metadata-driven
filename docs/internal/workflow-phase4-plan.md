@@ -78,6 +78,14 @@ phpstan reads the test container now (`make phpstan` warms it), where that trans
 - **Safety**: `NoPrivateNetworkHttpClient`; `http`/`https` only; the request and the response are
   in the run's log (no secrets yet: a workspace's secrets come later).
 
+### Done (2026-11-16, branch `workflow_http`)
+
+As planned. On the way: the request is `WorkflowHttp`'s (the guard tested on its own, as the
+Package module's); the tests answer through the fake server (`FakePackageServer::answer()`,
+`answerAny()`); in the visual editor the headers and the body are YAML on one line; the
+security review of 4b asked, and got, a resumed run's `$user` as it is now and the per-minute
+limit on resuming.
+
 ## Not in this phase
 
 Secrets for the requests' headers, incoming webhooks, schedules (phase 6).

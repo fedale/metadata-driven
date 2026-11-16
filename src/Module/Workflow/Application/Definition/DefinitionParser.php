@@ -20,6 +20,9 @@ final class DefinitionParser
     public const int MAX_STEPS = 50;
 
     /** A path on the data chain: a root ($trigger, or a step's key), then names. */
+    /** The methods of an HTTP request. */
+    private const array METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+
     /** A wait's duration: 30 minutes, 2 days. */
     private const string DURATION = '/^[1-9]\d{0,4} (minute|hour|day|week)s?$/';
 
@@ -252,6 +255,9 @@ final class DefinitionParser
         } elseif (!$this->platform && $type->isPlatform()) {
             $this->error($path.'.type', \sprintf('%s is a step of the system admin\'s workflows, on the platform\'s events.', $type->value));
         }
+        if (StepType::HttpRequest === $type && Timing::Before === $timing && !$this->manual) {
+            $this->error($path.'.type', 'No call to the outside in a write: no http_request in a workflow run before the write.');
+        }
         if (StepType::Wait === $type) {
             if (\array_key_exists('for', $step) === \array_key_exists('until', $step)) {
                 $this->error($path, 'A wait takes for (a duration) or until (a date), one of them.');
@@ -286,7 +292,13 @@ final class DefinitionParser
                 'act_as', 'role' => $options[$option] = $this->role($value, $at),
                 'package' => $options[$option] = \is_string($value) && 1 === preg_match('/^[a-z0-9][a-z0-9_.-]*\/[a-z0-9][a-z0-9_.-]*(@[0-9A-Za-z.+-]+)?$/', $value) ? $value : $this->error($at, 'A package of the indexes: vendor/name, or vendor/name@1.0.0.'),
                 'repo' => $options[$option] = \is_string($value) && '' !== trim($value) ? trim($value) : $this->error($at, 'The name of an index (metadata:package:repo list).'),
-                'email', 'until' => $options[$option] = $this->text($value, $at),
+                'email', 'until', 'url' => $options[$option] = $this->text($value, $at),
+                'method' => $options[$option] = \is_string($value) && \in_array(strtoupper($value), self::METHODS, true) ? strtoupper($value) : $this->error($at, \sprintf('One of %s.', implode(', ', self::METHODS))),
+                'headers' => $options[$option] = $this->headers($value, $at),
+                'body' => $options[$option] = $this->body($value, $at),
+                'timeout' => $options[$option] = \is_int($value) && $value >= 1 && $value <= 30 ? $value : $this->error($at, 'Seconds, from 1 to 30.'),
+                'retries' => $options[$option] = \is_int($value) && $value >= 0 && $value <= 3 ? $value : $this->error($at, 'From 0 to 3.'),
+                'fail_on_error' => $options[$option] = $this->flag($value, $at),
                 'for' => $options[$option] = \is_string($value) && 1 === preg_match(self::DURATION, $value) ? $value : $this->error($at, 'A duration: a number and minutes, hours, days or weeks, e.g. 30 minutes.'),
                 'emit_events' => $options[$option] = $this->flag($value, $at),
                 'where' => $options[$option] = $this->where($value, $at),
@@ -385,6 +397,44 @@ final class DefinitionParser
         }
 
         return null === $field ? null : Condition::test($field, $operator, $value);
+    }
+
+    /**
+     * An HTTP request's headers: names to texts, with {{ … }} paths if needed.
+     *
+     * @return array<string, string>
+     */
+    private function headers(mixed $headers, string $path): array
+    {
+        if (!\is_array($headers) || (array_is_list($headers) && [] !== $headers)) {
+            $this->error($path, 'A map of header names to texts.');
+
+            return [];
+        }
+        $parsed = [];
+        foreach ($headers as $name => $value) {
+            if (1 !== preg_match('/^[A-Za-z0-9-]+$/', (string) $name) || !\is_scalar($value)) {
+                $this->error($path.'.'.$name, 'A header: a name of letters, digits and dashes, and a text.');
+                continue;
+            }
+            $this->templates((string) $value, $path.'.'.$name);
+            $parsed[(string) $name] = (string) $value;
+        }
+
+        return $parsed;
+    }
+
+    /**
+     * An HTTP request's body: a map or a list, sent as JSON, or a text; with {{ … }} paths.
+     */
+    private function body(mixed $body, string $path): mixed
+    {
+        if (!\is_array($body) && !\is_string($body)) {
+            return $this->error($path, 'A map (sent as JSON) or a text.');
+        }
+        $this->templates($body, $path);
+
+        return $body;
     }
 
     /**

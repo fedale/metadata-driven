@@ -69,8 +69,14 @@ final class WaitTest extends KernelTestCase
         $delay = $sent[0]->last(DelayStamp::class)?->getDelay();
         self::assertGreaterThan(47 * 3600 * 1000, $delay);
 
+        // Roles changed meanwhile: the resumed run reads them as they are now.
+        self::getContainer()->get(RbacManagerInterface::class)->revoke('owner@example.com', Permissions::SUPER_ADMIN_ROLE);
+        self::getContainer()->get(RbacManagerInterface::class)->assign('owner@example.com', 'record.pet.update');
         $run = $this->resume();
         self::assertSame(RunLog::COMPLETED, $run?->status, (string) $run?->error);
+        $user = $run->chain['$user'] ?? null;
+        self::assertIsArray($user);
+        self::assertSame([], $user['roles']);
         self::assertSame(['Old pet of Ada'], $this->pets());
         self::assertSame('completed', $this->runStatus());
         self::assertSame([['pet', 0], ['later', 1], ['renamed', 2]], array_map(
