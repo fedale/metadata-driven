@@ -449,6 +449,8 @@ admin:
         type_upsert_record: Create or update a record
         type_set_values: Set values
         type_refuse: Refuse
+        on_schedule: 'a time come (cron)'
+        cron: 'When (cron, UTC: minute hour day month weekday)'
         type_transition: 'Take a transition'
         on_transitioned: 'a transition taken'
         status_field: 'Status field'

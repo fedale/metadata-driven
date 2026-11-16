@@ -378,7 +378,11 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   `workflow_states`, merged into `main` on 2026-11-16 (with the package format 2.2.0, which
   describes the type). 5b, transitions in workflows (`on: transitioned`, the `transition` step,
   `AccessCheckerInterface::userHolds()`; the state locked while a transition writes) done on branch
-  `workflow_transitions`, waiting for review: phase 5 complete with it.
+  `workflow_transitions`, merged into `main` on 2026-11-16: phase 5 complete with it (the
+  security review asked, and got, the activator's roles checked for a transition step). Phase 6
+  planned in [workflow-phase6-plan.md](workflow-phase6-plan.md): schedules (`on: schedule`, Symfony
+  Scheduler, the worker consumes `scheduler_workflows` too) done on branch `workflow_schedule`,
+  waiting for review.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

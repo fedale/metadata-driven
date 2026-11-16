@@ -1,5 +1,5 @@
 # The workflows' runs in the background (docs/workflows.md): the worker is
-# "messenger:consume async", the queue Redis (MESSENGER_TRANSPORT_DSN, e.g.
+# "messenger:consume async scheduler_workflows" (the second, the schedules', by one worker), the queue Redis (MESSENGER_TRANSPORT_DSN, e.g.
 # redis://localhost:6379/messages; the PHP redis extension where it runs).
 framework:
     messenger:
@@ -24,6 +24,7 @@ framework:
             App\Module\Workflow\Application\Engine\Message\RunWorkflow: async
             App\Module\Workflow\Application\Engine\Message\RunPlatformEvents: async
             App\Module\Workflow\Application\Engine\Message\ResumeRun: async
+            App\Module\Workflow\Application\Engine\Message\RunScheduled: async
 
 # The tests run the background in the request, as it comes; the runs that wait are kept, for
 # the tests to resume them when they say (messenger.transport.delayed).

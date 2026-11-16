@@ -255,7 +255,7 @@
                     {% for event in this.triggerEvents %}<option value="{{ event }}" {{ model.trigger.on == event ? 'selected' }}>{{ ('admin.workflow.on_' ~ event)|trans }}</option>{% endfor %}
                 </select>
             </label>
-            {% if not console %}
+            {% if not console and model.trigger.on != 'schedule' %}
             <label>{{ 'admin.workflow.object'|trans }}
                 <select data-model="model.trigger.object">
                     <option value="">—</option>
@@ -265,6 +265,8 @@
             {% endif %}
             {% if console %}
                 {# The platform's events: nothing else to say. #}
+            {% elseif model.trigger.on == 'schedule' %}
+                <label>{{ 'admin.workflow.cron'|trans }} <input type="text" data-model="model.trigger.cron" value="{{ model.trigger.cron }}" placeholder="0 8 * * 1" class="md-code-input"></label>
             {% elseif model.trigger.on == 'manual' %}
                 <label>{{ 'admin.workflow.button_label'|trans }} <input type="text" data-model="model.trigger.label" value="{{ model.trigger.label }}"></label>
                 <label>{{ 'admin.workflow.selection'|trans }}

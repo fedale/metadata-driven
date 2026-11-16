@@ -446,6 +446,8 @@ admin:
         type_upsert_record: Crea o modifica un record
         type_set_values: Imposta valori
         type_refuse: Rifiuta
+        on_schedule: 'un orario (cron)'
+        cron: 'Quando (cron, UTC: minuto ora giorno mese giorno della settimana)'
         type_transition: 'Esegui una transizione'
         on_transitioned: 'una transizione eseguita'
         status_field: 'Campo stato'
