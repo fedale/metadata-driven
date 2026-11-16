@@ -393,8 +393,8 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   Sub-workflows (`on: called`, the `run_workflow` and `return` steps, in line in the caller's
   run; calling needs the called workflow's run permission) done on branch `sub_workflows`, merged
   into `main` on 2026-11-16. Workflows in packages (kind `Workflow` of the package format 2.3.0,
-  merged on the library's `main`, to tag; installed and upgraded as drafts) done on branch
-  `workflow_packages`. Left of phase 6: quotas per plan.
+  tagged by the user; installed and upgraded as drafts) done on branch `workflow_packages`,
+  merged into `main` on 2026-11-16. Left of phase 6: quotas per plan.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

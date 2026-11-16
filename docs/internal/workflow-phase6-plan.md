@@ -122,7 +122,7 @@ sides a conflict.
 
 ### Done (2026-11-16, branch `workflow_packages`)
 
-As above, the library on its `main` (merged, not tagged: 2.3.0 is the user's to tag). Found on the
+As above; the library tagged 2.3.0 by the user, required as `^2.3`. Found on the
 way: `DoctrineWorkflowRepository::remove()` left the versions managed, which failed the next flush
 in the same request; they go with their workflow now. A workflow references objects by name: an
 object renamed breaks it (in packages and out), as before.
