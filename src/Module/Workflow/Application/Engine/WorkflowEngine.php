@@ -799,11 +799,17 @@ final class WorkflowEngine implements ResetInterface
         }
         if ([] !== $transition->roles) {
             $role = $step->actAs();
-            $allowed = null !== $role
-                ? [] !== array_filter($transition->roles, fn (string $needed): bool => $needed === $role || $this->access->roleGives($role, $needed))
-                : null !== $run->triggeredBy && [] !== array_filter($transition->roles, fn (string $needed): bool => $this->access->userHolds((string) $run->triggeredBy, $needed));
-            if (!$allowed) {
+            $holdsOne = fn (?string $email): bool => null !== $email && [] !== array_filter($transition->roles, fn (string $needed): bool => $this->access->userHolds($email, $needed));
+            if (null !== $role) {
+                // The role stands for the transition's roles (allow() checked its activator may give it).
+                if ([] === array_filter($transition->roles, fn (string $needed): bool => $needed === $role || $this->access->roleGives($role, $needed))) {
+                    throw new StepFailed(\sprintf('"%s" is taken by %s only: %s is none of them.', $transition->label, implode(', ', $transition->roles), $role));
+                }
+            } elseif (!$holdsOne($run->triggeredBy)) {
                 throw new StepFailed(\sprintf('"%s" is taken by %s only.', $transition->label, implode(', ', $transition->roles)));
+            } elseif (!$holdsOne($run->workflow->activatedBy)) {
+                // No way to more power: its activator would take it through the users who may.
+                throw new StepFailed(\sprintf('%s, who activated it, holds none of %s.', $run->workflow->activatedBy ?? 'No one', implode(', ', $transition->roles)));
             }
         }
         $input = ['object' => $object, 'id' => $id, 'field' => $field, 'name' => $name];

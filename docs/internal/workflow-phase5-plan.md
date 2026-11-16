@@ -67,4 +67,6 @@ from the Record module's `TransitionContext`); a step's roles are checked with a
 `AccessCheckerInterface::userHolds()` (holding a role, not holding its permissions, which is
 `userCanGrant()`'s rule); the security review of 5a asked, and got, the guard on the values as
 stored (after the conversions and the conditions) and the state read again, locked, in the
-transition's write (two transitions at once: the second is refused).
+transition's write (two transitions at once: the second is refused). The review of 5b asked, and
+got, the activator's roles checked too for a `transition` step without `act_as` (on activation and
+at each run), and an `act_as` role that is, or contains, one of the transition's.

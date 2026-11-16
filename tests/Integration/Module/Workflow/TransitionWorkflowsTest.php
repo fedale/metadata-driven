@@ -129,6 +129,54 @@ final class TransitionWorkflowsTest extends KernelTestCase
         self::assertSame([['state' => 'sent'], ['state' => 'draft']], array_map(static fn (array $step): array => ['state' => \is_array($step['output']) ? $step['output']['state'] : null], $run->steps));
     }
 
+    public function testItsActivatorMayNotTakeThroughTheUsersWhatTheyCannot(): void
+    {
+        // The clerk may define workflows, and holds none of reopen's roles.
+        self::getContainer()->get(RbacManagerInterface::class)->assign('clerk@example.com', Permissions::WORKFLOWS);
+        $this->signIn('clerk@example.com');
+        $manager = self::getContainer()->get(WorkflowManager::class);
+        $yaml = "trigger: { on: manual, object: invoice, label: Back }\nsteps: [{ key: back, type: transition, object: invoice, id: '{{ \$trigger.record.id }}', field: state, name: reopen }]";
+        try {
+            $manager->activate($manager->create('Sneaky', null, $yaml));
+            self::fail('Refused.');
+        } catch (InvalidWorkflowDefinition $e) {
+            self::assertSame(['You hold none of ROLE_BOSS: a step taking "Reopen" as whoever triggered the event may not do what you cannot. Give it an act_as.'], $e->errors['steps.0.name']);
+        }
+        try {
+            $manager->activate($manager->create('Sneakier', null, str_replace('name: reopen }', 'name: reopen, act_as: ROLE_CLERK }', $yaml)));
+            self::fail('Refused.');
+        } catch (InvalidWorkflowDefinition $e) {
+            self::assertSame(['"Reopen" is taken by ROLE_BOSS only: ROLE_CLERK is none of them.'], $e->errors['steps.0.act_as']);
+        }
+    }
+
+    public function testItsStepStopsOnceItsActivatorHoldsNoneOfItsRoles(): void
+    {
+        $rbac = self::getContainer()->get(RbacManagerInterface::class);
+        self::getContainer()->get(UserManagerInterface::class)->createUser('boss@example.com', 'correct horse battery staple');
+        $rbac->assign('boss@example.com', 'ROLE_BOSS');
+        $rbac->assign('boss@example.com', Permissions::WORKFLOWS);
+        // Updating invoices on its own: losing the role, the boss keeps that.
+        $rbac->assign('boss@example.com', 'record.invoice.update');
+        $this->signIn('boss@example.com');
+        $manager = self::getContainer()->get(WorkflowManager::class);
+        $manager->activate($manager->create('Back', null, <<<'YAML'
+            trigger: { on: manual, object: invoice, label: Back }
+            steps:
+              - { key: sent, type: transition, object: invoice, id: '{{ $trigger.record.id }}', field: state, name: send }
+              - { key: back, type: transition, object: invoice, id: '{{ $trigger.record.id }}', field: state, name: reopen }
+            YAML));
+        // Demoted: the owner, who holds every role, runs it; its step stops.
+        $rbac->revoke('boss@example.com', 'ROLE_BOSS');
+        $this->signIn('owner@example.com');
+        $runs = self::getContainer()->get(ManualRuns::class);
+
+        $run = $runs->run($runs->get($this->workflowId('Back')), $this->invoice->id, [], asSomeone: false);
+
+        self::assertSame([RunLog::FAILED, 'boss@example.com, who activated it, holds none of ROLE_BOSS.'], [$run->status, $run->error]);
+        self::assertSame('draft', $this->state());
+    }
+
     public function testATransitionNamedIsOneOfTheField(): void
     {
         $manager = self::getContainer()->get(WorkflowManager::class);
