@@ -27,6 +27,7 @@ use App\Module\Workflow\Application\Definition\Step;
 use App\Module\Workflow\Application\Definition\StepType;
 use App\Module\Workflow\Application\Definition\Timing;
 use App\Module\Workflow\Application\Definition\TriggerEvent;
+use App\Module\Workflow\Application\Engine\Message\RunWorkflow;
 use App\Shared\Transaction\TransactionRunner;
 use App\Shared\Workspace\CurrentWorkspace;
 use App\Shared\Workspace\Workspace;
@@ -35,6 +36,8 @@ use App\Shared\Workspace\WorkspaceSessions;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\DelayStamp;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
@@ -61,6 +64,12 @@ final class WorkflowEngine implements ResetInterface
     /** A system workflow is running: the workspace its platform steps work in. */
     private ?Workspace $platformWorkspace = null;
 
+    /** A queued run is running: whoever triggered it (no one is signed in in the worker). */
+    private ?string $actingAs = null;
+
+    /** How many times a run goes back to the queue, a minute each, past runs_per_minute. */
+    private const int MAX_DELAYS = 10;
+
     public function __construct(
         private readonly ActiveWorkflows $workflows,
         private readonly RunStore $runs,
@@ -85,6 +94,7 @@ final class WorkflowEngine implements ResetInterface
         private readonly int $maxRecords,
         private readonly WorkspaceSessions $sessions,
         private readonly PackageInstallationInterface $packages,
+        private readonly MessageBusInterface $bus,
     ) {
     }
 
@@ -135,28 +145,86 @@ final class WorkflowEngine implements ResetInterface
     public function onWritten(RecordWritten $event): void
     {
         $workflows = $this->triggered($event->objectName, Timing::After, $event->action, $event->changed);
+        if ([] === $workflows || !$this->workspace->isSelected()) {
+            return;
+        }
         $depth = 1 + ($event->origin->depth ?? 0);
         $record = ['id' => $event->id, ...$this->readable($event->objectName, $event->record->values)];
+        $trigger = $this->triggerData($event->objectName, $event->action, $record, $event->before, $event->changed);
 
+        // The write committed already (RecordWritten): its runs go to the worker.
         foreach ($workflows as $workflow) {
-            $run = $this->start($workflow, $event->objectName, $event->id, $event->action, Timing::After, $depth);
-            if (null !== $refusal = $this->overLimits($run)) {
-                $run->end(RunLog::FAILED, $refusal);
-                $this->store($run);
-                continue;
-            }
-            $chain = $this->chain($this->triggerData($event->objectName, $event->action, $record, $event->before, $event->changed));
-            try {
-                // All of the run or nothing.
-                $this->transactions->run(fn () => $this->steps($workflow->definition->steps, $chain, $run, null));
-                $run->end($run->status, $run->error);
-            } catch (StepFailed $e) {
-                $run->end(RunLog::FAILED, $e->getMessage());
-            } finally {
-                $run->chain = $chain->toArray();
-            }
-            $this->transactions->whenDone(fn () => $this->store($run));
+            $this->bus->dispatch(new RunWorkflow($this->workspace->id(), $workflow->workflowId, $workflow->versionId, $event->objectName, $event->id, $event->action->value, $trigger, $this->who(), $depth));
         }
+    }
+
+    /**
+     * An after-run, from the queue: in its workspace, as whoever triggered it, if the version
+     * that was active is still. Its steps in one transaction, all or nothing; past runs_per_minute,
+     * back to the queue a minute later (MAX_DELAYS times, then failed).
+     */
+    public function runQueued(RunWorkflow $message): ?RunLog
+    {
+        $work = function () use ($message): ?RunLog {
+            $workflow = $this->workflows->byId($message->workflowId);
+            if (null === $workflow || $workflow->versionId !== $message->versionId) {
+                // Deactivated, or another version since: it runs no more.
+                return null;
+            }
+            [$previous, $this->actingAs] = [$this->actingAs, $message->triggeredBy];
+            try {
+                $run = new RunLog($workflow, $message->object, $message->recordId, $message->action, Timing::After->value, $message->triggeredBy, $message->depth, new \DateTimeImmutable());
+                ++$this->pending;
+                if (null !== $refusal = $this->tooDeep($run)) {
+                    $run->end(RunLog::FAILED, $refusal);
+                    $this->store($run);
+
+                    return $run;
+                }
+                if (null !== $refusal = $this->tooMany()) {
+                    if ($message->delays < self::MAX_DELAYS) {
+                        --$this->pending;
+                        $this->bus->dispatch($message->delayed(), [new DelayStamp(60_000)]);
+
+                        return null;
+                    }
+                    $run->end(RunLog::FAILED, $refusal);
+                    $this->store($run);
+
+                    return $run;
+                }
+                $chain = $this->chain($message->trigger);
+                try {
+                    // All of the run or nothing.
+                    $this->transactions->run(fn () => $this->steps($workflow->definition->steps, $chain, $run, null));
+                    $run->end($run->status, $run->error);
+                } catch (StepFailed $e) {
+                    $run->end(RunLog::FAILED, $e->getMessage());
+                } finally {
+                    $run->chain = $chain->toArray();
+                }
+                $this->transactions->whenDone(fn () => $this->store($run));
+
+                return $run;
+            } finally {
+                $this->actingAs = $previous;
+            }
+        };
+        if ($this->workspace->isSelected() && $this->workspace->id() === $message->workspaceId) {
+            return $work();
+        }
+        $workspace = $this->workspaces->byId($message->workspaceId);
+
+        // A workspace deleted meanwhile: nothing to run.
+        return null === $workspace ? null : $this->sessions->within($workspace, $work);
+    }
+
+    /**
+     * Whoever the steps act for: who triggered a queued run, else who is signed in.
+     */
+    private function who(): ?string
+    {
+        return $this->actingAs ?? $this->security->getUser()?->getUserIdentifier();
     }
 
     /**
@@ -222,7 +290,7 @@ final class WorkflowEngine implements ResetInterface
     {
         $trigger = $workflow->definition->trigger;
         ++$this->pending;
-        $run = new RunLog($workflow, $trigger->object, $record?->id, TriggerEvent::Manual->value, TriggerEvent::Manual->value, $this->security->getUser()?->getUserIdentifier(), 1, new \DateTimeImmutable());
+        $run = new RunLog($workflow, $trigger->object, $record?->id, TriggerEvent::Manual->value, TriggerEvent::Manual->value, $this->who(), 1, new \DateTimeImmutable());
         $readable = fn (RecordOutput $one): array => ['id' => $one->id, ...$this->readable($trigger->object, $one->values)];
         if (null !== $refusal = $this->overLimits($run)) {
             $run->end(RunLog::FAILED, $refusal);
@@ -326,6 +394,7 @@ final class WorkflowEngine implements ResetInterface
         $this->pending = 0;
         $this->dryRun = false;
         $this->platformWorkspace = null;
+        $this->actingAs = null;
     }
 
     /**
@@ -345,7 +414,7 @@ final class WorkflowEngine implements ResetInterface
     {
         ++$this->pending;
 
-        return new RunLog($workflow, $object, $recordId, $action->value, $when->value, $this->security->getUser()?->getUserIdentifier(), $depth, new \DateTimeImmutable());
+        return new RunLog($workflow, $object, $recordId, $action->value, $when->value, $this->who(), $depth, new \DateTimeImmutable());
     }
 
     private function store(RunLog $run): void
@@ -360,14 +429,21 @@ final class WorkflowEngine implements ResetInterface
      */
     private function overLimits(RunLog $run): ?string
     {
-        if ($run->depth > $this->maxDepth) {
-            return \sprintf('The workflow "%s" was started by a chain of %d workflows: at most %d.', $run->workflow->name, $run->depth, $this->maxDepth);
-        }
-        if ($this->runs->countSince(new \DateTimeImmutable('-1 minute')) + $this->pending > $this->runsPerMinute) {
-            return \sprintf('Too many workflow runs in this workspace: at most %d a minute.', $this->runsPerMinute);
-        }
+        return $this->tooDeep($run) ?? $this->tooMany();
+    }
 
-        return null;
+    private function tooDeep(RunLog $run): ?string
+    {
+        return $run->depth > $this->maxDepth
+            ? \sprintf('The workflow "%s" was started by a chain of %d workflows: at most %d.', $run->workflow->name, $run->depth, $this->maxDepth)
+            : null;
+    }
+
+    private function tooMany(): ?string
+    {
+        return $this->runs->countSince(new \DateTimeImmutable('-1 minute')) + $this->pending > $this->runsPerMinute
+            ? \sprintf('Too many workflow runs in this workspace: at most %d a minute.', $this->runsPerMinute)
+            : null;
     }
 
     /**
@@ -396,7 +472,7 @@ final class WorkflowEngine implements ResetInterface
      */
     private function chain(array $trigger, ?array $workspace = null): DataChain
     {
-        $user = null === $workspace ? $this->security->getUser()?->getUserIdentifier() : null;
+        $user = null === $workspace ? $this->who() : null;
         if (null === $workspace && $this->workspace->isSelected() && null !== $current = $this->workspaces->byId($this->workspace->id())) {
             $workspace = ['slug' => $current->slug, 'name' => $current->name];
         }
@@ -732,11 +808,13 @@ final class WorkflowEngine implements ResetInterface
 
             return;
         }
-        if (null === $this->security->getUser()) {
+        // Whoever triggered it: in the worker as in a request, from their assignments.
+        $triggeredBy = $run->triggeredBy;
+        if (null === $triggeredBy) {
             throw new StepFailed('No one triggered this event: choose a role for the step to act as.');
         }
-        if (!$this->access->canRecords($object, $action)) {
-            throw new StepFailed(\sprintf('%s does not hold %s.', $this->security->getUser()->getUserIdentifier(), $permission));
+        if (!$this->access->userCanGrant($triggeredBy, $permission)) {
+            throw new StepFailed(\sprintf('%s does not hold %s.', $triggeredBy, $permission));
         }
         // For a permission, canGrant is holding it.
         if (null === $activator || !$this->access->userCanGrant($activator, $permission)) {

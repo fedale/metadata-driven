@@ -1,0 +1,33 @@
+# The workflows' runs in the background (docs/workflows.md): the worker is
+# "messenger:consume async", the queue Redis (MESSENGER_TRANSPORT_DSN, e.g.
+# redis://localhost:6379/messages; the PHP redis extension where it runs).
+framework:
+    messenger:
+        failure_transport: failed
+
+        transports:
+            async:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                # An error outside a run's steps (the database down): tried again, then failed.
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 4
+            # messenger:failed:show, messenger:failed:retry
+            failed:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    stream: failed
+            sync: 'sync://'
+
+        routing:
+            App\Module\Workflow\Application\Engine\Message\RunWorkflow: async
+            App\Module\Workflow\Application\Engine\Message\RunPlatformEvents: async
+
+# The tests run the background in the request, as it comes.
+when@test:
+    framework:
+        messenger:
+            transports:
+                async: 'sync://'
+                failed: 'in-memory://'

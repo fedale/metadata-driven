@@ -2,7 +2,8 @@
 
 ## Requirements
 
-- PHP 8.4+, with `pdo_pgsql` and `intl`
+- PHP 8.4+, with `pdo_pgsql`, `intl` and `redis` (the queue of the workflows; on Debian or
+  Ubuntu, `sudo apt install php8.4-redis`)
 - Composer, the [Symfony CLI](https://symfony.com/download), Docker with Compose
 
 The bundles the app is built on (`fedale/gridview-bundle`, `fedale/setting-bundle`,
@@ -13,11 +14,15 @@ from Packagist, in their released versions: `composer install` is enough.
 
 ```bash
 composer install
-make up        # PostgreSQL 17 in Docker
+make up        # PostgreSQL 17 and Redis in Docker
 make db        # create the database, run the migrations
 make assets    # compile the Sass stylesheets (pages do not render without them)
 symfony serve -d
+symfony run -d --watch=config,src symfony console messenger:consume async   # the workflows' worker
 ```
+
+`MESSENGER_TRANSPORT_DSN` names the queue, in `.env.local`: `redis://localhost:6379/messages`.
+Without the worker, the workflows that run after a write wait in the queue.
 
 Create your account, as super admin (see [Users and permissions](access.md)):
 
