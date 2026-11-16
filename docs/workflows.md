@@ -98,6 +98,7 @@ the step's output), a `type`, and its options.
 | `search_records` | `object`, `where` (tests, all of which hold), `sort`, `direction` (`asc`, `desc`), `limit`; `act_as` | Reads the records of an object: the first ones in its order (see [Search and iterator](#search-and-iterator)) |
 | `iterator` | `items` (one `{{ path }}` to a list), `steps` | Runs its steps once per item |
 | `wait` | `for` (`30 minutes`, `2 days`) or `until` (a date or a date-time, with `{{ … }}`) | Stops the run; the steps after it run then (see [Waits](#waits)) |
+| `http_request` | `url`, `method`, `headers`, `body`, `timeout`, `retries`, `fail_on_error` | Calls an address outside (see [HTTP requests](#http-requests)) |
 
 The four steps that write records also take `act_as` (see [Permissions](#permissions)) and
 `emit_events`: `false` by default, so that the records a workflow writes start no workflow; `true`
@@ -232,6 +233,30 @@ steps:
   and manual runs (a manual run goes on in the worker), never before a write, nor in the system
   admin's workflows. A test on a record does not wait.
 
+### HTTP requests
+
+```yaml
+- key: hook
+  type: http_request
+  method: POST                                      # GET (the default), POST, PUT, PATCH, DELETE
+  url: 'https://crm.example.com/api/people/{{ $trigger.record.id }}'
+  headers: { Accept: application/json }
+  body: { name: '{{ $trigger.record.full_name }}' } # a map is sent as JSON; or a text
+  timeout: 10                                       # seconds, 1 to 30
+  retries: 2                                        # 0 to 3: again on a network error or a 5xx
+```
+
+- Its output: `status`, `headers` (by lowercase name), `body` (decoded when the answer is JSON,
+  else the text): `{{ hook.body.ticket }}`. A status of 400 or more fails the step, unless
+  `fail_on_error: false`. At most 1 MB is read; 3 redirects followed.
+- **Never a private network**: an address of the server's own network (localhost, private and
+  link-local addresses, the clouds' metadata service) is refused, whatever its name resolves to;
+  `http` and `https` only. Tried again, it waits 1, then 2, then 4 seconds
+  (`app.workflow.http_retry_delay_ms`).
+- In after-runs, manual runs and the system admin's workflows; never before a write (no call to
+  the outside while a write waits). The request and its answer are in the run's log: put no secret
+  in them (a workspace's secrets come later).
+
 A step that writes outputs the record as written (`{{ reminder.id }}`); an `if`, the branch it
 took; a filter, whether it passed. A step reads only the steps run before it on every way there:
 not the steps of another branch.
@@ -330,6 +355,7 @@ these triggers or steps, and the console defines no workflow on a record's.
 |---|---|
 | The events | `RecordManager` raises `RecordWriting` before a write, in its transaction, and `RecordWritten` once the outermost transaction committed (`TransactionRunner::whenDone()`); `RecordEventScopeInterface` silences them (a package's seeds) or stamps them with the run they come from (Record contract) |
 | The definition | `DefinitionParser` (structure, every problem by its path), `DefinitionValidator` (objects, fields, paths, roles, on activation), stored compiled as JSON (`core.workflow_version.definition`) next to the YAML as written (`source`) |
+| HTTP | `WorkflowHttp`: Symfony's `HttpClient` through `NoPrivateNetworkHttpClient` (`app.workflow.allow_private_networks`, true in the tests only), the retries and the 1 MB cap |
 | The queue | Symfony Messenger on Redis (`config/packages/messenger.yaml`, the `async` transport, `failed` for what broke outside a run's steps: `messenger:failed:show`): `RunWorkflow` (an after-run, `WorkflowEngine::runQueued()`), `RunPlatformEvents` (the system admin's); each step checks its permission against whoever triggered it, from their assignments (`AccessCheckerInterface::userCanGrant()`), in a request as in the worker |
 | The engine | `WorkflowEngine` listens to both events, reads the active versions (`ActiveWorkflows`, once per request), runs the steps over a `DataChain`, checks each write's permission (`AccessCheckerInterface::roleGives()`, `userCanGrant()`), and stores each run once its transaction ended (`RunStore`, DBAL) |
 | The tables | `core.workflow`, `core.workflow_version` (ORM); `core.workflow_run`, `core.workflow_run_step`, `core.workflow_usage` (DBAL); each with its `workspace_id` (none for the system admin's) and row-level security |
@@ -341,5 +367,5 @@ these triggers or steps, and the console defines no workflow on a record's.
 ## Not yet
 
 Other platform events (a workspace suspended or deleted), record steps in the system admin's
-workflows; the background,
-HTTP requests and waits (the rest of phase 4); states (phase 5). See [the plan](internal/workflow-plan.md).
+workflows; states (phase 5); secrets for the HTTP requests, schedules, incoming webhooks (phase
+6). See [the plan](internal/workflow-plan.md).

@@ -19,6 +19,7 @@ enum StepType: string
     case InstallPackage = 'install_package';
     case AssignRole = 'assign_role';
     case Wait = 'wait';
+    case HttpRequest = 'http_request';
 
     /**
      * Whether the step is the platform's: only a system workflow takes it, and takes no other
@@ -34,7 +35,7 @@ enum StepType: string
      */
     public function forPlatform(): bool
     {
-        return $this->isPlatform() || \in_array($this, [self::If, self::Filter, self::Refuse], true);
+        return $this->isPlatform() || \in_array($this, [self::If, self::Filter, self::Refuse, self::HttpRequest], true);
     }
 
     /**
@@ -76,6 +77,7 @@ enum StepType: string
             self::InstallPackage => ['package' => true, 'repo' => false],
             self::AssignRole => ['email' => true, 'role' => true],
             self::Wait => ['for' => false, 'until' => false],
+            self::HttpRequest => ['url' => true, 'method' => false, 'headers' => false, 'body' => false, 'timeout' => false, 'retries' => false, 'fail_on_error' => false],
         };
     }
 }

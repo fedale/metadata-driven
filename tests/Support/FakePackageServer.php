@@ -19,10 +19,50 @@ final class FakePackageServer
     /** @var list<string> */
     private static array $requested = [];
 
+    /** @var array<string, callable(string, array<string, mixed>): MockResponse> url => answer */
+    private static array $answers = [];
+
+    /** @var list<array{string, string, array<string, mixed>}> method, url, options */
+    private static array $requests = [];
+
     public static function reset(): void
     {
         self::$files = [];
         self::$requested = [];
+        self::$answers = [];
+        self::$requests = [];
+        self::$any = null;
+    }
+
+    /**
+     * An answer of its own for a url: what a workflow's HTTP request gets.
+     *
+     * @param callable(string, array<string, mixed>): MockResponse $answer method, options => response
+     */
+    public static function answer(string $url, callable $answer): void
+    {
+        self::$answers[$url] = $answer;
+    }
+
+    /** @var (callable(string, array<string, mixed>): MockResponse)|null for any url without one of its own */
+    private static $any;
+
+    /**
+     * An answer for any url with none of its own and no file served.
+     *
+     * @param callable(string, array<string, mixed>): MockResponse $answer
+     */
+    public static function answerAny(callable $answer): void
+    {
+        self::$any = $answer;
+    }
+
+    /**
+     * @return list<array{string, string, array<string, mixed>}> method, url, options
+     */
+    public static function requests(): array
+    {
+        return self::$requests;
     }
 
     public static function serve(string $url, string $body): void
@@ -44,6 +84,13 @@ final class FakePackageServer
     public function __invoke(string $method, string $url, array $options = []): ResponseInterface
     {
         self::$requested[] = $url;
+        self::$requests[] = [$method, $url, $options];
+        if (isset(self::$answers[$url])) {
+            return (self::$answers[$url])($method, $options);
+        }
+        if (!isset(self::$files[$url]) && null !== self::$any) {
+            return (self::$any)($method, $options);
+        }
 
         return isset(self::$files[$url]) ? new MockResponse(self::$files[$url]) : new MockResponse('Not found', ['http_code' => 404]);
     }

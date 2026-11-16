@@ -444,6 +444,14 @@ admin:
         type_upsert_record: Crea o modifica un record
         type_set_values: Imposta valori
         type_refuse: Rifiuta
+        type_http_request: 'Richiesta HTTP'
+        http_method: 'Metodo'
+        http_url: 'Indirizzo'
+        http_headers: 'Header (YAML)'
+        http_body: 'Corpo (mappa YAML, o un testo)'
+        http_timeout: 'Timeout (s)'
+        http_retries: 'Tentativi'
+        http_fail_on_error: 'uno stato da 400 in su fa fallire lo step'
         type_wait: 'Attendi'
         wait_for: 'Per (30 minutes, 2 days)'
         wait_until: 'Oppure fino a'

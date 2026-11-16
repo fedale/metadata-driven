@@ -99,6 +99,7 @@ final class WorkflowEngine implements ResetInterface
         private readonly WorkspaceSessions $sessions,
         private readonly PackageInstallationInterface $packages,
         private readonly MessageBusInterface $bus,
+        private readonly WorkflowHttp $http,
     ) {
     }
 
@@ -459,11 +460,21 @@ final class WorkflowEngine implements ResetInterface
 
                 return $run;
             }
+            // A resumed part counts as a run: past runs_per_minute, it waits a minute more.
+            if (null !== $this->tooMany() && $message->delays < self::MAX_DELAYS) {
+                --$this->pending;
+                $this->bus->dispatch($message->delayed(), [new DelayStamp(60_000)]);
+
+                return null;
+            }
             [$previous, $this->actingAs] = [$this->actingAs, $waiting->triggeredBy];
             try {
                 $now = new \DateTimeImmutable();
                 $chain->set('$now', $now->format(\DateTimeInterface::ATOM));
                 $chain->set('$today', $now->format('Y-m-d'));
+                // Whoever triggered it as they are now: their roles may have changed meanwhile (each
+                // step checks its permission against their assignments now, too).
+                $chain->set('$user', null === $waiting->triggeredBy ? null : ['email' => $waiting->triggeredBy, 'roles' => $this->roles->rolesOf($waiting->triggeredBy)]);
                 try {
                     $this->transactions->run(function () use ($workflow, $waiting, $chain, $run): void {
                         $this->steps(\array_slice($workflow->definition->steps, $waiting->resumeStep), $chain, $run, null);
@@ -625,6 +636,7 @@ final class WorkflowEngine implements ResetInterface
                 StepType::SearchRecords => $this->search($step, $chain, $run),
                 StepType::InstallPackage, StepType::AssignRole => $this->platform($step, $chain),
                 StepType::Wait => $this->wait($step, $chain, $run),
+                StepType::HttpRequest => $this->request($step, $chain),
                 default => $this->write($step, $chain, $run),
             };
         } catch (StepFailed $e) {
@@ -747,6 +759,41 @@ final class WorkflowEngine implements ResetInterface
         $run->wait($until, (false === $index ? \count($run->workflow->definition->steps) : $index) + 1);
 
         return [$input, $output, false];
+    }
+
+    /**
+     * A request to the outside (WorkflowHttp): its response's body decoded when it is JSON. A
+     * status of 400 or more fails the step, unless fail_on_error is false.
+     *
+     * @return array{array<string, mixed>, array<string, mixed>, bool}
+     *
+     * @throws StepFailed
+     */
+    private function request(Step $step, DataChain $chain): array
+    {
+        $method = $step->string('method') ?? 'GET';
+        $url = $chain->text($step->string('url'));
+        $headers = array_map(fn (mixed $value): string => $chain->text(\is_scalar($value) ? (string) $value : ''), \is_array($step->options['headers'] ?? null) ? $step->options['headers'] : []);
+        $body = \array_key_exists('body', $step->options) ? $chain->render($step->options['body']) : null;
+        $timeout = \is_int($step->options['timeout'] ?? null) ? $step->options['timeout'] : 10;
+        $retries = \is_int($step->options['retries'] ?? null) ? $step->options['retries'] : 0;
+        $options = ['headers' => $headers, 'timeout' => $timeout, 'max_duration' => $timeout, 'max_redirects' => 3];
+        if (\is_array($body)) {
+            $options['json'] = $body;
+        } elseif (null !== $body) {
+            $options['body'] = DataChain::asText($body);
+        }
+        $input = ['method' => $method, 'url' => $url, 'headers' => $headers, 'body' => $body];
+
+        $response = $this->http->send($method, $url, $options, $retries);
+        $status = $response['status'];
+        $decoded = str_contains(strtolower($response['type']), 'json') ? json_decode($response['content'], true) : null;
+        $output = ['status' => $status, 'headers' => $response['headers'], 'body' => $decoded ?? $response['content']];
+        if ($status >= 400 && false !== ($step->options['fail_on_error'] ?? true)) {
+            throw new StepFailed(\sprintf('%s %s answered %d.', $method, $url, $status));
+        }
+
+        return [$input, $output, true];
     }
 
     /**

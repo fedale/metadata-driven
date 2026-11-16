@@ -20,7 +20,7 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class EditorModel
 {
-    private const array STEP_OPTIONS = ['object' => '', 'id' => '', 'match' => '', 'message' => '', 'act_as' => '', 'emit_events' => false, 'items' => '', 'sort' => '', 'direction' => '', 'limit' => '', 'package' => '', 'repo' => '', 'email' => '', 'role' => '', 'for' => '', 'until' => ''];
+    private const array STEP_OPTIONS = ['object' => '', 'id' => '', 'match' => '', 'message' => '', 'act_as' => '', 'emit_events' => false, 'items' => '', 'sort' => '', 'direction' => '', 'limit' => '', 'package' => '', 'repo' => '', 'email' => '', 'role' => '', 'for' => '', 'until' => '', 'url' => '', 'method' => '', 'timeout' => '', 'retries' => '', 'headers' => '', 'body' => '', 'fail_on_error' => true];
 
     /**
      * @return array<string, mixed>|null null when the YAML cannot be read
@@ -213,7 +213,12 @@ final class EditorModel
             }
             $options = [];
             foreach (self::STEP_OPTIONS as $option => $default) {
-                $options[$option] = \is_bool($default) ? true === ($step[$option] ?? false) : self::text($step[$option] ?? '');
+                $options[$option] = match (true) {
+                    \is_bool($default) => \is_bool($step[$option] ?? null) ? $step[$option] : $default,
+                    // A request's headers and body: YAML on one line, to edit as text.
+                    \in_array($option, ['headers', 'body'], true) => \is_array($step[$option] ?? null) ? Yaml::dump($step[$option], 0) : self::text($step[$option] ?? ''),
+                    default => self::text($step[$option] ?? ''),
+                };
             }
             $where = [];
             foreach (\is_array($step['where'] ?? null) ? $step['where'] : [] as $test) {
@@ -268,7 +273,9 @@ final class EditorModel
                     'emit_events' => true === ($step['emit_events'] ?? false) ? $out + ['emit_events' => true] : $out,
                     'where' => [] === ($where = self::whereTo($step['where'] ?? [])) ? $out : $out + ['where' => $where],
                     'steps' => $out + ['steps' => self::stepsTo(\is_array($step['steps'] ?? null) ? $step['steps'] : [])],
-                    'limit' => '' === self::text($step['limit'] ?? '') ? $out : $out + ['limit' => self::typed(self::text($step['limit'] ?? ''))],
+                    'limit', 'timeout', 'retries' => '' === self::text($step[$option] ?? '') ? $out : $out + [$option => self::typed(self::text($step[$option] ?? ''))],
+                    'headers', 'body' => '' === trim(self::text($step[$option] ?? '')) ? $out : $out + [$option => self::yamlOrText(self::text($step[$option] ?? ''))],
+                    'fail_on_error' => false === ($step['fail_on_error'] ?? true) ? $out + ['fail_on_error' => false] : $out,
                     default => '' === self::text($step[$option] ?? '') ? $out : $out + [$option => self::text($step[$option] ?? '')],
                 };
             }
@@ -405,6 +412,22 @@ final class EditorModel
                 $list = Yaml::parse($text);
 
                 return \is_array($list) ? $list : $text;
+            } catch (ParseException) {
+                return $text;
+            }
+        }
+
+        return $text;
+    }
+
+    /**
+     * A map or a list written as YAML ({ a: 1 }, [a, b]); anything else, a text.
+     */
+    private static function yamlOrText(string $text): mixed
+    {
+        if (str_starts_with(trim($text), '{') || str_starts_with(trim($text), '[')) {
+            try {
+                return Yaml::parse($text);
             } catch (ParseException) {
                 return $text;
             }
