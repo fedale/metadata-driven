@@ -10,10 +10,11 @@ doctrine:
         # made with each workspace. So are core.metadata_state, written by triggers only (migration
         # Version20261107060749), and the system's tables, read with DBAL: core.workspace,
         # core.workspace_membership, core.workspace_invitation; and the runs of the workflows, written
-        # with DBAL once a transaction ended (core.workflow_run, workflow_run_step, workflow_usage).
+        # with DBAL once a transaction ended (core.workflow_run, workflow_run_step, workflow_usage), and
+        # their secrets (core.workflow_secret).
         # The comparison names core's tables with or without their schema, and a workspace's with
         # theirs.
-        schema_filter: '~^(?!(core\.)?(metadata_state|workspace|workspace_membership|workspace_invitation|workflow_run|workflow_run_step|workflow_usage)$)(core\.)?[^.]+$~'
+        schema_filter: '~^(?!(core\.)?(metadata_state|workspace|workspace_membership|workspace_invitation|workflow_run|workflow_run_step|workflow_usage|workflow_secret)$)(core\.)?[^.]+$~'
 
         profiling_collect_backtrace: '%kernel.debug%'
     orm:

@@ -35,6 +35,8 @@ use App\Module\Workflow\Application\Definition\TriggerEvent;
 use App\Module\Workflow\Application\Engine\Message\ResumeRun;
 use App\Module\Workflow\Application\Engine\Message\RunScheduled;
 use App\Module\Workflow\Application\Engine\Message\RunWorkflow;
+use App\Module\Workflow\Application\Secrets\SecretsKeyMissing;
+use App\Module\Workflow\Application\Secrets\WorkflowSecrets;
 use App\Shared\Transaction\TransactionRunner;
 use App\Shared\Workspace\CurrentWorkspace;
 use App\Shared\Workspace\Workspace;
@@ -106,6 +108,7 @@ final class WorkflowEngine implements ResetInterface
         private readonly MessageBusInterface $bus,
         private readonly WorkflowHttp $http,
         private readonly RecordTransitionsInterface $transitions,
+        private readonly WorkflowSecrets $secrets,
     ) {
     }
 
@@ -887,6 +890,60 @@ final class WorkflowEngine implements ResetInterface
      */
     private function request(Step $step, DataChain $chain): array
     {
+        // The secrets on a copy of the chain, for this request only: never in the run's data.
+        $secrets = [];
+        if (str_contains((string) json_encode($step->options), '$secrets')) {
+            try {
+                $secrets = array_filter($this->secrets->values(), static fn (string $value): bool => '' !== $value);
+            } catch (SecretsKeyMissing|\UnexpectedValueException $e) {
+                throw new StepFailed($e->getMessage(), 0, $e);
+            }
+            $chain = clone $chain;
+            $chain->set('$secrets', $secrets);
+        }
+        try {
+            [$input, $output] = $this->send($step, $chain);
+        } catch (StepFailed $e) {
+            throw new StepFailed(\is_string($message = self::maskedValue($e->getMessage(), $secrets)) ? $message : '', 0, $e);
+        }
+
+        return [self::masked($input, $secrets), self::masked($output, $secrets), true];
+    }
+
+    /**
+     * What may hold a secret, each secret's value replaced by "[secret]": the request and its
+     * answer are logged with the run.
+     *
+     * @param array<string, mixed>  $values
+     * @param array<string, string> $secrets
+     *
+     * @return array<string, mixed>
+     */
+    private static function masked(array $values, array $secrets): array
+    {
+        return array_map(static fn (mixed $value): mixed => self::maskedValue($value, $secrets), $values);
+    }
+
+    /**
+     * @param array<string, string> $secrets
+     */
+    private static function maskedValue(mixed $value, array $secrets): mixed
+    {
+        return match (true) {
+            [] === $secrets => $value,
+            \is_string($value) => str_replace(array_values($secrets), '[secret]', $value),
+            \is_array($value) => array_map(static fn (mixed $item): mixed => self::maskedValue($item, $secrets), $value),
+            default => $value,
+        };
+    }
+
+    /**
+     * @return array{array<string, mixed>, array<string, mixed>}
+     *
+     * @throws StepFailed
+     */
+    private function send(Step $step, DataChain $chain): array
+    {
         $method = $step->string('method') ?? 'GET';
         $url = $chain->text($step->string('url'));
         $headers = array_map(fn (mixed $value): string => $chain->text(\is_scalar($value) ? (string) $value : ''), \is_array($step->options['headers'] ?? null) ? $step->options['headers'] : []);
@@ -909,7 +966,7 @@ final class WorkflowEngine implements ResetInterface
             throw new StepFailed(\sprintf('%s %s answered %d.', $method, $url, $status));
         }
 
-        return [$input, $output, true];
+        return [$input, $output];
     }
 
     /**

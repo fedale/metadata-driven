@@ -6,7 +6,10 @@
     {% if wf_console %}<p><a href="{{ path('console_index') }}">&larr; {{ 'console.workspaces'|trans }}</a></p>{% else %}<p><a href="{{ path('admin_index') }}">&larr; {{ 'admin.objects'|trans }}</a></p>{% endif %}
     <div class="md-page__header">
         <h1>{{ 'admin.workflows'|trans }}</h1>
-        <a class="gv-btn gv-btn-primary" href="{{ path(wf ~ 'new') }}">{{ 'admin.workflow.new'|trans }}</a>
+        <span>
+            {% if not wf_console %}<a class="gv-btn" href="{{ path('admin_workflow_secret_index') }}">{{ 'admin.workflow.secrets'|trans }}</a>{% endif %}
+            <a class="gv-btn gv-btn-primary" href="{{ path(wf ~ 'new') }}">{{ 'admin.workflow.new'|trans }}</a>
+        </span>
     </div>
     <p class="gv-muted">{{ 'admin.workflow.intro'|trans }}</p>
 

@@ -33,6 +33,9 @@ parameters:
     app.workflow.http_retry_delay_ms: 1000
     # Never in production: an HTTP request of a workflow reaching the server's own network.
     app.workflow.allow_private_networks: false
+    # The key the workflows' secrets are encrypted with: workflow:secrets:key makes one. Unset, no
+    # secret is written nor read.
+    app.workflow.secrets_key: '%env(default::WORKFLOW_SECRETS_KEY)%'
     app.workflow.runs_keep_days: 30
     # Workspaces (docs/architecture.md, "Workspaces"). A request for <slug>.<base host> is for that
     # workspace's; one for the base host itself, or for any other host, and a command without
@@ -100,6 +103,8 @@ when@test:
         # would block them. PackageSourcesTest checks the guard itself.
         app.package.allow_private_networks: true
         app.workflow.allow_private_networks: true
+        # The tests' own key: never one of an installation's.
+        app.workflow.secrets_key: 'dGVzdC10ZXN0LXRlc3QtdGVzdC10ZXN0LXRlc3QtMzI='
         app.workflow.http_retry_delay_ms: 0
         app.import.drafts_dir: '%kernel.cache_dir%/imports'
         # Tests have no request or command to name a workspace: every connection starts in the

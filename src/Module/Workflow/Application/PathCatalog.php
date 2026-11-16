@@ -10,6 +10,7 @@ use App\Module\Workflow\Application\Definition\FormInput;
 use App\Module\Workflow\Application\Definition\Step;
 use App\Module\Workflow\Application\Definition\StepType;
 use App\Module\Workflow\Application\Definition\TriggerEvent;
+use App\Module\Workflow\Application\Secrets\WorkflowSecrets;
 
 /**
  * The paths a definition's steps can read, as the variable picker offers them: the trigger's
@@ -20,6 +21,7 @@ final class PathCatalog
 {
     public function __construct(
         private readonly MetadataRegistryInterface $metadata,
+        private readonly ?WorkflowSecrets $secrets = null,
     ) {
     }
 
@@ -103,6 +105,9 @@ final class PathCatalog
                 StepType::InstallPackage, StepType::AssignRole => [],
             };
         }
+
+        // The workspace's secrets: for an http_request's url, headers and body only.
+        $context = [...$context, ...array_map(static fn (string $name): string => '$secrets.'.$name, $this->secrets?->names() ?? [])];
 
         return ['trigger' => $trigger, 'context' => $context, 'steps' => array_filter($steps, static fn (array $paths): bool => [] !== $paths)];
     }

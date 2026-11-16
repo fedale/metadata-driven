@@ -307,8 +307,14 @@ steps:
   `http` and `https` only. Tried again, it waits 1, then 2, then 4 seconds
   (`app.workflow.http_retry_delay_ms`).
 - In after-runs, manual runs and the system admin's workflows; never before a write (no call to
-  the outside while a write waits). The request and its answer are in the run's log: put no secret
-  in them (a workspace's secrets come later).
+  the outside while a write waits). The request and its answer are in the run's log.
+- **Secrets**: tokens and keys go on the **Secrets** page of the workflows
+  (`/admin/workflows/secrets`, `admin.workflows`), encrypted (`WORKFLOW_SECRETS_KEY`), a value
+  never shown again once written. `{{ $secrets.crm_token }}` reads one in a request's `url`,
+  `headers` and `body` only (anywhere else the activation refuses it: it could be written down in
+  a record or a message); each value is `[secret]` in the run's log, its answer and its errors
+  included, and never in the run's data. A secret missing fails the activation; one deleted
+  since, the step. The system admin's workflows have none.
 
 A step that writes outputs the record as written (`{{ reminder.id }}`); an `if`, the branch it
 took; a filter, whether it passed. A step reads only the steps run before it on every way there:
@@ -408,6 +414,7 @@ these triggers or steps, and the console defines no workflow on a record's.
 |---|---|
 | The events | `RecordManager` raises `RecordWriting` before a write, in its transaction, and `RecordWritten` once the outermost transaction committed (`TransactionRunner::whenDone()`); `RecordEventScopeInterface` silences them (a package's seeds) or stamps them with the run they come from (Record contract) |
 | The definition | `DefinitionParser` (structure, every problem by its path), `DefinitionValidator` (objects, fields, paths, roles, on activation), stored compiled as JSON (`core.workflow_version.definition`) next to the YAML as written (`source`) |
+| Secrets | `core.workflow_secret` (DBAL, row-level security; migration `Version20261116140000`), `WorkflowSecrets` (`DbalWorkflowSecrets`), sealed by `SecretBox` (libsodium's secret box, `WORKFLOW_SECRETS_KEY`, `workflow:secrets:key`); read on a copy of the run's data for the request only, masked in its log |
 | HTTP | `WorkflowHttp`: Symfony's `HttpClient` through `NoPrivateNetworkHttpClient` (`app.workflow.allow_private_networks`, true in the tests only), the retries and the 1 MB cap |
 | Schedules | Symfony Scheduler: `WorkflowSchedule` (`#[AsSchedule('workflows')]`) sends `CheckSchedules` every minute, `ScheduledWorkflows` queues a `RunScheduled` for each workflow due (`dragonmantank/cron-expression`), `WorkflowEngine::runScheduled()` |
 | The queue | Symfony Messenger on Redis (`config/packages/messenger.yaml`, the `async` transport, `failed` for what broke outside a run's steps: `messenger:failed:show`): `RunWorkflow` (an after-run, `WorkflowEngine::runQueued()`), `RunPlatformEvents` (the system admin's); each step checks its permission against whoever triggered it, from their assignments (`AccessCheckerInterface::userCanGrant()`), in a request as in the worker |
@@ -421,5 +428,5 @@ these triggers or steps, and the console defines no workflow on a record's.
 ## Not yet
 
 Other platform events (a workspace suspended or deleted), record steps in the system admin's
-workflows; secrets for the HTTP requests, workflows in packages, incoming webhooks, sub-workflows,
+workflows; workflows in packages, incoming webhooks, sub-workflows,
 quotas per plan; email and notifications, once the application sends email. See [the plan](internal/workflow-plan.md).

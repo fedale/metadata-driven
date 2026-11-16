@@ -22,6 +22,8 @@ symfony run -d --watch=config,src symfony console messenger:consume async schedu
 ```
 
 `MESSENGER_TRANSPORT_DSN` names the queue, in `.env.local`: `redis://localhost:6379/messages`.
+`WORKFLOW_SECRETS_KEY` encrypts the workflows' secrets: `symfony console workflow:secrets:key`
+prints one, to put there too.
 Without the worker, the workflows that run after a write wait in the queue.
 
 Create your account, as super admin (see [Users and permissions](access.md)):

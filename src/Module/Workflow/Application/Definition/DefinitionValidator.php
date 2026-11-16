@@ -12,6 +12,7 @@ use App\Module\FieldType\Contract\Dto\StatusMachine;
 use App\Module\FieldType\Contract\Dto\StatusTransition;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Workflow\Application\Secrets\WorkflowSecrets;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
 use App\Shared\Workspace\CurrentWorkspace;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -34,6 +35,12 @@ final class DefinitionValidator
     /** @var array<string, list<string>> */
     private array $errors = [];
 
+    /** Checking an HTTP request's url, headers or body: the only places a secret is read. */
+    private bool $secretsAllowed = false;
+
+    /** @var list<string>|null the workspace's secrets, read once per validation */
+    private ?array $secretNames = null;
+
     /** @var array<string, string> iterator key => the object of the records it runs on, when known */
     private array $itemObjects = [];
 
@@ -44,6 +51,7 @@ final class DefinitionValidator
         #[Autowire('%app.workflow.max_records%')]
         private readonly int $maxRecords = 200,
         private readonly ?CurrentWorkspace $workspace = null,
+        private readonly ?WorkflowSecrets $secrets = null,
     ) {
     }
 
@@ -54,6 +62,7 @@ final class DefinitionValidator
     {
         $this->errors = [];
         $this->itemObjects = [];
+        $this->secretNames = null;
         $trigger = $definition->trigger;
         // The platform's events are the system admin's, in the console; the others a workspace's.
         $inWorkspace = $this->workspace?->isSelected() ?? true;
@@ -161,8 +170,13 @@ final class DefinitionValidator
             }
         }
         if (StepType::HttpRequest === $step->type) {
-            foreach (['url', 'headers', 'body'] as $option) {
-                $this->paths($step->options[$option] ?? null, $path.'.'.$option, $definition, $trigger, $before);
+            $this->secretsAllowed = true;
+            try {
+                foreach (['url', 'headers', 'body'] as $option) {
+                    $this->paths($step->options[$option] ?? null, $path.'.'.$option, $definition, $trigger, $before);
+                }
+            } finally {
+                $this->secretsAllowed = false;
             }
         }
         foreach (['id', 'message', 'email', 'until'] as $option) {
@@ -262,6 +276,15 @@ final class DefinitionValidator
     {
         $segments = explode('.', $path);
         $root = $segments[0];
+        if ('$secrets' === $root) {
+            if (!$this->secretsAllowed) {
+                $this->error($at, 'A secret is read in an http_request\'s url, headers and body only: nowhere it could be written down.');
+            } elseif (!isset($segments[1]) || !\in_array($segments[1], $this->secretNames ??= $this->secrets?->names() ?? [], true)) {
+                $this->error($at, \sprintf('There is no secret "%s": add it on the page of the secrets.', $segments[1] ?? ''));
+            }
+
+            return;
+        }
         if (!\in_array($root, self::ROOTS, true) && !\in_array($root, $before, true)) {
             $this->error($at, \in_array($root, array_map(static fn (Step $step): string => $step->key, $definition->allSteps()), true)
                 ? \sprintf('"%s" is not run before this point on every way here: its output cannot be read.', $root)
