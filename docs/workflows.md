@@ -205,7 +205,8 @@ steps:
 - A **POST** to it: `202`, and the run goes to the worker. `$trigger.body` is the body, JSON
   decoded (else its text; at most 64 KB), `$trigger.query` the address's parameters. A workflow
   not active, not on a webhook, or a wrong token: `404`, the same for all. Past the workspace's
-  runs a minute (`app.workflow.runs_per_minute`): `429`, nothing queued.
+  runs a minute (`app.workflow.runs_per_minute`), the requests counted as they come: `429`, with
+  `Retry-After`, nothing queued.
 - **No one is behind it**: every step that reads or writes records acts as a role (`act_as`).
   What it receives is anyone's who has the address: check it (a `filter`, a `refuse`) before
   writing it down.
