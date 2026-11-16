@@ -6,15 +6,14 @@ namespace App\Module\Workflow\UI\Controller;
 
 use App\Module\Workflow\Application\Engine\ActiveWorkflows;
 use App\Module\Workflow\Application\Engine\Message\RunWebhook;
-use App\Module\Workflow\Application\Engine\RunStore;
 use App\Module\Workflow\Application\Webhook\WebhookTokens;
 use App\Shared\Workspace\CurrentWorkspace;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Requirement\Requirement;
 
@@ -33,9 +32,8 @@ final class WebhookController extends AbstractController
         private readonly WebhookTokens $tokens,
         private readonly CurrentWorkspace $workspace,
         private readonly MessageBusInterface $bus,
-        private readonly RunStore $runs,
-        #[Autowire(param: 'app.workflow.runs_per_minute')]
-        private readonly int $runsPerMinute,
+        // config/packages/rate_limiter.yaml
+        private readonly RateLimiterFactoryInterface $workflowWebhookLimiter,
     ) {
     }
 
@@ -46,9 +44,11 @@ final class WebhookController extends AbstractController
         if (null === $workflow || !$workflow->definition->trigger->isWebhook() || !$this->tokens->matches($workflowId, $token)) {
             throw $this->createNotFoundException('No such address.');
         }
-        // A flood of requests fills no queue: past the workspace's runs a minute, refused here.
-        if ($this->runs->countSince(new \DateTimeImmutable('-1 minute')) >= $this->runsPerMinute) {
-            return new JsonResponse(['error' => 'Too many runs in this workspace: try again in a minute.'], Response::HTTP_TOO_MANY_REQUESTS, ['Retry-After' => '60']);
+        // A flood of requests fills no queue: the requests accepted are counted as they come,
+        // per workspace, the runs a minute at most.
+        $limit = $this->workflowWebhookLimiter->create($this->workspace->id())->consume();
+        if (!$limit->isAccepted()) {
+            return new JsonResponse(['error' => 'Too many runs in this workspace: try again in a minute.'], Response::HTTP_TOO_MANY_REQUESTS, ['Retry-After' => (string) max(1, $limit->getRetryAfter()->getTimestamp() - time())]);
         }
         $content = $request->getContent();
         if (\strlen($content) > self::MAX_BODY_BYTES) {

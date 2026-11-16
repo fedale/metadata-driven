@@ -8,10 +8,13 @@ use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Workflow\Domain\Repository\WorkflowRepository;
+use App\Shared\Workspace\CurrentWorkspace;
 use App\Tests\Support\SignsIn;
 use Doctrine\DBAL\Connection;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 /**
  * A workflow on a webhook: its address made on its page, shown once; a request to it runs the
@@ -26,6 +29,10 @@ final class WebhookTest extends WebTestCase
     protected function setUp(): void
     {
         $this->client = self::createClient();
+        // The requests counted by the tests before: not this test's.
+        $limits = self::getContainer()->get('cache.rate_limiter');
+        self::assertInstanceOf(CacheItemPoolInterface::class, $limits);
+        $limits->clear();
         $this->client->setServerParameter('HTTP_ORIGIN', 'http://localhost');
         $metadata = self::getContainer()->get(MetadataManagerInterface::class);
         $metadata->createObject('lead', 'Lead', 'Leads');
@@ -79,11 +86,14 @@ final class WebhookTest extends WebTestCase
         self::assertResponseStatusCodeSame(202);
         self::assertSame(['plain words'], array_map(static fn (RecordOutput $lead): mixed => $lead->get('source'), iterator_to_array(self::getContainer()->get(RecordFinderInterface::class)->each('lead'), false)));
 
-        // The workspace's runs a minute spent: refused, nothing queued.
+        // The workspace's requests a minute spent, counted as they come: refused, nothing queued.
         $limit = self::getContainer()->getParameter('app.workflow.runs_per_minute');
-        self::getContainer()->get(Connection::class)->executeStatement(\sprintf('INSERT INTO core.workflow_run (id, workflow_id, version_id, status, object, action, timing, depth, chain, started_at, finished_at) SELECT gen_random_uuid(), workflow_id, version_id, status, object, action, timing, depth, chain, NOW(), NOW() FROM core.workflow_run, generate_series(1, %d)', $limit));
+        $limiter = self::getContainer()->get('limiter.workflow_webhook');
+        self::assertInstanceOf(RateLimiterFactoryInterface::class, $limiter);
+        $limiter->create(self::getContainer()->get(CurrentWorkspace::class)->id())->consume($limit - 1);
         $this->client->request('POST', $address, content: '{}');
         self::assertResponseStatusCodeSame(429);
+        self::assertCount(1, iterator_to_array(self::getContainer()->get(RecordFinderInterface::class)->each('lead'), false));
     }
 
     public function testAStepNeedsARole(): void

@@ -67,4 +67,7 @@ Chosen without asking (the user's earlier choices for schedules and secrets as t
 
 ### Done (2026-11-16, branch `workflow_webhook`)
 
-As above. The unattended runs (schedule, webhook) share `WorkflowEngine::runUnattended()`.
+As above. The unattended runs (schedule, webhook) share `WorkflowEngine::runUnattended()`. The
+security review asked, and got, the requests counted as they come (a rate limiter per workspace,
+`workflow_webhook`), not the runs stored: those are stored once the worker ran them, after a
+burst.
