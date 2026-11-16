@@ -159,7 +159,9 @@ steps:
   `transition` (`name`, `from`, `to`). An update that takes no transition starts none of them.
 - The **`transition` step** takes one (`field`, `name`) on a record (`object`, `id`): as a write,
   it needs the update permission and one of the transition's roles, held by whoever triggered the
-  event, or given by the role it acts as (`act_as`). It outputs the record as written; a
+  event **and** by whoever activated the workflow (on activation, and still at each run: else they
+  would take it through the users who may), or given by the role it acts as (`act_as`, which must
+  be or contain one of them). It outputs the record as written; a
   transition not taken from the record's state fails it.
 
 ### Manual workflows

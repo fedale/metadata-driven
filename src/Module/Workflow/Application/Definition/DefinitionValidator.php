@@ -9,6 +9,7 @@ use App\Module\Access\Contract\Permissions;
 use App\Module\Access\Contract\RecordAction;
 use App\Module\Access\Contract\WorkspaceRolesInterface;
 use App\Module\FieldType\Contract\Dto\StatusMachine;
+use App\Module\FieldType\Contract\Dto\StatusTransition;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
@@ -130,7 +131,17 @@ final class DefinitionValidator
             $this->paths($value, $path.'.values.'.$field, $definition, $trigger, $before);
         }
         if (StepType::Transition === $step->type && null !== $target) {
-            $this->transitionOf($target, (string) $step->string('field'), (string) $step->string('name'), $path.'.field', $path.'.name');
+            $transition = $this->transitionOf($target, (string) $step->string('field'), (string) $step->string('name'), $path.'.field', $path.'.name');
+            if (null !== $transition && [] !== $transition->roles) {
+                $role = $step->actAs();
+                if (null !== $role && [] === array_filter($transition->roles, fn (string $needed): bool => $needed === $role || $this->access->roleGives($role, $needed))) {
+                    $this->error($path.'.act_as', \sprintf('"%s" is taken by %s only: %s is none of them.', $transition->label, implode(', ', $transition->roles), $role));
+                }
+                if (null === $role && [] === array_filter($transition->roles, $this->access->holds(...))) {
+                    // No way to more power: the users who may take it would take it for you.
+                    $this->error($path.'.name', \sprintf('You hold none of %s: a step taking "%s" as whoever triggered the event may not do what you cannot. Give it an act_as.', implode(', ', $transition->roles), $transition->label));
+                }
+            }
         }
         if (StepType::SearchRecords === $step->type && null !== $target) {
             $this->search($step, $path, $target, $definition, $trigger, $before);
@@ -326,17 +337,23 @@ final class DefinitionValidator
     /**
      * A Status field of the object, and one of its transitions when named.
      */
-    private function transitionOf(ObjectDefinitionDto $object, string $field, ?string $name, string $fieldPath, string $namePath): void
+    private function transitionOf(ObjectDefinitionDto $object, string $field, ?string $name, string $fieldPath, string $namePath): ?StatusTransition
     {
         $definition = $object->fields[$field] ?? null;
         if (null === $definition || 'status' !== $definition->type) {
             $this->error($fieldPath, \sprintf('Object "%s" has no status field "%s".', $object->name, $field));
 
-            return;
+            return null;
         }
-        if (null !== $name && !isset(StatusMachine::fromSettings($definition->settings)->transitions[$name])) {
+        if (null === $name) {
+            return null;
+        }
+        $transition = StatusMachine::fromSettings($definition->settings)->transitions[$name] ?? null;
+        if (null === $transition) {
             $this->error($namePath, \sprintf('The status "%s" has no transition "%s".', $field, $name));
         }
+
+        return $transition;
     }
 
     private function searchable(ObjectDefinitionDto $object, string $name, string $path): void
