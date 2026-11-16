@@ -394,7 +394,10 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   run; calling needs the called workflow's run permission) done on branch `sub_workflows`, merged
   into `main` on 2026-11-16. Workflows in packages (kind `Workflow` of the package format 2.3.0,
   tagged by the user; installed and upgraded as drafts) done on branch `workflow_packages`,
-  merged into `main` on 2026-11-16. Left of phase 6: quotas per plan.
+  merged into `main` on 2026-11-16. Quotas per plan (`config/packages/plans.yaml`,
+  `core.workspace.plan`, migration `Version20261116180000`, run `doctrine:migrations:migrate`; the
+  workflow steps a month, checked where a run starts) done on branch `workflow_quotas`, merged
+  into `main` on 2026-11-16: phase 6 complete (email and notifications left out).
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

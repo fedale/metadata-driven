@@ -23,6 +23,8 @@ final readonly class Workspace
         public string $dataSchema,
         public string $rbacSchema,
         public bool $active,
+        /** Its plan (Plans), null for the default one. */
+        public ?string $plan = null,
     ) {
     }
 }

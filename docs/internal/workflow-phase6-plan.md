@@ -5,7 +5,7 @@ Status: **agreed** (2026-11-16). Phase 6 of [workflow-plan.md](workflow-plan.md)
 ## Decisions (user, 2026-11-16)
 
 1. **Now: schedules**, then **the workspaces' secrets**, then **incoming webhooks** (asked the
-   same day), then **sub-workflows**, then **workflows in packages**. Quotas per plan wait.
+   same day), then **sub-workflows**, then **workflows in packages**, then **quotas per plan**.
 2. **Email and notifications stay out** until the application sends email.
 
 ## Schedules
@@ -126,3 +126,26 @@ As above; the library tagged 2.3.0 by the user, required as `^2.3`. Found on the
 way: `DoctrineWorkflowRepository::remove()` left the versions managed, which failed the next flush
 in the same request; they go with their workflow now. A workflow references objects by name: an
 object renamed breaks it (in packages and out), as before.
+
+## Quotas per plan
+
+Decisions (user, 2026-11-16): the plans in **config** (`config/packages/plans.yaml`), a workspace
+put on one by the **system admin** (the console, `workspace:create --plan`, `workspace:plan`); a
+plan limits the **workflow steps a month**; past them **the runs stop**.
+
+- **Shared**: `Plan`, `Plans` (`ConfiguredPlans`: `app.plans`, `app.default_plan`, checked when
+  read), `core.workspace.plan` (migration `Version20261116180000`, null for the default plan),
+  `Workspace::$plan`, `WorkspaceAdministration::assignPlan()`.
+- **Workflow**: `RunStore::stepsThisMonth()` (`core.workflow_usage` since the month's first day,
+  the database's date, as the usage is counted), `WorkflowQuota` (the contract's
+  `WorkflowUsageInterface`), checked where a run starts (with `runs_per_minute`): a before-run
+  refuses the write, the others fail. A run that started finishes; a sub-workflow is its caller's.
+- **UI**: the workflows page (the month's steps, a warning from 80%, an alert when spent); the
+  console's workspace page (the plan, the month's steps, a form to change it); the console's list
+  and `workspace:list` show the plan. Admin may use WorkflowContract now.
+- **Defaults**: `starter` (5 000), `business` (100 000), `unlimited`, the default: an installation
+  upgraded limits nothing until a plan is chosen.
+
+### Done (2026-11-16, branch `workflow_quotas`)
+
+As above. Phase 6 complete with it (email and notifications left out by choice).

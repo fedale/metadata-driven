@@ -10,6 +10,7 @@ use App\Module\Workflow\Application\Definition\Definition;
 use App\Module\Workflow\Application\Definition\DefinitionParser;
 use App\Module\Workflow\Application\EditorModel;
 use App\Module\Workflow\Application\Engine\RunLog;
+use App\Module\Workflow\Application\Engine\WorkflowQuota;
 use App\Module\Workflow\Application\PathCatalog;
 use App\Module\Workflow\Application\RunQueries;
 use App\Module\Workflow\Application\TestRefused;
@@ -72,6 +73,7 @@ abstract class AbstractWorkflowController extends AbstractController
         private readonly PathCatalog $paths,
         private readonly WorkflowTester $tester,
         protected readonly WebhookTokens $webhooks,
+        private readonly WorkflowQuota $quota,
     ) {
     }
 
@@ -90,6 +92,8 @@ abstract class AbstractWorkflowController extends AbstractController
                 'move' => $this->moveForm($workflow)->createView(),
             ], $workflows),
             'summary' => $this->runs->summary(),
+            // The workspace's steps this month, against its plan; the system's workflows have none.
+            'usage' => $this->isConsole() ? null : $this->quota->thisMonth(),
         ]);
     }
 

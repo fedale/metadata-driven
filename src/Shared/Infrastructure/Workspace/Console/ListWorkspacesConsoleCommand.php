@@ -29,12 +29,13 @@ final class ListWorkspacesConsoleCommand
                 $workspace->slug,
                 $workspace->name,
                 $workspace->active ? 'active' : 'suspended',
+                $workspace->plan ?? '(default)',
                 $members,
                 $objects,
                 $workspace->dataSchema.', '.$workspace->rbacSchema,
             ];
         }
-        $io->table(['Slug', 'Name', 'Status', 'Members', 'Objects', 'Schemas'], $rows);
+        $io->table(['Slug', 'Name', 'Status', 'Plan', 'Members', 'Objects', 'Schemas'], $rows);
 
         return Command::SUCCESS;
     }

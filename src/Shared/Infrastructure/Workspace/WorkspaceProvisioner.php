@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Workspace;
 
+use App\Shared\Workspace\Plans;
 use App\Shared\Workspace\SystemConsole;
 use App\Shared\Workspace\Workspace;
 use App\Shared\Workspace\WorkspaceAdministration;
@@ -58,6 +59,7 @@ final class WorkspaceProvisioner implements WorkspaceAdministration
         private readonly FilesystemOperator $files,
         #[Autowire('%app.workspace.console_label%')]
         private readonly string $consoleLabel = 'console',
+        private readonly ?Plans $plans = null,
     ) {
     }
 
@@ -108,6 +110,15 @@ final class WorkspaceProvisioner implements WorkspaceAdministration
     public function resume(Workspace $workspace): void
     {
         $this->setStatus($workspace, 'active');
+    }
+
+    public function assignPlan(Workspace $workspace, string $plan): void
+    {
+        $this->assertSystem();
+        if (null === $this->plans?->get($plan)) {
+            throw new \InvalidArgumentException(\sprintf('There is no plan "%s": %s.', $plan, implode(', ', array_keys($this->plans?->all() ?? []))));
+        }
+        $this->connection->executeStatement('UPDATE core.workspace SET plan = ? WHERE id = ?', [$plan, $workspace->id]);
     }
 
     /**

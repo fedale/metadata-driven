@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Workspace\Console;
 
 use App\Shared\Infrastructure\Workspace\WorkspaceProvisioner;
+use App\Shared\Workspace\Plans;
 use App\Shared\Workspace\WorkspaceCreated;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -36,6 +37,7 @@ final class CreateWorkspaceConsoleCommand extends Command
         #[Autowire('%app.super_admin_role%')]
         private readonly string $superAdminRole,
         private readonly EventDispatcherInterface $events,
+        private readonly Plans $plans,
     ) {
         parent::__construct();
     }
@@ -47,7 +49,8 @@ final class CreateWorkspaceConsoleCommand extends Command
             ->addOption('name', null, InputOption::VALUE_REQUIRED, 'Its name, shown to its users (default: the slug)')
             ->addOption('admin-email', null, InputOption::VALUE_REQUIRED, 'Its first admin: an existing user becomes a member, a new one is created')
             ->addOption('admin-password', null, InputOption::VALUE_REQUIRED, 'The password of a new admin (asked, hidden, when omitted; avoid it in shared shells)')
-            ->addOption('package', null, InputOption::VALUE_REQUIRED, 'A package to install: vendor/name, vendor/name@1.0.0, or a directory');
+            ->addOption('package', null, InputOption::VALUE_REQUIRED, 'A package to install: vendor/name, vendor/name@1.0.0, or a directory')
+            ->addOption('plan', null, InputOption::VALUE_REQUIRED, 'Its plan (config/packages/plans.yaml); default: the default plan');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -58,6 +61,13 @@ final class CreateWorkspaceConsoleCommand extends Command
             throw new \LogicException('The slug is a required argument.');
         }
         $name = $input->getOption('name');
+        $plan = $input->getOption('plan');
+        if (\is_string($plan) && null === $this->plans->get($plan)) {
+            // Before anything is created.
+            $io->error(\sprintf('There is no plan "%s": %s.', $plan, implode(', ', array_keys($this->plans->all()))));
+
+            return Command::FAILURE;
+        }
 
         try {
             $workspace = $this->provisioner->create($slug, \is_string($name) && '' !== $name ? $name : $slug);
@@ -65,6 +75,9 @@ final class CreateWorkspaceConsoleCommand extends Command
             $io->error($e->getMessage());
 
             return Command::FAILURE;
+        }
+        if (\is_string($plan)) {
+            $this->provisioner->assignPlan($workspace, $plan);
         }
         $io->success(\sprintf('Workspace "%s" created.', $slug));
 

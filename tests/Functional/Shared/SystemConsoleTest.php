@@ -133,6 +133,19 @@ final class SystemConsoleTest extends WebTestCase
         self::assertResponseStatusCodeSame(403);
     }
 
+    public function testPutsAWorkspaceOnAPlan(): void
+    {
+        $this->signedInSystemAdmin();
+        $this->client->request('GET', '/console/workspaces/default');
+        self::assertSelectorTextContains('.md-workspace-usage', 'Plan Unlimited: no limit on workflow steps.');
+
+        $this->client->submitForm('Change the plan', ['workspace_plan[plan]' => 'starter']);
+        $this->client->followRedirect();
+
+        self::assertSame('starter', $this->workspace('default')->plan);
+        self::assertSelectorTextContains('.md-workspace-usage', 'Plan Starter: 0 workflow steps this month, of 5000 (0%).');
+    }
+
     public function testMakesAMemberSuperAdminAndRemovesThem(): void
     {
         self::createUser('bruno@example.com');

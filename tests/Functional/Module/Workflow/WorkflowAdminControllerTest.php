@@ -9,6 +9,7 @@ use App\Module\Record\Contract\RecordManagerInterface;
 use App\Module\Workflow\Domain\Repository\WorkflowRepository;
 use App\Tests\Support\CreatesRelatedObjects;
 use App\Tests\Support\SignsIn;
+use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
@@ -42,6 +43,27 @@ final class WorkflowAdminControllerTest extends WebTestCase
         self::assertResponseStatusCodeSame(403);
         $this->client->request('GET', '/admin');
         self::assertSelectorNotExists('a[href="/admin/workflows"]');
+    }
+
+    public function testShowsTheMonthsStepsAgainstThePlan(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        $this->client->request('GET', '/admin/workflows');
+        // No limit (the default plan): nothing to say.
+        self::assertSelectorNotExists('.md-workflow-usage');
+
+        $connection = self::getContainer()->get(Connection::class);
+        $connection->executeStatement("UPDATE core.workspace SET plan = 'starter'");
+        $this->client->request('GET', '/admin/workflows');
+        self::assertSelectorTextContains('.md-workflow-usage', 'This month: 0 workflow steps of the 5000 your plan (Starter) allows.');
+
+        $connection->executeStatement('INSERT INTO core.workflow_usage (workspace_id, day, steps) SELECT id, CURRENT_DATE, 4500 FROM core.workspace');
+        $this->client->request('GET', '/admin/workflows');
+        self::assertSelectorTextContains('.md-workflow-usage', '90%');
+
+        $connection->executeStatement('UPDATE core.workflow_usage SET steps = 5000');
+        $this->client->request('GET', '/admin/workflows');
+        self::assertSelectorTextContains('[role="alert"].md-workflow-usage', 'No run starts until next month');
     }
 
     public function testWritesADraftShowsItsProblemsActivatesItAndShowsItsRuns(): void

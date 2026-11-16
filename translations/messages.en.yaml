@@ -28,6 +28,11 @@ console:
     objects: Objects
     active: active
     suspended_status: suspended
+    plan: Plan
+    plan_change: Change the plan
+    plan_changed: 'Workspace %slug% is on the plan %plan%.'
+    usage: 'Plan %plan%: %steps% workflow steps this month, of %limit% (%percent%%).'
+    usage_unlimited: 'Plan %plan%: no limit on workflow steps.'
     suspend: Suspend
     resume: Resume
     suspended: 'Workspace %slug% suspended: its address answers 404, its data stays.'
@@ -474,6 +479,9 @@ admin:
         secret_delete_confirm: 'Delete the secret %name%?'
         on_schedule: 'a time come (cron)'
         on_called: 'called by another workflow (run_workflow)'
+        usage: 'This month: %steps% workflow steps of the %limit% your plan (%plan%) allows.'
+        usage_warning: 'This month: %steps% workflow steps of the %limit% your plan (%plan%) allows, %percent%%: at the limit, no run starts until next month.'
+        usage_exhausted: 'This month''s workflow steps are spent: %steps% of the %limit% your plan (%plan%) allows. No run starts until next month; a write a workflow guards before it is refused.'
         called_editor: 'Run by the run_workflow steps of other workflows, inside their runs: $trigger.input holds what they give, a return step gives back its values.'
         called_inputs: 'Its input, given by the workflows calling it: $trigger.input.<name>'
         called_workflow: 'Workflow (on called)'

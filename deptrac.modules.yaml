@@ -180,5 +180,5 @@ deptrac:
     Workflow: [WorkflowContract, MetadataContract, RecordContract, AccessContract, PackageContract, UserContract, FieldTypeContract, Shared]
     WorkflowContract: [Shared]
 
-    Admin: [AdminContract, MetadataContract, FieldTypeContract, SchemaContract, ViewContract, SettingsContract, AccessContract, UserContract, Shared]
+    Admin: [AdminContract, MetadataContract, FieldTypeContract, SchemaContract, ViewContract, SettingsContract, AccessContract, UserContract, WorkflowContract, Shared]
     AdminContract: [Shared]

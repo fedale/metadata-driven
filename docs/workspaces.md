@@ -38,11 +38,12 @@ symfony console system:admin                          # the system admins
 symfony console system:admin revoke olga@example.com  # their console session ends
 ```
 
-- **Workspaces**: the list (members, objects, status), a new one (its slug, its name, and its first
+- **Workspaces**: the list (members, objects, status, plan), a new one (its slug, its name, and its first
   admin, invited: they accept the link on the workspace's host, with their account or a new one, and
   hold its super admin role), suspend or resume, delete (typing the slug back; never the default
   workspace).
 - **A workspace's members**: give or take the super admin role, remove, invite another admin.
+- **A workspace's plan**, and its workflow steps this month (see [Plans](#plans)).
 - **Package indexes** offered to every workspace.
 - **Workflows** on the platform's events: a workspace created, a member added; install a package,
   give a role (see [Workflows](workflows.md#the-system-admins-workflows)).
@@ -57,7 +58,8 @@ with a role. Only system admins sign in there, and only the command line makes s
 # A workspace ready to use: its schemas, its permissions, its first admin, a package
 symfony console workspace:create acme --name="Acme Corp" --admin-email=anna@example.com --package=fedale/registration
 
-symfony console workspace:list                     # slug, name, status, members, objects
+symfony console workspace:list                     # slug, name, status, plan, members, objects
+symfony console workspace:plan acme business       # its plan (without one: shown)
 symfony console workspace:suspend acme             # 404 for its requests, its data kept
 symfony console workspace:resume acme
 symfony console workspace:delete acme              # asks for the slug again; can't be undone
@@ -66,6 +68,31 @@ symfony console workspace:delete acme              # asks for the slug again; ca
 The slug is lower case letters, digits and dashes. It becomes the first label of the workspace's
 host, so choose it as you would a subdomain. The default workspace can't be deleted. See
 [Console commands](console.md#workspaces) for every option.
+
+## Plans
+
+A workspace is on a **plan**, which limits what it uses. The plans are in
+`config/packages/plans.yaml`, with the code:
+
+```yaml
+parameters:
+    app.default_plan: unlimited          # a workspace with no plan of its own
+    app.plans:
+        starter:
+            label: Starter
+            workflow_steps_per_month: 5000   # ~ for no limit
+        business: { label: Business, workflow_steps_per_month: 100000 }
+        unlimited: { label: Unlimited, workflow_steps_per_month: ~ }
+```
+
+- **Workflow steps a month**: the steps its workflows run in a calendar month (the database's
+  date). Once spent, no run starts until the next month: a manual run, a queued one, a scheduled
+  one, a webhook's, a waiting one resuming fail, telling why; a write a workflow guards before it
+  is refused. A run that started finishes, whatever it spends. Its admins see the month's steps
+  on the workflows page, warned from 80%. See [Workflows](workflows.md#runs-and-limits).
+- **Choosing one**: in the console, on the workspace's page; `workspace:create --plan=…`;
+  `workspace:plan <slug> <plan>`. A workspace whose plan is no longer configured is on the
+  default one.
 
 ## Working on one workspace from the console
 
@@ -191,6 +218,7 @@ never share a stored file. `workspace:delete` deletes the workspace's directory,
 - Signing up, and inviting a user to a workspace.
 - One sign-in for all the workspaces a user belongs to: you sign in to each host.
 - Moving a workspace to a database of its own.
+- Billing: a plan limits, nothing charges for it; limits other than the workflow steps.
 
 How it works inside (the schemas, the session's workspace, row-level security) is in
 [Architecture](architecture.md#workspaces).

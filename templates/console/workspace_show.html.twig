@@ -16,6 +16,21 @@
         <code>{{ workspace.dataSchema }}</code>, <code>{{ workspace.rbacSchema }}</code>
     </p>
 
+    <section class="md-admin__section">
+        <h2>{{ 'console.plan'|trans }}</h2>
+        <p class="md-workspace-usage">
+            {% if usage.limit is null %}
+                {{ 'console.usage_unlimited'|trans({'%plan%': plan.label}) }}
+            {% else %}
+                {{ 'console.usage'|trans({'%plan%': plan.label, '%steps%': usage.steps, '%limit%': usage.limit, '%percent%': usage.percent}) }}
+            {% endif %}
+        </p>
+        {{ form_start(plan_form, {attr: {class: 'md-form'}}) }}
+            {{ form_rest(plan_form) }}
+            <button type="submit" class="gv-btn">{{ 'console.plan_change'|trans }}</button>
+        {{ form_end(plan_form) }}
+    </section>
+
     {% for link in app.flashes('invitation') %}
         <div class="md-flash md-flash--success" role="status">
             <p>{{ 'admin.members.invitation_link'|trans }}</p>

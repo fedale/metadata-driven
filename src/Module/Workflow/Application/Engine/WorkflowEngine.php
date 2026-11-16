@@ -112,6 +112,7 @@ final class WorkflowEngine implements ResetInterface
         private readonly WorkflowHttp $http,
         private readonly RecordTransitionsInterface $transitions,
         private readonly WorkflowSecrets $secrets,
+        private readonly WorkflowQuota $quota,
     ) {
     }
 
@@ -210,6 +211,13 @@ final class WorkflowEngine implements ResetInterface
 
                     return $run;
                 }
+                if (null !== $refusal = $this->quota->refusal()) {
+                    // Its month spent: waiting would not bring the steps back.
+                    $run->end(RunLog::FAILED, $refusal);
+                    $this->store($run);
+
+                    return $run;
+                }
                 $chain = $this->chain($message->trigger);
                 try {
                     // All of the run or nothing.
@@ -272,7 +280,7 @@ final class WorkflowEngine implements ResetInterface
             try {
                 ++$this->pending;
                 $run = new RunLog($workflow, '', null, $on->value, $on->value, null, 1, new \DateTimeImmutable());
-                if (null !== $refusal = $this->tooMany()) {
+                if (null !== $refusal = $this->tooMany() ?? $this->quota->refusal()) {
                     $run->end(RunLog::FAILED, $refusal);
                     $this->store($run);
 
@@ -549,6 +557,13 @@ final class WorkflowEngine implements ResetInterface
 
                 return $run;
             }
+            if (null !== $refusal = $this->quota->refusal()) {
+                $run->end(RunLog::FAILED, $refusal);
+                $run->chain = $chain->toArray();
+                $this->store($run);
+
+                return $run;
+            }
             // A resumed part counts as a run: past runs_per_minute, it waits a minute more.
             if (null !== $this->tooMany() && $message->delays < self::MAX_DELAYS) {
                 --$this->pending;
@@ -593,11 +608,12 @@ final class WorkflowEngine implements ResetInterface
     }
 
     /**
-     * Why the run may not start, if it may not: too deep a chain of runs, too many runs.
+     * Why the run may not start, if it may not: too deep a chain of runs, too many runs, the
+     * month's steps of the workspace's plan spent.
      */
     private function overLimits(RunLog $run): ?string
     {
-        return $this->tooDeep($run) ?? $this->tooMany();
+        return $this->tooDeep($run) ?? $this->tooMany() ?? $this->quota->refusal();
     }
 
     private function tooDeep(RunLog $run): ?string

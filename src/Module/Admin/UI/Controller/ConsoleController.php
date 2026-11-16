@@ -10,6 +10,9 @@ use App\Module\Access\Contract\WorkspaceRolesInterface;
 use App\Module\User\Contract\Dto\Member;
 use App\Module\User\Contract\Exception\UserException;
 use App\Module\User\Contract\UserManagerInterface;
+use App\Module\Workflow\Contract\WorkflowUsageInterface;
+use App\Shared\Workspace\Plan;
+use App\Shared\Workspace\Plans;
 use App\Shared\Workspace\Workspace;
 use App\Shared\Workspace\WorkspaceAdministration;
 use App\Shared\Workspace\WorkspaceCreated;
@@ -18,6 +21,7 @@ use App\Shared\Workspace\WorkspaceSessions;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -57,6 +61,8 @@ final class ConsoleController extends AbstractController
         private readonly string $baseHost,
         #[Autowire('%app.workspace.default%')]
         private readonly string $default,
+        private readonly Plans $plans,
+        private readonly WorkflowUsageInterface $usage,
     ) {
     }
 
@@ -128,7 +134,26 @@ final class ConsoleController extends AbstractController
             'status_form' => $this->actionForm('status', 'console_workspace_status', $workspace)->createView(),
             'invite_form' => $this->inviteForm($workspace)->createView(),
             'delete_form' => $this->deleteForm($workspace)->createView(),
+            'plan' => $this->plans->of($workspace),
+            'plan_form' => $this->planForm($workspace)->createView(),
+            // Its workflow steps this month: read in its session, its rows.
+            'usage' => $this->sessions->within($workspace, $this->usage->thisMonth(...)),
         ]);
+    }
+
+    #[Route('/workspaces/{slug}/plan', name: 'workspace_plan', methods: ['POST'])]
+    public function plan(string $slug, Request $request): Response
+    {
+        $workspace = $this->workspaceOr404($slug);
+        $form = $this->planForm($workspace)->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
+            $plan = self::text($form, 'plan');
+            $this->administration->assignPlan($workspace, $plan);
+            $this->log('put on the plan '.$plan, $workspace);
+            $this->addFlash('success', $this->translator->trans('console.plan_changed', ['%slug%' => $workspace->slug, '%plan%' => $this->plans->get($plan)->label ?? $plan]));
+        }
+
+        return $this->redirectToRoute('console_workspace_show', ['slug' => $workspace->slug], Response::HTTP_SEE_OTHER);
     }
 
     #[Route('/workspaces/{slug}/status', name: 'workspace_status', methods: ['POST'])]
@@ -274,6 +299,25 @@ final class ConsoleController extends AbstractController
         return $this->forms->createNamedBuilder('invite_admin', FormType::class, null, [
             'action' => $this->generateUrl('console_workspace_invite', ['slug' => $workspace->slug]),
         ])->add('email', EmailType::class, ['label' => 'admin.members.email'])->getForm();
+    }
+
+    /**
+     * The plans to choose from, the workspace's own selected.
+     *
+     * @return FormInterface<mixed>
+     */
+    private function planForm(Workspace $workspace): FormInterface
+    {
+        return $this->forms->createNamedBuilder('workspace_plan', FormType::class, ['plan' => $this->plans->of($workspace)->name], [
+            'action' => $this->generateUrl('console_workspace_plan', ['slug' => $workspace->slug]),
+        ])->add('plan', ChoiceType::class, [
+            'label' => 'console.plan',
+            'choices' => array_combine(
+                array_map(static fn (Plan $plan): string => \sprintf('%s (%s)', $plan->label, null === $plan->workflowStepsPerMonth ? '∞' : number_format($plan->workflowStepsPerMonth, 0, '', ' ')), $this->plans->all()),
+                array_keys($this->plans->all()),
+            ),
+            'choice_translation_domain' => false,
+        ])->getForm();
     }
 
     /**
