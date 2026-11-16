@@ -54,7 +54,7 @@ final class EditorModelTest extends TestCase
     public function testAManualTriggerKeepsItsLabelAndItsForm(): void
     {
         $source = <<<'YAML'
-            trigger: { on: manual, object: invoice, label: Remind, form: [{ name: tone, label: Tone, type: select, required: true, options: [kind, firm] }, { name: note, label: Note, type: text }] }
+            trigger: { on: manual, object: invoice, label: Remind, selection: each, form: [{ name: tone, label: Tone, type: select, required: true, options: [kind, firm] }, { name: note, label: Note, type: text }] }
             steps:
               - { key: r, type: create_record, object: reminder, values: { note: '{{ $trigger.input.note }}' } }
             YAML;

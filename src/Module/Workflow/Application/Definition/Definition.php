@@ -31,6 +31,9 @@ final readonly class Definition
         if ([] !== $this->trigger->fields) {
             $trigger['fields'] = $this->trigger->fields;
         }
+        if (null !== $this->trigger->selection) {
+            $trigger['selection'] = $this->trigger->selection;
+        }
         if ([] !== $this->trigger->form) {
             $trigger['form'] = array_map(static fn (FormInput $input): array => $input->toArray(), $this->trigger->form);
         }

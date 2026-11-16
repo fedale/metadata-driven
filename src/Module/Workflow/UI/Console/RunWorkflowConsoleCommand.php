@@ -30,12 +30,13 @@ final class RunWorkflowConsoleCommand
     }
 
     /**
+     * @param list<string> $record
      * @param list<string> $input
      */
     public function __invoke(
         SymfonyStyle $io,
         #[Argument('The workflow: its name or its id')] string $workflow,
-        #[Option('The id of the record it runs on')] ?string $record = null,
+        #[Option('The id of the record it runs on; repeatable for a workflow running on a selection')] array $record = [],
         #[Option('An answer of its form, as name=value (repeatable)')] array $input = [],
     ): int {
         $found = Uuid::isValid($workflow) ? $this->workflows->find(Uuid::fromString($workflow)) : $this->workflows->findByName($workflow);
@@ -53,19 +54,28 @@ final class RunWorkflowConsoleCommand
             if (null === $found) {
                 throw new ManualRunRefused(\sprintf('There is no workflow "%s".', $workflow), ManualRunRefused::NOT_FOUND);
             }
-            $run = $this->runs->run($this->runs->get($found->getId()->toRfc4122()), $record, $answers, asSomeone: false);
+            $active = $this->runs->get($found->getId()->toRfc4122());
+            if (null === $active->definition->trigger->selection && \count($record) > 1) {
+                throw new ManualRunRefused(\sprintf('The workflow "%s" runs on one record at a time.', $active->name), ManualRunRefused::INVALID);
+            }
+            $runs = null === $active->definition->trigger->selection || [] === $record
+                ? [$this->runs->run($active, $record[0] ?? null, $answers, asSomeone: false)]
+                : $this->runs->runOnSelection($active, $record, $answers, asSomeone: false);
         } catch (ManualRunRefused $e) {
             $io->error([$e->getMessage(), ...array_map(static fn (string $name, string $error): string => $name.': '.$error, array_keys($e->errors), $e->errors)]);
 
             return Command::FAILURE;
         }
-        if (RunLog::COMPLETED !== $run->status) {
-            $io->error(\sprintf('Run %s failed, nothing was kept: %s', $run->id, $run->error));
-
-            return Command::FAILURE;
+        $failed = 0;
+        foreach ($runs as $run) {
+            if (RunLog::COMPLETED === $run->status) {
+                $io->success(\sprintf('Run %s completed: %d step(s).', $run->id, \count($run->steps)));
+            } else {
+                ++$failed;
+                $io->error(\sprintf('Run %s failed, nothing was kept: %s', $run->id, $run->error));
+            }
         }
-        $io->success(\sprintf('Run %s completed: %d step(s).', $run->id, \count($run->steps)));
 
-        return Command::SUCCESS;
+        return 0 === $failed ? Command::SUCCESS : Command::FAILURE;
     }
 }

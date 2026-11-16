@@ -13,7 +13,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
  * On a record's page, the manual workflows of its object the user may run: one with a form opens
- * it, one without is posted at once.
+ * it, one without is posted at once. On a grid, those running on a selection: a bulk button each.
  */
 final class WorkflowRecordActions implements RecordActionsInterface
 {
@@ -29,6 +29,14 @@ final class WorkflowRecordActions implements RecordActionsInterface
             (string) $workflow->definition->trigger->label,
             $this->urls->generate('workflow_run_record', ['workflowId' => $workflow->workflowId, 'recordId' => $recordId]),
             [] === $workflow->definition->trigger->form ? ManualRunController::FORM : null,
-        ), $this->runs->runnableOn($objectName));
+        ), $this->runs->runnableOnRecord($objectName));
+    }
+
+    public function selectionActionsFor(string $objectName, ?string $gridName): array
+    {
+        return array_map(fn (ActiveWorkflow $workflow): RecordActionLink => new RecordActionLink(
+            (string) $workflow->definition->trigger->label,
+            $this->urls->generate('workflow_run_selection', ['workflowId' => $workflow->workflowId, ...(null === $gridName ? [] : ['grid' => $gridName])]),
+        ), $this->runs->runnableOnSelection($objectName));
     }
 }

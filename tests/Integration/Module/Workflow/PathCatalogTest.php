@@ -60,6 +60,18 @@ final class PathCatalogTest extends KernelTestCase
         ], $paths['steps']);
     }
 
+    public function testARunOnAWholeSelectionOffersItsRecords(): void
+    {
+        self::createRelatedObjects(self::getContainer());
+        $paths = self::getContainer()->get(PathCatalog::class)->paths((new DefinitionParser())->parse(<<<'YAML'
+            trigger: { on: manual, object: pet, label: All, selection: all }
+            steps: [{ key: each, type: iterator, items: '{{ $trigger.records }}', steps: [{ key: no, type: refuse, message: no }] }]
+            YAML));
+
+        self::assertSame(['$trigger.object', '$trigger.action', '$trigger.records'], $paths['trigger']);
+        self::assertSame(['each.item', 'each.item.id', 'each.item.name', 'each.item.owner', 'each.index', 'each.count'], $paths['steps']['each']);
+    }
+
     public function testWithoutADefinitionTheRootsOnly(): void
     {
         $paths = self::getContainer()->get(PathCatalog::class)->paths(null);

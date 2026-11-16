@@ -121,4 +121,42 @@ as the conditions do; `sort` may also be `id`.
 
 ## 2c: a grid's selection
 
-To be detailed when 2b is merged.
+Decisions (user, 2026-11-15): the trigger says how a selection runs; "select all" (every page,
+the current filters) works, up to a cap; the workflows show in the grid's bulk bar
+(gridview-bundle), their form in its modal.
+
+```yaml
+trigger:
+  on: manual
+  object: invoice
+  label: Send reminders
+  selection: each        # each: a run per record; all: one run with $trigger.records
+  form: [...]
+```
+
+- **`selection`** (manual only, optional): without it, the workflow runs on a record's page only.
+  `each`: on a record's page and on a grid's selection, a run per record, each all or nothing; a
+  failed one does not stop the others. `all`: on a grid's selection only, one run, all or
+  nothing, `$trigger.records` the list of the records (read with an iterator); `$trigger.record`
+  is not there.
+- **The grid**: when the object has workflows the user may run on a selection, its grid gets the
+  selection column and the bulk bar, a button per workflow. The button opens the modal of the
+  bundle on `/w/<workflow id>/run-selection?ids[]=…` (or `all=1` and the grid's filters): the
+  number of records, the form if any, *Run*. Running posts there, and comes back to the grid with
+  a message (how many runs completed, the first error).
+- **The records**: `ids[]`, or with `all=1` every record of the grid's current filters and search,
+  resolved by the Record module (a new contract port, `RecordSelectionInterface`, the grid's
+  export rows); more than `app.workflow.max_records` refuses before any run. The user must read
+  them (`record.<object>.read`) and hold `workflow.<id>.run`.
+- **The Record contract**: `RecordActionsInterface::selectionActionsFor(object, grid)` gives the
+  bulk buttons; the Record module still knows nothing of workflows.
+- **The command**: `--record` repeatable: a run per record (`each`), one run on all of them (`all`).
+- **Editors**: the trigger's `selection` in the visual editor; the picker offers
+  `$trigger.records`.
+
+### Done (2026-11-16, branch `workflow_selection`)
+
+As planned. On the way: a `selection: all` workflow is not offered on a record's page; "select
+all" reads the grid's export rows (the whole filtered set, as an export does) and stops at the
+cap; the modal's form posts natively to its url, the selection in its query string, and comes back
+to the grid (no turbo stream); the iterator's item fields are checked over `$trigger.records` too.

@@ -43,6 +43,7 @@ final class EditorModel
                 'when' => self::text($trigger['when'] ?? 'after'),
                 'fields' => \is_array($trigger['fields'] ?? null) ? array_values(array_map(self::text(...), $trigger['fields'])) : [],
                 'label' => self::text($trigger['label'] ?? ''),
+                'selection' => self::text($trigger['selection'] ?? ''),
                 'form' => array_values(array_map(
                     static fn (mixed $input): array => \is_array($input) ? [
                         'name' => self::text($input['name'] ?? ''),
@@ -189,6 +190,7 @@ final class EditorModel
             'on' => 'manual',
             'object' => self::text($trigger['object'] ?? ''),
             'label' => self::text($trigger['label'] ?? ''),
+            'selection' => self::text($trigger['selection'] ?? ''),
             'form' => $form,
         ], static fn (mixed $value): bool => '' !== $value && [] !== $value);
     }

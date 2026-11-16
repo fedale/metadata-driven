@@ -765,12 +765,12 @@ write need an `act_as`, as for any event no one is behind. All or nothing, like 
 record's page; the run is stored with the others.
 
 ```
-workflow:run [--record=ID] [--input=NAME=VALUE]... <workflow>
+workflow:run [--record=ID]... [--input=NAME=VALUE]... <workflow>
 ```
 
 | Option | Meaning |
 |---|---|
-| `--record` | The id of the record it runs on, of the trigger's object; without it, `$trigger.record` is null |
+| `--record` | The id of the record it runs on, of the trigger's object; without it, `$trigger.record` is null. Repeatable for a workflow with a `selection`: a run per record (`each`), one run on them all (`all`) |
 | `--input` | An answer of its form, `name=value`, repeatable; checked as on the page (`--input due_on=2026-12-31`, `--input urgent=true`) |
 
 It exits with 1 when the run fails or may not start (no such workflow, an answer that will not

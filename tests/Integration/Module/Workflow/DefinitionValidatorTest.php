@@ -141,6 +141,26 @@ final class DefinitionValidatorTest extends KernelTestCase
         ], $errors);
     }
 
+    public function testARunOnAWholeSelectionReadsItsRecordsNotARecord(): void
+    {
+        $errors = $this->errors(<<<'YAML'
+            trigger: { on: manual, object: person, label: All, selection: all }
+            steps:
+              - key: each
+                type: iterator
+                items: '{{ $trigger.records }}'
+                steps:
+                  - { key: named, type: filter, when: { field: each.item.full_name, op: not_empty } }
+                  - { key: aged, type: filter, when: { field: each.item.age, op: empty } }
+              - { key: one, type: filter, when: { field: $trigger.record.id, op: empty } }
+            YAML);
+
+        self::assertSame([
+            'steps.0.steps.1.when.field' => ['Object "person" has no field "age".'],
+            'steps.1.when.field' => ['$trigger holds object, action, records, input: not "record".'],
+        ], $errors);
+    }
+
     private function validate(string $yaml): void
     {
         $access = $this->createStub(AccessCheckerInterface::class);
