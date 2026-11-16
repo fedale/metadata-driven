@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Workflow\Application\Definition;
 
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
+use Cron\CronExpression;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
@@ -70,7 +71,8 @@ final class DefinitionParser
     public function fromArray(array $data): Definition
     {
         [$this->errors, $this->keys, $this->count] = [[], [], 0];
-        $this->manual = \is_array($data['trigger'] ?? null) && 'manual' === ($data['trigger']['on'] ?? null);
+        // A run no write waits for: as a manual one's, its steps after the fact.
+        $this->manual = \is_array($data['trigger'] ?? null) && \in_array($data['trigger']['on'] ?? null, ['manual', 'schedule'], true);
         $this->platform = \is_array($data['trigger'] ?? null) && \is_string($data['trigger']['on'] ?? null) && true === TriggerEvent::tryFrom($data['trigger']['on'])?->isPlatform();
 
         $this->unknownKeys($data, ['trigger', 'steps'], '');
@@ -106,6 +108,18 @@ final class DefinitionParser
         }
         if (TriggerEvent::Manual === $on) {
             return $this->manualTrigger($trigger);
+        }
+        if (TriggerEvent::Schedule === $on) {
+            // A time come: nothing but its cron expression, in UTC.
+            $this->unknownKeys($trigger, ['on', 'cron'], 'trigger');
+            $cron = $trigger['cron'] ?? null;
+            if (!\is_string($cron) || !CronExpression::isValidExpression($cron)) {
+                $this->error('trigger.cron', 'A cron expression, in UTC: minute hour day month weekday, e.g. "0 8 * * 1" (Mondays at 8).');
+
+                return null;
+            }
+
+            return new Trigger($on, '', Timing::After, [], cron: $cron);
         }
         $transitioned = TriggerEvent::Transitioned === $on;
         $this->unknownKeys($trigger, $transitioned ? ['on', 'object', 'when', 'field', 'transition'] : ['on', 'object', 'when', 'fields'], 'trigger');

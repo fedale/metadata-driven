@@ -33,6 +33,7 @@ use App\Module\Workflow\Application\Definition\StepType;
 use App\Module\Workflow\Application\Definition\Timing;
 use App\Module\Workflow\Application\Definition\TriggerEvent;
 use App\Module\Workflow\Application\Engine\Message\ResumeRun;
+use App\Module\Workflow\Application\Engine\Message\RunScheduled;
 use App\Module\Workflow\Application\Engine\Message\RunWorkflow;
 use App\Shared\Transaction\TransactionRunner;
 use App\Shared\Workspace\CurrentWorkspace;
@@ -226,6 +227,59 @@ final class WorkflowEngine implements ResetInterface
         $workspace = $this->workspaces->byId($message->workspaceId);
 
         // A workspace deleted meanwhile: nothing to run.
+        return null === $workspace ? null : $this->sessions->within($workspace, $work);
+    }
+
+    /**
+     * A scheduled workflow whose time came, from the queue: in its workspace, as no one (its steps
+     * act as their roles), if the version that was due is still active; its steps in one
+     * transaction, all or nothing. Past runs_per_minute it fails: the next time is the next run.
+     */
+    public function runScheduled(RunScheduled $message): ?RunLog
+    {
+        $work = function () use ($message): ?RunLog {
+            $workflow = $this->workflows->byId($message->workflowId);
+            if (null === $workflow || $workflow->versionId !== $message->versionId) {
+                return null;
+            }
+            [$previous, $this->actingAs] = [$this->actingAs, null];
+            try {
+                ++$this->pending;
+                $run = new RunLog($workflow, '', null, TriggerEvent::Schedule->value, TriggerEvent::Schedule->value, null, 1, new \DateTimeImmutable());
+                if (null !== $refusal = $this->tooMany()) {
+                    $run->end(RunLog::FAILED, $refusal);
+                    $this->store($run);
+
+                    return $run;
+                }
+                $chain = $this->chain(['scheduled_at' => $message->scheduledAt]);
+                // No one is behind it, whoever is signed in where it runs.
+                $chain->set('$user', null);
+                try {
+                    $this->transactions->run(function () use ($workflow, $chain, $run): void {
+                        $this->steps($workflow->definition->steps, $chain, $run, null);
+                        if (RunLog::COMPLETED !== $run->status && RunLog::WAITING !== $run->status) {
+                            throw new StepFailed((string) $run->error);
+                        }
+                    });
+                    $run->end($run->status, $run->error);
+                } catch (StepFailed $e) {
+                    $run->end(RunLog::FAILED, $e->getMessage());
+                } finally {
+                    $run->chain = $chain->toArray();
+                }
+                $this->transactions->whenDone(fn () => $this->store($run));
+
+                return $run;
+            } finally {
+                $this->actingAs = $previous;
+            }
+        };
+        if ($this->workspace->isSelected() && $this->workspace->id() === $message->workspaceId) {
+            return $work();
+        }
+        $workspace = $this->workspaces->byId($message->workspaceId);
+
         return null === $workspace ? null : $this->sessions->within($workspace, $work);
     }
 

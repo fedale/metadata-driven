@@ -51,19 +51,25 @@ final class PathCatalog
 
             return ['trigger' => $trigger, 'context' => ['$workspace.slug', '$workspace.name', '$now', '$today', '$last'], 'steps' => array_filter($steps, static fn (array $paths): bool => [] !== $paths)];
         }
-        $trigger = $definition->trigger->runsOnAll()
-            ? ['$trigger.object', '$trigger.action', '$trigger.records']
-            : ['$trigger.object', '$trigger.action', '$trigger.record.id', ...array_map(static fn (string $field): string => '$trigger.record.'.$field, $this->fields($object))];
-        if (\in_array($definition->trigger->on, [TriggerEvent::Updated, TriggerEvent::CreatedOrUpdated, TriggerEvent::Transitioned], true)) {
-            $trigger = [...$trigger, '$trigger.before.id', ...array_map(static fn (string $field): string => '$trigger.before.'.$field, $this->fields($object))];
-        }
-        if ($definition->trigger->isManual()) {
-            $trigger = [...$trigger, ...array_map(static fn (FormInput $input): string => '$trigger.input.'.$input->name, $definition->trigger->form)];
+        if ($definition->trigger->isScheduled()) {
+            // A time come: no record, no one.
+            $trigger = ['$trigger.scheduled_at'];
+            $context = ['$workspace.slug', '$workspace.name', '$now', '$today', '$last'];
         } else {
-            $trigger[] = '$trigger.changed';
-        }
-        if (TriggerEvent::Transitioned === $definition->trigger->on) {
-            $trigger = [...$trigger, '$trigger.transition.name', '$trigger.transition.from', '$trigger.transition.to'];
+            $trigger = $definition->trigger->runsOnAll()
+                ? ['$trigger.object', '$trigger.action', '$trigger.records']
+                : ['$trigger.object', '$trigger.action', '$trigger.record.id', ...array_map(static fn (string $field): string => '$trigger.record.'.$field, $this->fields($object))];
+            if (\in_array($definition->trigger->on, [TriggerEvent::Updated, TriggerEvent::CreatedOrUpdated, TriggerEvent::Transitioned], true)) {
+                $trigger = [...$trigger, '$trigger.before.id', ...array_map(static fn (string $field): string => '$trigger.before.'.$field, $this->fields($object))];
+            }
+            if ($definition->trigger->isManual()) {
+                $trigger = [...$trigger, ...array_map(static fn (FormInput $input): string => '$trigger.input.'.$input->name, $definition->trigger->form)];
+            } else {
+                $trigger[] = '$trigger.changed';
+            }
+            if (TriggerEvent::Transitioned === $definition->trigger->on) {
+                $trigger = [...$trigger, '$trigger.transition.name', '$trigger.transition.from', '$trigger.transition.to'];
+            }
         }
 
         $steps = [];

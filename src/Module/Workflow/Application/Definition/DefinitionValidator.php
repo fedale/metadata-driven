@@ -66,7 +66,7 @@ final class DefinitionValidator
             // In the wrong place: nothing it names is there to check.
             throw new InvalidWorkflowDefinition($this->errors);
         }
-        $object = $trigger->isPlatform() ? null : $this->object($trigger->object, 'trigger.object');
+        $object = $trigger->isPlatform() || $trigger->isScheduled() ? null : $this->object($trigger->object, 'trigger.object');
         if (null !== $object && TriggerEvent::Transitioned === $trigger->on) {
             $this->transitionOf($object, (string) $trigger->statusField, $trigger->transition, 'trigger.field', 'trigger.transition');
         }
@@ -184,7 +184,7 @@ final class DefinitionValidator
                 TriggerEvent::Created => [RecordAction::Create],
                 TriggerEvent::Updated, TriggerEvent::Transitioned => [RecordAction::Update],
                 TriggerEvent::CreatedOrUpdated => [RecordAction::Create, RecordAction::Update],
-                TriggerEvent::Deleted, TriggerEvent::Manual, TriggerEvent::WorkspaceCreated, TriggerEvent::MemberAdded => [],
+                TriggerEvent::Deleted, TriggerEvent::Manual, TriggerEvent::WorkspaceCreated, TriggerEvent::MemberAdded, TriggerEvent::Schedule => [],
             };
             if (TriggerEvent::Deleted === $definition->trigger->on) {
                 $this->error($path.'.type', 'set_values changes the values being written: a delete writes none.');
@@ -195,6 +195,10 @@ final class DefinitionValidator
                     $this->error($path.'.type', \sprintf('You do not hold %s: a workflow of yours may not change what others write there.', $permission));
                 }
             }
+        }
+        if (null === $step->actAs() && ($step->type->writes() || $step->type->reads()) && $definition->trigger->isScheduled()) {
+            // No one is behind a time come: no one's permissions to act with.
+            $this->error($path.'.act_as', 'No one is behind a schedule: a step that reads or writes records acts as a role you may give.');
         }
         if (null === $step->actAs() && ($step->type->writes() || $step->type->reads()) && null !== $target) {
             // As whoever triggered the event: the person activating must hold it too, or they
@@ -277,6 +281,7 @@ final class DefinitionValidator
         $manual = $definition->trigger->isManual();
         $holds = match (true) {
             TriggerEvent::WorkspaceCreated === $definition->trigger->on => ['workspace'],
+            TriggerEvent::Schedule === $definition->trigger->on => ['scheduled_at'],
             TriggerEvent::MemberAdded === $definition->trigger->on => ['workspace', 'member'],
             $definition->trigger->runsOnAll() => ['object', 'action', 'records', 'input'],
             $manual => ['object', 'action', 'record', 'input'],

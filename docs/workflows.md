@@ -60,7 +60,7 @@ steps:
 
 | Key | Value |
 |---|---|
-| `on` | `created`, `updated`, `created_or_updated`, `deleted`; `transitioned` (see [Transitions](#transitions)); `manual` (see [Manual workflows](#manual-workflows)) |
+| `on` | `created`, `updated`, `created_or_updated`, `deleted`; `transitioned` (see [Transitions](#transitions)); `manual` (see [Manual workflows](#manual-workflows)); `schedule` (see [Schedules](#schedules)) |
 | `object` | The object whose records start it |
 | `when` | `before`: in the write's transaction, before it; `after`: once the write is committed. Not for `manual` |
 | `fields` | `updated` and `created_or_updated` only: run on an update only when one of these fields changes |
@@ -163,6 +163,31 @@ steps:
   would take it through the users who may), or given by the role it acts as (`act_as`, which must
   be or contain one of them). It outputs the record as written; a
   transition not taken from the record's state fails it.
+
+### Schedules
+
+```yaml
+# Every Monday at 8 (UTC): a reminder for each invoice still unpaid.
+trigger: { on: schedule, cron: '0 8 * * 1' }
+steps:
+  - { key: unpaid, type: search_records, object: invoice, where: [{ field: state, op: eq, value: sent }], act_as: ROLE_ACCOUNTANT }
+  - key: each
+    type: iterator
+    items: '{{ unpaid.records }}'
+    steps:
+      - { key: reminder, type: create_record, object: reminder, values: { invoice: '{{ each.item.id }}' }, act_as: ROLE_ACCOUNTANT }
+```
+
+- `cron`: minute, hour, day of the month, month, day of the week, **in UTC** (`0 8 * * 1`:
+  Mondays at 8:00 UTC; `*/15 * * * *`: every quarter of an hour). `$trigger.scheduled_at` is the
+  minute it was due.
+- **No one is behind it**: every step that reads or writes records acts as a role
+  (`act_as`), which its activator must be able to give; `$user` is null. Its steps run in one
+  transaction, all or nothing.
+- The worker checks every minute which workflows are due (Symfony Scheduler, the
+  `scheduler_workflows` transport, consumed by **one** worker: see
+  [Getting started](getting-started.md#run-the-app)). A minute missed while it was down runs no
+  workflow afterwards, but the last one.
 
 ### Manual workflows
 
@@ -384,6 +409,7 @@ these triggers or steps, and the console defines no workflow on a record's.
 | The events | `RecordManager` raises `RecordWriting` before a write, in its transaction, and `RecordWritten` once the outermost transaction committed (`TransactionRunner::whenDone()`); `RecordEventScopeInterface` silences them (a package's seeds) or stamps them with the run they come from (Record contract) |
 | The definition | `DefinitionParser` (structure, every problem by its path), `DefinitionValidator` (objects, fields, paths, roles, on activation), stored compiled as JSON (`core.workflow_version.definition`) next to the YAML as written (`source`) |
 | HTTP | `WorkflowHttp`: Symfony's `HttpClient` through `NoPrivateNetworkHttpClient` (`app.workflow.allow_private_networks`, true in the tests only), the retries and the 1 MB cap |
+| Schedules | Symfony Scheduler: `WorkflowSchedule` (`#[AsSchedule('workflows')]`) sends `CheckSchedules` every minute, `ScheduledWorkflows` queues a `RunScheduled` for each workflow due (`dragonmantank/cron-expression`), `WorkflowEngine::runScheduled()` |
 | The queue | Symfony Messenger on Redis (`config/packages/messenger.yaml`, the `async` transport, `failed` for what broke outside a run's steps: `messenger:failed:show`): `RunWorkflow` (an after-run, `WorkflowEngine::runQueued()`), `RunPlatformEvents` (the system admin's); each step checks its permission against whoever triggered it, from their assignments (`AccessCheckerInterface::userCanGrant()`), in a request as in the worker |
 | The engine | `WorkflowEngine` listens to both events, reads the active versions (`ActiveWorkflows`, once per request), runs the steps over a `DataChain`, checks each write's permission (`AccessCheckerInterface::roleGives()`, `userCanGrant()`), and stores each run once its transaction ended (`RunStore`, DBAL) |
 | The tables | `core.workflow`, `core.workflow_version` (ORM); `core.workflow_run`, `core.workflow_run_step`, `core.workflow_usage` (DBAL); each with its `workspace_id` (none for the system admin's) and row-level security |
@@ -395,5 +421,5 @@ these triggers or steps, and the console defines no workflow on a record's.
 ## Not yet
 
 Other platform events (a workspace suspended or deleted), record steps in the system admin's
-workflows; states (phase 5); secrets for the HTTP requests, schedules, incoming webhooks (phase
-6). See [the plan](internal/workflow-plan.md).
+workflows; secrets for the HTTP requests, workflows in packages, incoming webhooks, sub-workflows,
+quotas per plan; email and notifications, once the application sends email. See [the plan](internal/workflow-plan.md).

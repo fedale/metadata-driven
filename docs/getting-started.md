@@ -18,7 +18,7 @@ make up        # PostgreSQL 17 and Redis in Docker
 make db        # create the database, run the migrations
 make assets    # compile the Sass stylesheets (pages do not render without them)
 symfony serve -d
-symfony run -d --watch=config,src symfony console messenger:consume async   # the workflows' worker
+symfony run -d --watch=config,src symfony console messenger:consume async scheduler_workflows   # the workflows' worker
 ```
 
 `MESSENGER_TRANSPORT_DSN` names the queue, in `.env.local`: `redis://localhost:6379/messages`.

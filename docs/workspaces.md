@@ -161,10 +161,12 @@ never share a stored file. `workspace:delete` deletes the workspace's directory,
   bare domain, or empty if the bare domain should answer 404.
 - **Migrations and caches** work across workspaces: run `doctrine:migrations:migrate` once, as
   before; it is not a per-workspace command.
-- **The workflows' worker.** Run `php bin/console messenger:consume async --time-limit=3600`
+- **The workflows' worker.** Run `php bin/console messenger:consume async scheduler_workflows --time-limit=3600`
   under a supervisor (systemd, Supervisor), against the Redis of `MESSENGER_TRANSPORT_DSN`, with
   the PHP `redis` extension; on each deploy, `messenger:stop-workers` (the supervisor starts it
-  again, on the new code). It serves every workspace: each message names its own. What broke
+  again, on the new code). It serves every workspace: each message names its own. One worker only
+  consumes `scheduler_workflows` (the schedules): two would start each scheduled workflow twice;
+  more workers may consume `async` alone. What broke
   outside a run's steps is kept: `messenger:failed:show`, `messenger:failed:retry`.
 - **Several web servers** must share the cache of roles and permissions (the `rbac.cache` pool,
   `config/packages/cache.yaml`), e.g. on Redis: a role changed on one server deletes its workspace's

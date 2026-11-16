@@ -25,9 +25,9 @@ final readonly class Definition
      */
     public function toArray(): array
     {
-        $trigger = $this->trigger->isPlatform() ? ['on' => $this->trigger->on->value] : ($this->trigger->isManual()
+        $trigger = $this->trigger->isScheduled() ? ['on' => $this->trigger->on->value, 'cron' => $this->trigger->cron] : ($this->trigger->isPlatform() ? ['on' => $this->trigger->on->value] : ($this->trigger->isManual()
             ? ['on' => $this->trigger->on->value, 'object' => $this->trigger->object, 'label' => $this->trigger->label]
-            : ['on' => $this->trigger->on->value, 'object' => $this->trigger->object, 'when' => $this->trigger->when->value]);
+            : ['on' => $this->trigger->on->value, 'object' => $this->trigger->object, 'when' => $this->trigger->when->value]));
         if (null !== $this->trigger->statusField) {
             $trigger['field'] = $this->trigger->statusField;
         }

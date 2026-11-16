@@ -47,6 +47,7 @@ final class EditorModel
                 'selection' => self::text($trigger['selection'] ?? ''),
                 'field' => self::text($trigger['field'] ?? ''),
                 'transition' => self::text($trigger['transition'] ?? ''),
+                'cron' => self::text($trigger['cron'] ?? ''),
                 'form' => array_values(array_map(
                     static fn (mixed $input): array => \is_array($input) ? [
                         'name' => self::text($input['name'] ?? ''),
@@ -69,7 +70,7 @@ final class EditorModel
     {
         $trigger = \is_array($model['trigger'] ?? null) ? $model['trigger'] : [];
         $on = TriggerEvent::tryFrom(self::text($trigger['on'] ?? ''));
-        $data = ['trigger' => true === $on?->isPlatform() ? ['on' => $on->value] : ('manual' === ($trigger['on'] ?? null) ? self::manualTo($trigger) : array_filter([
+        $data = ['trigger' => TriggerEvent::Schedule === $on ? ['on' => $on->value, 'cron' => self::text($trigger['cron'] ?? '')] : (true === $on?->isPlatform() ? ['on' => $on->value] : ('manual' === ($trigger['on'] ?? null) ? self::manualTo($trigger) : array_filter([
             'on' => self::text($trigger['on'] ?? ''),
             'object' => self::text($trigger['object'] ?? ''),
             'when' => self::text($trigger['when'] ?? ''),
@@ -77,7 +78,7 @@ final class EditorModel
             // A transition's: its Status field, and the transition or any.
             'field' => 'transitioned' === ($trigger['on'] ?? null) ? self::text($trigger['field'] ?? '') : '',
             'transition' => 'transitioned' === ($trigger['on'] ?? null) ? self::text($trigger['transition'] ?? '') : '',
-        ], static fn (mixed $value): bool => '' !== $value && [] !== $value))];
+        ], static fn (mixed $value): bool => '' !== $value && [] !== $value)))];
         $data['steps'] = self::stepsTo(\is_array($model['steps'] ?? null) ? $model['steps'] : []);
 
         return Yaml::dump($data, 12, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK);

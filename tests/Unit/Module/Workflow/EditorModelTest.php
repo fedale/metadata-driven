@@ -99,6 +99,16 @@ final class EditorModelTest extends TestCase
         self::assertEquals($parser->parse($source), $parser->parse(EditorModel::toSource($model)));
     }
 
+    public function testAScheduleKeepsItsCron(): void
+    {
+        $source = "trigger: { on: schedule, cron: '0 8 * * 1' }\nsteps: [{ key: no, type: refuse, message: no }]";
+        $model = EditorModel::fromSource($source);
+        self::assertNotNull($model);
+
+        $parser = new DefinitionParser();
+        self::assertEquals($parser->parse($source), $parser->parse(EditorModel::toSource($model)));
+    }
+
     public function testUnreadableYamlHasNoModel(): void
     {
         self::assertNull(EditorModel::fromSource("trigger: [\n"));

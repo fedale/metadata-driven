@@ -34,6 +34,13 @@ interface ActiveWorkflows
     public function onPlatform(TriggerEvent $on): array;
 
     /**
+     * The current workspace's active workflows on a schedule.
+     *
+     * @return list<ActiveWorkflow>
+     */
+    public function scheduled(): array;
+
+    /**
      * A workflow's active version, whatever its trigger; null when it has none.
      */
     public function byId(string $workflowId): ?ActiveWorkflow;

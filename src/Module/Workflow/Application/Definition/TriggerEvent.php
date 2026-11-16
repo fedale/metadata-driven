@@ -20,6 +20,8 @@ enum TriggerEvent: string
     case Manual = 'manual';
     /** A Status field's transition taken: the update it makes. */
     case Transitioned = 'transitioned';
+    /** A cron expression's time come (UTC): no record, no one behind it. */
+    case Schedule = 'schedule';
     /** The platform's: a workspace created (the console, workspace:create). */
     case WorkspaceCreated = 'workspace_created';
     /** The platform's: a member added to a workspace. */
@@ -40,7 +42,7 @@ enum TriggerEvent: string
             self::Updated => RecordWriteAction::Update === $action,
             self::CreatedOrUpdated => RecordWriteAction::Delete !== $action,
             self::Deleted => RecordWriteAction::Delete === $action,
-            self::Manual, self::WorkspaceCreated, self::MemberAdded => false,
+            self::Manual, self::WorkspaceCreated, self::MemberAdded, self::Schedule => false,
             // Its transition says (Trigger::fires()).
             self::Transitioned => RecordWriteAction::Update === $action,
         };

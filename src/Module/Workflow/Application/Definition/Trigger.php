@@ -27,7 +27,14 @@ final readonly class Trigger
         /** A trigger on transitioned: its Status field, and the transition, or any. */
         public ?string $statusField = null,
         public ?string $transition = null,
+        /** A trigger on schedule: its cron expression, in UTC. */
+        public ?string $cron = null,
     ) {
+    }
+
+    public function isScheduled(): bool
+    {
+        return TriggerEvent::Schedule === $this->on;
     }
 
     /**

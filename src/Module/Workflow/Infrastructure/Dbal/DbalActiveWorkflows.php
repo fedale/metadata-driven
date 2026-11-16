@@ -55,6 +55,12 @@ final class DbalActiveWorkflows implements ActiveWorkflows, ResetInterface
         return $this->select("v.definition -> 'trigger' ->> 'on' = ?", [$on->value]);
     }
 
+    public function scheduled(): array
+    {
+        // Not kept: read once a minute, by the scheduler.
+        return $this->select("v.definition -> 'trigger' ->> 'on' = ?", [TriggerEvent::Schedule->value]);
+    }
+
     public function byId(string $workflowId): ?ActiveWorkflow
     {
         if (!Uuid::isValid($workflowId)) {
