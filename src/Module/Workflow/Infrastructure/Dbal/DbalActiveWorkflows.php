@@ -70,6 +70,17 @@ final class DbalActiveWorkflows implements ActiveWorkflows, ResetInterface
         return $this->select('w.id = ?', [$workflowId])[0] ?? null;
     }
 
+    public function called(): array
+    {
+        return $this->read['called'] ??= $this->select("v.definition -> 'trigger' ->> 'on' = ?", [TriggerEvent::Called->value]);
+    }
+
+    public function byName(string $name): ?ActiveWorkflow
+    {
+        // A called workflow: read once per request, as many times as it is called.
+        return ($this->read['name|'.$name] ??= $this->select('w.name = ?', [$name]))[0] ?? null;
+    }
+
     /**
      * What was read was another workspace's, or the system's.
      */

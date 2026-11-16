@@ -12,7 +12,8 @@ final readonly class Trigger
     /**
      * @param list<string>    $fields    on update: run only when one of these changed; empty for any
      * @param string|null     $label     a manual trigger's button
-     * @param list<FormInput> $form      a manual trigger's inputs, asked before it runs
+     * @param list<FormInput> $form      a manual trigger's inputs, asked before it runs; a called
+     *                                   one's, given by the run_workflow step calling it
      * @param string|null     $selection a manual trigger's run on a grid's selection: each (a run
      *                                   per record) or all (one run on them all); null for none
      */
@@ -40,6 +41,14 @@ final readonly class Trigger
     public function isWebhook(): bool
     {
         return TriggerEvent::Webhook === $this->on;
+    }
+
+    /**
+     * Run by another workflow's run_workflow step, inside that run: never on its own.
+     */
+    public function isCalled(): bool
+    {
+        return TriggerEvent::Called === $this->on;
     }
 
     /**

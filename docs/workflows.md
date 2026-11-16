@@ -60,13 +60,14 @@ steps:
 
 | Key | Value |
 |---|---|
-| `on` | `created`, `updated`, `created_or_updated`, `deleted`; `transitioned` (see [Transitions](#transitions)); `manual` (see [Manual workflows](#manual-workflows)); `schedule` (see [Schedules](#schedules)); `webhook` (see [Webhooks](#webhooks)) |
+| `on` | `created`, `updated`, `created_or_updated`, `deleted`; `transitioned` (see [Transitions](#transitions)); `manual` (see [Manual workflows](#manual-workflows)); `schedule` (see [Schedules](#schedules)); `webhook` (see [Webhooks](#webhooks)); `called` (see [Sub-workflows](#sub-workflows)) |
 | `object` | The object whose records start it |
 | `when` | `before`: in the write's transaction, before it; `after`: once the write is committed. Not for `manual` |
 | `fields` | `updated` and `created_or_updated` only: run on an update only when one of these fields changes |
 | `label` | `manual` only, required: the text of its button |
 | `selection` | `manual` only: `each` (also on a grid's selection, a run per record) or `all` (on a grid's selection only, one run on them all) |
 | `form` | `manual` only: the inputs asked before it runs |
+| `input` | `called` only: the inputs its callers give, as a form's (the label optional) |
 
 **Before** a write, a workflow guards it: it may change the values (`set_values`, validated with
 the others) or refuse the write (`refuse`, its message shown to the user), and a step that fails
@@ -100,6 +101,8 @@ the step's output), a `type`, and its options.
 | `wait` | `for` (`30 minutes`, `2 days`) or `until` (a date or a date-time, with `{{ … }}`) | Stops the run; the steps after it run then (see [Waits](#waits)) |
 | `transition` | `object`, `id`, `field`, `name`; `act_as`, `emit_events` | Takes a transition of a record's [Status field](field-types.md#status) |
 | `http_request` | `url`, `method`, `headers`, `body`, `timeout`, `retries`, `fail_on_error` | Calls an address outside (see [HTTP requests](#http-requests)) |
+| `run_workflow` | `workflow` (the name of a workflow on `called`), `input` | Runs it inside this run; its output is what it returns (see [Sub-workflows](#sub-workflows)) |
+| `return` | `values` (optional) | A called workflow's end: gives the values back to its caller |
 
 The four steps that write records also take `act_as` (see [Permissions](#permissions)) and
 `emit_events`: `false` by default, so that the records a workflow writes start no workflow; `true`
@@ -210,6 +213,49 @@ steps:
 - **No one is behind it**: every step that reads or writes records acts as a role (`act_as`).
   What it receives is anyone's who has the address: check it (a `filter`, a `refuse`) before
   writing it down.
+
+### Sub-workflows
+
+```yaml
+# "Manager of a city": called by the others, it finds who looks after a city.
+trigger:
+  on: called
+  input: [{ name: city, type: text, required: true }]
+steps:
+  - { key: found, type: search_records, object: manager, where: [{ field: city, op: eq, value: '{{ $trigger.input.city }}' }], limit: 1 }
+  - key: check
+    type: if
+    branches:
+      - when: { field: found.count, op: eq, value: 0 }
+        steps: [{ key: nobody, type: return, values: { email: sales@acme.example } }]
+  - { key: back, type: return, values: { email: '{{ found.first.email }}' } }
+```
+
+```yaml
+# Any workflow: calls it, and reads what it returns.
+steps:
+  - { key: manager, type: run_workflow, workflow: Manager of a city, input: { city: '{{ $trigger.record.city }}' } }
+  - { key: save, type: update_record, object: customer, id: '{{ $trigger.record.id }}', values: { manager_email: '{{ manager.email }}' } }
+```
+
+- **A workflow on `called`** runs only when another one calls it, by a `run_workflow` step naming
+  it (its name, as written: rename it, and its callers fail until they are changed). Its
+  `$trigger.input` holds what the caller gives, checked against its `input` as a form's answers
+  (a required one missing, a number that is none: the step fails). `$user` and `$workspace` are
+  its caller's.
+- **In line**: it runs at once, in its caller's transaction: all of both, or nothing. A `return`
+  ends it (in a branch, in an iterator too), and its values are the `run_workflow` step's output;
+  without a return, the output is empty.
+- **Its failure** fails the step, and its caller with it. Called **before a write**, its `refuse`
+  refuses the write, its message shown; no `http_request` there, as in any workflow before a
+  write (the step fails).
+- **Its steps** act as whoever triggered its caller, or as their `act_as` roles, which its own
+  activator must still be able to give. **Who may call it**: it has a run permission, as a manual
+  workflow (*Run "Manager of a city"* on the roles page); the person activating a caller must hold it, on
+  activation and still at each run. No wait in it: its caller waits for no one.
+- **Its run** is logged on its own (*called*), one level deeper than its caller: calls in chain
+  stop at `app.workflow.max_depth`, a workflow that calls itself too. Each counts in the runs a
+  minute.
 
 ### Manual workflows
 
@@ -368,6 +414,9 @@ No way to more power, as the members and roles pages hold to:
 - A **search** reads as a write writes: `record.<object>.read`, as whoever triggered the event
   (and its activator), or as the role of its `act_as`.
 - Conditions and `refuse` need no permission: they can only stop a write, never give more.
+- A `run_workflow` step needs the called workflow's run permission (`workflow.<id>.run`), held by
+  the person activating the caller: on activation and still at each run. The called workflow's
+  steps check their own permissions, as any step.
 
 Defining workflows and seeing their runs needs `admin.workflows`. A run holds the data of the
 records it ran on, whatever object: give `admin.workflows` to whoever may see them.
@@ -376,7 +425,7 @@ records it ran on, whatever object: give `admin.workflows` to whoever may see th
 
 | Parameter (`config/services.yaml`) | Default | Meaning |
 |---|---|---|
-| `app.workflow.max_depth` | `3` | The longest chain of runs started by one another's writes (`emit_events`) |
+| `app.workflow.max_depth` | `3` | The longest chain of runs started by one another's writes (`emit_events`) or calls (`run_workflow`) |
 | `app.workflow.runs_per_minute` | `100` | The runs a workspace may start a minute; beyond, a write a before-workflow guards is refused, a manual run fails, and an after-run goes back to the queue a minute later (ten times, then it fails) |
 | `app.workflow.max_executed_steps` | `1000` | The steps one run may execute; beyond, the run fails (a definition holds 50 at most) |
 | `app.workflow.max_records` | `200` | The records one search reads, the items one iterator runs on |
@@ -440,6 +489,7 @@ these triggers or steps, and the console defines no workflow on a record's.
 | The definition | `DefinitionParser` (structure, every problem by its path), `DefinitionValidator` (objects, fields, paths, roles, on activation), stored compiled as JSON (`core.workflow_version.definition`) next to the YAML as written (`source`) |
 | Secrets | `core.workflow_secret` (DBAL, row-level security; migration `Version20261116140000`), `WorkflowSecrets` (`DbalWorkflowSecrets`), sealed by `SecretBox` (libsodium's secret box, `WORKFLOW_SECRETS_KEY`, `workflow:secrets:key`); read on a copy of the run's data for the request only, masked in its log |
 | HTTP | `WorkflowHttp`: Symfony's `HttpClient` through `NoPrivateNetworkHttpClient` (`app.workflow.allow_private_networks`, true in the tests only), the retries and the 1 MB cap |
+| Sub-workflows | `WorkflowEngine::call()` (in line, the called run its own `RunLog`, stored as its caller's), `ActiveWorkflows::byName()` and `called()`; the run permission made by `WorkflowManager` for `called` as for `manual` |
 | Webhooks | `WebhookController` (`/hooks/<id>/<token>`, its own stateless firewall, `security.yaml`), `WebhookTokens` (`core.workflow_webhook`, the token's SHA-256; migration `Version20261116160000`), `RunWebhook` and `WorkflowEngine::runWebhook()` |
 | Schedules | Symfony Scheduler: `WorkflowSchedule` (`#[AsSchedule('workflows')]`) sends `CheckSchedules` every minute, `ScheduledWorkflows` queues a `RunScheduled` for each workflow due (`dragonmantank/cron-expression`), `WorkflowEngine::runScheduled()` |
 | The queue | Symfony Messenger on Redis (`config/packages/messenger.yaml`, the `async` transport, `failed` for what broke outside a run's steps: `messenger:failed:show`): `RunWorkflow` (an after-run, `WorkflowEngine::runQueued()`), `RunPlatformEvents` (the system admin's); each step checks its permission against whoever triggered it, from their assignments (`AccessCheckerInterface::userCanGrant()`), in a request as in the worker |
@@ -453,5 +503,4 @@ these triggers or steps, and the console defines no workflow on a record's.
 ## Not yet
 
 Other platform events (a workspace suspended or deleted), record steps in the system admin's
-workflows; workflows in packages, sub-workflows,
-quotas per plan; email and notifications, once the application sends email. See [the plan](internal/workflow-plan.md).
+workflows; workflows in packages, quotas per plan; a sub-workflow's input of lists or maps; email and notifications, once the application sends email. See [the plan](internal/workflow-plan.md).

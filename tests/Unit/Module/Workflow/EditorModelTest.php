@@ -109,6 +109,35 @@ final class EditorModelTest extends TestCase
         self::assertEquals($parser->parse($source), $parser->parse(EditorModel::toSource($model)));
     }
 
+    public function testACalledWorkflowAndItsCallerKeepTheirInputAndValues(): void
+    {
+        $parser = new DefinitionParser();
+        $called = <<<'YAML'
+            trigger: { on: called, input: [{ name: owner, type: text, required: true }, { name: count, label: How many, type: number }] }
+            steps:
+              - { key: back, type: return, values: { name: '{{ $trigger.input.owner }}' } }
+            YAML;
+        $model = EditorModel::fromSource($called);
+        self::assertNotNull($model);
+        self::assertSame('owner', self::at($model, 'trigger.form.0.name'));
+        $written = EditorModel::toSource($model);
+        // A label that is the name is no label.
+        self::assertStringNotContainsString('label: owner', $written);
+        self::assertEquals($parser->parse($called), $parser->parse($written));
+
+        $caller = <<<'YAML'
+            trigger: { on: manual, object: person, label: Go }
+            steps:
+              - { key: naming, type: run_workflow, workflow: Naming pets, input: { owner: '{{ $trigger.record.id }}', count: 2 } }
+              - { key: done, type: run_workflow, workflow: Naming pets }
+            YAML;
+        $model = EditorModel::fromSource($caller);
+        self::assertNotNull($model);
+        self::assertSame(['field' => 'count', 'value' => '2'], self::at($model, 'steps.0.input.1'));
+        self::assertEquals($parser->parse($caller), $parser->parse(EditorModel::toSource($model)));
+        self::assertEquals((new DefinitionParser())->parse("trigger: { on: called }\nsteps: [{ key: r, type: return }]"), $parser->parse(EditorModel::toSource(EditorModel::fromSource("trigger: { on: called }\nsteps: [{ key: r, type: return }]") ?? [])));
+    }
+
     public function testUnreadableYamlHasNoModel(): void
     {
         self::assertNull(EditorModel::fromSource("trigger: [\n"));

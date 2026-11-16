@@ -20,7 +20,7 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class EditorModel
 {
-    private const array STEP_OPTIONS = ['object' => '', 'id' => '', 'match' => '', 'message' => '', 'act_as' => '', 'emit_events' => false, 'items' => '', 'sort' => '', 'direction' => '', 'limit' => '', 'package' => '', 'repo' => '', 'email' => '', 'role' => '', 'for' => '', 'until' => '', 'url' => '', 'method' => '', 'timeout' => '', 'retries' => '', 'headers' => '', 'body' => '', 'fail_on_error' => true, 'field' => '', 'name' => ''];
+    private const array STEP_OPTIONS = ['object' => '', 'id' => '', 'match' => '', 'message' => '', 'act_as' => '', 'emit_events' => false, 'items' => '', 'sort' => '', 'direction' => '', 'limit' => '', 'package' => '', 'repo' => '', 'email' => '', 'role' => '', 'for' => '', 'until' => '', 'url' => '', 'method' => '', 'timeout' => '', 'retries' => '', 'headers' => '', 'body' => '', 'fail_on_error' => true, 'field' => '', 'name' => '', 'workflow' => ''];
 
     /**
      * @return array<string, mixed>|null null when the YAML cannot be read
@@ -56,7 +56,8 @@ final class EditorModel
                         'required' => true === ($input['required'] ?? false),
                         'options' => \is_array($input['options'] ?? null) ? implode(', ', array_map(self::text(...), $input['options'])) : '',
                     ] : self::newInput(),
-                    \is_array($trigger['form'] ?? null) ? $trigger['form'] : [],
+                    // A called trigger's inputs, edited as a manual one's form.
+                    \is_array($trigger['form'] ?? null) ? $trigger['form'] : (\is_array($trigger['input'] ?? null) ? $trigger['input'] : []),
                 )),
             ],
             'steps' => self::stepsFrom($data['steps'] ?? []),
@@ -70,7 +71,7 @@ final class EditorModel
     {
         $trigger = \is_array($model['trigger'] ?? null) ? $model['trigger'] : [];
         $on = TriggerEvent::tryFrom(self::text($trigger['on'] ?? ''));
-        $data = ['trigger' => TriggerEvent::Schedule === $on ? ['on' => $on->value, 'cron' => self::text($trigger['cron'] ?? '')] : (TriggerEvent::Webhook === $on ? ['on' => $on->value] : (true === $on?->isPlatform() ? ['on' => $on->value] : ('manual' === ($trigger['on'] ?? null) ? self::manualTo($trigger) : array_filter([
+        $data = ['trigger' => TriggerEvent::Called === $on ? self::calledTo($trigger) : (TriggerEvent::Schedule === $on ? ['on' => $on->value, 'cron' => self::text($trigger['cron'] ?? '')] : (TriggerEvent::Webhook === $on ? ['on' => $on->value] : (true === $on?->isPlatform() ? ['on' => $on->value] : ('manual' === ($trigger['on'] ?? null) ? self::manualTo($trigger) : array_filter([
             'on' => self::text($trigger['on'] ?? ''),
             'object' => self::text($trigger['object'] ?? ''),
             'when' => self::text($trigger['when'] ?? ''),
@@ -78,7 +79,7 @@ final class EditorModel
             // A transition's: its Status field, and the transition or any.
             'field' => 'transitioned' === ($trigger['on'] ?? null) ? self::text($trigger['field'] ?? '') : '',
             'transition' => 'transitioned' === ($trigger['on'] ?? null) ? self::text($trigger['transition'] ?? '') : '',
-        ], static fn (mixed $value): bool => '' !== $value && [] !== $value))))];
+        ], static fn (mixed $value): bool => '' !== $value && [] !== $value)))))];
         $data['steps'] = self::stepsTo(\is_array($model['steps'] ?? null) ? $model['steps'] : []);
 
         return Yaml::dump($data, 12, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK);
@@ -111,6 +112,7 @@ final class EditorModel
             'type' => $type->value,
             ...self::STEP_OPTIONS,
             'values' => [],
+            'input' => [],
             'where' => [],
             'when' => StepType::Filter === $type ? self::newCondition() : null,
             'branches' => StepType::If === $type ? [['when' => self::newCondition(), 'steps' => []], ['when' => null, 'steps' => []]] : [],
@@ -171,6 +173,22 @@ final class EditorModel
     }
 
     /**
+     * A called trigger: its inputs, as a manual trigger's form (the label left out when it is
+     * the name, or none).
+     *
+     * @param array<mixed> $trigger
+     *
+     * @return array<string, mixed>
+     */
+    private static function calledTo(array $trigger): array
+    {
+        $form = self::manualTo($trigger)['form'] ?? [];
+        $inputs = array_map(static fn (mixed $input): mixed => \is_array($input) && ($input['label'] ?? null) === ($input['name'] ?? null) ? array_diff_key($input, ['label' => true]) : $input, \is_array($form) ? $form : []);
+
+        return array_filter(['on' => TriggerEvent::Called->value, 'input' => array_values($inputs)], static fn (mixed $value): bool => [] !== $value);
+    }
+
+    /**
      * A manual trigger: its label and the inputs of its form, options as a list.
      *
      * @param array<mixed> $trigger
@@ -217,6 +235,10 @@ final class EditorModel
             foreach (\is_array($step['values'] ?? null) ? $step['values'] : [] as $field => $value) {
                 $values[] = ['field' => (string) $field, 'value' => self::valueText($value)];
             }
+            $input = [];
+            foreach (\is_array($step['input'] ?? null) ? $step['input'] : [] as $name => $value) {
+                $input[] = ['field' => (string) $name, 'value' => self::valueText($value)];
+            }
             $options = [];
             foreach (self::STEP_OPTIONS as $option => $default) {
                 $options[$option] = match (true) {
@@ -235,6 +257,7 @@ final class EditorModel
                 'type' => self::text($step['type'] ?? ''),
                 ...$options,
                 'values' => $values,
+                'input' => $input,
                 'where' => $where,
                 'steps' => self::stepsFrom($step['steps'] ?? []),
                 'when' => \array_key_exists('when', $step) ? self::conditionFrom($step['when']) : null,
@@ -267,7 +290,9 @@ final class EditorModel
             $out = ['key' => self::text($step['key'] ?? ''), 'type' => self::text($step['type'] ?? '')];
             foreach (array_keys(null === $type ? [] : $type->options()) as $option) {
                 $out = match ($option) {
-                    'values' => $out + ['values' => self::valuesTo($step['values'] ?? [])],
+                    // A return may give nothing.
+                    'values' => StepType::Return === $type && [] === self::valuesTo($step['values'] ?? []) ? $out : $out + ['values' => self::valuesTo($step['values'] ?? [])],
+                    'input' => [] === ($given = self::valuesTo($step['input'] ?? [])) ? $out : $out + ['input' => $given],
                     'when' => $out + ['when' => self::conditionTo($step['when'] ?? null)],
                     'branches' => $out + ['branches' => array_values(array_map(
                         static fn (mixed $branch): array => array_filter([

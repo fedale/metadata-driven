@@ -126,6 +126,41 @@ final class WorkflowEditorTest extends WebTestCase
         self::assertStringContainsString("items: '{{ search_records_1.records }}'", $source);
     }
 
+    public function testBuildsACalledWorkflowAndItsCaller(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        $called = $this->editor()
+            ->set('model.trigger.on', 'called')
+            ->call('addInput')
+            ->set('model.trigger.form.0.name', 'owner')
+            ->call('removeStep', ['at' => 'steps.0'])
+            ->call('addStep', ['at' => 'steps', 'type' => 'return'])
+            ->call('addValue', ['at' => 'steps.0'])
+            ->set('model.steps.0.values.0.field', 'name')
+            ->set('model.steps.0.values.0.value', 'Pet of {{ $trigger.input.owner }}');
+        self::assertStringContainsString('Its input, given by the workflows calling it', (string) $called->render());
+        $called->call('activate');
+        self::assertSame(303, $called->response()->getStatusCode());
+
+        $this->id = self::getContainer()->get(WorkflowManager::class)->create('Caller', null, "trigger: { on: manual, object: person, label: Go }\nsteps: [{ key: no, type: refuse, message: no }]")->getId()->toRfc4122();
+        $caller = $this->editor()
+            ->call('addStep', ['at' => 'steps', 'type' => 'run_workflow'])
+            ->set('model.steps.1.workflow', 'Welcome')
+            ->call('addValue', ['at' => 'steps.1', 'list' => 'input'])
+            ->set('model.steps.1.input.0.field', 'owner')
+            ->set('model.steps.1.input.0.value', '{{ $trigger.record.full_name }}')
+            ->call('removeStep', ['at' => 'steps.0']);
+        $html = (string) $caller->render();
+        // The workflows on called to choose from, and the inputs of the one chosen.
+        self::assertStringContainsString('<option value="Welcome" selected', $html);
+        self::assertStringContainsString('<option value="owner" selected', $html);
+        $caller->call('activate');
+        self::assertSame(303, $caller->response()->getStatusCode());
+        $workflow = self::getContainer()->get(WorkflowRepository::class)->findByName('Caller');
+        self::assertNotNull($workflow);
+        self::assertStringContainsString("input:\n      owner: '{{ \$trigger.record.full_name }}'", (string) self::getContainer()->get(WorkflowManager::class)->activeVersion($workflow)?->getSource());
+    }
+
     public function testShowsTheProblemsOfTheDraftByStep(): void
     {
         self::signInAsSuperAdmin($this->client);

@@ -25,9 +25,14 @@ final readonly class Definition
      */
     public function toArray(): array
     {
-        $trigger = $this->trigger->isScheduled() ? ['on' => $this->trigger->on->value, 'cron' => $this->trigger->cron] : ($this->trigger->isWebhook() ? ['on' => $this->trigger->on->value] : ($this->trigger->isPlatform() ? ['on' => $this->trigger->on->value] : ($this->trigger->isManual()
-            ? ['on' => $this->trigger->on->value, 'object' => $this->trigger->object, 'label' => $this->trigger->label]
-            : ['on' => $this->trigger->on->value, 'object' => $this->trigger->object, 'when' => $this->trigger->when->value])));
+        $on = $this->trigger->on->value;
+        $trigger = match (true) {
+            $this->trigger->isScheduled() => ['on' => $on, 'cron' => $this->trigger->cron],
+            // Nothing to name but the event.
+            $this->trigger->isCalled(), $this->trigger->isWebhook(), $this->trigger->isPlatform() => ['on' => $on],
+            $this->trigger->isManual() => ['on' => $on, 'object' => $this->trigger->object, 'label' => $this->trigger->label],
+            default => ['on' => $on, 'object' => $this->trigger->object, 'when' => $this->trigger->when->value],
+        };
         if (null !== $this->trigger->statusField) {
             $trigger['field'] = $this->trigger->statusField;
         }
@@ -41,7 +46,8 @@ final readonly class Definition
             $trigger['selection'] = $this->trigger->selection;
         }
         if ([] !== $this->trigger->form) {
-            $trigger['form'] = array_map(static fn (FormInput $input): array => $input->toArray(), $this->trigger->form);
+            // A called workflow's inputs are given by its caller: no form, but the same inputs.
+            $trigger[$this->trigger->isCalled() ? 'input' : 'form'] = array_map(static fn (FormInput $input): array => $input->toArray(), $this->trigger->form);
         }
 
         return ['trigger' => $trigger, 'steps' => self::steps($this->steps)];

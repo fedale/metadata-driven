@@ -62,6 +62,18 @@ final readonly class Step
         return \is_array($values) ? array_combine(array_map(strval(...), array_keys($values)), array_values($values)) : [];
     }
 
+    /**
+     * A run_workflow's input: the called workflow's inputs to values, as written.
+     *
+     * @return array<string, mixed>
+     */
+    public function input(): array
+    {
+        $input = $this->options['input'] ?? [];
+
+        return \is_array($input) ? array_combine(array_map(strval(...), array_keys($input)), array_values($input)) : [];
+    }
+
     public function actAs(): ?string
     {
         return $this->string('act_as');

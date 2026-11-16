@@ -61,6 +61,26 @@
     <button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="addValue" data-live-at-param="{{ at }}">{{ 'admin.workflow.add_value'|trans }}</button>
 {% endmacro %}
 
+{# Rows of a name and a value: a run_workflow's input (names, its inputs), a return's values (any
+   name: names is null). #}
+{% macro pairs(rows, at, list, names) %}
+    {% for v, row in rows %}
+        <div class="md-workflow-row">
+            {% if names is null %}
+                <input type="text" data-model="model.{{ at }}.{{ list }}.{{ v }}.field" value="{{ row.field }}" aria-label="{{ 'admin.workflow.value_name'|trans }}" class="md-code-input">
+            {% else %}
+                <select data-model="model.{{ at }}.{{ list }}.{{ v }}.field" aria-label="{{ 'admin.workflow.value_name'|trans }}">
+                    <option value="">—</option>
+                    {% for name in names %}<option value="{{ name }}" {{ row.field == name ? 'selected' }}>{{ name }}</option>{% endfor %}
+                </select>
+            {% endif %}
+            <input type="text" data-model="model.{{ at }}.{{ list }}.{{ v }}.value" value="{{ row.value }}" aria-label="{{ 'admin.workflow.value'|trans }}">
+            <button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="removeValue" data-live-at-param="{{ at }}" data-live-index-param="{{ v }}" data-live-list-param="{{ list }}" aria-label="{{ 'admin.workflow.remove'|trans }}">✕</button>
+        </div>
+    {% endfor %}
+    <button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="addValue" data-live-at-param="{{ at }}" data-live-list-param="{{ list }}">{{ (list == 'input' ? 'admin.workflow.add_input_value' : 'admin.workflow.add_value')|trans }}</button>
+{% endmacro %}
+
 {% macro steps(steps, at, this) %}
     {% import _self as editor %}
     {% for i, step in steps %}
@@ -212,6 +232,20 @@
                     <label>{{ 'admin.workflow.email'|trans }} <input type="text" data-model="model.{{ path }}.email" value="{{ step.email }}" placeholder="{{ '{{ $trigger.member.email }}' }}" class="md-code-input"></label>
                     <label>{{ 'admin.workflow.role'|trans }} <input type="text" data-model="model.{{ path }}.role" value="{{ step.role }}" placeholder="ROLE_CLERK" class="md-code-input"></label>
                 </div>
+            {% elseif step.type == 'run_workflow' %}
+                {# The active workflows on called; the one named kept, even if it is not (yet). #}
+                {% set callable = this.callable %}
+                <div class="md-workflow-row">
+                    <label>{{ 'admin.workflow.called_workflow'|trans }}
+                        <select data-model="model.{{ path }}.workflow">
+                            <option value="">—</option>
+                            {% for name in callable|merge(step.workflow and step.workflow not in callable ? [step.workflow] : []) %}<option value="{{ name }}" {{ step.workflow == name ? 'selected' }}>{{ name }}</option>{% endfor %}
+                        </select>
+                    </label>
+                </div>
+                {{ editor.pairs(step.input, path, 'input', this.inputsOf(step.workflow)) }}
+            {% elseif step.type == 'return' %}
+                {{ editor.pairs(step.values, path, 'values', null) }}
             {% elseif step.type == 'set_values' %}
                 {{ editor.values(step, path, this.model.trigger.object, this) }}
             {% elseif step.type == 'refuse' %}
@@ -255,7 +289,7 @@
                     {% for event in this.triggerEvents %}<option value="{{ event }}" {{ model.trigger.on == event ? 'selected' }}>{{ ('admin.workflow.on_' ~ event)|trans }}</option>{% endfor %}
                 </select>
             </label>
-            {% if not console and model.trigger.on not in ['schedule', 'webhook'] %}
+            {% if not console and model.trigger.on not in ['schedule', 'webhook', 'called'] %}
             <label>{{ 'admin.workflow.object'|trans }}
                 <select data-model="model.trigger.object">
                     <option value="">—</option>
@@ -265,6 +299,8 @@
             {% endif %}
             {% if console %}
                 {# The platform's events: nothing else to say. #}
+            {% elseif model.trigger.on == 'called' %}
+                <p class="gv-muted">{{ 'admin.workflow.called_editor'|trans }}</p>
             {% elseif model.trigger.on == 'webhook' %}
                 <p class="gv-muted">{{ 'admin.workflow.webhook_editor'|trans }}</p>
             {% elseif model.trigger.on == 'schedule' %}
@@ -285,10 +321,10 @@
                 </label>
             {% endif %}
         </div>
-        {% if model.trigger.on == 'manual' %}
-            {# The form asked before the run: its answers are $trigger.input.<name>. #}
+        {% if model.trigger.on in ['manual', 'called'] %}
+            {# The form asked before the run, or the input its callers give: $trigger.input.<name>. #}
             <fieldset class="md-workflow-form">
-                <legend class="gv-muted">{{ 'admin.workflow.form_inputs'|trans }}</legend>
+                <legend class="gv-muted">{{ (model.trigger.on == 'called' ? 'admin.workflow.called_inputs' : 'admin.workflow.form_inputs')|trans }}</legend>
                 {% for input in model.trigger.form %}
                     <div class="md-workflow-row">
                         <label>{{ 'admin.workflow.input_name'|trans }} <input type="text" data-model="model.trigger.form.{{ loop.index0 }}.name" value="{{ input.name }}"></label>

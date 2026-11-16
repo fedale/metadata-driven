@@ -12,6 +12,7 @@ use App\Module\FieldType\Contract\Dto\StatusMachine;
 use App\Module\FieldType\Contract\Dto\StatusTransition;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Workflow\Application\Engine\ActiveWorkflows;
 use App\Module\Workflow\Application\Secrets\WorkflowSecrets;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
 use App\Shared\Workspace\CurrentWorkspace;
@@ -52,6 +53,7 @@ final class DefinitionValidator
         private readonly int $maxRecords = 200,
         private readonly ?CurrentWorkspace $workspace = null,
         private readonly ?WorkflowSecrets $secrets = null,
+        private readonly ?ActiveWorkflows $workflows = null,
     ) {
     }
 
@@ -75,7 +77,7 @@ final class DefinitionValidator
             // In the wrong place: nothing it names is there to check.
             throw new InvalidWorkflowDefinition($this->errors);
         }
-        $object = $trigger->isPlatform() || $trigger->isUnattended() ? null : $this->object($trigger->object, 'trigger.object');
+        $object = $trigger->isPlatform() || $trigger->isUnattended() || $trigger->isCalled() ? null : $this->object($trigger->object, 'trigger.object');
         if (null !== $object && TriggerEvent::Transitioned === $trigger->on) {
             $this->transitionOf($object, (string) $trigger->statusField, $trigger->transition, 'trigger.field', 'trigger.transition');
         }
@@ -184,6 +186,9 @@ final class DefinitionValidator
                 $this->paths($step->string($option), $path.'.'.$option, $definition, $trigger, $before);
             }
         }
+        if (StepType::RunWorkflow === $step->type) {
+            $this->call($step, $path, $definition, $trigger, $before);
+        }
         if (StepType::UpsertRecord === $step->type && null !== $target && null !== $match = $step->string('match')) {
             if (true !== ($target->fields[$match] ?? null)?->isUnique) {
                 $this->error($path.'.match', \sprintf('A unique field of "%s": the one that tells the record to update.', $target->name));
@@ -198,7 +203,7 @@ final class DefinitionValidator
                 TriggerEvent::Created => [RecordAction::Create],
                 TriggerEvent::Updated, TriggerEvent::Transitioned => [RecordAction::Update],
                 TriggerEvent::CreatedOrUpdated => [RecordAction::Create, RecordAction::Update],
-                TriggerEvent::Deleted, TriggerEvent::Manual, TriggerEvent::WorkspaceCreated, TriggerEvent::MemberAdded, TriggerEvent::Schedule, TriggerEvent::Webhook => [],
+                TriggerEvent::Deleted, TriggerEvent::Manual, TriggerEvent::WorkspaceCreated, TriggerEvent::MemberAdded, TriggerEvent::Schedule, TriggerEvent::Webhook, TriggerEvent::Called => [],
             };
             if (TriggerEvent::Deleted === $definition->trigger->on) {
                 $this->error($path.'.type', 'set_values changes the values being written: a delete writes none.');
@@ -303,6 +308,7 @@ final class DefinitionValidator
         }
         $manual = $definition->trigger->isManual();
         $holds = match (true) {
+            TriggerEvent::Called === $definition->trigger->on => ['input'],
             TriggerEvent::WorkspaceCreated === $definition->trigger->on => ['workspace'],
             TriggerEvent::Schedule === $definition->trigger->on => ['scheduled_at'],
             TriggerEvent::Webhook === $definition->trigger->on => ['body', 'query'],
@@ -327,7 +333,7 @@ final class DefinitionValidator
         }
         if ('input' === $segments[1]) {
             if (isset($segments[2]) && null === $definition->trigger->input($segments[2])) {
-                $this->error($at, \sprintf('The form has no input "%s".', $segments[2]));
+                $this->error($at, \sprintf($definition->trigger->isCalled() ? 'It takes no input "%s".' : 'The form has no input "%s".', $segments[2]));
             }
 
             return;
@@ -338,6 +344,39 @@ final class DefinitionValidator
         $field = $segments[2] ?? null;
         if (\in_array($segments[1], ['record', 'before'], true) && null !== $field && 'id' !== $field && null !== $trigger && !isset($trigger->fields[$field])) {
             $this->error($at, \sprintf('Object "%s" has no field "%s".', $trigger->name, $field));
+        }
+    }
+
+    /**
+     * A workflow called: active and on called, its inputs given (the required ones at least, no
+     * other), and the person activating may run it (no way to more power: its steps' roles are
+     * its own activator's to give).
+     *
+     * @param list<string> $before
+     */
+    private function call(Step $step, string $path, Definition $definition, ?ObjectDefinitionDto $trigger, array $before): void
+    {
+        $given = $step->input();
+        $this->paths($given, $path.'.input', $definition, $trigger, $before);
+        $name = (string) $step->string('workflow');
+        $called = $this->workflows?->byName($name);
+        if (null === $called || !$called->definition->trigger->isCalled()) {
+            $this->error($path.'.workflow', \sprintf('There is no active workflow "%s" on called.', $name));
+
+            return;
+        }
+        foreach (array_keys($given) as $input) {
+            if (null === $called->definition->trigger->input((string) $input)) {
+                $this->error($path.'.input.'.$input, \sprintf('"%s" takes no input "%s".', $name, $input));
+            }
+        }
+        foreach ($called->definition->trigger->form as $input) {
+            if ($input->required && !\array_key_exists($input->name, $given)) {
+                $this->error($path.'.input', \sprintf('"%s" requires the input "%s".', $name, $input->name));
+            }
+        }
+        if (!$this->access->holds(Permissions::workflowRun($called->workflowId))) {
+            $this->error($path.'.workflow', \sprintf('You may not run "%s": a role of yours must give it, on the roles page.', $name));
         }
     }
 

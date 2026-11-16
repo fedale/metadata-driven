@@ -24,6 +24,8 @@ enum TriggerEvent: string
     case Schedule = 'schedule';
     /** A request to its address (/hooks/<id>/<token>), from outside: no record, no one behind it. */
     case Webhook = 'webhook';
+    /** A run_workflow step of another workflow: run inside its run, with the input it gives. */
+    case Called = 'called';
     /** The platform's: a workspace created (the console, workspace:create). */
     case WorkspaceCreated = 'workspace_created';
     /** The platform's: a member added to a workspace. */
@@ -44,7 +46,7 @@ enum TriggerEvent: string
             self::Updated => RecordWriteAction::Update === $action,
             self::CreatedOrUpdated => RecordWriteAction::Delete !== $action,
             self::Deleted => RecordWriteAction::Delete === $action,
-            self::Manual, self::WorkspaceCreated, self::MemberAdded, self::Schedule, self::Webhook => false,
+            self::Manual, self::WorkspaceCreated, self::MemberAdded, self::Schedule, self::Webhook, self::Called => false,
             // Its transition says (Trigger::fires()).
             self::Transitioned => RecordWriteAction::Update === $action,
         };

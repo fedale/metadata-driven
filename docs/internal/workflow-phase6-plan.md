@@ -5,7 +5,8 @@ Status: **agreed** (2026-11-16). Phase 6 of [workflow-plan.md](workflow-plan.md)
 ## Decisions (user, 2026-11-16)
 
 1. **Now: schedules**, then **the workspaces' secrets**, then **incoming webhooks** (asked the
-   same day). The rest of the phase (workflows in packages, sub-workflows, quotas per plan) waits.
+   same day), then **sub-workflows**. The rest of the phase (workflows in packages, quotas per
+   plan) waits.
 2. **Email and notifications stay out** until the application sends email.
 
 ## Schedules
@@ -71,3 +72,31 @@ As above. The unattended runs (schedule, webhook) share `WorkflowEngine::runUnat
 security review asked, and got, the requests counted as they come (a rate limiter per workspace,
 `workflow_webhook`), not the runs stored: those are stored once the worker ran them, after a
 burst.
+
+## Sub-workflows
+
+Decisions (user, 2026-11-16): **in line** (the called workflow runs inside its caller's run and
+transaction, its result read by the steps after); a **`return`** step gives the values back;
+**who may call** is the called workflow's run permission, as a manual one's.
+
+- **Trigger** `on: called`, its `input` the inputs of a manual form (label optional), read as
+  `$trigger.input.<name>`; no record, `$user` the caller's.
+- **Step** `run_workflow`: `workflow` (the called one's name), `input` (its inputs to values,
+  checked as a form's answers). Its output: the values of the `return` that ended it (`{}`
+  without one). **Step** `return` (`values` optional): only in a called workflow, it ends it, from
+  a branch or an iterator too.
+- **Its run**: a `RunLog` of its own (action and timing `called`), one level deeper, as whoever
+  triggered its caller; stored as its caller is, once the transaction ended. `max_depth` stops a
+  chain of calls (a workflow calling itself too); each call counts in the runs a minute.
+- **Permissions**: the person activating a caller holds `workflow.<id>.run` of the called one, on
+  activation (`DefinitionValidator`) and at each run (`userCanGrant`); the called workflow's steps
+  check theirs against its own activator, as any step.
+- **Failures**: its failure fails the step (and the caller); called before a write, its `refuse`
+  refuses the write with its message. No `wait` in a called workflow (its caller waits for no
+  one), no `http_request` when called before a write (the step fails at the run).
+
+### Done (2026-11-16, branch `sub_workflows`)
+
+As above. The visual editor offers the trigger (its inputs edited as a form's), both steps (the
+active workflows on `called` to choose from, their inputs), and the picker the values a called
+workflow may return. The inputs are scalars (a form's types): lists and maps wait.

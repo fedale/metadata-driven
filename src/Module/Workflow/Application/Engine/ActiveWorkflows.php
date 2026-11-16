@@ -46,6 +46,19 @@ interface ActiveWorkflows
     public function byId(string $workflowId): ?ActiveWorkflow;
 
     /**
+     * The current workspace's active workflows on called: those a run_workflow step may run.
+     *
+     * @return list<ActiveWorkflow>
+     */
+    public function called(): array;
+
+    /**
+     * A workflow's active version by the workflow's name, in the current workspace; null when
+     * there is none.
+     */
+    public function byName(string $name): ?ActiveWorkflow;
+
+    /**
      * Forgets what was read: a version activated or deactivated.
      */
     public function forget(): void;

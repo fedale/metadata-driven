@@ -10,6 +10,7 @@ use App\Module\Workflow\Application\Definition\FormInput;
 use App\Module\Workflow\Application\Definition\Step;
 use App\Module\Workflow\Application\Definition\StepType;
 use App\Module\Workflow\Application\Definition\TriggerEvent;
+use App\Module\Workflow\Application\Engine\ActiveWorkflows;
 use App\Module\Workflow\Application\Secrets\WorkflowSecrets;
 
 /**
@@ -22,6 +23,7 @@ final class PathCatalog
     public function __construct(
         private readonly MetadataRegistryInterface $metadata,
         private readonly ?WorkflowSecrets $secrets = null,
+        private readonly ?ActiveWorkflows $workflows = null,
     ) {
     }
 
@@ -53,7 +55,10 @@ final class PathCatalog
 
             return ['trigger' => $trigger, 'context' => ['$workspace.slug', '$workspace.name', '$now', '$today', '$last'], 'steps' => array_filter($steps, static fn (array $paths): bool => [] !== $paths)];
         }
-        if ($definition->trigger->isUnattended()) {
+        if ($definition->trigger->isCalled()) {
+            // Its input, from the workflow calling it; no record.
+            $trigger = array_map(static fn (FormInput $input): string => '$trigger.input.'.$input->name, $definition->trigger->form);
+        } elseif ($definition->trigger->isUnattended()) {
             // A time come, a request from outside: no record, no one.
             $trigger = $definition->trigger->isScheduled() ? ['$trigger.scheduled_at'] : ['$trigger.body', '$trigger.query'];
             $context = ['$workspace.slug', '$workspace.name', '$now', '$today', '$last'];
@@ -81,7 +86,8 @@ final class PathCatalog
             $steps[$key] = match ($step->type) {
                 StepType::If => [$key.'.branch'],
                 StepType::Filter => [$key.'.passed'],
-                StepType::Refuse => [],
+                StepType::Refuse, StepType::Return => [],
+                StepType::RunWorkflow => array_map(static fn (string $name): string => $key.'.'.$name, $this->returned((string) $step->string('workflow'))),
                 StepType::SetValues => array_map(static fn (string $field): string => $key.'.'.$field, array_keys($step->values())),
                 StepType::DeleteRecord => [$key.'.id'],
                 StepType::Wait => [$key.'.until'],
@@ -110,6 +116,27 @@ final class PathCatalog
         $context = [...$context, ...array_map(static fn (string $name): string => '$secrets.'.$name, $this->secrets?->names() ?? [])];
 
         return ['trigger' => $trigger, 'context' => $context, 'steps' => array_filter($steps, static fn (array $paths): bool => [] !== $paths)];
+    }
+
+    /**
+     * What a called workflow may return: the values of its return steps.
+     *
+     * @return list<string>
+     */
+    private function returned(string $workflow): array
+    {
+        $called = $this->workflows?->byName($workflow);
+        if (null === $called) {
+            return [];
+        }
+        $names = [];
+        foreach ($called->definition->allSteps() as $step) {
+            if (StepType::Return === $step->type) {
+                $names = [...$names, ...array_keys($step->values())];
+            }
+        }
+
+        return array_values(array_unique($names));
     }
 
     /**

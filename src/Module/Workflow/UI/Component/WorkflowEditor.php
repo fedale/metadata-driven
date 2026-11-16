@@ -17,6 +17,8 @@ use App\Module\Workflow\Application\Definition\FormInput;
 use App\Module\Workflow\Application\Definition\StepType;
 use App\Module\Workflow\Application\Definition\TriggerEvent;
 use App\Module\Workflow\Application\EditorModel;
+use App\Module\Workflow\Application\Engine\ActiveWorkflow;
+use App\Module\Workflow\Application\Engine\ActiveWorkflows;
 use App\Module\Workflow\Application\Engine\RunLog;
 use App\Module\Workflow\Application\PathCatalog;
 use App\Module\Workflow\Application\TestRefused;
@@ -88,6 +90,7 @@ final class WorkflowEditor extends AbstractController
         private readonly WorkflowTester $tester,
         private readonly TranslatorInterface $translator,
         private readonly RequestStack $requests,
+        private readonly ActiveWorkflows $active,
     ) {
     }
 
@@ -215,20 +218,47 @@ final class WorkflowEditor extends AbstractController
         return FormInput::TYPES;
     }
 
+    /**
+     * $list: values (a write's, a return's) or input (a run_workflow's).
+     */
     #[LiveAction]
-    public function addValue(#[LiveArg] string $at): void
+    public function addValue(#[LiveArg] string $at, #[LiveArg] string $list = 'values'): void
     {
-        $values = $this->listAt($at.'.values');
+        $list = 'input' === $list ? 'input' : 'values';
+        $values = $this->listAt($at.'.'.$list);
         $values[] = ['field' => '', 'value' => ''];
-        $this->setAt($at.'.values', $values);
+        $this->setAt($at.'.'.$list, $values);
     }
 
     #[LiveAction]
-    public function removeValue(#[LiveArg] string $at, #[LiveArg] int $index): void
+    public function removeValue(#[LiveArg] string $at, #[LiveArg] int $index, #[LiveArg] string $list = 'values'): void
     {
-        $values = $this->listAt($at.'.values');
+        $list = 'input' === $list ? 'input' : 'values';
+        $values = $this->listAt($at.'.'.$list);
         array_splice($values, $index, 1);
-        $this->setAt($at.'.values', $values);
+        $this->setAt($at.'.'.$list, $values);
+    }
+
+    /**
+     * The workflows a run_workflow step may run: the active ones on called, by name.
+     *
+     * @return list<string>
+     */
+    public function getCallable(): array
+    {
+        return $this->console ? [] : array_map(static fn (ActiveWorkflow $workflow): string => $workflow->name, $this->active->called());
+    }
+
+    /**
+     * The inputs of a workflow on called, by name.
+     *
+     * @return list<string>
+     */
+    public function inputsOf(string $workflow): array
+    {
+        $called = '' === $workflow || $this->console ? null : $this->active->byName($workflow);
+
+        return null === $called ? [] : array_map(static fn (FormInput $input): string => $input->name, $called->definition->trigger->form);
     }
 
     /**

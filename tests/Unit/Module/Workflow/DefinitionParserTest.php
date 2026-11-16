@@ -101,13 +101,13 @@ final class DefinitionParserTest extends TestCase
         yield 'not YAML' => ["trigger: [\n", ['' => ['Not valid YAML: Malformed inline YAML string at line 2.']]];
         yield 'no trigger, no steps' => ['{}', ['trigger' => ['Required: a map with on, object and when.'], 'steps' => ['Required: a list of steps, one at least.']]];
         yield 'a wrong trigger' => ["trigger: { on: archived, object: Invoice, when: later, fields: [x] }\nsteps: [{ key: a, type: refuse, message: no }]", [
-            'trigger.on' => ['One of created, updated, created_or_updated, deleted, manual, transitioned, schedule, webhook, workspace_created, member_added.'],
+            'trigger.on' => ['One of created, updated, created_or_updated, deleted, manual, transitioned, schedule, webhook, called, workspace_created, member_added.'],
             'trigger.object' => ['Required: a machine name, lowercase letters, digits and underscores.'],
             'trigger.when' => ['before or after.'],
             'trigger.fields' => ['Only for a trigger on updated or created_or_updated: the fields whose change runs it.'],
         ]];
         yield 'steps' => ["trigger: { on: created, object: invoice, when: after }\nsteps:\n  - { key: a, type: fly }\n  - { key: a, type: refuse, message: no, extra: 1 }\n  - { key: Bad, type: create_record, object: invoice }\n  - { key: c, type: set_values, values: { x: 1 } }", [
-            'steps.0.type' => ['One of if, filter, create_record, update_record, delete_record, upsert_record, set_values, refuse, search_records, iterator, install_package, assign_role, wait, http_request, transition.'],
+            'steps.0.type' => ['One of if, filter, create_record, update_record, delete_record, upsert_record, set_values, refuse, search_records, iterator, install_package, assign_role, wait, http_request, transition, run_workflow, return.'],
             'steps.1.key' => ['"a" names another step already.'],
             'steps.1.extra' => ['Unknown: here, key, type, message.'],
             'steps.2.key' => ["Required: lowercase letters, digits and underscores, starting with a letter; it names the step's output."],
