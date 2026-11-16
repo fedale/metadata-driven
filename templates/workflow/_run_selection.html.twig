@@ -1,0 +1,18 @@
+{# A manual workflow on a grid's selection: the count, its form, Run. Fetched into the grid's
+   modal (gridview-crud), or the body of its own page; the form posts natively, the selection in
+   its action's query string. #}
+<div class="md-run-selection">
+    <h2>{{ workflow.definition.trigger.label }}</h2>
+    {% if too_many %}
+        <ul class="md-problems"><li>{{ 'workflow.run.too_many'|trans({'%max%': max}) }}</li></ul>
+    {% elseif count == 0 %}
+        <ul class="md-problems"><li>{{ 'workflow.run.none_selected'|trans }}</li></ul>
+    {% else %}
+        <p class="gv-muted">{{ (workflow.definition.trigger.selection == 'all' ? 'workflow.run.on_all' : 'workflow.run.on_each')|trans({'%count%': count, '%object%': object.labelPlural|lower}) }}</p>
+        {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+            {{ form_errors(form) }}
+            {{ form_rest(form) }}
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'workflow.run.submit'|trans }}</button>
+        {{ form_end(form) }}
+    {% endif %}
+</div>

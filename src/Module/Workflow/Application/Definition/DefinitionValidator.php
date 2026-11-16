@@ -124,6 +124,10 @@ final class DefinitionValidator
             if (null !== $source && null !== $object = $source->string('object')) {
                 $this->itemObjects[$step->key] = $object;
             }
+            // Over a selection's records: the trigger's object.
+            if ($definition->trigger->runsOnAll() && 1 === preg_match('/^\{\{\s*\$trigger\.records\s*\}\}$/', $items)) {
+                $this->itemObjects[$step->key] = $definition->trigger->object;
+            }
         }
         foreach (['id', 'message'] as $option) {
             if (null !== $step->string($option)) {
@@ -235,7 +239,11 @@ final class DefinitionValidator
             return;
         }
         $manual = $definition->trigger->isManual();
-        $holds = $manual ? ['object', 'action', 'record', 'input'] : ['object', 'action', 'record', 'before', 'changed'];
+        $holds = match (true) {
+            $definition->trigger->runsOnAll() => ['object', 'action', 'records', 'input'],
+            $manual => ['object', 'action', 'record', 'input'],
+            default => ['object', 'action', 'record', 'before', 'changed'],
+        };
         if (!\in_array($segments[1], $holds, true)) {
             $this->error($at, \sprintf('$trigger holds %s: not "%s".', implode(', ', $holds), $segments[1]));
 

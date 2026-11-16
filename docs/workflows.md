@@ -65,6 +65,7 @@ steps:
 | `when` | `before`: in the write's transaction, before it; `after`: once the write is committed. Not for `manual` |
 | `fields` | `updated` and `created_or_updated` only: run on an update only when one of these fields changes |
 | `label` | `manual` only, required: the text of its button |
+| `selection` | `manual` only: `each` (also on a grid's selection, a run per record) or `all` (on a grid's selection only, one run on them all) |
 | `form` | `manual` only: the inputs asked before it runs |
 
 **Before** a write, a workflow guards it: it may change the values (`set_values`, validated with
@@ -123,6 +124,7 @@ Each run holds its data, read by paths:
 | `$trigger.object`, `$trigger.action` | The object, and `create`, `update`, `delete` or `manual` |
 | `$trigger.record.<field>`, `$trigger.record.id` | The record: as about to be written before the write, as written after it, as it was for a delete, as it is for a manual run (none from a command without `--record`). Never a password |
 | `$trigger.input.<name>` | `manual` only: the answer to an input of its form |
+| `$trigger.records` | `selection: all` only: the records selected, each with its `id` and fields (in place of `$trigger.record`) |
 | `$trigger.before.<field>` | `updated` and `created_or_updated`: the record as it was before the update |
 | `$trigger.changed` | The fields the write changes; not for `manual` |
 | `$user.email`, `$user.roles` | Whoever triggered the event or ran the workflow; null from a command |
@@ -159,6 +161,15 @@ steps:
   checked before the run starts; none is `null`, an unchecked boolean `false`.
 - **The run**: as an after-run, its steps in one transaction, all or nothing; a `refuse` keeps
   nothing either, its message shown. `set_values` has nothing to change: refused.
+- **On a grid's selection** (`selection`): the grid of the object gets its selection column and,
+  once rows are selected, a bar with a button per workflow the user may run on them. The button
+  opens the form (or the count of records and *Run*) in a modal; the result is a message on the
+  grid. *Select all* takes every record of the grid's current filters and search. At most
+  `app.workflow.max_records` records at a time; the user must read them and hold the workflow's
+  permission. With `each`, a run per record, each all or nothing, a failed one stopping no other
+  (the message tells how many completed, and the first error); the workflow shows on a record's
+  page too. With `all`, one run, all or nothing, on `$trigger.records` (read with an
+  [iterator](#search-and-iterator)), and no `$trigger.record`.
 
 ### Search and iterator
 
@@ -254,10 +265,10 @@ rolled back. The steps run are counted per workspace and day.
 | The engine | `WorkflowEngine` listens to both events, reads the active versions (`ActiveWorkflows`, once per request), runs the steps over a `DataChain`, checks each write's permission (`AccessCheckerInterface::roleGives()`, `userCanGrant()`), and stores each run once its transaction ended (`RunStore`, DBAL) |
 | The tables | `core.workflow`, `core.workflow_version` (ORM); `core.workflow_run`, `core.workflow_run_step`, `core.workflow_usage` (DBAL); each with its `workspace_id` and row-level security |
 | Search | `RecordFinderInterface::search()` (Record contract, `RecordFilter`, `RecordSearchResult`), its SQL in `DbalRecordStore`: identifiers from the metadata, values checked then bound and cast to the column's type |
-| Manual runs | `ManualRuns` (who may run what, the answers checked), `WorkflowEngine::runManual()`; on a record's page through the Record contract's `RecordActionsInterface` (`WorkflowRecordActions`), the form at `/w/<workflow id>/run/<record id>` (`ManualRunController`); `workflow:run` |
+| Manual runs | `ManualRuns` (who may run what, the answers checked), `WorkflowEngine::runManual()`; on a record's page and a grid's bulk bar through the Record contract's `RecordActionsInterface` (`WorkflowRecordActions`), the form at `/w/<workflow id>/run/<record id>` and `/w/<workflow id>/run-selection` (`ManualRunController`), the selection told back by `RecordSelectionInterface` (`GridRecordSelection`); `workflow:run` |
 | The admin | `WorkflowAdminController`, `WorkflowManager` (which creates and removes the run permission, `AccessSetupInterface::ensurePermission()`) |
 
 ## Not yet
 
-Manual workflows on a grid's selection (phase 2); the system admin's workflows on platform events (phase 3); the background,
+The system admin's workflows on platform events (phase 3); the background,
 HTTP requests, waits (phase 4); states (phase 5). See [the plan](internal/workflow-plan.md).

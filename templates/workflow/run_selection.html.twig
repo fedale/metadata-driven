@@ -1,0 +1,8 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ workflow.definition.trigger.label }}{% endblock %}
+
+{% block body %}
+    <p><a href="{{ back }}">&larr; {{ object.labelPlural }}</a></p>
+    {{ include('workflow/_run_selection.html.twig') }}
+{% endblock %}

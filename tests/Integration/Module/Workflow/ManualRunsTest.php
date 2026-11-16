@@ -176,13 +176,13 @@ final class ManualRunsTest extends KernelTestCase
         $this->workflow('Pet as clerk', str_replace("owner: '{{ \$trigger.record.id }}' } }", "owner: '{{ \$trigger.record.id }}' }, act_as: ROLE_CLERK }", self::RENAME));
         $command = new CommandTester((new Application(self::bootKernel()))->find('workflow:run'));
 
-        self::assertSame(1, $command->execute(['workflow' => 'Pet', '--record' => $this->ada->id, '--input' => ['name=Cat']]));
+        self::assertSame(1, $command->execute(['workflow' => 'Pet', '--record' => [$this->ada->id], '--input' => ['name=Cat']]));
         self::assertMatchesRegularExpression('/No\s+one\s+triggered\s+this\s+event/', $command->getDisplay());
         self::assertSame(2, $command->execute(['workflow' => 'Pet as clerk', '--input' => ['name']]));
-        self::assertSame(1, $command->execute(['workflow' => 'Pet as clerk', '--record' => $this->ada->id]));
+        self::assertSame(1, $command->execute(['workflow' => 'Pet as clerk', '--record' => [$this->ada->id]]));
         self::assertStringContainsString('name: Required.', $command->getDisplay());
 
-        self::assertSame(0, $command->execute(['workflow' => 'Pet as clerk', '--record' => $this->ada->id, '--input' => ['name=Dog', 'count=3']]), $command->getDisplay());
+        self::assertSame(0, $command->execute(['workflow' => 'Pet as clerk', '--record' => [$this->ada->id], '--input' => ['name=Dog', 'count=3']]), $command->getDisplay());
         self::assertSame(['Dog of Ada'], $this->pets());
     }
 

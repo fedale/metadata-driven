@@ -14,11 +14,13 @@ use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Record\Application\Grid\RecordGridSourceInterface;
 use App\Module\Record\Application\RecordLabels;
+use App\Module\Record\Contract\Dto\RecordActionLink;
 use App\Module\Search\Contract\SearchConfigurationInterface;
 use Fedale\GridviewBundle\Column\ActionButton;
 use Fedale\GridviewBundle\Column\Config\AbstractColumnConfig;
 use Fedale\GridviewBundle\Column\Config\ActionColumn;
 use Fedale\GridviewBundle\Column\Config\BooleanColumn;
+use Fedale\GridviewBundle\Column\Config\CheckboxColumn;
 use Fedale\GridviewBundle\Column\Config\DateColumn;
 use Fedale\GridviewBundle\Column\Config\DatetimeColumn;
 use Fedale\GridviewBundle\Column\Config\EmailColumn;
@@ -69,9 +71,12 @@ final class RecordGridFactory
     }
 
     /**
-     * @param ViewDefinitionDto|null $view a grid view; null for one column per field
+     * @param ViewDefinitionDto|null $view             a grid view; null for one column per field
+     * @param list<RecordActionLink> $selectionActions what the user may do on a selection (other
+     *                                                 modules' actions): the selection column and
+     *                                                 the bulk bar, a button each
      */
-    public function create(ObjectDefinitionDto $object, ?ViewDefinitionDto $view = null): Gridview
+    public function create(ObjectDefinitionDto $object, ?ViewDefinitionDto $view = null, array $selectionActions = []): Gridview
     {
         $grid = $view?->grid;
         $dataProvider = [
@@ -102,6 +107,9 @@ final class RecordGridFactory
             $dataProvider['sort'] = ['map' => $this->sortMap($grid), 'default' => $grid->sort];
         }
         $columns[] = $this->actions($object);
+        if ([] !== $selectionActions) {
+            array_unshift($columns, CheckboxColumn::new());
+        }
 
         return $this->builders->createGridviewBuilder()
             ->setId(self::gridId($object, $view))
@@ -109,7 +117,7 @@ final class RecordGridFactory
             ->setSearchModel($this->searchModel)
             ->setDataProvider($dataProvider)
             ->setColumns($columns)
-            ->setOptions($this->options($object, $view))
+            ->setOptions($this->options($object, $view, $selectionActions))
             ->renderGridview();
     }
 
@@ -117,17 +125,30 @@ final class RecordGridFactory
      * The grid options of an object. Also handed to the UI settings modal by
      * RecordGridDescriptors: one source, so its copy cannot drift from the real grid.
      *
+     * @param list<RecordActionLink> $selectionActions see create()
+     *
      * @return array<string, mixed>
      */
-    public function options(ObjectDefinitionDto $object, ?ViewDefinitionDto $view = null): array
+    public function options(ObjectDefinitionDto $object, ?ViewDefinitionDto $view = null, array $selectionActions = []): array
     {
         // A view other than the default one has a page (and an export) of its own.
         $named = null !== $view && !$view->isDefault;
+        $layout = ['toolbar' => '{globalSearch} {filterSubmit} {spacer} {savedSearch} {columnVisibility} {export}'];
+        $crud = [];
+        if ([] !== $selectionActions) {
+            // The bulk bar shows once a row is selected; its buttons open the bundle's modal on
+            // their url, the selection appended (gridview-selection#bulk).
+            $layout['shell'] = '{restrictionNotice} {header} {bulkBar} {dataview} {footer}';
+            $crud = ['crud' => ['bulkActions' => array_combine(
+                array_map(static fn (int $i): string => 'action_'.$i, array_keys($selectionActions)),
+                array_map(static fn (RecordActionLink $action): array => ['url' => $action->url, 'label' => $action->label, 'variant' => ''], $selectionActions),
+            )]];
+        }
 
         return [
             'display' => [
                 'title' => $object->labelPlural,
-                'layout' => ['toolbar' => '{globalSearch} {filterSubmit} {spacer} {savedSearch} {columnVisibility} {export}'],
+                'layout' => $layout,
             ],
             // The fields of the search box: configured in the metadata, or every text-like field.
             'behavior' => ['globalSearch' => $this->search->fieldsFor($object)],
@@ -143,6 +164,7 @@ final class RecordGridFactory
                     ),
                     'followsUi' => true,
                 ],
+                ...$crud,
             ],
         ];
     }

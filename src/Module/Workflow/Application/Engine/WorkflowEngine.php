@@ -202,16 +202,19 @@ final class WorkflowEngine implements ResetInterface
 
     /**
      * Runs a manual workflow, as whoever is signed in (no one from a command), on a record or
-     * none, with the answers of its form, checked already: its steps in one transaction, all or
-     * nothing (a refuse included). Who may run it is the caller's to check.
+     * none, or on a selection's records for a trigger running on them all, with the answers of
+     * its form, checked already: its steps in one transaction, all or nothing (a refuse
+     * included). Who may run it is the caller's to check.
      *
      * @param array<string, mixed> $input
+     * @param list<RecordOutput>   $records a selection's, for a trigger running on them all
      */
-    public function runManual(ActiveWorkflow $workflow, ?RecordOutput $record, array $input): RunLog
+    public function runManual(ActiveWorkflow $workflow, ?RecordOutput $record, array $input, array $records = []): RunLog
     {
         $trigger = $workflow->definition->trigger;
         ++$this->pending;
         $run = new RunLog($workflow, $trigger->object, $record?->id, TriggerEvent::Manual->value, TriggerEvent::Manual->value, $this->security->getUser()?->getUserIdentifier(), 1, new \DateTimeImmutable());
+        $readable = fn (RecordOutput $one): array => ['id' => $one->id, ...$this->readable($trigger->object, $one->values)];
         if (null !== $refusal = $this->overLimits($run)) {
             $run->end(RunLog::FAILED, $refusal);
             $this->store($run);
@@ -221,7 +224,9 @@ final class WorkflowEngine implements ResetInterface
         $chain = $this->chain([
             'object' => $trigger->object,
             'action' => TriggerEvent::Manual->value,
-            'record' => null === $record ? null : ['id' => $record->id, ...$this->readable($trigger->object, $record->values)],
+            ...($trigger->runsOnAll()
+                ? ['records' => array_map($readable, $records)]
+                : ['record' => null === $record ? null : $readable($record)]),
             'input' => $input,
         ]);
         try {

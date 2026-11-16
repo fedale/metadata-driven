@@ -469,6 +469,10 @@ admin:
         add_value: + value
         add_test: + test
         button_label: 'Button'
+        selection: 'Where'
+        selection_none: 'on a record''s page'
+        selection_each: 'also on a grid''s selection, a run per record'
+        selection_all: 'on a grid''s selection, one run on them all'
         form_inputs: 'Form, asked before the run: $trigger.input.<name>'
         input_name: 'Name'
         input_label: 'Label'
@@ -626,3 +630,9 @@ workflow:
         submit: Run
         completed: '"%label%" done.'
         failed: '"%label%" failed, nothing was kept: %error%'
+        done_on: '"%label%" done on %count% record(s).'
+        failed_on: '"%label%" failed on %count% record(s), nothing of theirs was kept: %error%'
+        on_each: 'Runs on each of the %count% %object% selected, one at a time.'
+        on_all: 'Runs once on the %count% %object% selected.'
+        too_many: 'Too many records selected: at most %max% at a time.'
+        none_selected: 'No record selected.'

@@ -57,6 +57,7 @@ final class DefinitionParserTest extends TestCase
               on: manual
               object: invoice
               label: Send a reminder
+              selection: each
               form:
                 - { name: note, label: Note, type: text, required: true }
                 - { name: tone, label: Tone, type: select, options: [kind, firm] }
@@ -66,6 +67,7 @@ final class DefinitionParserTest extends TestCase
 
         self::assertTrue($definition->trigger->isManual());
         self::assertSame('Send a reminder', $definition->trigger->label);
+        self::assertSame('each', $definition->trigger->selection);
         self::assertSame(['kind', 'firm'], $definition->trigger->input('tone')?->options);
         self::assertTrue($definition->trigger->input('note')?->required);
         // Stored without a when, read back the same.
@@ -174,6 +176,7 @@ final class DefinitionParserTest extends TestCase
                   on: manual
                   object: invoice
                   when: after
+                  selection: some
                   form:
                     - { name: a, label: A, type: text }
                     - { name: a, label: Again, type: text }
@@ -185,7 +188,8 @@ final class DefinitionParserTest extends TestCase
             self::fail('Refused.');
         } catch (InvalidWorkflowDefinition $e) {
             self::assertSame([
-                'trigger.when' => ['Unknown: here, on, object, label, form.'],
+                'trigger.when' => ['Unknown: here, on, object, label, selection, form.'],
+                'trigger.selection' => ['each (a run per record) or all (one run on them all).'],
                 'trigger.label' => ['Required: the text of its button, at most 100 characters.'],
                 'trigger.form.1.name' => ['"a" names another input already.'],
                 'trigger.form.2.type' => ['One of text, number, date, boolean, select.'],

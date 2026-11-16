@@ -34,7 +34,9 @@ final class PathCatalog
         }
 
         $object = $definition->trigger->object;
-        $trigger = ['$trigger.object', '$trigger.action', '$trigger.record.id', ...array_map(static fn (string $field): string => '$trigger.record.'.$field, $this->fields($object))];
+        $trigger = $definition->trigger->runsOnAll()
+            ? ['$trigger.object', '$trigger.action', '$trigger.records']
+            : ['$trigger.object', '$trigger.action', '$trigger.record.id', ...array_map(static fn (string $field): string => '$trigger.record.'.$field, $this->fields($object))];
         if (\in_array($definition->trigger->on, [TriggerEvent::Updated, TriggerEvent::CreatedOrUpdated], true)) {
             $trigger = [...$trigger, '$trigger.before.id', ...array_map(static fn (string $field): string => '$trigger.before.'.$field, $this->fields($object))];
         }
@@ -76,10 +78,13 @@ final class PathCatalog
     }
 
     /**
-     * The object of an iterator's items, when it runs on a search's records.
+     * The object of an iterator's items, when it runs on a search's records or a selection's.
      */
     private function itemObject(Definition $definition, Step $iterator): ?string
     {
+        if (1 === preg_match('/^\{\{\s*\$trigger\.records\s*\}\}$/', (string) $iterator->string('items'))) {
+            return $definition->trigger->object;
+        }
         if (1 !== preg_match('/^\{\{\s*([a-z][a-z0-9_]*)\.records\s*\}\}$/', (string) $iterator->string('items'), $match)) {
             return null;
         }

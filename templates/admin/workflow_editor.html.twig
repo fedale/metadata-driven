@@ -213,6 +213,11 @@
             </label>
             {% if model.trigger.on == 'manual' %}
                 <label>{{ 'admin.workflow.button_label'|trans }} <input type="text" data-model="model.trigger.label" value="{{ model.trigger.label }}"></label>
+                <label>{{ 'admin.workflow.selection'|trans }}
+                    <select data-model="model.trigger.selection">
+                        {% for mode in ['', 'each', 'all'] %}<option value="{{ mode }}" {{ model.trigger.selection|default('') == mode ? 'selected' }}>{{ ('admin.workflow.selection_' ~ (mode ?: 'none'))|trans }}</option>{% endfor %}
+                    </select>
+                </label>
             {% else %}
                 <label>{{ 'admin.workflow.when'|trans }}
                     <select data-model="model.trigger.when">

@@ -115,7 +115,12 @@ final class DefinitionParser
      */
     private function manualTrigger(array $trigger): ?Trigger
     {
-        $this->unknownKeys($trigger, ['on', 'object', 'label', 'form'], 'trigger');
+        $this->unknownKeys($trigger, ['on', 'object', 'label', 'selection', 'form'], 'trigger');
+        $selection = $trigger['selection'] ?? null;
+        if (null !== $selection && !\in_array($selection, ['each', 'all'], true)) {
+            $this->error('trigger.selection', 'each (a run per record) or all (one run on them all).');
+            $selection = null;
+        }
         $object = $this->name($trigger['object'] ?? null, 'trigger.object');
         $label = \is_string($trigger['label'] ?? null) && '' !== trim($trigger['label']) && mb_strlen($trigger['label']) <= 100 ? trim($trigger['label']) : null;
         if (null === $label) {
@@ -139,7 +144,7 @@ final class DefinitionParser
             }
         }
 
-        return null === $object || null === $label ? null : new Trigger(TriggerEvent::Manual, $object, Timing::After, [], $label, $form);
+        return null === $object || null === $label ? null : new Trigger(TriggerEvent::Manual, $object, Timing::After, [], $label, $form, $selection);
     }
 
     private function formInput(mixed $input, string $path): ?FormInput

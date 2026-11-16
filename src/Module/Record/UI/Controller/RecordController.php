@@ -265,7 +265,10 @@ final class RecordController extends AbstractController
 
     private function renderGridOf(ObjectDefinitionDto $object, ?ViewDefinitionDto $view): Response
     {
-        return $this->grids->create($object, $view)->renderGrid('record/index.html.twig', [
+        $named = null !== $view && !$view->isDefault ? $view->name : null;
+        $selectionActions = array_merge(...array_map(static fn (RecordActionsInterface $actions): array => $actions->selectionActionsFor($object->name, $named), [...$this->actions]));
+
+        return $this->grids->create($object, $view, $selectionActions)->renderGrid('record/index.html.twig', [
             'object' => $object,
             'grid_view' => $view,
             'can_create' => $this->access->canRecords($object->name, RecordAction::Create),

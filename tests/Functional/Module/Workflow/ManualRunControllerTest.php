@@ -109,6 +109,44 @@ final class ManualRunControllerTest extends WebTestCase
         self::assertSame(['Tom the cat'], $this->pets());
     }
 
+    public function testAGridsSelectionRunsItFromTheBulkBar(): void
+    {
+        $workflow = $this->activate('Pets', <<<'YAML'
+            trigger: { on: manual, object: person, label: Give pets, selection: each, form: [{ name: name, label: Pet name, type: text, required: true }] }
+            steps:
+              - { key: pet, type: create_record, object: pet, values: { name: '{{ $trigger.input.name }} of {{ $trigger.record.full_name }}' } }
+            YAML);
+        $bob = self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('person', ['full_name' => 'Bob']));
+        self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('person', ['full_name' => 'Carla']));
+
+        // Without its permission: no selection, no bulk bar.
+        self::signIn($this->client, 'bea@example.com', ['record.person.read']);
+        $this->client->request('GET', '/o/person');
+        self::assertSelectorNotExists('.gv-bulk-bar');
+        $this->holdEveryWorkflow();
+        $this->client->request('GET', '/o/person');
+        self::assertSelectorTextContains('.gv-bulk-bar', 'Give pets');
+        self::assertSelectorExists('input[data-gridview-selection-target="checkbox"][value="'.$bob->id.'"]');
+
+        // The modal fetches the form, the selection in its url.
+        $url = '/w/'.$workflow->getId()->toRfc4122().'/run-selection?ids%5B%5D='.$this->ada->id.'&ids%5B%5D='.$bob->id;
+        $this->client->xmlHttpRequest('GET', $url);
+        self::assertResponseIsSuccessful();
+        self::assertStringNotContainsString('<html', (string) $this->client->getResponse()->getContent());
+        self::assertSelectorTextContains('.md-run-selection', 'Runs on each of the 2');
+
+        $this->client->request('GET', $url);
+        $this->client->submitForm('Run', ['workflow_run[name]' => 'Rex']);
+        self::assertResponseRedirects('/o/person', 303);
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.md-flash--success', '"Give pets" done on 2 record(s).');
+        self::assertSame(['Rex of Ada', 'Rex of Bob'], $this->sortedPets());
+
+        // Every record of the grid: Ada, Bob and Carla.
+        $this->client->request('GET', '/w/'.$workflow->getId()->toRfc4122().'/run-selection?all=1');
+        self::assertSelectorTextContains('.md-run-selection', 'Runs on each of the 3');
+    }
+
     public function testItsPermissionIsGivenOnTheRolesPage(): void
     {
         $this->activate('Pet', "trigger: { on: manual, object: person, label: Give a pet }\nsteps: [{ key: pet, type: filter, when: { field: \$trigger.record.city, op: empty } }]");
@@ -141,6 +179,19 @@ final class ManualRunControllerTest extends WebTestCase
     private function url(Workflow $workflow): string
     {
         return '/w/'.$workflow->getId()->toRfc4122().'/run/'.$this->ada->id;
+    }
+
+    /**
+     * @return list<mixed>
+     *
+     * @phpstan-impure the records change between two calls
+     */
+    private function sortedPets(): array
+    {
+        $pets = $this->pets();
+        sort($pets);
+
+        return $pets;
     }
 
     /**
