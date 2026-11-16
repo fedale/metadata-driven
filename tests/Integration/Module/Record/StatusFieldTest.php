@@ -7,8 +7,10 @@ namespace App\Tests\Integration\Module\Record;
 use App\Module\Access\Application\PermissionSynchronizer;
 use App\Module\Metadata\Contract\Exception\MetadataException;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
+use App\Module\Record\Application\State\TransitionContext;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\TransitionOption;
+use App\Module\Record\Contract\Event\RecordTransition;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\Exception\TransitionRefused;
 use App\Module\Record\Contract\RecordEventScopeInterface;
@@ -115,6 +117,20 @@ final class StatusFieldTest extends KernelTestCase
         $paid = self::getContainer()->get(RecordEventScopeInterface::class)->withoutEvents(fn () => $this->records->update($invoice->id, new RecordInput('invoice', ['state' => 'paid'])));
 
         self::assertSame('paid', $paid->get('state'));
+    }
+
+    public function testATransitionFromAStateLeftMeanwhileIsRefused(): void
+    {
+        $invoice = $this->records->create(new RecordInput('invoice', ['number' => 'A1']));
+        // Read as draft, then paid by someone else before it writes.
+        self::getContainer()->get(RecordEventScopeInterface::class)->withoutEvents(fn () => $this->records->update($invoice->id, new RecordInput('invoice', ['state' => 'paid'])));
+
+        try {
+            self::getContainer()->get(TransitionContext::class)->run('invoice', $invoice->id, new RecordTransition('state', 'send', 'draft', 'sent'), fn () => $this->records->update($invoice->id, new RecordInput('invoice', ['state' => 'sent'])));
+            self::fail('Refused.');
+        } catch (RecordValidationFailed $e) {
+            self::assertSame(['state' => ['Its state changed meanwhile: try again.']], $e->errors);
+        }
     }
 
     public function testItsSettingsAreChecked(): void

@@ -20,6 +20,7 @@ enum StepType: string
     case AssignRole = 'assign_role';
     case Wait = 'wait';
     case HttpRequest = 'http_request';
+    case Transition = 'transition';
 
     /**
      * Whether the step is the platform's: only a system workflow takes it, and takes no other
@@ -43,7 +44,7 @@ enum StepType: string
      */
     public function writes(): bool
     {
-        return \in_array($this, [self::CreateRecord, self::UpdateRecord, self::DeleteRecord, self::UpsertRecord], true);
+        return \in_array($this, [self::CreateRecord, self::UpdateRecord, self::DeleteRecord, self::UpsertRecord, self::Transition], true);
     }
 
     /**
@@ -77,6 +78,7 @@ enum StepType: string
             self::InstallPackage => ['package' => true, 'repo' => false],
             self::AssignRole => ['email' => true, 'role' => true],
             self::Wait => ['for' => false, 'until' => false],
+            self::Transition => ['object' => true, 'id' => true, 'field' => true, 'name' => true, ...$writing],
             self::HttpRequest => ['url' => true, 'method' => false, 'headers' => false, 'body' => false, 'timeout' => false, 'retries' => false, 'fail_on_error' => false],
         };
     }

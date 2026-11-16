@@ -18,6 +18,8 @@ enum TriggerEvent: string
     case Deleted = 'deleted';
     /** Run by someone, from a record's page or a command: no write starts it. */
     case Manual = 'manual';
+    /** A Status field's transition taken: the update it makes. */
+    case Transitioned = 'transitioned';
     /** The platform's: a workspace created (the console, workspace:create). */
     case WorkspaceCreated = 'workspace_created';
     /** The platform's: a member added to a workspace. */
@@ -39,6 +41,8 @@ enum TriggerEvent: string
             self::CreatedOrUpdated => RecordWriteAction::Delete !== $action,
             self::Deleted => RecordWriteAction::Delete === $action,
             self::Manual, self::WorkspaceCreated, self::MemberAdded => false,
+            // Its transition says (Trigger::fires()).
+            self::Transitioned => RecordWriteAction::Update === $action,
         };
     }
 }

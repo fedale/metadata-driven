@@ -446,6 +446,11 @@ admin:
         type_upsert_record: Crea o modifica un record
         type_set_values: Imposta valori
         type_refuse: Rifiuta
+        type_transition: 'Esegui una transizione'
+        on_transitioned: 'una transizione eseguita'
+        status_field: 'Campo stato'
+        transition_name: 'Transizione'
+        any_transition: 'qualunque'
         type_http_request: 'Richiesta HTTP'
         http_method: 'Metodo'
         http_url: 'Indirizzo'

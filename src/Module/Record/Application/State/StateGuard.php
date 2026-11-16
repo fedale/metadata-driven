@@ -6,11 +6,11 @@ namespace App\Module\Record\Application\State;
 
 use App\Module\FieldType\Contract\Dto\StatusMachine;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
-use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\Event\RecordWriteAction;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordEventScopeInterface;
+use App\Module\Record\Domain\Repository\RecordStore;
 
 /**
  * A Status changes by its transitions only: a new record starts in the initial state (none
@@ -24,18 +24,24 @@ final class StateGuard
     public function __construct(
         private readonly TransitionContext $context,
         private readonly RecordEventScopeInterface $scope,
+        private readonly RecordStore $store,
     ) {
     }
 
     /**
+     * Run in the write's transaction, on the values as they will be stored.
+     *
+     * @param array<string, mixed> $values
+     *
+     * @return array<string, mixed> the values, a new record's status set to the initial state
+     *
      * @throws RecordValidationFailed
      */
-    public function check(ObjectDefinitionDto $object, RecordWriteAction $action, ?string $id, RecordInput $input, ?RecordOutput $current): RecordInput
+    public function check(ObjectDefinitionDto $object, RecordWriteAction $action, ?string $id, array $values, ?RecordOutput $current): array
     {
         if (RecordWriteAction::Delete === $action || $this->scope->isPackageWrite()) {
-            return $input;
+            return $values;
         }
-        $values = $input->values;
         $errors = [];
         foreach ($object->fields as $name => $field) {
             if (self::FIELD_TYPE !== $field->type) {
@@ -56,13 +62,21 @@ final class StateGuard
             }
             if (!$this->context->allows($object->name, $id, $name, $given)) {
                 $errors[$name][] = 'Changed by its transitions only.';
+                continue;
+            }
+            // Its state read again, locked until the write commits: two transitions at once,
+            // the second finds the state the first left, and is refused.
+            $transition = $this->context->of($object->name, $id);
+            $now = null === $id ? null : self::text($this->store->lockedValue($object, $id, $field));
+            if (null !== $transition && $now !== $transition->from) {
+                $errors[$name][] = 'Its state changed meanwhile: try again.';
             }
         }
         if ([] !== $errors) {
             throw new RecordValidationFailed($object->name, $errors);
         }
 
-        return new RecordInput($object->name, $values);
+        return $values;
     }
 
     private static function text(mixed $value): ?string

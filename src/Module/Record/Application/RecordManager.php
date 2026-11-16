@@ -12,6 +12,7 @@ use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\OnDelete;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Application\State\StateGuard;
+use App\Module\Record\Application\State\TransitionContext;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordLabel;
 use App\Module\Record\Contract\Dto\RecordOutput;
@@ -58,6 +59,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
 
     public function __construct(
         private readonly StateGuard $states,
+        private readonly TransitionContext $transitions,
         // The labels in the user's language.
         #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
@@ -80,8 +82,9 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         // The listeners of RecordWriting first, in the transaction: the values they set are
         // validated as the others.
         $record = $this->transactions->run(function () use ($object, $input, $id): RecordOutput {
-            // The Status fields after the workflows before the write: they may not change one either.
-            $values = $this->validValues($object, $this->states->check($object, RecordWriteAction::Create, null, $this->beforeWrite($object, RecordWriteAction::Create, null, $input, null), null), null);
+            // The Status fields on the values as they will be stored: after the workflows before the
+            // write, the conversions and the conditions, none of which may change one either.
+            $values = $this->states->check($object, RecordWriteAction::Create, null, $this->validValues($object, $this->beforeWrite($object, RecordWriteAction::Create, null, $input, null), null), null);
             $stored = $this->stored($object, $values);
             $now = new \DateTimeImmutable();
             $this->write($object, $values, null, fn () => $this->transactions->run(function () use ($object, $id, $stored, $now): void {
@@ -103,7 +106,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         $before = $this->withRows($object, $found);
 
         [$record, $written] = $this->transactions->run(function () use ($object, $id, $input, $before): array {
-            $values = $this->validValues($object, $this->states->check($object, RecordWriteAction::Update, $id, $this->beforeWrite($object, RecordWriteAction::Update, $id, $input, $before), $before), $id);
+            $values = $this->states->check($object, RecordWriteAction::Update, $id, $this->validValues($object, $this->beforeWrite($object, RecordWriteAction::Update, $id, $input, $before), $id), $before);
             if ([] !== $values) {
                 $stored = $this->stored($object, $values);
                 $now = new \DateTimeImmutable();
@@ -656,7 +659,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         if (!$this->scope->emitsEvents()) {
             return $input;
         }
-        $event = $this->events->dispatch(new RecordWriting($object->name, $action, $id, $input->values, $current, $this->scope->origin()));
+        $event = $this->events->dispatch(new RecordWriting($object->name, $action, $id, $input->values, $current, $this->scope->origin(), $this->transitions->of($object->name, $id)));
         if (null !== $refusal = $event->refusal()) {
             throw RecordWriteAction::Delete === $action ? RecordDeleteRestricted::refused($refusal) : new RecordValidationFailed($object->name, [RecordValidationFailed::GLOBAL_ERRORS => [$refusal]]);
         }
@@ -675,7 +678,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         $changed = null === $before
             ? array_keys($object->fields)
             : array_values(array_filter(array_keys($object->fields), static fn (string $field): bool => ($before->values[$field] ?? null) != ($record->values[$field] ?? null) || $before->rows($field) != $record->rows($field)));
-        $event = new RecordWritten($object->name, $action, $record->id, $record, $before, $changed, $this->scope->origin());
+        $event = new RecordWritten($object->name, $action, $record->id, $record, $before, $changed, $this->scope->origin(), $this->transitions->of($object->name, $record->id));
         $this->transactions->whenDone(function (bool $committed) use ($event): void {
             if ($committed) {
                 $this->events->dispatch($event);

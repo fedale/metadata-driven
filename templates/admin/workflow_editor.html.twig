@@ -77,7 +77,7 @@
             </div>
             {{ editor.problems(this.problemsAt(path)|filter(message => not (message starts with path ~ '.branches.') and not (message starts with path ~ '.steps'))) }}
 
-            {% if step.type in ['create_record', 'update_record', 'delete_record', 'upsert_record'] %}
+            {% if step.type in ['create_record', 'update_record', 'delete_record', 'upsert_record', 'transition'] %}
                 <div class="md-workflow-row">
                     <label>{{ 'admin.workflow.object'|trans }}
                         <select data-model="model.{{ path }}.object">
@@ -85,7 +85,7 @@
                             {% for object in this.objects %}<option value="{{ object.name }}" {{ step.object == object.name ? 'selected' }}>{{ object.name }}</option>{% endfor %}
                         </select>
                     </label>
-                    {% if step.type in ['update_record', 'delete_record'] %}
+                    {% if step.type in ['update_record', 'delete_record', 'transition'] %}
                         <label>{{ 'admin.workflow.record_id'|trans }} <input type="text" data-model="model.{{ path }}.id" value="{{ step.id }}" class="md-code-input"></label>
                     {% endif %}
                     {% if step.type == 'upsert_record' %}
@@ -97,7 +97,22 @@
                         </label>
                     {% endif %}
                 </div>
-                {% if step.type != 'delete_record' %}{{ editor.values(step, path, step.object, this) }}{% endif %}
+                {% if step.type == 'transition' %}
+                    <div class="md-workflow-row">
+                        <label>{{ 'admin.workflow.status_field'|trans }}
+                            <select data-model="model.{{ path }}.field">
+                                <option value="">—</option>
+                                {% for field in this.statusFieldsOf(step.object) %}<option value="{{ field }}" {{ step.field == field ? 'selected' }}>{{ field }}</option>{% endfor %}
+                            </select>
+                        </label>
+                        <label>{{ 'admin.workflow.transition_name'|trans }}
+                            <select data-model="model.{{ path }}.name">
+                                <option value="">—</option>
+                                {% for name in this.transitionsOf(step.object, step.field) %}<option value="{{ name }}" {{ step.name == name ? 'selected' }}>{{ name }}</option>{% endfor %}
+                            </select>
+                        </label>
+                    </div>
+                {% elseif step.type != 'delete_record' %}{{ editor.values(step, path, step.object, this) }}{% endif %}
                 <div class="md-workflow-row">
                     <label>{{ 'admin.workflow.act_as'|trans }}
                         <select data-model="model.{{ path }}.act_as">
@@ -288,6 +303,22 @@
                 {% endfor %}
                 <button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="addInput">{{ 'admin.workflow.add_input'|trans }}</button>
             </fieldset>
+        {% endif %}
+        {% if model.trigger.on == 'transitioned' %}
+            <div class="md-workflow-row">
+                <label>{{ 'admin.workflow.status_field'|trans }}
+                    <select data-model="model.trigger.field">
+                        <option value="">—</option>
+                        {% for field in this.statusFieldsOf(model.trigger.object) %}<option value="{{ field }}" {{ model.trigger.field == field ? 'selected' }}>{{ field }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label>{{ 'admin.workflow.transition_name'|trans }}
+                    <select data-model="model.trigger.transition">
+                        <option value="">{{ 'admin.workflow.any_transition'|trans }}</option>
+                        {% for name in this.transitionsOf(model.trigger.object, model.trigger.field) %}<option value="{{ name }}" {{ model.trigger.transition == name ? 'selected' }}>{{ name }}</option>{% endfor %}
+                    </select>
+                </label>
+            </div>
         {% endif %}
         {% if model.trigger.on in ['updated', 'created_or_updated'] %}
             <fieldset class="md-workflow-row">

@@ -6,6 +6,7 @@ namespace App\Module\Workflow\UI\Component;
 
 use App\Module\Access\Contract\AccessCheckerInterface;
 use App\Module\Access\Contract\WorkspaceRolesInterface;
+use App\Module\FieldType\Contract\Dto\StatusMachine;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Contract\Dto\RecordLabel;
@@ -313,6 +314,34 @@ final class WorkflowEditor extends AbstractController
     public function fieldsOf(string $object): array
     {
         return $this->metadata->hasObject($object) ? array_map(strval(...), array_keys($this->metadata->getObject($object)->fields)) : [];
+    }
+
+    /**
+     * The Status fields of an object, by name.
+     *
+     * @return list<string>
+     */
+    public function statusFieldsOf(string $object): array
+    {
+        if ($this->console || !$this->metadata->hasObject($object)) {
+            return [];
+        }
+
+        return array_map(strval(...), array_keys(array_filter($this->metadata->getObject($object)->fields, static fn ($field): bool => 'status' === $field->type)));
+    }
+
+    /**
+     * The transitions of an object's Status field, by name.
+     *
+     * @return list<string>
+     */
+    public function transitionsOf(string $object, string $field): array
+    {
+        if (!\in_array($field, $this->statusFieldsOf($object), true)) {
+            return [];
+        }
+
+        return array_map(strval(...), array_keys(StatusMachine::fromSettings($this->metadata->getObject($object)->field($field)->settings)->transitions));
     }
 
     /**

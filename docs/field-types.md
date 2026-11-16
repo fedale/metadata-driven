@@ -249,6 +249,10 @@ roles, roles` (`send | Send | draft | sent | ROLE_CLERK`).
   transition its user may take now. It updates the record as any write: its workflows run, its
   rules apply.
 - In grids it is a choice: its label shown, filtered by state.
+- **Workflows** guard a transition before it (its conditions: a `refuse`), react after it, and
+  take one with the `transition` step (see [Workflows](workflows.md#transitions)).
+- Two transitions at once on a record: the second finds the state the first left (the row is
+  locked while a transition writes), and is refused, "Its state changed meanwhile: try again."
 
 ## `password`
 

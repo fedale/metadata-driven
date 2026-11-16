@@ -60,7 +60,7 @@ steps:
 
 | Key | Value |
 |---|---|
-| `on` | `created`, `updated`, `created_or_updated`, `deleted`; `manual` (see [Manual workflows](#manual-workflows)) |
+| `on` | `created`, `updated`, `created_or_updated`, `deleted`; `transitioned` (see [Transitions](#transitions)); `manual` (see [Manual workflows](#manual-workflows)) |
 | `object` | The object whose records start it |
 | `when` | `before`: in the write's transaction, before it; `after`: once the write is committed. Not for `manual` |
 | `fields` | `updated` and `created_or_updated` only: run on an update only when one of these fields changes |
@@ -98,6 +98,7 @@ the step's output), a `type`, and its options.
 | `search_records` | `object`, `where` (tests, all of which hold), `sort`, `direction` (`asc`, `desc`), `limit`; `act_as` | Reads the records of an object: the first ones in its order (see [Search and iterator](#search-and-iterator)) |
 | `iterator` | `items` (one `{{ path }}` to a list), `steps` | Runs its steps once per item |
 | `wait` | `for` (`30 minutes`, `2 days`) or `until` (a date or a date-time, with `{{ … }}`) | Stops the run; the steps after it run then (see [Waits](#waits)) |
+| `transition` | `object`, `id`, `field`, `name`; `act_as`, `emit_events` | Takes a transition of a record's [Status field](field-types.md#status) |
 | `http_request` | `url`, `method`, `headers`, `body`, `timeout`, `retries`, `fail_on_error` | Calls an address outside (see [HTTP requests](#http-requests)) |
 
 The four steps that write records also take `act_as` (see [Permissions](#permissions)) and
@@ -136,6 +137,31 @@ Each run holds its data, read by paths:
 | `$workspace.slug`, `$workspace.name` | The workspace |
 | `$now`, `$today` | The time (ISO 8601) and the date of the run |
 | `<key>.<…>`, `$last.<…>` | A step's output, by its key; the previous step's |
+### Transitions
+
+A [Status field](field-types.md#status) changes by its transitions only. Taking one is an update
+of the record that starts the workflows on `transitioned`:
+
+```yaml
+# Sending an invoice needs its number: the transition's condition.
+trigger: { on: transitioned, object: invoice, field: state, transition: send, when: before }
+steps:
+  - key: unnumbered
+    type: if
+    branches:
+      - when: { field: $trigger.record.number, op: empty }
+        steps: [{ key: no, type: refuse, message: 'Number it before sending it.' }]
+```
+
+- `field` names the Status field; `transition` one of its transitions, or none for any of them.
+  **Before** the transition, a workflow guards it (a `refuse` refuses it, its message shown);
+  **after** it, it reacts in the background. `$trigger` holds what an update's does, and
+  `transition` (`name`, `from`, `to`). An update that takes no transition starts none of them.
+- The **`transition` step** takes one (`field`, `name`) on a record (`object`, `id`): as a write,
+  it needs the update permission and one of the transition's roles, held by whoever triggered the
+  event, or given by the role it acts as (`act_as`). It outputs the record as written; a
+  transition not taken from the record's state fails it.
+
 ### Manual workflows
 
 ```yaml

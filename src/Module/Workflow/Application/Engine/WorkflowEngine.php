@@ -8,20 +8,24 @@ use App\Module\Access\Contract\AccessCheckerInterface;
 use App\Module\Access\Contract\Permissions;
 use App\Module\Access\Contract\RecordAction;
 use App\Module\Access\Contract\WorkspaceRolesInterface;
+use App\Module\FieldType\Contract\Dto\StatusMachine;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Package\Contract\Exception\PackageInstallFailed;
 use App\Module\Package\Contract\PackageInstallationInterface;
 use App\Module\Record\Contract\Dto\RecordFilter;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordOutput;
+use App\Module\Record\Contract\Event\RecordTransition;
 use App\Module\Record\Contract\Event\RecordWriteAction;
 use App\Module\Record\Contract\Event\RecordWriting;
 use App\Module\Record\Contract\Event\RecordWritten;
 use App\Module\Record\Contract\Exception\InvalidRecordSearch;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
+use App\Module\Record\Contract\Exception\TransitionRefused;
 use App\Module\Record\Contract\RecordEventScopeInterface;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
+use App\Module\Record\Contract\RecordTransitionsInterface;
 use App\Module\Workflow\Application\Definition\Definition;
 use App\Module\Workflow\Application\Definition\DefinitionParser;
 use App\Module\Workflow\Application\Definition\Step;
@@ -100,6 +104,7 @@ final class WorkflowEngine implements ResetInterface
         private readonly PackageInstallationInterface $packages,
         private readonly MessageBusInterface $bus,
         private readonly WorkflowHttp $http,
+        private readonly RecordTransitionsInterface $transitions,
     ) {
     }
 
@@ -109,7 +114,7 @@ final class WorkflowEngine implements ResetInterface
         $changed = RecordWriteAction::Update === $event->action
             ? array_keys(array_filter($event->values(), static fn (mixed $value, string $field): bool => $value != $event->current?->get($field), \ARRAY_FILTER_USE_BOTH))
             : array_keys($event->values());
-        $workflows = $this->triggered($event->objectName, Timing::Before, $event->action, $changed);
+        $workflows = $this->triggered($event->objectName, Timing::Before, $event->action, $changed, $event->transition);
         if ([] === $workflows) {
             return;
         }
@@ -125,7 +130,7 @@ final class WorkflowEngine implements ResetInterface
 
                 return;
             }
-            $chain = $this->chain($this->triggerData($event->objectName, $event->action, $record, $event->current, $changed));
+            $chain = $this->chain($this->triggerData($event->objectName, $event->action, $record, $event->current, $changed, $event->transition?->toArray()));
             try {
                 $this->steps($workflow->definition->steps, $chain, $run, $event);
                 $run->end($run->status, $run->error);
@@ -149,13 +154,13 @@ final class WorkflowEngine implements ResetInterface
     #[AsEventListener]
     public function onWritten(RecordWritten $event): void
     {
-        $workflows = $this->triggered($event->objectName, Timing::After, $event->action, $event->changed);
+        $workflows = $this->triggered($event->objectName, Timing::After, $event->action, $event->changed, $event->transition);
         if ([] === $workflows || !$this->workspace->isSelected()) {
             return;
         }
         $depth = 1 + ($event->origin->depth ?? 0);
         $record = ['id' => $event->id, ...$this->readable($event->objectName, $event->record->values)];
-        $trigger = $this->triggerData($event->objectName, $event->action, $record, $event->before, $event->changed);
+        $trigger = $this->triggerData($event->objectName, $event->action, $record, $event->before, $event->changed, $event->transition?->toArray());
 
         // The write committed already (RecordWritten): its runs go to the worker.
         foreach ($workflows as $workflow) {
@@ -256,7 +261,11 @@ final class WorkflowEngine implements ResetInterface
         $workflow = new ActiveWorkflow('', $name, '', $this->security->getUser()?->getUserIdentifier(), $definition);
         $run = new RunLog($workflow, $trigger->object, $recordId, $action->value, $trigger->when->value, $workflow->activatedBy, 1, new \DateTimeImmutable());
         $values = RecordWriteAction::Delete === $action ? [] : $this->readable($trigger->object, $record->values);
-        $chain = $this->chain($this->triggerData($trigger->object, $action, ['id' => $recordId, ...$this->readable($trigger->object, $record->values)], RecordWriteAction::Update === $action ? $record : null, array_keys($values)));
+        // A transition's test: the transition named (or any) from the record's state.
+        $transition = TriggerEvent::Transitioned === $trigger->on
+            ? ['field' => $trigger->statusField, 'name' => $trigger->transition, 'from' => $record->get((string) $trigger->statusField), 'to' => null]
+            : null;
+        $chain = $this->chain($this->triggerData($trigger->object, $action, ['id' => $recordId, ...$this->readable($trigger->object, $record->values)], RecordWriteAction::Update === $action ? $record : null, array_keys($values), $transition));
 
         $this->dryRun = true;
         try {
@@ -407,11 +416,11 @@ final class WorkflowEngine implements ResetInterface
      *
      * @return list<ActiveWorkflow>
      */
-    private function triggered(string $object, Timing $when, RecordWriteAction $action, array $changed): array
+    private function triggered(string $object, Timing $when, RecordWriteAction $action, array $changed, ?RecordTransition $transition = null): array
     {
         return array_values(array_filter(
             $this->workflows->triggeredOn($object, $when),
-            static fn (ActiveWorkflow $workflow): bool => $workflow->definition->trigger->fires($object, $action, $changed),
+            static fn (ActiveWorkflow $workflow): bool => $workflow->definition->trigger->fires($object, $action, $changed, $transition),
         ));
     }
 
@@ -528,12 +537,13 @@ final class WorkflowEngine implements ResetInterface
     /**
      * What $trigger holds for a record's write.
      *
-     * @param array<string, mixed> $record
-     * @param list<string>         $changed
+     * @param array<string, mixed>      $record
+     * @param array<string, mixed>|null $transition the transition the write takes, if any
+     * @param list<string>              $changed
      *
      * @return array<string, mixed>
      */
-    private function triggerData(string $object, RecordWriteAction $action, array $record, ?RecordOutput $before, array $changed): array
+    private function triggerData(string $object, RecordWriteAction $action, array $record, ?RecordOutput $before, array $changed, ?array $transition = null): array
     {
         return [
             'object' => $object,
@@ -541,6 +551,7 @@ final class WorkflowEngine implements ResetInterface
             'record' => $record,
             'before' => null === $before ? null : ['id' => $before->id, ...$this->readable($object, $before->values)],
             'changed' => $changed,
+            ...(null === $transition ? [] : ['transition' => $transition]),
         ];
     }
 
@@ -637,6 +648,7 @@ final class WorkflowEngine implements ResetInterface
                 StepType::InstallPackage, StepType::AssignRole => $this->platform($step, $chain),
                 StepType::Wait => $this->wait($step, $chain, $run),
                 StepType::HttpRequest => $this->request($step, $chain),
+                StepType::Transition => $this->takeTransition($step, $chain, $run),
                 default => $this->write($step, $chain, $run),
             };
         } catch (StepFailed $e) {
@@ -759,6 +771,50 @@ final class WorkflowEngine implements ResetInterface
         $run->wait($until, (false === $index ? \count($run->workflow->definition->steps) : $index) + 1);
 
         return [$input, $output, false];
+    }
+
+    /**
+     * Takes a transition of a record's Status field: as a write, the update permission (as whoever
+     * triggered the event, or as the role it acts as), and one of the transition's roles (held by
+     * them, or given by that role). Its update raises its events if the step says so.
+     *
+     * @return array{array<string, mixed>, array<string, mixed>, bool}
+     *
+     * @throws StepFailed
+     */
+    private function takeTransition(Step $step, DataChain $chain, RunLog $run): array
+    {
+        $object = (string) $step->string('object');
+        $field = (string) $step->string('field');
+        $name = (string) $step->string('name');
+        $id = $chain->text($step->string('id'));
+        if ('' === $id) {
+            throw new StepFailed('No record to take the transition on: the id is empty.');
+        }
+        $this->allow($step, $object, RecordAction::Update, $run);
+        $definition = $this->metadata->getObject($object)->fields[$field] ?? null;
+        $transition = null === $definition ? null : (StatusMachine::fromSettings($definition->settings)->transitions[$name] ?? null);
+        if (null === $transition) {
+            throw new StepFailed(\sprintf('The status "%s" of "%s" has no transition "%s".', $field, $object, $name));
+        }
+        if ([] !== $transition->roles) {
+            $role = $step->actAs();
+            $allowed = null !== $role
+                ? [] !== array_filter($transition->roles, fn (string $needed): bool => $needed === $role || $this->access->roleGives($role, $needed))
+                : null !== $run->triggeredBy && [] !== array_filter($transition->roles, fn (string $needed): bool => $this->access->userHolds((string) $run->triggeredBy, $needed));
+            if (!$allowed) {
+                throw new StepFailed(\sprintf('"%s" is taken by %s only.', $transition->label, implode(', ', $transition->roles)));
+            }
+        }
+        $input = ['object' => $object, 'id' => $id, 'field' => $field, 'name' => $name];
+        try {
+            $record = $this->recordEvents->asRun($run->id, $run->depth, $step->emitsEvents() && !$this->dryRun, fn () => $this->transitions->apply($object, $id, $field, $name, asRole: true));
+        } catch (TransitionRefused|RecordValidationFailed|\DomainException $e) {
+            $message = $e instanceof RecordValidationFailed ? implode(' ', array_merge(...array_values($e->errors))) : $e->getMessage();
+            throw new StepFailed($message, 0, $e);
+        }
+
+        return [$input, ['id' => $record->id, ...$this->readable($object, $record->values)], true];
     }
 
     /**
