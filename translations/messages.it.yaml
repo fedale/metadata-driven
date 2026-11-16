@@ -27,6 +27,11 @@ console:
     objects: Oggetti
     active: attivo
     suspended_status: sospeso
+    plan: Piano
+    plan_change: Cambia piano
+    plan_changed: 'Il workspace %slug% è sul piano %plan%.'
+    usage: 'Piano %plan%: %steps% step di workflow questo mese, su %limit% (%percent%%).'
+    usage_unlimited: 'Piano %plan%: nessun limite agli step di workflow.'
     suspend: Sospendi
     resume: Riattiva
     suspended: 'Spazio di lavoro %slug% sospeso: il suo indirizzo risponde 404, i dati restano.'
@@ -471,6 +476,9 @@ admin:
         secret_delete_confirm: 'Eliminare il segreto %name%?'
         on_schedule: 'un orario (cron)'
         on_called: 'chiamato da un altro workflow (run_workflow)'
+        usage: 'Questo mese: %steps% step di workflow sui %limit% che il piano (%plan%) consente.'
+        usage_warning: 'Questo mese: %steps% step di workflow sui %limit% che il piano (%plan%) consente, il %percent%%: al limite, nessun run parte fino al mese prossimo.'
+        usage_exhausted: 'Gli step di workflow del mese sono finiti: %steps% sui %limit% che il piano (%plan%) consente. Nessun run parte fino al mese prossimo; una scrittura guardata da un workflow "before" viene rifiutata.'
         called_editor: 'Eseguito dagli step run_workflow di altri workflow, dentro le loro esecuzioni: $trigger.input contiene ciò che gli passano, uno step return restituisce i suoi valori.'
         called_inputs: 'Il suo input, passato dai workflow che lo chiamano: $trigger.input.<name>'
         called_workflow: 'Workflow (su called)'

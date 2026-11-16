@@ -14,6 +14,7 @@
                 <th scope="col">{{ 'console.slug'|trans }}</th>
                 <th scope="col">{{ 'console.name'|trans }}</th>
                 <th scope="col">{{ 'console.status'|trans }}</th>
+                <th scope="col">{{ 'console.plan'|trans }}</th>
                 <th scope="col">{{ 'console.members'|trans }}</th>
                 <th scope="col">{{ 'console.objects'|trans }}</th>
             </tr>
@@ -24,6 +25,7 @@
                     <td><a href="{{ path('console_workspace_show', {slug: row.workspace.slug}) }}">{{ row.workspace.slug }}</a></td>
                     <td>{{ row.workspace.name }}</td>
                     <td>{{ (row.workspace.active ? 'console.active' : 'console.suspended_status')|trans }}</td>
+                    <td>{{ row.workspace.plan ?? '—' }}</td>
                     <td>{{ row.members }}</td>
                     <td>{{ row.objects }}</td>
                 </tr>

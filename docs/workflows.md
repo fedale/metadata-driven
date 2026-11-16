@@ -432,6 +432,13 @@ records it ran on, whatever object: give `admin.workflows` to whoever may see th
 | `app.workflow.max_wait_days` | `30` | The longest a run waits |
 | `app.workflow.runs_keep_days` | `30` | How long the runs are kept |
 
+**The plan's workflow steps**: a workspace's plan may limit the steps its workflows run in a
+calendar month (see [Plans](workspaces.md#plans)). Once spent, no run starts until the next
+month: as past `runs_per_minute`, a write a before-workflow guards is refused and a manual run
+fails; a queued, scheduled or webhook run, and a waiting one resuming, fail too (no delay brings
+the steps back). A run that started finishes; a sub-workflow is part of its caller's run. The page
+of the workflows shows the month's steps against the plan, warned from 80%.
+
 A run is **completed**, **failed** (an after-run or a manual run that could not finish: nothing
 of it stays, since its last wait), **refused** (a before-run that refused its write), **waiting**
 (stopped at a wait) or **cancelled** (its version was no longer active when it would resume). A
@@ -497,6 +504,7 @@ these triggers or steps, and the console defines no workflow on a record's.
 | Secrets | `core.workflow_secret` (DBAL, row-level security; migration `Version20261116140000`), `WorkflowSecrets` (`DbalWorkflowSecrets`), sealed by `SecretBox` (libsodium's secret box, `WORKFLOW_SECRETS_KEY`, `workflow:secrets:key`); read on a copy of the run's data for the request only, masked in its log |
 | HTTP | `WorkflowHttp`: Symfony's `HttpClient` through `NoPrivateNetworkHttpClient` (`app.workflow.allow_private_networks`, true in the tests only), the retries and the 1 MB cap |
 | Packages | The Workflow contract's `PackagedWorkflowsInterface` (`PackagedWorkflows`: every workflow with its current definition, a definition as the app writes it, a new workflow or a draft, never activated); the Package module's `WorkflowReferences` turns objects and called workflows into ids and back; items of kind `workflow` in `core.package_item` |
+| Plans | `WorkflowQuota` (the Workflow contract's `WorkflowUsageInterface`): the month's steps from `core.workflow_usage` (`RunStore::stepsThisMonth()`), the plan from Shared's `Plans` (`ConfiguredPlans`, `config/packages/plans.yaml`); checked where each run starts |
 | Sub-workflows | `WorkflowEngine::call()` (in line, the called run its own `RunLog`, stored as its caller's), `ActiveWorkflows::byName()` and `called()`; the run permission made by `WorkflowManager` for `called` as for `manual` |
 | Webhooks | `WebhookController` (`/hooks/<id>/<token>`, its own stateless firewall, `security.yaml`), `WebhookTokens` (`core.workflow_webhook`, the token's SHA-256; migration `Version20261116160000`), `RunWebhook` and `WorkflowEngine::runWebhook()` |
 | Schedules | Symfony Scheduler: `WorkflowSchedule` (`#[AsSchedule('workflows')]`) sends `CheckSchedules` every minute, `ScheduledWorkflows` queues a `RunScheduled` for each workflow due (`dragonmantank/cron-expression`), `WorkflowEngine::runScheduled()` |
@@ -511,4 +519,4 @@ these triggers or steps, and the console defines no workflow on a record's.
 ## Not yet
 
 Other platform events (a workspace suspended or deleted), record steps in the system admin's
-workflows; quotas per plan; a sub-workflow's input of lists or maps; email and notifications, once the application sends email. See [the plan](internal/workflow-plan.md).
+workflows; a sub-workflow's input of lists or maps; email and notifications, once the application sends email. See [the plan](internal/workflow-plan.md).

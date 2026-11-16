@@ -110,6 +110,15 @@ final class DbalRunStore implements RunStore
         );
     }
 
+    public function stepsThisMonth(): int
+    {
+        $steps = $this->connection->fetchOne(
+            \sprintf("SELECT COALESCE(SUM(steps), 0) FROM core.workflow_usage WHERE workspace_id = %s AND day >= date_trunc('month', CURRENT_DATE)", WorkspaceScope::CURRENT),
+        );
+
+        return is_numeric($steps) ? (int) $steps : 0;
+    }
+
     public function countSince(\DateTimeImmutable $since): int
     {
         $count = $this->connection->fetchOne(

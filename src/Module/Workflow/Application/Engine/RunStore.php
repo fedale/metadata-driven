@@ -10,10 +10,8 @@ namespace App\Module\Workflow\Application\Engine;
 interface RunStore
 {
     /**
-     * Stores a run with its steps, and counts its steps in the day's usage.
-     */
-    /**
-     * Stores a run: a new one, or a resumed one again (its row updated, its new steps added).
+     * Stores a run: a new one, or a resumed one again (its row updated, its new steps added),
+     * and counts its steps in the day's usage.
      */
     public function save(RunLog $run): void;
 
@@ -26,6 +24,12 @@ interface RunStore
      * The runs started since then, in the current workspace.
      */
     public function countSince(\DateTimeImmutable $since): int;
+
+    /**
+     * The steps the current workspace's runs executed this calendar month (the database's
+     * date), as the day's usage counts them.
+     */
+    public function stepsThisMonth(): int;
 
     /**
      * Deletes the runs started before then, with their steps, in the current workspace.

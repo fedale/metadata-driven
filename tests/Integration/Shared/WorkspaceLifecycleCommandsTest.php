@@ -70,6 +70,22 @@ final class WorkspaceLifecycleCommandsTest extends KernelTestCase
         self::assertTrue($this->workspace('globex')->active);
     }
 
+    public function testAWorkspaceIsPutOnAPlan(): void
+    {
+        self::assertSame(1, $this->console->run(['command' => 'workspace:create', 'slug' => 'globex', '--plan' => 'gold'], ['interactive' => false]));
+        self::assertStringContainsString('There is no plan "gold"', $this->console->getDisplay());
+        self::assertNull(self::getContainer()->get(WorkspaceRegistry::class)->bySlug('globex'), 'Nothing created.');
+
+        $this->command(['command' => 'workspace:create', 'slug' => 'globex', '--plan' => 'starter']);
+        self::assertSame('starter', $this->workspace('globex')->plan);
+        $this->command(['command' => 'workspace:plan', 'slug' => 'globex', 'plan' => 'business']);
+        self::assertSame('business', $this->workspace('globex')->plan);
+        $this->command(['command' => 'workspace:plan', 'slug' => 'default']);
+        self::assertStringContainsString('default: unlimited (Unlimited), the default, no limit on workflow steps.', $this->console->getDisplay());
+        $this->command(['command' => 'workspace:list']);
+        self::assertMatchesRegularExpression('/globex\s+globex\s+active\s+business/', $this->console->getDisplay());
+    }
+
     public function testAWorkspaceIsDeletedWithEverythingItHoldsOnceConfirmed(): void
     {
         $this->command(['command' => 'workspace:create', 'slug' => 'globex']);

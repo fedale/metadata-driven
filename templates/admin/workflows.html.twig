@@ -12,6 +12,17 @@
         </span>
     </div>
     <p class="gv-muted">{{ 'admin.workflow.intro'|trans }}</p>
+    {% if usage %}
+        {# The month's workflow steps against the plan: a warning from 80%, the runs stopped at 100%. #}
+        {% set percent = usage.percent %}
+        {% if usage.exhausted %}
+            <p class="md-flash md-flash--error md-workflow-usage" role="alert">{{ 'admin.workflow.usage_exhausted'|trans({'%steps%': usage.steps, '%limit%': usage.limit, '%plan%': usage.plan}) }}</p>
+        {% elseif percent is not null and percent >= 80 %}
+            <p class="md-flash md-flash--error md-workflow-usage" role="status">{{ 'admin.workflow.usage_warning'|trans({'%steps%': usage.steps, '%limit%': usage.limit, '%plan%': usage.plan, '%percent%': percent}) }}</p>
+        {% elseif usage.limit is not null %}
+            <p class="gv-muted md-workflow-usage">{{ 'admin.workflow.usage'|trans({'%steps%': usage.steps, '%limit%': usage.limit, '%plan%': usage.plan}) }}</p>
+        {% endif %}
+    {% endif %}
 
     {% if rows is empty %}
         <p class="gv-muted">{{ 'admin.workflow.empty'|trans }}</p>

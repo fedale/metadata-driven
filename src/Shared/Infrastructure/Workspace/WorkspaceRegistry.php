@@ -14,7 +14,7 @@ use Doctrine\DBAL\Connection;
  */
 final class WorkspaceRegistry implements Workspaces
 {
-    private const string COLUMNS = 'id, slug, name, number, data_schema, rbac_schema, status';
+    private const string COLUMNS = 'id, slug, name, number, data_schema, rbac_schema, status, plan';
 
     /** What a schema name of the registry may be: it goes into SQL and the search_path unquoted. */
     private const string SCHEMA_NAME = '/^[a-z_][a-z0-9_]{0,62}$/';
@@ -65,6 +65,6 @@ final class WorkspaceRegistry implements Workspaces
             throw new \UnexpectedValueException(\sprintf('The row of workspace "%s" in core.workspace is malformed.', \is_string($slug) ? $slug : '?'));
         }
 
-        return new Workspace($id, $slug, $name, (int) $number, $dataSchema, $rbacSchema, 'active' === $row['status']);
+        return new Workspace($id, $slug, $name, (int) $number, $dataSchema, $rbacSchema, 'active' === $row['status'], \is_string($row['plan'] ?? null) ? $row['plan'] : null);
     }
 }

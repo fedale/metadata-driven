@@ -1,0 +1,16 @@
+# The plans a workspace may be on, and what each allows. A workspace with no plan of its own is
+# on the default one; the system admin chooses one in the console (or workspace:plan).
+# A limit left empty (~) is no limit.
+parameters:
+    app.default_plan: unlimited
+    app.plans:
+        starter:
+            label: Starter
+            # The workflow steps a workspace may run in a calendar month: past them, no run starts.
+            workflow_steps_per_month: 5000
+        business:
+            label: Business
+            workflow_steps_per_month: 100000
+        unlimited:
+            label: Unlimited
+            workflow_steps_per_month: ~

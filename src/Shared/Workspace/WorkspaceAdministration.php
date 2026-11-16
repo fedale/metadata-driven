@@ -20,6 +20,13 @@ interface WorkspaceAdministration
     public function resume(Workspace $workspace): void;
 
     /**
+     * Puts the workspace on a plan of Plans.
+     *
+     * @throws \InvalidArgumentException no such plan
+     */
+    public function assignPlan(Workspace $workspace, string $plan): void;
+
+    /**
      * Irreversible: its records, roles, definitions, members and files.
      */
     public function delete(Workspace $workspace): void;

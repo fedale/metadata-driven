@@ -44,7 +44,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:package:publish`](#metadatapackagepublish) | Prepare a package version for the central catalog: copied into a checkout of it, ready for a pull request |
 | [`metadata:package:upgrade`](#metadatapackageupgrade) | Upgrade an installed package to a new version: only what it changed, what this instance changed kept |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
-| [`workspace:create`](#workspacecreate), [`workspace:list`](#workspacelist), [`workspace:suspend`, `workspace:resume`](#workspacesuspend-workspaceresume), [`workspace:delete`](#workspacedelete), [`workspace:run`](#workspacerun) | Create, list, suspend, resume and delete workspaces; run a command for several of them |
+| [`workspace:create`](#workspacecreate), [`workspace:list`](#workspacelist), [`workspace:suspend`, `workspace:resume`](#workspacesuspend-workspaceresume), [`workspace:delete`](#workspacedelete), [`workspace:plan`](#workspaceplan), [`workspace:run`](#workspacerun) | Create, list, suspend, resume and delete workspaces, put one on a plan; run a command for several of them |
 | [`workspace:files:move`](#workspacefilesmove) | Move the files stored before workspaces had directories into their workspace's directory, once |
 | `system:admin` | List, grant or revoke the system admins who may enter the system console — see [Workspaces](workspaces.md#the-system-console) |
 | `system:package:repo` | List, add or remove the package indexes offered to every workspace — see [Packages](packages.md#publishing-and-downloading) |
@@ -817,7 +817,7 @@ the system: the workspace they work on is their first argument, not `--workspace
 ### `workspace:create`
 
 ```
-workspace:create [--name=…] [--admin-email=…] [--admin-password=…] [--package=…] <slug>
+workspace:create [--name=…] [--admin-email=…] [--admin-password=…] [--package=…] [--plan=…] <slug>
 ```
 
 Creates a workspace ready to use, at `http://<slug>.<WORKSPACE_BASE_HOST>`:
@@ -830,6 +830,9 @@ Creates a workspace ready to use, at `http://<slug>.<WORKSPACE_BASE_HOST>`:
    there;
 4. with `--package`, a package installed (`metadata:package:install`).
 
+With `--plan`, it is on that plan (see [Plans](workspaces.md#plans)), else on the default one; a
+plan not configured is refused before anything is created.
+
 ```bash
 symfony console workspace:create acme --name="Acme Corp" --admin-email=anna@example.com --package=fedale/registration
 ```
@@ -840,7 +843,17 @@ to run again with `--workspace=acme`.
 
 ### `workspace:list`
 
-Every workspace: slug, name, status, members, objects, schemas.
+Every workspace: slug, name, status, plan (`(default)` for none of its own), members, objects,
+schemas.
+
+### `workspace:plan`
+
+```
+workspace:plan <slug> [<plan>]
+```
+
+Puts the workspace on a plan of `config/packages/plans.yaml` (see [Plans](workspaces.md#plans)).
+Without one, shows its plan and what it allows.
 
 ### `workspace:suspend`, `workspace:resume`
 
