@@ -28,6 +28,12 @@ final readonly class Definition
         $trigger = $this->trigger->isPlatform() ? ['on' => $this->trigger->on->value] : ($this->trigger->isManual()
             ? ['on' => $this->trigger->on->value, 'object' => $this->trigger->object, 'label' => $this->trigger->label]
             : ['on' => $this->trigger->on->value, 'object' => $this->trigger->object, 'when' => $this->trigger->when->value]);
+        if (null !== $this->trigger->statusField) {
+            $trigger['field'] = $this->trigger->statusField;
+        }
+        if (null !== $this->trigger->transition) {
+            $trigger['transition'] = $this->trigger->transition;
+        }
         if ([] !== $this->trigger->fields) {
             $trigger['fields'] = $this->trigger->fields;
         }

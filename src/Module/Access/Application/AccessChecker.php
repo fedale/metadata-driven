@@ -67,6 +67,11 @@ final class AccessChecker implements AccessCheckerInterface
         return Permissions::SUPER_ADMIN_ROLE === $role || $role === $item || $this->contains($role, $item, []);
     }
 
+    public function userHolds(string $email, string $item): bool
+    {
+        return [] !== array_filter($this->assignments->getAssignments($email), fn (string $own): bool => $this->roleGives($own, $item));
+    }
+
     public function userCanGrant(string $email, string $item): bool
     {
         $assigned = $this->assignments->getAssignments($email);

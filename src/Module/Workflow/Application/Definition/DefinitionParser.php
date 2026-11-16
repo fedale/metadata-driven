@@ -107,8 +107,12 @@ final class DefinitionParser
         if (TriggerEvent::Manual === $on) {
             return $this->manualTrigger($trigger);
         }
-        $this->unknownKeys($trigger, ['on', 'object', 'when', 'fields'], 'trigger');
+        $transitioned = TriggerEvent::Transitioned === $on;
+        $this->unknownKeys($trigger, $transitioned ? ['on', 'object', 'when', 'field', 'transition'] : ['on', 'object', 'when', 'fields'], 'trigger');
         $object = $this->name($trigger['object'] ?? null, 'trigger.object');
+        // A transition's: the Status field, and the transition, or any of them.
+        $statusField = $transitioned ? $this->name($trigger['field'] ?? null, 'trigger.field') : null;
+        $transition = $transitioned && \array_key_exists('transition', $trigger) ? $this->name($trigger['transition'], 'trigger.transition') : null;
         $when = \is_string($trigger['when'] ?? null) ? Timing::tryFrom($trigger['when']) : null;
         if (null === $when) {
             $this->error('trigger.when', 'before or after.');
@@ -121,7 +125,7 @@ final class DefinitionParser
             $fields = $this->names($trigger['fields'], 'trigger.fields');
         }
 
-        return null === $on || null === $object || null === $when ? null : new Trigger($on, $object, $when, $fields);
+        return null === $on || null === $object || null === $when || ($transitioned && null === $statusField) ? null : new Trigger($on, $object, $when, $fields, statusField: $statusField, transition: $transition);
     }
 
     /**
@@ -286,7 +290,7 @@ final class DefinitionParser
             match ($option) {
                 'branches' => $branches = $this->branches($value, $at, $timing),
                 'when' => $when = $this->condition($value, $at),
-                'object', 'match' => $options[$option] = $this->name($value, $at),
+                'object', 'match', 'field', 'name' => $options[$option] = $this->name($value, $at),
                 'id', 'message' => $options[$option] = $this->text($value, $at),
                 'values' => $options[$option] = $this->values($value, $at),
                 'act_as', 'role' => $options[$option] = $this->role($value, $at),

@@ -375,7 +375,10 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   Phase 5 planned in [workflow-phase5-plan.md](workflow-phase5-plan.md) (2026-11-16): 5a, the
   `status` field type (states, transitions with their roles; `StateGuard` in `RecordManager`,
   `RecordTransitionsInterface`, the buttons of the record's page) done on branch
-  `workflow_states`, waiting for review. Next: 5b (transitions in workflows).
+  `workflow_states`, merged into `main` on 2026-11-16 (with the package format 2.2.0, which
+  describes the type). 5b, transitions in workflows (`on: transitioned`, the `transition` step,
+  `AccessCheckerInterface::userHolds()`; the state locked while a transition writes) done on branch
+  `workflow_transitions`, waiting for review: phase 5 complete with it.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

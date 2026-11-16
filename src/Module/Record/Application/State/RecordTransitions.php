@@ -12,6 +12,7 @@ use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\Dto\TransitionOption;
+use App\Module\Record\Contract\Event\RecordTransition;
 use App\Module\Record\Contract\Exception\RecordNotFound;
 use App\Module\Record\Contract\Exception\TransitionRefused;
 use App\Module\Record\Contract\RecordFinderInterface;
@@ -69,7 +70,7 @@ final class RecordTransitions implements RecordTransitionsInterface
             throw new TransitionRefused(\sprintf('You may not take "%s".', $taken->label));
         }
 
-        return $this->context->run($objectName, $recordId, $field, $taken->to, fn (): RecordOutput => $this->records->update($recordId, new RecordInput($objectName, [$field => $taken->to])));
+        return $this->context->run($objectName, $recordId, new RecordTransition($field, $taken->name, $state, $taken->to), fn (): RecordOutput => $this->records->update($recordId, new RecordInput($objectName, [$field => $taken->to])));
     }
 
     /**

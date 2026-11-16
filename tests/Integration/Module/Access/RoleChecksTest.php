@@ -76,6 +76,22 @@ final class RoleChecksTest extends KernelTestCase
         self::assertTrue($this->access->userCanGrant('anna@example.com', 'ROLE_AUDITOR'));
     }
 
+    public function testHoldingARoleIsBeingGivenItNotHoldingItsPermissions(): void
+    {
+        $this->rbac->assign('anna@example.com', 'ROLE_MANAGER');
+        $this->rbac->assign('bob@example.com', 'p.read');
+        $this->rbac->assign('bob@example.com', 'p.audit');
+        $this->rbac->assign('root@example.com', Permissions::SUPER_ADMIN_ROLE);
+
+        // Through the hierarchy: the manager holds the clerk's role.
+        self::assertTrue($this->access->userHolds('anna@example.com', 'ROLE_CLERK'));
+        self::assertTrue($this->access->userHolds('anna@example.com', 'p.write'));
+        // Bob holds every permission of the auditor's role, not the role: he could give it.
+        self::assertTrue($this->access->userCanGrant('bob@example.com', 'ROLE_AUDITOR'));
+        self::assertFalse($this->access->userHolds('bob@example.com', 'ROLE_AUDITOR'));
+        self::assertTrue($this->access->userHolds('root@example.com', 'ROLE_AUDITOR'));
+    }
+
     public function testOnlyTheSuperAdminGivesTheSuperAdminRole(): void
     {
         $this->rbac->assign('root@example.com', Permissions::SUPER_ADMIN_ROLE);

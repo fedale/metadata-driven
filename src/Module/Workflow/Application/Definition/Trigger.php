@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Workflow\Application\Definition;
 
+use App\Module\Record\Contract\Event\RecordTransition;
 use App\Module\Record\Contract\Event\RecordWriteAction;
 
 final readonly class Trigger
@@ -23,6 +24,9 @@ final readonly class Trigger
         public ?string $label = null,
         public array $form = [],
         public ?string $selection = null,
+        /** A trigger on transitioned: its Status field, and the transition, or any. */
+        public ?string $statusField = null,
+        public ?string $transition = null,
     ) {
     }
 
@@ -60,10 +64,13 @@ final readonly class Trigger
      *
      * @param list<string> $changed the fields the write changes
      */
-    public function fires(string $object, RecordWriteAction $action, array $changed): bool
+    public function fires(string $object, RecordWriteAction $action, array $changed, ?RecordTransition $taken = null): bool
     {
         if ($object !== $this->object || !$this->on->matches($action)) {
             return false;
+        }
+        if (TriggerEvent::Transitioned === $this->on) {
+            return null !== $taken && $taken->field === $this->statusField && (null === $this->transition || $taken->name === $this->transition);
         }
 
         return RecordWriteAction::Update !== $action || [] === $this->fields || [] !== array_intersect($this->fields, $changed);

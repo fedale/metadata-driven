@@ -59,3 +59,12 @@ them off, and is held to the rule); the form shows the field disabled, with a he
   an update's, with `transition`, `from`, `to`.
 - **Step**: `transition` (`object`, `id`, `field`, `name`, `act_as`): takes a transition, the
   `act_as` role standing for the transition's roles.
+
+### Done (2026-11-16, branch `workflow_transitions`)
+
+As planned. On the way: the write events carry the transition they take (`RecordTransition`,
+from the Record module's `TransitionContext`); a step's roles are checked with a new
+`AccessCheckerInterface::userHolds()` (holding a role, not holding its permissions, which is
+`userCanGrant()`'s rule); the security review of 5a asked, and got, the guard on the values as
+stored (after the conversions and the conditions) and the state read again, locked, in the
+transition's write (two transitions at once: the second is refused).

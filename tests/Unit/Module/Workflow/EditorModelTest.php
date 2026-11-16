@@ -84,6 +84,21 @@ final class EditorModelTest extends TestCase
         self::assertEquals($parser->parse($source), $parser->parse(EditorModel::toSource($model)));
     }
 
+    public function testATransitionTriggerAndStepKeepTheirOptions(): void
+    {
+        $source = <<<'YAML'
+            trigger: { on: transitioned, object: invoice, field: state, transition: send, when: before }
+            steps:
+              - { key: back, type: transition, object: invoice, id: '{{ $trigger.record.id }}', field: state, name: reopen, act_as: ROLE_BOSS }
+            YAML;
+        $model = EditorModel::fromSource($source);
+        self::assertNotNull($model);
+        self::assertSame('send', self::at($model, 'trigger.transition'));
+
+        $parser = new DefinitionParser();
+        self::assertEquals($parser->parse($source), $parser->parse(EditorModel::toSource($model)));
+    }
+
     public function testUnreadableYamlHasNoModel(): void
     {
         self::assertNull(EditorModel::fromSource("trigger: [\n"));

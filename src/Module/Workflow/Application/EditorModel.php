@@ -20,7 +20,7 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class EditorModel
 {
-    private const array STEP_OPTIONS = ['object' => '', 'id' => '', 'match' => '', 'message' => '', 'act_as' => '', 'emit_events' => false, 'items' => '', 'sort' => '', 'direction' => '', 'limit' => '', 'package' => '', 'repo' => '', 'email' => '', 'role' => '', 'for' => '', 'until' => '', 'url' => '', 'method' => '', 'timeout' => '', 'retries' => '', 'headers' => '', 'body' => '', 'fail_on_error' => true];
+    private const array STEP_OPTIONS = ['object' => '', 'id' => '', 'match' => '', 'message' => '', 'act_as' => '', 'emit_events' => false, 'items' => '', 'sort' => '', 'direction' => '', 'limit' => '', 'package' => '', 'repo' => '', 'email' => '', 'role' => '', 'for' => '', 'until' => '', 'url' => '', 'method' => '', 'timeout' => '', 'retries' => '', 'headers' => '', 'body' => '', 'fail_on_error' => true, 'field' => '', 'name' => ''];
 
     /**
      * @return array<string, mixed>|null null when the YAML cannot be read
@@ -45,6 +45,8 @@ final class EditorModel
                 'fields' => \is_array($trigger['fields'] ?? null) ? array_values(array_map(self::text(...), $trigger['fields'])) : [],
                 'label' => self::text($trigger['label'] ?? ''),
                 'selection' => self::text($trigger['selection'] ?? ''),
+                'field' => self::text($trigger['field'] ?? ''),
+                'transition' => self::text($trigger['transition'] ?? ''),
                 'form' => array_values(array_map(
                     static fn (mixed $input): array => \is_array($input) ? [
                         'name' => self::text($input['name'] ?? ''),
@@ -72,6 +74,9 @@ final class EditorModel
             'object' => self::text($trigger['object'] ?? ''),
             'when' => self::text($trigger['when'] ?? ''),
             'fields' => \in_array($trigger['on'] ?? null, ['updated', 'created_or_updated'], true) && \is_array($trigger['fields'] ?? null) ? array_values(array_filter(array_map(self::text(...), $trigger['fields']))) : [],
+            // A transition's: its Status field, and the transition or any.
+            'field' => 'transitioned' === ($trigger['on'] ?? null) ? self::text($trigger['field'] ?? '') : '',
+            'transition' => 'transitioned' === ($trigger['on'] ?? null) ? self::text($trigger['transition'] ?? '') : '',
         ], static fn (mixed $value): bool => '' !== $value && [] !== $value))];
         $data['steps'] = self::stepsTo(\is_array($model['steps'] ?? null) ? $model['steps'] : []);
 

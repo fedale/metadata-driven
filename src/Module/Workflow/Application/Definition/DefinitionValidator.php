@@ -8,6 +8,7 @@ use App\Module\Access\Contract\AccessCheckerInterface;
 use App\Module\Access\Contract\Permissions;
 use App\Module\Access\Contract\RecordAction;
 use App\Module\Access\Contract\WorkspaceRolesInterface;
+use App\Module\FieldType\Contract\Dto\StatusMachine;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
@@ -65,6 +66,9 @@ final class DefinitionValidator
             throw new InvalidWorkflowDefinition($this->errors);
         }
         $object = $trigger->isPlatform() ? null : $this->object($trigger->object, 'trigger.object');
+        if (null !== $object && TriggerEvent::Transitioned === $trigger->on) {
+            $this->transitionOf($object, (string) $trigger->statusField, $trigger->transition, 'trigger.field', 'trigger.transition');
+        }
         if (null !== $object) {
             foreach ($trigger->fields as $i => $field) {
                 if (!isset($object->fields[$field])) {
@@ -125,6 +129,9 @@ final class DefinitionValidator
             }
             $this->paths($value, $path.'.values.'.$field, $definition, $trigger, $before);
         }
+        if (StepType::Transition === $step->type && null !== $target) {
+            $this->transitionOf($target, (string) $step->string('field'), (string) $step->string('name'), $path.'.field', $path.'.name');
+        }
         if (StepType::SearchRecords === $step->type && null !== $target) {
             $this->search($step, $path, $target, $definition, $trigger, $before);
         }
@@ -164,7 +171,7 @@ final class DefinitionValidator
             // It changes what someone else writes: the person activating must hold that write too.
             $actions = match ($definition->trigger->on) {
                 TriggerEvent::Created => [RecordAction::Create],
-                TriggerEvent::Updated => [RecordAction::Update],
+                TriggerEvent::Updated, TriggerEvent::Transitioned => [RecordAction::Update],
                 TriggerEvent::CreatedOrUpdated => [RecordAction::Create, RecordAction::Update],
                 TriggerEvent::Deleted, TriggerEvent::Manual, TriggerEvent::WorkspaceCreated, TriggerEvent::MemberAdded => [],
             };
@@ -262,6 +269,7 @@ final class DefinitionValidator
             TriggerEvent::MemberAdded === $definition->trigger->on => ['workspace', 'member'],
             $definition->trigger->runsOnAll() => ['object', 'action', 'records', 'input'],
             $manual => ['object', 'action', 'record', 'input'],
+            TriggerEvent::Transitioned === $definition->trigger->on => ['object', 'action', 'record', 'before', 'changed', 'transition'],
             default => ['object', 'action', 'record', 'before', 'changed'],
         };
         if (!\in_array($segments[1], $holds, true)) {
@@ -284,7 +292,7 @@ final class DefinitionValidator
 
             return;
         }
-        if ('before' === $segments[1] && !\in_array($definition->trigger->on, [TriggerEvent::Updated, TriggerEvent::CreatedOrUpdated], true)) {
+        if ('before' === $segments[1] && !\in_array($definition->trigger->on, [TriggerEvent::Updated, TriggerEvent::CreatedOrUpdated, TriggerEvent::Transitioned], true)) {
             $this->error($at, '$trigger.before is the record as it was before an update: not there for this trigger.');
         }
         $field = $segments[2] ?? null;
@@ -315,6 +323,22 @@ final class DefinitionValidator
         }
     }
 
+    /**
+     * A Status field of the object, and one of its transitions when named.
+     */
+    private function transitionOf(ObjectDefinitionDto $object, string $field, ?string $name, string $fieldPath, string $namePath): void
+    {
+        $definition = $object->fields[$field] ?? null;
+        if (null === $definition || 'status' !== $definition->type) {
+            $this->error($fieldPath, \sprintf('Object "%s" has no status field "%s".', $object->name, $field));
+
+            return;
+        }
+        if (null !== $name && !isset(StatusMachine::fromSettings($definition->settings)->transitions[$name])) {
+            $this->error($namePath, \sprintf('The status "%s" has no transition "%s".', $field, $name));
+        }
+    }
+
     private function searchable(ObjectDefinitionDto $object, string $name, string $path): void
     {
         if ('id' === $name) {
@@ -337,7 +361,7 @@ final class DefinitionValidator
     {
         return match ($type) {
             StepType::CreateRecord => [RecordAction::Create],
-            StepType::UpdateRecord => [RecordAction::Update],
+            StepType::UpdateRecord, StepType::Transition => [RecordAction::Update],
             StepType::DeleteRecord => [RecordAction::Delete],
             StepType::UpsertRecord => [RecordAction::Create, RecordAction::Update],
             StepType::SearchRecords => [RecordAction::Read],

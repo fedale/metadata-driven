@@ -49,6 +49,11 @@ interface RecordStore
     public function find(ObjectDefinitionDto $object, string $id): ?RecordOutput;
 
     /**
+     * A field's stored value, its row locked until the transaction ends (FOR UPDATE).
+     */
+    public function lockedValue(ObjectDefinitionDto $object, string $id, FieldDefinitionDto $field): mixed;
+
+    /**
      * @return list<RecordOutput>
      *
      * @phpstan-impure

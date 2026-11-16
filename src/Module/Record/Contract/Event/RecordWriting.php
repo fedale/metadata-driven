@@ -29,6 +29,8 @@ final class RecordWriting
         private array $values,
         public readonly ?RecordOutput $current,
         public readonly ?RecordWriteOrigin $origin,
+        /** The transition the write takes, if any. */
+        public readonly ?RecordTransition $transition = null,
     ) {
     }
 

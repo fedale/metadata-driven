@@ -54,13 +54,16 @@ final class PathCatalog
         $trigger = $definition->trigger->runsOnAll()
             ? ['$trigger.object', '$trigger.action', '$trigger.records']
             : ['$trigger.object', '$trigger.action', '$trigger.record.id', ...array_map(static fn (string $field): string => '$trigger.record.'.$field, $this->fields($object))];
-        if (\in_array($definition->trigger->on, [TriggerEvent::Updated, TriggerEvent::CreatedOrUpdated], true)) {
+        if (\in_array($definition->trigger->on, [TriggerEvent::Updated, TriggerEvent::CreatedOrUpdated, TriggerEvent::Transitioned], true)) {
             $trigger = [...$trigger, '$trigger.before.id', ...array_map(static fn (string $field): string => '$trigger.before.'.$field, $this->fields($object))];
         }
         if ($definition->trigger->isManual()) {
             $trigger = [...$trigger, ...array_map(static fn (FormInput $input): string => '$trigger.input.'.$input->name, $definition->trigger->form)];
         } else {
             $trigger[] = '$trigger.changed';
+        }
+        if (TriggerEvent::Transitioned === $definition->trigger->on) {
+            $trigger = [...$trigger, '$trigger.transition.name', '$trigger.transition.from', '$trigger.transition.to'];
         }
 
         $steps = [];
@@ -85,11 +88,13 @@ final class PathCatalog
                     $key.'.index',
                     $key.'.count',
                 ],
-                default => [
+                StepType::Transition, StepType::CreateRecord, StepType::UpdateRecord, StepType::UpsertRecord => [
                     $key.'.id',
                     ...array_map(static fn (string $field): string => $key.'.'.$field, $this->fields((string) $step->string('object'))),
                     ...(StepType::UpsertRecord === $step->type ? [$key.'.created'] : []),
                 ],
+                // The system admin's: their paths come with their trigger (above).
+                StepType::InstallPackage, StepType::AssignRole => [],
             };
         }
 

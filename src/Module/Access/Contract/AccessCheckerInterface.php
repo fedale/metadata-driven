@@ -57,4 +57,11 @@ interface AccessCheckerInterface
      * workflow's step acting as a role is checked so against whoever activated the workflow.
      */
     public function userCanGrant(string $email, string $item): bool;
+
+    /**
+     * Whether the user holds the item: assigned it, or a role containing it (a role through the
+     * hierarchy, the super admin role everything). Not canGrant()'s rule: holding every permission
+     * of a role is not holding the role.
+     */
+    public function userHolds(string $email, string $item): bool;
 }

@@ -98,6 +98,17 @@ final class DbalRecordStore implements RecordStore
         return false === $row ? null : $this->table->hydrate($object, $row, $this->linksOf($object, [$id])[$id] ?? []);
     }
 
+    public function lockedValue(ObjectDefinitionDto $object, string $id, FieldDefinitionDto $field): mixed
+    {
+        $value = $this->connection->fetchOne(
+            \sprintf('SELECT %s FROM %s WHERE %s = ? AND %s IS NULL FOR UPDATE', $this->table->quote($field->columnName), $this->table->table($object), $this->table->quote('id'), $this->table->quote('deleted_at')),
+            [$id],
+            [Types::GUID],
+        );
+
+        return false === $value ? null : $value;
+    }
+
     public function idsByValues(ObjectDefinitionDto $object, FieldDefinitionDto $field, array $values): array
     {
         $ids = [];
