@@ -7,7 +7,6 @@ namespace App\Module\Access\Application;
 use App\Module\Access\Contract\AccessSetupInterface;
 use App\Module\Access\Contract\Permissions;
 use App\Module\Access\Contract\RecordAction;
-use App\Module\Access\Contract\WorkspaceRolesInterface;
 use App\Module\Metadata\Contract\Event\ObjectDefinitionCreated;
 use App\Module\Metadata\Contract\Event\ObjectDefinitionPurged;
 use App\Module\Metadata\Contract\Event\ObjectDefinitionRenamed;
@@ -28,7 +27,6 @@ final class PermissionSynchronizer implements AccessSetupInterface
         private readonly RbacManagerInterface $rbac,
         private readonly ItemStorageInterface $items,
         private readonly MetadataRegistryInterface $metadata,
-        private readonly WorkspaceRolesInterface $roles,
     ) {
     }
 
@@ -119,14 +117,6 @@ final class PermissionSynchronizer implements AccessSetupInterface
     {
         if (null === $this->items->getItem($name)) {
             return;
-        }
-        // The database removes the edges and the assignments with the item, but those the
-        // entity manager holds would be flushed again, pointing at nothing: taken back first.
-        foreach ($this->items->getParents($name) as $parent) {
-            $this->rbac->removeChild($parent, $name);
-        }
-        foreach ($this->roles->assigneesOf($name) as $email) {
-            $this->rbac->revoke($email, $name);
         }
         $this->rbac->removeItem($name);
     }

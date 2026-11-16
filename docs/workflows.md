@@ -165,8 +165,8 @@ steps:
   once rows are selected, a bar with a button per workflow the user may run on them. The button
   opens the form (or the count of records and *Run*) in a modal; the result is a message on the
   grid. *Select all* takes every record of the grid's current filters and search. At most
-  `app.workflow.max_records` records at a time; the user must read them and hold the workflow's
-  permission. With `each`, a run per record, each all or nothing, a failed one stopping no other
+  `app.workflow.max_records` records at a time; the user must read them (else the modal is
+  refused before the selection is read) and hold the workflow's permission. With `each`, a run per record, each all or nothing, a failed one stopping no other
   (the message tells how many completed, and the first error); the workflow shows on a record's
   page too. With `all`, one run, all or nothing, on `$trigger.records` (read with an
   [iterator](#search-and-iterator)), and no `$trigger.record`.

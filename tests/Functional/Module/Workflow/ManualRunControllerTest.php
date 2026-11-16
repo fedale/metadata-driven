@@ -123,6 +123,10 @@ final class ManualRunControllerTest extends WebTestCase
         self::signIn($this->client, 'bea@example.com', ['record.person.read']);
         $this->client->request('GET', '/o/person');
         self::assertSelectorNotExists('.gv-bulk-bar');
+        // Its permission without reading the records: not even how many are selected.
+        self::signIn($this->client, 'carl@example.com', [Permissions::workflowRun($workflow->getId()->toRfc4122())]);
+        $this->client->request('GET', '/w/'.$workflow->getId()->toRfc4122().'/run-selection?all=1');
+        self::assertResponseStatusCodeSame(403);
         $this->holdEveryWorkflow();
         $this->client->request('GET', '/o/person');
         self::assertSelectorTextContains('.gv-bulk-bar', 'Give pets');
