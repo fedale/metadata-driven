@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Workspace\Console;
 
 use App\Shared\Infrastructure\Workspace\WorkspaceProvisioner;
+use App\Shared\Workspace\WorkspaceCreated;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -15,6 +16,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Creates a workspace, ready to use: its schemas and rows (WorkspaceProvisioner), its permissions,
@@ -33,6 +35,7 @@ final class CreateWorkspaceConsoleCommand extends Command
         private readonly Connection $connection,
         #[Autowire('%app.super_admin_role%')]
         private readonly string $superAdminRole,
+        private readonly EventDispatcherInterface $events,
     ) {
         parent::__construct();
     }
@@ -57,7 +60,7 @@ final class CreateWorkspaceConsoleCommand extends Command
         $name = $input->getOption('name');
 
         try {
-            $this->provisioner->create($slug, \is_string($name) && '' !== $name ? $name : $slug);
+            $workspace = $this->provisioner->create($slug, \is_string($name) && '' !== $name ? $name : $slug);
         } catch (\InvalidArgumentException $e) {
             $io->error($e->getMessage());
 
@@ -86,6 +89,8 @@ final class CreateWorkspaceConsoleCommand extends Command
                 return $exitCode;
             }
         }
+        // The system admin's workflows run on it, once the command is done.
+        $this->events->dispatch(new WorkspaceCreated($workspace));
 
         return Command::SUCCESS;
     }

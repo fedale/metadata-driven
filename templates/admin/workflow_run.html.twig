@@ -3,7 +3,7 @@
 {% block title %}{{ 'admin.workflow.run'|trans }} · {{ workflow ? workflow.name : run.workflow_id }}{% endblock %}
 
 {% block body %}
-    {% if workflow %}<p><a href="{{ path('admin_workflow_runs', {id: workflow.id.toRfc4122}) }}">&larr; {{ 'admin.workflow.runs'|trans }} · {{ workflow.name }}</a></p>{% endif %}
+    {% if workflow %}<p><a href="{{ path(wf ~ 'runs', {id: workflow.id.toRfc4122}) }}">&larr; {{ 'admin.workflow.runs'|trans }} · {{ workflow.name }}</a></p>{% endif %}
     <h1>{{ 'admin.workflow.run'|trans }}</h1>
     <dl class="md-facts">
         <dt>{{ 'admin.workflow.status'|trans }}</dt><dd>{{ ('admin.workflow.run_' ~ run.status)|trans }}{% if run.error %}: {{ run.error }}{% endif %}</dd>

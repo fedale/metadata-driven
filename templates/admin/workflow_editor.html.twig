@@ -162,6 +162,16 @@
                     {{ editor.steps(step.steps, path ~ '.steps', this) }}
                     {{ editor.add_step(path ~ '.steps', this) }}
                 </div>
+            {% elseif step.type == 'install_package' %}
+                <div class="md-workflow-row">
+                    <label>{{ 'admin.workflow.package'|trans }} <input type="text" data-model="model.{{ path }}.package" value="{{ step.package }}" placeholder="vendor/name@1.0.0" class="md-code-input"></label>
+                    <label>{{ 'admin.workflow.repo'|trans }} <input type="text" data-model="model.{{ path }}.repo" value="{{ step.repo }}"></label>
+                </div>
+            {% elseif step.type == 'assign_role' %}
+                <div class="md-workflow-row">
+                    <label>{{ 'admin.workflow.email'|trans }} <input type="text" data-model="model.{{ path }}.email" value="{{ step.email }}" placeholder="{{ '{{ $trigger.member.email }}' }}" class="md-code-input"></label>
+                    <label>{{ 'admin.workflow.role'|trans }} <input type="text" data-model="model.{{ path }}.role" value="{{ step.role }}" placeholder="ROLE_CLERK" class="md-code-input"></label>
+                </div>
             {% elseif step.type == 'set_values' %}
                 {{ editor.values(step, path, this.model.trigger.object, this) }}
             {% elseif step.type == 'refuse' %}
@@ -205,13 +215,17 @@
                     {% for event in this.triggerEvents %}<option value="{{ event }}" {{ model.trigger.on == event ? 'selected' }}>{{ ('admin.workflow.on_' ~ event)|trans }}</option>{% endfor %}
                 </select>
             </label>
+            {% if not console %}
             <label>{{ 'admin.workflow.object'|trans }}
                 <select data-model="model.trigger.object">
                     <option value="">—</option>
                     {% for object in this.objects %}<option value="{{ object.name }}" {{ model.trigger.object == object.name ? 'selected' }}>{{ object.name }}</option>{% endfor %}
                 </select>
             </label>
-            {% if model.trigger.on == 'manual' %}
+            {% endif %}
+            {% if console %}
+                {# The platform's events: nothing else to say. #}
+            {% elseif model.trigger.on == 'manual' %}
                 <label>{{ 'admin.workflow.button_label'|trans }} <input type="text" data-model="model.trigger.label" value="{{ model.trigger.label }}"></label>
                 <label>{{ 'admin.workflow.selection'|trans }}
                     <select data-model="model.trigger.selection">
@@ -272,6 +286,7 @@
         <button type="button" class="gv-btn gv-btn-primary" data-action="live#action" data-live-action-param="activate">{{ 'admin.workflow.save_activate'|trans }}</button>
     </p>
 
+    {% if not console %}
     <div class="md-workflow-test">
         <label>{{ 'admin.workflow.test_record'|trans }}
             <select data-model="testRecord">
@@ -281,6 +296,7 @@
         </label>
         <button type="button" class="gv-btn" data-action="live#action" data-live-action-param="runTest">{{ 'admin.workflow.test'|trans }}</button>
     </div>
+    {% endif %}
     {% if testError %}<ul class="md-problems"><li>{{ testError }}</li></ul>{% endif %}
     {% if test %}{{ include('admin/_workflow_test.html.twig', {test: test}) }}{% endif %}
 </div>

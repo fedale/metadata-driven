@@ -34,6 +34,11 @@ final readonly class Trigger
         return 'all' === $this->selection;
     }
 
+    public function isPlatform(): bool
+    {
+        return $this->on->isPlatform();
+    }
+
     public function isManual(): bool
     {
         return TriggerEvent::Manual === $this->on;

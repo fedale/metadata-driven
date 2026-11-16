@@ -256,6 +256,46 @@ rolled back. The steps run are counted per workspace and day.
 `workflow:runs:gc` deletes the old runs of its workspace; with several workspaces, schedule
 `workspace:run --all -- workflow:runs:gc` (see [Console commands](console.md#workflowrunsgc)).
 
+## The system admin's workflows
+
+In the [system console](workspaces.md#the-system-console), **Workflows** (`/console/workflows`):
+the same pages (list, visual and YAML editor, versions, runs) for the workflows of the
+installation, on the platform's events. The user's SaaS case: an app installed in every new
+workspace.
+
+```yaml
+# Every new workspace gets the registration app.
+trigger: { on: workspace_created }
+steps:
+  - { key: app, type: install_package, package: fedale/registration }
+```
+
+```yaml
+# In acme, every new member is a clerk.
+trigger: { on: member_added }
+steps:
+  - { key: acme_only, type: filter, when: { field: $trigger.workspace.slug, op: eq, value: acme } }
+  - { key: clerk, type: assign_role, email: '{{ $trigger.member.email }}', role: ROLE_CLERK }
+```
+
+| Trigger | When | `$trigger` holds |
+|---|---|---|
+| `workspace_created` | a workspace made on the console's page or with `workspace:create`, once its permissions, its first admin and its package are there | `workspace` (`id`, `slug`, `name`) |
+| `member_added` | someone becomes a member: an invitation accepted, `workspace:member:add`, `user:create --workspace` (not one who was a member already) | `workspace`, `member` (`email`) |
+
+| Step | Options | Does |
+|---|---|---|
+| `install_package` | `package` (`vendor/name`, `vendor/name@1.0.0`), `repo` (an index, by name) | Installs it in the workspace from the indexes, with the packages it requires, all or nothing; outputs `installed` |
+| `assign_role` | `email` (with `{{ … }}`), `role` | Gives a role of the workspace (it must be there when the step runs) to the email; outputs `given` (false when held already) |
+
+`if`, `filter` and `refuse` work as anywhere; no other step. They act **as the system**, as the
+console's commands do: no `act_as`, no permission checked; only system admins define them, and
+no workspace sees them or their runs (`$user` is null, `$workspace` the workspace concerned).
+They run **once the response is sent** (or the command done), one after another, each step
+entering the workspace for what it does there; a failed step fails the run, what the steps before
+it did stays. Their runs are listed on the console's pages. A workspace's workflow may not use
+these triggers or steps, and the console defines no workflow on a record's.
+
 ## Under the hood
 
 | Part | Where |
@@ -263,12 +303,14 @@ rolled back. The steps run are counted per workspace and day.
 | The events | `RecordManager` raises `RecordWriting` before a write, in its transaction, and `RecordWritten` once the outermost transaction committed (`TransactionRunner::whenDone()`); `RecordEventScopeInterface` silences them (a package's seeds) or stamps them with the run they come from (Record contract) |
 | The definition | `DefinitionParser` (structure, every problem by its path), `DefinitionValidator` (objects, fields, paths, roles, on activation), stored compiled as JSON (`core.workflow_version.definition`) next to the YAML as written (`source`) |
 | The engine | `WorkflowEngine` listens to both events, reads the active versions (`ActiveWorkflows`, once per request), runs the steps over a `DataChain`, checks each write's permission (`AccessCheckerInterface::roleGives()`, `userCanGrant()`), and stores each run once its transaction ended (`RunStore`, DBAL) |
-| The tables | `core.workflow`, `core.workflow_version` (ORM); `core.workflow_run`, `core.workflow_run_step`, `core.workflow_usage` (DBAL); each with its `workspace_id` and row-level security |
+| The tables | `core.workflow`, `core.workflow_version` (ORM); `core.workflow_run`, `core.workflow_run_step`, `core.workflow_usage` (DBAL); each with its `workspace_id` (none for the system admin's) and row-level security |
 | Search | `RecordFinderInterface::search()` (Record contract, `RecordFilter`, `RecordSearchResult`), its SQL in `DbalRecordStore`: identifiers from the metadata, values checked then bound and cast to the column's type |
 | Manual runs | `ManualRuns` (who may run what, the answers checked), `WorkflowEngine::runManual()`; on a record's page and a grid's bulk bar through the Record contract's `RecordActionsInterface` (`WorkflowRecordActions`), the form at `/w/<workflow id>/run/<record id>` and `/w/<workflow id>/run-selection` (`ManualRunController`), the selection told back by `RecordSelectionInterface` (`GridRecordSelection`); `workflow:run` |
-| The admin | `WorkflowAdminController`, `WorkflowManager` (which creates and removes the run permission, `AccessSetupInterface::ensurePermission()`) |
+| The admin | `WorkflowAdminController` and the console's `ConsoleWorkflowController`, both an `AbstractWorkflowController` (their routes' prefix "wf" in the templates); `WorkflowManager` (which creates and removes the run permission, `AccessSetupInterface::ensurePermission()`) |
+| The platform | `WorkspaceCreated` (Shared) and `MemberAdded` (User contract) kept by `PlatformWorkflows`, run on kernel.terminate and console.terminate in the system session (`WorkspaceSessions::asSystem()`), by `WorkflowEngine::runPlatform()`; `install_package` through the Package contract's `PackageInstallationInterface`. Their rows have no workspace (`WorkspaceScope::SYSTEM_OWNED`, migration `Version20261116100000`) |
 
 ## Not yet
 
-The system admin's workflows on platform events (phase 3); the background,
+Other platform events (a workspace suspended or deleted), record steps in the system admin's
+workflows; the background,
 HTTP requests, waits (phase 4); states (phase 5). See [the plan](internal/workflow-plan.md).

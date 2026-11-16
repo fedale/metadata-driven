@@ -61,9 +61,10 @@ final class DbalRunStore implements RunStore
             }
             if ([] !== $run->steps) {
                 // The workspace_id of the conflict comes from the insert trigger, which runs first.
+                // Counted per workspace: the system's runs (no workspace) count for none.
                 $this->connection->executeStatement(
-                    'INSERT INTO core.workflow_usage (day, steps) VALUES (CURRENT_DATE, ?)
-                     ON CONFLICT (workspace_id, day) DO UPDATE SET steps = core.workflow_usage.steps + EXCLUDED.steps',
+                    \sprintf('INSERT INTO core.workflow_usage (day, steps) SELECT CURRENT_DATE, ? WHERE %s IS NOT NULL
+                     ON CONFLICT (workspace_id, day) DO UPDATE SET steps = core.workflow_usage.steps + EXCLUDED.steps', WorkspaceScope::CURRENT),
                     [\count($run->steps)],
                 );
             }
@@ -73,7 +74,7 @@ final class DbalRunStore implements RunStore
     public function countSince(\DateTimeImmutable $since): int
     {
         $count = $this->connection->fetchOne(
-            \sprintf('SELECT COUNT(*) FROM core.workflow_run WHERE workspace_id = %s AND started_at >= ?', WorkspaceScope::CURRENT),
+            \sprintf('SELECT COUNT(*) FROM core.workflow_run WHERE %s AND started_at >= ?', WorkspaceScope::currentOrSystem('workspace_id')),
             [$since->format(self::TIMESTAMP)],
         );
 
@@ -83,7 +84,7 @@ final class DbalRunStore implements RunStore
     public function deleteBefore(\DateTimeImmutable $before): int
     {
         return (int) $this->connection->executeStatement(
-            \sprintf('DELETE FROM core.workflow_run WHERE workspace_id = %s AND started_at < ?', WorkspaceScope::CURRENT),
+            \sprintf('DELETE FROM core.workflow_run WHERE %s AND started_at < ?', WorkspaceScope::currentOrSystem('workspace_id')),
             [$before->format(self::TIMESTAMP)],
         );
     }

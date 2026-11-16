@@ -81,7 +81,11 @@ final class DeclareWorkspaceSchemaListener
 
     private function declare(Table $table, string $name): void
     {
-        $table->addColumn(WorkspaceScope::COLUMN, 'guid', ['notnull' => !WorkspaceScope::isShared($name)]);
+        $table->addColumn(WorkspaceScope::COLUMN, 'guid', ['notnull' => !WorkspaceScope::isShared($name) && !WorkspaceScope::isSystemOwned($name)]);
+        if (WorkspaceScope::isSystemOwned($name) && $table->hasColumn('name')) {
+            // Migration Version20261116100000: the names of the system's rows.
+            $table->addUniqueIndex(['name'], \sprintf('uniq_%s_system_name', $name), ['where' => '('.WorkspaceScope::COLUMN.' IS NULL)']);
+        }
         if (WorkspaceScope::isShared($name)) {
             // Migration Version20261112190000: the names of the rows offered to every workspace. The
             // predicate as PostgreSQL reports it, parentheses included, or the diff sees a change.

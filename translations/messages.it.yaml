@@ -12,6 +12,7 @@ console:
     title: Console
     workspaces: Spazi di lavoro
     indexes: Indici dei pacchetti
+    workflows: Workflow
     indexes_intro: 'Offerti a tutti gli spazi di lavoro, accanto ai loro; nessuno spazio di lavoro li rimuove.'
     new: Nuovo spazio di lavoro
     create: Crea
@@ -443,6 +444,14 @@ admin:
         type_upsert_record: Crea o modifica un record
         type_set_values: Imposta valori
         type_refuse: Rifiuta
+        type_install_package: 'Installa un pacchetto'
+        type_assign_role: 'Assegna un ruolo'
+        on_workspace_created: 'un workspace creato'
+        on_member_added: 'un membro aggiunto'
+        package: 'Pacchetto'
+        repo: 'Indice (facoltativo)'
+        email: 'Email'
+        role: 'Ruolo'
         type_search_records: 'Cerca record'
         type_iterator: 'Per ogni elemento'
         sort: 'Ordina per'

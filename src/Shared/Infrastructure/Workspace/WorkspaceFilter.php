@@ -27,6 +27,10 @@ final class WorkspaceFilter extends SQLFilter
             return '';
         }
 
+        if (WorkspaceScope::isSystemOwned($targetEntity->getTableName())) {
+            // The system session (no workspace) reads the system's rows, a workspace its own.
+            return WorkspaceScope::currentOrSystem($targetTableAlias.'.'.WorkspaceScope::COLUMN);
+        }
         $condition = \sprintf('%s.%s = %s', $targetTableAlias, WorkspaceScope::COLUMN, WorkspaceScope::CURRENT);
 
         // The rows offered to every workspace too, read-only for them (WorkspaceScope::SHARED).

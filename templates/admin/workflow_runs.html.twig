@@ -3,12 +3,12 @@
 {% block title %}{{ 'admin.workflow.runs'|trans }} · {{ workflow.name }}{% endblock %}
 
 {% block body %}
-    <p><a href="{{ path('admin_workflow_edit', {id: workflow.id.toRfc4122}) }}">&larr; {{ workflow.name }}</a></p>
+    <p><a href="{{ path(wf ~ 'edit', {id: workflow.id.toRfc4122}) }}">&larr; {{ workflow.name }}</a></p>
     <h1>{{ 'admin.workflow.runs'|trans }}</h1>
     <p>
         {% for filter in [null, 'completed', 'failed', 'refused'] %}
             {% if filter == status %}<strong>{% endif %}
-            <a href="{{ path('admin_workflow_runs', {id: workflow.id.toRfc4122, status: filter}) }}">{{ (filter ? 'admin.workflow.run_' ~ filter : 'admin.workflow.all_runs')|trans }}</a>
+            <a href="{{ path(wf ~ 'runs', {id: workflow.id.toRfc4122, status: filter}) }}">{{ (filter ? 'admin.workflow.run_' ~ filter : 'admin.workflow.all_runs')|trans }}</a>
             {% if filter == status %}</strong>{% endif %}{% if not loop.last %} · {% endif %}
         {% endfor %}
     </p>
@@ -29,7 +29,7 @@
             <tbody>
                 {% for run in runs %}
                     <tr>
-                        <td><a href="{{ path('admin_workflow_run', {id: run.id}) }}">{{ run.started_at|slice(0, 19) }}</a></td>
+                        <td><a href="{{ path(wf ~ 'run', {id: run.id}) }}">{{ run.started_at|slice(0, 19) }}</a></td>
                         <td>{{ ('admin.workflow.run_' ~ run.status)|trans }}</td>
                         <td><code>{{ run.object }}</code> {{ run.action }}, {{ run.timing }}{% if run.depth > 1 %} · {{ 'admin.workflow.depth'|trans({'%depth%': run.depth}) }}{% endif %}</td>
                         <td>{{ run.triggered_by ?? '—' }}</td>

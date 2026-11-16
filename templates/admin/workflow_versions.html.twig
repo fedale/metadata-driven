@@ -3,7 +3,7 @@
 {% block title %}{{ 'admin.workflow.versions'|trans }} · {{ workflow.name }}{% endblock %}
 
 {% block body %}
-    <p><a href="{{ path('admin_workflow_edit', {id: workflow.id.toRfc4122}) }}">&larr; {{ workflow.name }}</a></p>
+    <p><a href="{{ path(wf ~ 'edit', {id: workflow.id.toRfc4122}) }}">&larr; {{ workflow.name }}</a></p>
     <h1>{{ 'admin.workflow.versions'|trans }}</h1>
     <table class="md-table">
         <thead>

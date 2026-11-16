@@ -34,6 +34,22 @@ final class PathCatalog
         }
 
         $object = $definition->trigger->object;
+        if ($definition->trigger->isPlatform()) {
+            // No workspace's objects: the console's session has none.
+            $trigger = ['$trigger.workspace.id', '$trigger.workspace.slug', '$trigger.workspace.name', ...(TriggerEvent::MemberAdded === $definition->trigger->on ? ['$trigger.member.email'] : [])];
+            $steps = [];
+            foreach ($definition->allSteps() as $step) {
+                $steps[$step->key] = match ($step->type) {
+                    StepType::If => [$step->key.'.branch'],
+                    StepType::Filter => [$step->key.'.passed'],
+                    StepType::InstallPackage => [$step->key.'.installed'],
+                    StepType::AssignRole => [$step->key.'.given'],
+                    default => [],
+                };
+            }
+
+            return ['trigger' => $trigger, 'context' => ['$workspace.slug', '$workspace.name', '$now', '$today', '$last'], 'steps' => array_filter($steps, static fn (array $paths): bool => [] !== $paths)];
+        }
         $trigger = $definition->trigger->runsOnAll()
             ? ['$trigger.object', '$trigger.action', '$trigger.records']
             : ['$trigger.object', '$trigger.action', '$trigger.record.id', ...array_map(static fn (string $field): string => '$trigger.record.'.$field, $this->fields($object))];

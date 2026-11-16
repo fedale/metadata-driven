@@ -9,6 +9,8 @@ use App\Module\Access\Contract\Permissions;
 use App\Module\Access\Contract\RecordAction;
 use App\Module\Access\Contract\WorkspaceRolesInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Package\Contract\Exception\PackageInstallFailed;
+use App\Module\Package\Contract\PackageInstallationInterface;
 use App\Module\Record\Contract\Dto\RecordFilter;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordOutput;
@@ -27,7 +29,9 @@ use App\Module\Workflow\Application\Definition\Timing;
 use App\Module\Workflow\Application\Definition\TriggerEvent;
 use App\Shared\Transaction\TransactionRunner;
 use App\Shared\Workspace\CurrentWorkspace;
+use App\Shared\Workspace\Workspace;
 use App\Shared\Workspace\Workspaces;
+use App\Shared\Workspace\WorkspaceSessions;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -54,6 +58,9 @@ final class WorkflowEngine implements ResetInterface
     /** A test is running: its writes raise no event, whatever its steps say. */
     private bool $dryRun = false;
 
+    /** A system workflow is running: the workspace its platform steps work in. */
+    private ?Workspace $platformWorkspace = null;
+
     public function __construct(
         private readonly ActiveWorkflows $workflows,
         private readonly RunStore $runs,
@@ -76,6 +83,8 @@ final class WorkflowEngine implements ResetInterface
         private readonly int $maxExecutedSteps,
         #[Autowire('%app.workflow.max_records%')]
         private readonly int $maxRecords,
+        private readonly WorkspaceSessions $sessions,
+        private readonly PackageInstallationInterface $packages,
     ) {
     }
 
@@ -284,10 +293,39 @@ final class WorkflowEngine implements ResetInterface
         return $run;
     }
 
+    /**
+     * Runs a system workflow on a platform event, as the system: in the system session, its
+     * platform steps entering the workspace concerned for what they do there, each all or nothing
+     * on its own. A failed step fails the run; what the steps before it did stays. The run is the
+     * system's (no workspace).
+     *
+     * @param array<string, mixed> $trigger what $trigger holds: workspace, member
+     */
+    public function runPlatform(ActiveWorkflow $workflow, Workspace $workspace, array $trigger): RunLog
+    {
+        ++$this->pending;
+        $run = new RunLog($workflow, '', null, $workflow->definition->trigger->on->value, 'platform', null, 1, new \DateTimeImmutable());
+        $chain = $this->chain($trigger, ['slug' => $workspace->slug, 'name' => $workspace->name]);
+        $this->platformWorkspace = $workspace;
+        try {
+            $this->steps($workflow->definition->steps, $chain, $run, null);
+            $run->end($run->status, $run->error);
+        } catch (StepFailed $e) {
+            $run->end(RunLog::FAILED, $e->getMessage());
+        } finally {
+            $this->platformWorkspace = null;
+            $run->chain = $chain->toArray();
+        }
+        $this->store($run);
+
+        return $run;
+    }
+
     public function reset(): void
     {
         $this->pending = 0;
         $this->dryRun = false;
+        $this->platformWorkspace = null;
     }
 
     /**
@@ -352,18 +390,22 @@ final class WorkflowEngine implements ResetInterface
     }
 
     /**
-     * @param array<string, mixed> $trigger what $trigger holds
+     * @param array<string, mixed>                   $trigger   what $trigger holds
+     * @param array{slug: string, name: string}|null $workspace a system workflow's: the one concerned,
+     *                                                          and no $user (no one is behind the platform)
      */
-    private function chain(array $trigger): DataChain
+    private function chain(array $trigger, ?array $workspace = null): DataChain
     {
-        $user = $this->security->getUser()?->getUserIdentifier();
-        $workspace = $this->workspace->isSelected() ? $this->workspaces->byId($this->workspace->id()) : null;
+        $user = null === $workspace ? $this->security->getUser()?->getUserIdentifier() : null;
+        if (null === $workspace && $this->workspace->isSelected() && null !== $current = $this->workspaces->byId($this->workspace->id())) {
+            $workspace = ['slug' => $current->slug, 'name' => $current->name];
+        }
         $now = new \DateTimeImmutable();
 
         return new DataChain([
             '$trigger' => $trigger,
             '$user' => null === $user ? null : ['email' => $user, 'roles' => $this->roles->rolesOf($user)],
-            '$workspace' => null === $workspace ? null : ['slug' => $workspace->slug, 'name' => $workspace->name],
+            '$workspace' => $workspace,
             '$now' => $now->format(\DateTimeInterface::ATOM),
             '$today' => $now->format('Y-m-d'),
             '$last' => null,
@@ -437,6 +479,7 @@ final class WorkflowEngine implements ResetInterface
                 StepType::SetValues => $this->setValues($step, $chain, $writing, $run),
                 StepType::Refuse => $this->refuse($step, $chain, $run, null !== $writing),
                 StepType::SearchRecords => $this->search($step, $chain, $run),
+                StepType::InstallPackage, StepType::AssignRole => $this->platform($step, $chain),
                 default => $this->write($step, $chain, $run),
             };
         } catch (StepFailed $e) {
@@ -517,6 +560,48 @@ final class WorkflowEngine implements ResetInterface
         $records = array_map(fn (RecordOutput $record): array => ['id' => $record->id, ...$this->readable($object, $record->values)], $result->records);
 
         return [$input, ['records' => $records, 'count' => \count($records), 'total' => $result->total, 'first' => $records[0] ?? null], true];
+    }
+
+    /**
+     * install_package, assign_role: in the workspace a system workflow runs for, as the system.
+     *
+     * @return array{array<string, mixed>, array<string, mixed>, bool}
+     *
+     * @throws StepFailed
+     */
+    private function platform(Step $step, DataChain $chain): array
+    {
+        $workspace = $this->platformWorkspace ?? throw new StepFailed(\sprintf('%s runs in the system admin\'s workflows only.', $step->type->value));
+        if (StepType::InstallPackage === $step->type) {
+            [$package, $repo] = [(string) $step->string('package'), $step->string('repo')];
+            try {
+                $installed = $this->sessions->within($workspace, fn (): array => $this->packages->install($package, $repo));
+            } catch (PackageInstallFailed $e) {
+                throw new StepFailed($e->getMessage(), 0, $e);
+            }
+
+            return [['package' => $package, 'repo' => $repo], ['installed' => $installed], true];
+        }
+        $email = mb_strtolower(trim($chain->text($step->string('email'))));
+        $role = (string) $step->string('role');
+        if ('' === $email) {
+            throw new StepFailed('No one to give the role to: the email is empty.');
+        }
+        try {
+            $given = $this->sessions->within($workspace, function () use ($email, $role): bool {
+                $held = $this->roles->rolesOf($email);
+                if (\in_array($role, $held, true)) {
+                    return false;
+                }
+                $this->roles->setRoles($email, [...$held, $role]);
+
+                return true;
+            });
+        } catch (\InvalidArgumentException $e) {
+            throw new StepFailed(\sprintf('%s: %s', $workspace->slug, $e->getMessage()), 0, $e);
+        }
+
+        return [['email' => $email, 'role' => $role], ['given' => $given], true];
     }
 
     /**

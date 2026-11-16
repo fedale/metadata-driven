@@ -44,6 +44,8 @@ symfony console system:admin revoke olga@example.com  # their console session en
   workspace).
 - **A workspace's members**: give or take the super admin role, remove, invite another admin.
 - **Package indexes** offered to every workspace.
+- **Workflows** on the platform's events: a workspace created, a member added; install a package,
+  give a role (see [Workflows](workflows.md#the-system-admins-workflows)).
 
 The console is no workspace: a system admin has no power inside a workspace unless they're a member there,
 with a role. Only system admins sign in there, and only the command line makes system admins. The slug

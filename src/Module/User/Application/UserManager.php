@@ -7,6 +7,7 @@ namespace App\Module\User\Application;
 use App\Module\User\Contract\Dto\Invitation;
 use App\Module\User\Contract\Dto\Member;
 use App\Module\User\Contract\Dto\Profile;
+use App\Module\User\Contract\Event\MemberAdded;
 use App\Module\User\Contract\UserManagerInterface;
 use App\Module\User\Domain\Exception\InvalidUser;
 use App\Module\User\Domain\Model\User;
@@ -20,6 +21,7 @@ use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 final class UserManager implements UserManagerInterface
 {
@@ -45,7 +47,21 @@ final class UserManager implements UserManagerInterface
         private readonly RateLimiterFactoryInterface $passwordChangeLimiter,
         #[Autowire('%kernel.enabled_locales%')]
         private readonly array $enabledLocales,
+        private readonly EventDispatcherInterface $events,
     ) {
+    }
+
+    /**
+     * Makes the user a member, and says so when they were not one already.
+     */
+    private function join(string $workspaceId, User $user): bool
+    {
+        $added = $this->memberships->add($workspaceId, $user->getId());
+        if ($added) {
+            $this->events->dispatch(new MemberAdded($user->getEmail(), $workspaceId));
+        }
+
+        return $added;
     }
 
     public function createUser(string $email, string $plainPassword, ?string $firstName = null, ?string $lastName = null): string
@@ -64,7 +80,7 @@ final class UserManager implements UserManagerInterface
         new UserProfile(Uuid::v7(), $user, $firstName, $lastName);
         $this->users->save($user);
         if ($this->workspace->isSelected()) {
-            $this->memberships->add($this->workspace->id(), $user->getId());
+            $this->join($this->workspace->id(), $user);
         }
 
         return $user->getId()->toRfc4122();
@@ -83,7 +99,7 @@ final class UserManager implements UserManagerInterface
 
     public function addToWorkspace(string $email, string $workspaceId): bool
     {
-        return $this->memberships->add($workspaceId, $this->user($email)->getId());
+        return $this->join($workspaceId, $this->user($email));
     }
 
     public function removeFromWorkspace(string $email, string $workspaceId): bool
@@ -223,7 +239,7 @@ final class UserManager implements UserManagerInterface
                 $invitation = new Invitation($invitation->id, $invitation->email, $invitation->invitedBy, $invitation->createdAt, $invitation->expiresAt, true);
             }
         }
-        $this->memberships->add($workspaceId, $user->getId());
+        $this->join($workspaceId, $user);
         $this->invitations->markAccepted($invitation->id, new \DateTimeImmutable());
 
         return $invitation;

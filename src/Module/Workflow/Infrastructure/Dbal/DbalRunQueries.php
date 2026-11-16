@@ -23,8 +23,8 @@ final class DbalRunQueries implements RunQueries
     {
         $rows = $this->connection->fetchAllAssociative(\sprintf(
             "SELECT workflow_id, MAX(started_at) AS last, COUNT(*) FILTER (WHERE status <> 'completed' AND started_at > NOW() - INTERVAL '1 day') AS failed
-             FROM core.workflow_run WHERE workspace_id = %s GROUP BY workflow_id",
-            WorkspaceScope::CURRENT,
+             FROM core.workflow_run WHERE %s GROUP BY workflow_id",
+            WorkspaceScope::currentOrSystem('workspace_id'),
         ));
         $summary = [];
         foreach ($rows as $row) {
@@ -37,7 +37,7 @@ final class DbalRunQueries implements RunQueries
     public function runsOf(string $workflowId, ?string $status, int $limit = 100): array
     {
         $rows = $this->connection->fetchAllAssociative(
-            \sprintf('SELECT %s FROM core.workflow_run WHERE workspace_id = %s AND workflow_id = ? AND (?::text IS NULL OR status = ?) ORDER BY started_at DESC LIMIT %d', self::COLUMNS, WorkspaceScope::CURRENT, $limit),
+            \sprintf('SELECT %s FROM core.workflow_run WHERE %s AND workflow_id = ? AND (?::text IS NULL OR status = ?) ORDER BY started_at DESC LIMIT %d', self::COLUMNS, WorkspaceScope::currentOrSystem('workspace_id'), $limit),
             [$workflowId, $status, $status],
         );
 
@@ -47,7 +47,7 @@ final class DbalRunQueries implements RunQueries
     public function run(string $id): ?array
     {
         $row = $this->connection->fetchAssociative(
-            \sprintf('SELECT %s, workflow_id, chain, finished_at FROM core.workflow_run WHERE workspace_id = %s AND id = ?', self::COLUMNS, WorkspaceScope::CURRENT),
+            \sprintf('SELECT %s, workflow_id, chain, finished_at FROM core.workflow_run WHERE %s AND id = ?', self::COLUMNS, WorkspaceScope::currentOrSystem('workspace_id')),
             [$id],
         );
         if (false === $row) {

@@ -101,13 +101,13 @@ final class DefinitionParserTest extends TestCase
         yield 'not YAML' => ["trigger: [\n", ['' => ['Not valid YAML: Malformed inline YAML string at line 2.']]];
         yield 'no trigger, no steps' => ['{}', ['trigger' => ['Required: a map with on, object and when.'], 'steps' => ['Required: a list of steps, one at least.']]];
         yield 'a wrong trigger' => ["trigger: { on: archived, object: Invoice, when: later, fields: [x] }\nsteps: [{ key: a, type: refuse, message: no }]", [
-            'trigger.on' => ['One of created, updated, created_or_updated, deleted, manual.'],
+            'trigger.on' => ['One of created, updated, created_or_updated, deleted, manual, workspace_created, member_added.'],
             'trigger.object' => ['Required: a machine name, lowercase letters, digits and underscores.'],
             'trigger.when' => ['before or after.'],
             'trigger.fields' => ['Only for a trigger on updated or created_or_updated: the fields whose change runs it.'],
         ]];
         yield 'steps' => ["trigger: { on: created, object: invoice, when: after }\nsteps:\n  - { key: a, type: fly }\n  - { key: a, type: refuse, message: no, extra: 1 }\n  - { key: Bad, type: create_record, object: invoice }\n  - { key: c, type: set_values, values: { x: 1 } }", [
-            'steps.0.type' => ['One of if, filter, create_record, update_record, delete_record, upsert_record, set_values, refuse, search_records, iterator.'],
+            'steps.0.type' => ['One of if, filter, create_record, update_record, delete_record, upsert_record, set_values, refuse, search_records, iterator, install_package, assign_role.'],
             'steps.1.key' => ['"a" names another step already.'],
             'steps.1.extra' => ['Unknown: here, key, type, message.'],
             'steps.2.key' => ["Required: lowercase letters, digits and underscores, starting with a letter; it names the step's output."],
@@ -198,6 +198,47 @@ final class DefinitionParserTest extends TestCase
                 'trigger.form.4.required' => ['true or false.'],
                 'steps.0.type' => ['set_values changes the values being written: only in a workflow run before the write.'],
             ], $e->errors);
+        }
+    }
+
+    public function testReadsAPlatformTriggerAndItsSteps(): void
+    {
+        $parser = new DefinitionParser();
+        $definition = $parser->parse(<<<'YAML'
+            trigger: { on: member_added }
+            steps:
+              - { key: beta, type: filter, when: { field: $trigger.workspace.slug, op: eq, value: beta } }
+              - { key: app, type: install_package, package: acme/shop@1.0.0, repo: acme }
+              - { key: clerk, type: assign_role, email: '{{ $trigger.member.email }}', role: ROLE_CLERK }
+            YAML);
+
+        self::assertTrue($definition->trigger->isPlatform());
+        self::assertSame(['on' => 'member_added'], $definition->toArray()['trigger']);
+        self::assertEquals($definition, $parser->fromArray($definition->toArray()));
+    }
+
+    public function testEachSideTakesItsOwnSteps(): void
+    {
+        try {
+            (new DefinitionParser())->parse(<<<'YAML'
+                trigger: { on: workspace_created, object: person }
+                steps:
+                  - { key: pet, type: create_record, object: pet, values: { name: x } }
+                  - { key: app, type: install_package, package: 'not a package' }
+                YAML);
+            self::fail('Refused.');
+        } catch (InvalidWorkflowDefinition $e) {
+            self::assertSame([
+                'trigger.object' => ['Unknown: here, on.'],
+                'steps.0.type' => ['A workflow on the platform\'s events takes if, filter, refuse, install_package and assign_role only.'],
+                'steps.1.package' => ['A package of the indexes: vendor/name, or vendor/name@1.0.0.'],
+            ], $e->errors);
+        }
+        try {
+            (new DefinitionParser())->parse("trigger: { on: created, object: person, when: after }\nsteps: [{ key: clerk, type: assign_role, email: a@b.c, role: ROLE_X }]");
+            self::fail('Refused.');
+        } catch (InvalidWorkflowDefinition $e) {
+            self::assertSame(['assign_role is a step of the system admin\'s workflows, on the platform\'s events.'], $e->errors['steps.0.type']);
         }
     }
 

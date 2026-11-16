@@ -24,7 +24,9 @@ use App\Module\Workflow\Application\WorkflowTester;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
 use App\Module\Workflow\Domain\Model\Workflow;
 use App\Module\Workflow\Domain\Repository\WorkflowRepository;
+use App\Shared\Workspace\SystemConsole;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -49,6 +51,10 @@ final class WorkflowEditor extends AbstractController
 
     #[LiveProp]
     public string $workflowId = '';
+
+    /** The system admin's, in the console: the platform's events and steps, no objects. */
+    #[LiveProp]
+    public bool $console = false;
 
     #[LiveProp(writable: true)]
     public string $name = '';
@@ -80,11 +86,13 @@ final class WorkflowEditor extends AbstractController
         private readonly PathCatalog $paths,
         private readonly WorkflowTester $tester,
         private readonly TranslatorInterface $translator,
+        private readonly RequestStack $requests,
     ) {
     }
 
-    public function mount(string $workflowId): void
+    public function mount(string $workflowId, bool $console = false): void
     {
+        $this->console = $console;
         $this->guard();
         $workflow = $this->workflow($workflowId);
         $this->workflowId = $workflowId;
@@ -100,6 +108,14 @@ final class WorkflowEditor extends AbstractController
     #[PostHydrate]
     public function guard(): void
     {
+        if ($this->console) {
+            // The console's host, its system session, its system admins.
+            if (true !== $this->requests->getCurrentRequest()?->attributes->get(SystemConsole::REQUEST_ATTRIBUTE) || !$this->isGranted(SystemConsole::ROLE)) {
+                throw $this->createAccessDeniedException('The system admin\'s workflows are edited in the system console.');
+            }
+
+            return;
+        }
         if (!$this->access->canManageWorkflows()) {
             throw $this->createAccessDeniedException('No permission to manage the workflows.');
         }
@@ -246,7 +262,7 @@ final class WorkflowEditor extends AbstractController
         }
         $this->addFlash('success', $this->translator->trans('admin.workflow.draft_saved'));
 
-        return $this->redirectToRoute('admin_workflow_edit', ['id' => $this->workflowId], Response::HTTP_SEE_OTHER);
+        return $this->redirectToRoute(($this->console ? 'console_workflow_' : 'admin_workflow_').'edit', ['id' => $this->workflowId], Response::HTTP_SEE_OTHER);
     }
 
     #[LiveAction]
@@ -263,7 +279,7 @@ final class WorkflowEditor extends AbstractController
         }
         $this->addFlash('success', $this->translator->trans('admin.workflow.activated', ['%number%' => $version->getNumber()]));
 
-        return $this->redirectToRoute('admin_workflow_edit', ['id' => $this->workflowId], Response::HTTP_SEE_OTHER);
+        return $this->redirectToRoute(($this->console ? 'console_workflow_' : 'admin_workflow_').'edit', ['id' => $this->workflowId], Response::HTTP_SEE_OTHER);
     }
 
     #[LiveAction]
@@ -286,7 +302,7 @@ final class WorkflowEditor extends AbstractController
      */
     public function getObjects(): array
     {
-        return array_values($this->metadata->allObjects());
+        return $this->console ? [] : array_values($this->metadata->allObjects());
     }
 
     /**
@@ -304,7 +320,7 @@ final class WorkflowEditor extends AbstractController
      */
     public function getRoles(): array
     {
-        return array_map(strval(...), array_keys($this->roles->roles()));
+        return $this->console ? [] : array_map(strval(...), array_keys($this->roles->roles()));
     }
 
     /**
@@ -312,7 +328,7 @@ final class WorkflowEditor extends AbstractController
      */
     public function getStepTypes(): array
     {
-        return array_column(StepType::cases(), 'value');
+        return array_column(array_filter(StepType::cases(), fn (StepType $type): bool => $this->console ? $type->forPlatform() : !$type->isPlatform()), 'value');
     }
 
     /**
@@ -328,7 +344,7 @@ final class WorkflowEditor extends AbstractController
      */
     public function getTriggerEvents(): array
     {
-        return array_column(TriggerEvent::cases(), 'value');
+        return array_column(array_filter(TriggerEvent::cases(), fn (TriggerEvent $on): bool => $this->console === $on->isPlatform()), 'value');
     }
 
     /**
@@ -344,7 +360,7 @@ final class WorkflowEditor extends AbstractController
      */
     public function getRecords(): array
     {
-        return $this->tester->records($this->definition());
+        return $this->console ? [] : $this->tester->records($this->definition());
     }
 
     /**

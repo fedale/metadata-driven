@@ -12,6 +12,7 @@ use App\Module\User\Contract\Exception\UserException;
 use App\Module\User\Contract\UserManagerInterface;
 use App\Shared\Workspace\Workspace;
 use App\Shared\Workspace\WorkspaceAdministration;
+use App\Shared\Workspace\WorkspaceCreated;
 use App\Shared\Workspace\Workspaces;
 use App\Shared\Workspace\WorkspaceSessions;
 use Psr\Log\LoggerInterface;
@@ -26,6 +27,7 @@ use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -50,6 +52,7 @@ final class ConsoleController extends AbstractController
         private readonly FormFactoryInterface $forms,
         private readonly TranslatorInterface $translator,
         private readonly LoggerInterface $logger,
+        private readonly EventDispatcherInterface $events,
         #[Autowire('%app.workspace.base_host%')]
         private readonly string $baseHost,
         #[Autowire('%app.workspace.default%')]
@@ -86,6 +89,8 @@ final class ConsoleController extends AbstractController
                 if ('' !== $email) {
                     $this->inviteAdmin($workspace, $email, $request);
                 }
+                // The system admin's workflows run on it, once the response is sent.
+                $this->events->dispatch(new WorkspaceCreated($workspace));
                 $this->addFlash('success', $this->translator->trans('console.created', ['%slug%' => $workspace->slug]));
 
                 return $this->redirectToRoute('console_workspace_show', ['slug' => $workspace->slug], Response::HTTP_SEE_OTHER);

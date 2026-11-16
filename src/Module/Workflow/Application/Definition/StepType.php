@@ -16,6 +16,25 @@ enum StepType: string
     case Refuse = 'refuse';
     case SearchRecords = 'search_records';
     case Iterator = 'iterator';
+    case InstallPackage = 'install_package';
+    case AssignRole = 'assign_role';
+
+    /**
+     * Whether the step is the platform's: only a system workflow takes it, and takes no other
+     * step but the conditions and refuse.
+     */
+    public function isPlatform(): bool
+    {
+        return \in_array($this, [self::InstallPackage, self::AssignRole], true);
+    }
+
+    /**
+     * Whether a system workflow (on a platform event) may take the step.
+     */
+    public function forPlatform(): bool
+    {
+        return $this->isPlatform() || \in_array($this, [self::If, self::Filter, self::Refuse], true);
+    }
 
     /**
      * Whether the step writes records: it needs a permission, and may act as a role.
@@ -53,6 +72,8 @@ enum StepType: string
             self::Refuse => ['message' => true],
             self::SearchRecords => ['object' => true, 'where' => false, 'sort' => false, 'direction' => false, 'limit' => false, 'act_as' => false],
             self::Iterator => ['items' => true, 'steps' => true],
+            self::InstallPackage => ['package' => true, 'repo' => false],
+            self::AssignRole => ['email' => true, 'role' => true],
         };
     }
 }

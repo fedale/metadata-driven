@@ -71,6 +71,10 @@ guide says how to use and deploy them. Under the hood (see also
 - **Rows offered to every workspace**: `package_source` (`WorkspaceScope::SHARED`) may have no
   workspace, an index the system admin offers to all (`system:package:repo`, as the system). The
   `workspace` filter and the policies let every workspace read such a row, and none write it.
+- **The system's rows**: the system admin's workflows and their runs (`WorkspaceScope::SYSTEM_OWNED`:
+  `workflow`, `workflow_version`, `workflow_run`, `workflow_run_step`) have no workspace. The
+  filter reads them in the system session only (`workspace_id IS NOT DISTINCT FROM` the current
+  one), and the policies let no workspace see them.
 - `CurrentWorkspace` gives the workspace's id and data schema to the code that names record tables
   (the Schema and Record modules).
 - **Users are global**, with their profile; a membership (`core.workspace_membership`, the

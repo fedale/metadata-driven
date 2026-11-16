@@ -13,6 +13,7 @@ console:
     title: Console
     workspaces: Workspaces
     indexes: Package indexes
+    workflows: Workflows
     indexes_intro: 'Offered to every workspace, next to its own; no workspace removes them.'
     new: New workspace
     create: Create
@@ -446,6 +447,14 @@ admin:
         type_upsert_record: Create or update a record
         type_set_values: Set values
         type_refuse: Refuse
+        type_install_package: 'Install a package'
+        type_assign_role: 'Give a role'
+        on_workspace_created: 'a workspace created'
+        on_member_added: 'a member added'
+        package: 'Package'
+        repo: 'Index (optional)'
+        email: 'Email'
+        role: 'Role'
         type_search_records: 'Search records'
         type_iterator: 'For each'
         sort: 'Sort on'

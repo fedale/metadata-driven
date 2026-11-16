@@ -3,10 +3,10 @@
 {% block title %}{{ 'admin.workflows'|trans }} · {{ 'admin.title'|trans }}{% endblock %}
 
 {% block body %}
-    <p><a href="{{ path('admin_index') }}">&larr; {{ 'admin.objects'|trans }}</a></p>
+    {% if wf_console %}<p><a href="{{ path('console_index') }}">&larr; {{ 'console.workspaces'|trans }}</a></p>{% else %}<p><a href="{{ path('admin_index') }}">&larr; {{ 'admin.objects'|trans }}</a></p>{% endif %}
     <div class="md-page__header">
         <h1>{{ 'admin.workflows'|trans }}</h1>
-        <a class="gv-btn gv-btn-primary" href="{{ path('admin_workflow_new') }}">{{ 'admin.workflow.new'|trans }}</a>
+        <a class="gv-btn gv-btn-primary" href="{{ path(wf ~ 'new') }}">{{ 'admin.workflow.new'|trans }}</a>
     </div>
     <p class="gv-muted">{{ 'admin.workflow.intro'|trans }}</p>
 
@@ -29,14 +29,14 @@
                     {% set id = row.workflow.id.toRfc4122 %}
                     {% set runs = summary[id] ?? null %}
                     <tr>
-                        <td><a href="{{ path('admin_workflow_edit', {id: id}) }}">{{ row.workflow.name }}</a></td>
+                        <td><a href="{{ path(wf ~ 'edit', {id: id}) }}">{{ row.workflow.name }}</a></td>
                         <td>{% if row.trigger %}<code>{{ row.trigger }}</code>{% else %}<span class="gv-muted">—</span>{% endif %}</td>
                         <td>
                             {% if row.active %}{{ 'admin.workflow.active_version'|trans({'%number%': row.active.number}) }}{% else %}<span class="gv-muted">{{ 'admin.workflow.inactive'|trans }}</span>{% endif %}
                             {% if row.draft %}<br><span class="gv-muted">{{ 'admin.workflow.draft_version'|trans({'%number%': row.draft.number}) }}</span>{% endif %}
                         </td>
-                        <td>{% if runs and runs.last %}<a href="{{ path('admin_workflow_runs', {id: id}) }}">{{ runs.last|slice(0, 16) }}</a>{% else %}<span class="gv-muted">—</span>{% endif %}</td>
-                        <td>{% if runs and runs.failed > 0 %}<a href="{{ path('admin_workflow_runs', {id: id, status: 'failed'}) }}">{{ runs.failed }}</a>{% else %}0{% endif %}</td>
+                        <td>{% if runs and runs.last %}<a href="{{ path(wf ~ 'runs', {id: id}) }}">{{ runs.last|slice(0, 16) }}</a>{% else %}<span class="gv-muted">—</span>{% endif %}</td>
+                        <td>{% if runs and runs.failed > 0 %}<a href="{{ path(wf ~ 'runs', {id: id, status: 'failed'}) }}">{{ runs.failed }}</a>{% else %}0{% endif %}</td>
                         <td>
                             {{ form_start(row.move, {attr: {class: 'md-inline-form'}}) }}
                                 {% if not loop.first %}{{ form_widget(row.move.up) }}{% else %}{% do row.move.up.setRendered %}{% endif %}

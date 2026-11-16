@@ -358,7 +358,11 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   `workflow_selection`, merged into `main` on 2026-11-16: phase 2 complete with it. A selection
   needs reading its records, checked before it is read (its count alone would tell). rbac-bundle
   1.2.2 (2026-11-16): `removeItem()` takes the item's edges and assignments through the entity
-  manager; `PermissionSynchronizer::removePermission()` no longer works around it.
+  manager; `PermissionSynchronizer::removePermission()` no longer works around it. Phase 3
+  planned in [workflow-phase3-plan.md](workflow-phase3-plan.md) (2026-11-16): the system admin's
+  workflows (`workspace_created`, `member_added`; `install_package`, `assign_role`; acting as the
+  system, run after the response; `/console/workflows`; migration `Version20261116100000`, run
+  `doctrine:migrations:migrate`) done on branch `workflow_system`, waiting for review.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`
