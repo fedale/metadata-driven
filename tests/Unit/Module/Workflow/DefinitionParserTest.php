@@ -101,7 +101,7 @@ final class DefinitionParserTest extends TestCase
         yield 'not YAML' => ["trigger: [\n", ['' => ['Not valid YAML: Malformed inline YAML string at line 2.']]];
         yield 'no trigger, no steps' => ['{}', ['trigger' => ['Required: a map with on, object and when.'], 'steps' => ['Required: a list of steps, one at least.']]];
         yield 'a wrong trigger' => ["trigger: { on: archived, object: Invoice, when: later, fields: [x] }\nsteps: [{ key: a, type: refuse, message: no }]", [
-            'trigger.on' => ['One of created, updated, created_or_updated, deleted, manual, transitioned, schedule, workspace_created, member_added.'],
+            'trigger.on' => ['One of created, updated, created_or_updated, deleted, manual, transitioned, schedule, webhook, workspace_created, member_added.'],
             'trigger.object' => ['Required: a machine name, lowercase letters, digits and underscores.'],
             'trigger.when' => ['before or after.'],
             'trigger.fields' => ['Only for a trigger on updated or created_or_updated: the fields whose change runs it.'],

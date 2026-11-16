@@ -37,6 +37,19 @@ final readonly class Trigger
         return TriggerEvent::Schedule === $this->on;
     }
 
+    public function isWebhook(): bool
+    {
+        return TriggerEvent::Webhook === $this->on;
+    }
+
+    /**
+     * No one is behind it (a time come, a request from outside): its steps act as roles.
+     */
+    public function isUnattended(): bool
+    {
+        return $this->isScheduled() || $this->isWebhook();
+    }
+
     /**
      * One run on a grid's selection: $trigger.records, no $trigger.record.
      */

@@ -25,6 +25,7 @@ framework:
             App\Module\Workflow\Application\Engine\Message\RunPlatformEvents: async
             App\Module\Workflow\Application\Engine\Message\ResumeRun: async
             App\Module\Workflow\Application\Engine\Message\RunScheduled: async
+            App\Module\Workflow\Application\Engine\Message\RunWebhook: async
 
 # The tests run the background in the request, as it comes; the runs that wait are kept, for
 # the tests to resume them when they say (messenger.transport.delayed).

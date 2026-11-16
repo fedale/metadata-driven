@@ -34,6 +34,7 @@ use App\Module\Workflow\Application\Definition\Timing;
 use App\Module\Workflow\Application\Definition\TriggerEvent;
 use App\Module\Workflow\Application\Engine\Message\ResumeRun;
 use App\Module\Workflow\Application\Engine\Message\RunScheduled;
+use App\Module\Workflow\Application\Engine\Message\RunWebhook;
 use App\Module\Workflow\Application\Engine\Message\RunWorkflow;
 use App\Module\Workflow\Application\Secrets\SecretsKeyMissing;
 use App\Module\Workflow\Application\Secrets\WorkflowSecrets;
@@ -241,22 +242,42 @@ final class WorkflowEngine implements ResetInterface
      */
     public function runScheduled(RunScheduled $message): ?RunLog
     {
-        $work = function () use ($message): ?RunLog {
-            $workflow = $this->workflows->byId($message->workflowId);
-            if (null === $workflow || $workflow->versionId !== $message->versionId) {
+        return $this->runUnattended($message->workspaceId, $message->workflowId, $message->versionId, TriggerEvent::Schedule, ['scheduled_at' => $message->scheduledAt]);
+    }
+
+    /**
+     * A request to a workflow's address, from the queue: as a scheduled run, $trigger its body
+     * and its query.
+     */
+    public function runWebhook(RunWebhook $message): ?RunLog
+    {
+        return $this->runUnattended($message->workspaceId, $message->workflowId, $message->versionId, TriggerEvent::Webhook, ['body' => $message->body, 'query' => $message->query]);
+    }
+
+    /**
+     * A run no one is behind (a time come, a request from outside): in its workspace, its steps
+     * acting as their roles, if the version that was active is still.
+     *
+     * @param array<string, mixed> $trigger what $trigger holds
+     */
+    private function runUnattended(string $workspaceId, string $workflowId, string $versionId, TriggerEvent $on, array $trigger): ?RunLog
+    {
+        $work = function () use ($workflowId, $versionId, $on, $trigger): ?RunLog {
+            $workflow = $this->workflows->byId($workflowId);
+            if (null === $workflow || $workflow->versionId !== $versionId) {
                 return null;
             }
             [$previous, $this->actingAs] = [$this->actingAs, null];
             try {
                 ++$this->pending;
-                $run = new RunLog($workflow, '', null, TriggerEvent::Schedule->value, TriggerEvent::Schedule->value, null, 1, new \DateTimeImmutable());
+                $run = new RunLog($workflow, '', null, $on->value, $on->value, null, 1, new \DateTimeImmutable());
                 if (null !== $refusal = $this->tooMany()) {
                     $run->end(RunLog::FAILED, $refusal);
                     $this->store($run);
 
                     return $run;
                 }
-                $chain = $this->chain(['scheduled_at' => $message->scheduledAt]);
+                $chain = $this->chain($trigger);
                 // No one is behind it, whoever is signed in where it runs.
                 $chain->set('$user', null);
                 try {
@@ -279,10 +300,10 @@ final class WorkflowEngine implements ResetInterface
                 $this->actingAs = $previous;
             }
         };
-        if ($this->workspace->isSelected() && $this->workspace->id() === $message->workspaceId) {
+        if ($this->workspace->isSelected() && $this->workspace->id() === $workspaceId) {
             return $work();
         }
-        $workspace = $this->workspaces->byId($message->workspaceId);
+        $workspace = $this->workspaces->byId($workspaceId);
 
         return null === $workspace ? null : $this->sessions->within($workspace, $work);
     }

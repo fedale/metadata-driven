@@ -449,6 +449,15 @@ admin:
         type_upsert_record: Create or update a record
         type_set_values: Set values
         type_refuse: Refuse
+        webhook_editor: '$trigger.body and $trigger.query: its address is made on this page, under the YAML tab''s buttons.'
+        on_webhook: 'a request from outside (webhook)'
+        webhook: 'Its address'
+        webhook_none: 'No address yet: make one, and give it to the system that will call it.'
+        webhook_has: 'An address made on %when% by %who%: shown once, when made. Lost? Make a new one.'
+        webhook_make: 'Make its address'
+        webhook_remake: 'Make a new address'
+        webhook_confirm: 'The address it has will answer no more. Make a new one?'
+        webhook_made: 'Its address, shown this once (POST, a JSON body): %url%'
         secrets: 'Secrets'
         secrets_intro: 'Tokens and keys for the HTTP requests of the workflows, encrypted: {{ $secrets.name }} in a request''s address, headers or body, nowhere else. A value is never shown again, nor written in the runs (there it is [secret]).'
         secrets_empty: 'No secret yet.'

@@ -63,6 +63,20 @@
             {{ form_end(form) }}
 
             {% endif %}
+            {% if webhook|default(null) %}
+                {# Its address: shown once, when made (a flash); here only whether there is one. #}
+                <div class="md-workflow-webhook">
+                    <h3>{{ 'admin.workflow.webhook'|trans }}</h3>
+                    <p class="gv-muted">
+                        {{ webhook.made
+                            ? 'admin.workflow.webhook_has'|trans({'%when%': webhook.made.made_at|slice(0, 16), '%who%': webhook.made.made_by ?? '—'})
+                            : 'admin.workflow.webhook_none'|trans }}
+                    </p>
+                    {{ form_start(webhook.form, {attr: {class: 'md-inline-form', 'data-turbo-confirm': webhook.made ? 'admin.workflow.webhook_confirm'|trans : false}}) }}
+                        <button type="submit" class="gv-btn">{{ (webhook.made ? 'admin.workflow.webhook_remake' : 'admin.workflow.webhook_make')|trans }}</button>
+                    {{ form_end(webhook.form) }}
+                </div>
+            {% endif %}
             {% if workflow %}
                 {% if active %}
                     {{ form_start(deactivate_form, {attr: {class: 'md-inline-form'}}) }}

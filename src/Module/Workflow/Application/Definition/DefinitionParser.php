@@ -72,7 +72,7 @@ final class DefinitionParser
     {
         [$this->errors, $this->keys, $this->count] = [[], [], 0];
         // A run no write waits for: as a manual one's, its steps after the fact.
-        $this->manual = \is_array($data['trigger'] ?? null) && \in_array($data['trigger']['on'] ?? null, ['manual', 'schedule'], true);
+        $this->manual = \is_array($data['trigger'] ?? null) && \in_array($data['trigger']['on'] ?? null, ['manual', 'schedule', 'webhook'], true);
         $this->platform = \is_array($data['trigger'] ?? null) && \is_string($data['trigger']['on'] ?? null) && true === TriggerEvent::tryFrom($data['trigger']['on'])?->isPlatform();
 
         $this->unknownKeys($data, ['trigger', 'steps'], '');
@@ -108,6 +108,12 @@ final class DefinitionParser
         }
         if (TriggerEvent::Manual === $on) {
             return $this->manualTrigger($trigger);
+        }
+        if (TriggerEvent::Webhook === $on) {
+            // A request to its address: nothing to name but the event.
+            $this->unknownKeys($trigger, ['on'], 'trigger');
+
+            return new Trigger($on, '', Timing::After, []);
         }
         if (TriggerEvent::Schedule === $on) {
             // A time come: nothing but its cron expression, in UTC.

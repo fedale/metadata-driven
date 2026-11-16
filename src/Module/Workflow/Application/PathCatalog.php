@@ -53,9 +53,9 @@ final class PathCatalog
 
             return ['trigger' => $trigger, 'context' => ['$workspace.slug', '$workspace.name', '$now', '$today', '$last'], 'steps' => array_filter($steps, static fn (array $paths): bool => [] !== $paths)];
         }
-        if ($definition->trigger->isScheduled()) {
-            // A time come: no record, no one.
-            $trigger = ['$trigger.scheduled_at'];
+        if ($definition->trigger->isUnattended()) {
+            // A time come, a request from outside: no record, no one.
+            $trigger = $definition->trigger->isScheduled() ? ['$trigger.scheduled_at'] : ['$trigger.body', '$trigger.query'];
             $context = ['$workspace.slug', '$workspace.name', '$now', '$today', '$last'];
         } else {
             $trigger = $definition->trigger->runsOnAll()

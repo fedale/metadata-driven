@@ -4,8 +4,8 @@ Status: **agreed** (2026-11-16). Phase 6 of [workflow-plan.md](workflow-plan.md)
 
 ## Decisions (user, 2026-11-16)
 
-1. **Now: schedules**, then **the workspaces' secrets** (asked the same day). The rest of the
-   phase (workflows in packages, incoming webhooks, sub-workflows, quotas per plan) waits.
+1. **Now: schedules**, then **the workspaces' secrets**, then **incoming webhooks** (asked the
+   same day). The rest of the phase (workflows in packages, sub-workflows, quotas per plan) waits.
 2. **Email and notifications stay out** until the application sends email.
 
 ## Schedules
@@ -51,3 +51,20 @@ As planned. The tests' key is a parameter of `when@test` (`app.workflow.secrets_
 security review asked, and got, every form of a secret masked (as it is, in an address, in JSON,
 in base64), the error a request wraps not chained, and a network's error of a request that read a
 secret told by its host only.
+
+## Incoming webhooks
+
+Chosen without asking (the user's earlier choices for schedules and secrets as the guide):
+
+- **Trigger** `on: webhook`, nothing else; `$trigger.body` (JSON decoded, else the text, at most
+  64 KB), `$trigger.query`. No one behind it: `act_as` on every step reading or writing records.
+- **Its address**: `/hooks/<workflow id>/<token>` on the workspace's host, the token in the path
+  (systems outside can set an address, not always a header); kept as its SHA-256
+  (`core.workflow_webhook`), shown once when made on the workflow's page, made again to replace
+  it. Its own firewall, stateless, no one signed in.
+- **The answer**: `202` and the run in the worker; `404` for anything wrong (no hint of which);
+  `429` past the workspace's runs a minute, nothing queued (a flood fills no queue).
+
+### Done (2026-11-16, branch `workflow_webhook`)
+
+As above. The unattended runs (schedule, webhook) share `WorkflowEngine::runUnattended()`.

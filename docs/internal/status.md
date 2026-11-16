@@ -385,7 +385,10 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   merged into `main` on 2026-11-16. The workspaces' secrets (`core.workflow_secret`, migration
   `Version20261116140000`, run `doctrine:migrations:migrate`; `WORKFLOW_SECRETS_KEY`, which the
   user sets, `workflow:secrets:key`; `{{ $secrets.name }}` in an http_request only, masked in the
-  runs) done on branch `workflow_secrets`, waiting for review.
+  runs) done on branch `workflow_secrets`, merged into `main` on 2026-11-16 (the security review
+  asked, and got, every form of a secret masked). Incoming webhooks (`on: webhook`,
+  `/hooks/<id>/<token>`, `core.workflow_webhook`, migration `Version20261116160000`, run
+  `doctrine:migrations:migrate`) done on branch `workflow_webhook`, waiting for review.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`
