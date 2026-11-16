@@ -441,6 +441,13 @@ day.
 `workflow:runs:gc` deletes the old runs of its workspace, never one that waits; with several workspaces, schedule
 `workspace:run --all -- workflow:runs:gc` (see [Console commands](console.md#workflowrunsgc)).
 
+## In packages
+
+A package carries workflows (`metadata:package:export --workflow=<name>`), installed and upgraded
+as **drafts**: an admin activates them here, and their steps act with that admin's permissions.
+A new version of a package changes a workflow's draft; its active version runs on until the
+draft is activated. See [Packages](packages.md#workflows).
+
 ## The system admin's workflows
 
 In the [system console](workspaces.md#the-system-console), **Workflows** (`/console/workflows`):
@@ -489,6 +496,7 @@ these triggers or steps, and the console defines no workflow on a record's.
 | The definition | `DefinitionParser` (structure, every problem by its path), `DefinitionValidator` (objects, fields, paths, roles, on activation), stored compiled as JSON (`core.workflow_version.definition`) next to the YAML as written (`source`) |
 | Secrets | `core.workflow_secret` (DBAL, row-level security; migration `Version20261116140000`), `WorkflowSecrets` (`DbalWorkflowSecrets`), sealed by `SecretBox` (libsodium's secret box, `WORKFLOW_SECRETS_KEY`, `workflow:secrets:key`); read on a copy of the run's data for the request only, masked in its log |
 | HTTP | `WorkflowHttp`: Symfony's `HttpClient` through `NoPrivateNetworkHttpClient` (`app.workflow.allow_private_networks`, true in the tests only), the retries and the 1 MB cap |
+| Packages | The Workflow contract's `PackagedWorkflowsInterface` (`PackagedWorkflows`: every workflow with its current definition, a definition as the app writes it, a new workflow or a draft, never activated); the Package module's `WorkflowReferences` turns objects and called workflows into ids and back; items of kind `workflow` in `core.package_item` |
 | Sub-workflows | `WorkflowEngine::call()` (in line, the called run its own `RunLog`, stored as its caller's), `ActiveWorkflows::byName()` and `called()`; the run permission made by `WorkflowManager` for `called` as for `manual` |
 | Webhooks | `WebhookController` (`/hooks/<id>/<token>`, its own stateless firewall, `security.yaml`), `WebhookTokens` (`core.workflow_webhook`, the token's SHA-256; migration `Version20261116160000`), `RunWebhook` and `WorkflowEngine::runWebhook()` |
 | Schedules | Symfony Scheduler: `WorkflowSchedule` (`#[AsSchedule('workflows')]`) sends `CheckSchedules` every minute, `ScheduledWorkflows` queues a `RunScheduled` for each workflow due (`dragonmantank/cron-expression`), `WorkflowEngine::runScheduled()` |
@@ -503,4 +511,4 @@ these triggers or steps, and the console defines no workflow on a record's.
 ## Not yet
 
 Other platform events (a workspace suspended or deleted), record steps in the system admin's
-workflows; workflows in packages, quotas per plan; a sub-workflow's input of lists or maps; email and notifications, once the application sends email. See [the plan](internal/workflow-plan.md).
+workflows; quotas per plan; a sub-workflow's input of lists or maps; email and notifications, once the application sends email. See [the plan](internal/workflow-plan.md).

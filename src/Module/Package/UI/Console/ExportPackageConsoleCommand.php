@@ -17,7 +17,7 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'metadata:package:export', description: 'Write objects, their fields and views, forms and their translations as a package')]
+#[AsCommand(name: 'metadata:package:export', description: 'Write objects, their fields and views, forms and their translations, and workflows as a package')]
 final class ExportPackageConsoleCommand
 {
     public function __construct(
@@ -30,6 +30,7 @@ final class ExportPackageConsoleCommand
      * @param list<string> $object
      * @param list<string> $form
      * @param list<string> $seed
+     * @param list<string> $workflow
      */
     public function __invoke(
         SymfonyStyle $io,
@@ -42,6 +43,7 @@ final class ExportPackageConsoleCommand
         #[Option('A line about what it is for')] ?string $description = null,
         #[Option('Its license, an SPDX identifier (e.g. MIT)')] string $license = 'proprietary',
         #[Option('Export the records of an object as a seed: object, or object:key to name its key field (repeatable)')] array $seed = [],
+        #[Option('A workflow to export, by name, as its draft reads (else its active version); installed as a draft (repeatable)')] array $workflow = [],
     ): int {
         $seeds = [];
         foreach ($seed as $option) {
@@ -49,7 +51,7 @@ final class ExportPackageConsoleCommand
             $seeds[$objectName] = '' === $key ? null : $key;
         }
         try {
-            $package = $this->exporter->export(new ExportPackageCommand($name, $release, $object, $form, $label, $description, $license, $seeds));
+            $package = $this->exporter->export(new ExportPackageCommand($name, $release, $object, $form, $label, $description, $license, $seeds, $workflow));
             $this->directories->write($package, $directory);
         } catch (PackageException|MetadataException|\RuntimeException $e) {
             $io->error($e->getMessage());

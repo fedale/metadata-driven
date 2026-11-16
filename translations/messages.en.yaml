@@ -666,6 +666,7 @@ admin:
         trial_many: 'A trial install went through: nothing was changed yet. Installing them creates:'
         from_source: 'From %source%'
         skipped_locales: 'Left out, this instance not having them: the languages %locales%.'
+        workflows_drafts: 'Workflows (drafts, to activate on the workflows page)'
         install_button: 'Install %name% %version%'
         install_button_many: 'Install %name% %version% and what it requires'
         installed_one: 'Package %packages% installed.'

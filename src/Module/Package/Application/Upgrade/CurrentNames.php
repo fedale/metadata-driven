@@ -27,6 +27,9 @@ final class CurrentNames
     /** @var array<string, string> form id => name */
     private array $forms = [];
 
+    /** @var array<string, string> workflow id => name */
+    private array $workflows = [];
+
     public function __construct(
         private readonly FieldTypeCatalog $fieldTypes,
     ) {
@@ -52,6 +55,11 @@ final class CurrentNames
                 $this->forms[$form->id] = $form->spec['name'];
             }
         }
+        foreach ($package->documentsOf(DocumentKind::Workflow) as $workflow) {
+            if (\is_string($workflow->spec['name'] ?? null) && ($override || !isset($this->workflows[$workflow->id]))) {
+                $this->workflows[$workflow->id] = $workflow->spec['name'];
+            }
+        }
     }
 
     /**
@@ -69,6 +77,19 @@ final class CurrentNames
                 $this->fields[$id] ??= [$objectIds[$object], $field];
             }
         }
+        foreach ($required->workflowIds() as $name => $id) {
+            $this->workflows[$id] ??= $name;
+        }
+    }
+
+    public function renameWorkflow(string $id, string $name): void
+    {
+        $this->workflows[$id] = $name;
+    }
+
+    public function workflow(string $id): string
+    {
+        return $this->workflows[$id] ?? throw new \LogicException(\sprintf('No workflow has the id "%s".', $id));
     }
 
     public function renameObject(string $id, string $name): void

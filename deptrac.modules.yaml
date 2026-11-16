@@ -174,7 +174,7 @@ deptrac:
     File: [FileContract, Shared]
     FileContract: [Shared]
 
-    Package: [PackageContract, MetadataContract, RecordContract, FieldTypeContract, FileContract, AccessContract, Shared]
+    Package: [PackageContract, MetadataContract, RecordContract, FieldTypeContract, FileContract, AccessContract, WorkflowContract, Shared]
     PackageContract: [Shared]
 
     Workflow: [WorkflowContract, MetadataContract, RecordContract, AccessContract, PackageContract, UserContract, FieldTypeContract, Shared]

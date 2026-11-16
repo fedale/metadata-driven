@@ -505,7 +505,7 @@ Write objects, with their fields and views, forms and their translations as a
 package: a directory of YAML documents (see [Packages](packages.md)).
 
 ```
-metadata:package:export <name> <release> <directory> [--object=OBJECT]... [--form=FORM]... [--label=LABEL] [--description=DESCRIPTION] [--license=LICENSE]
+metadata:package:export <name> <release> <directory> [--object=OBJECT]... [--form=FORM]... [--label=LABEL] [--description=DESCRIPTION] [--license=LICENSE] [--seed=SEED]... [--workflow=WORKFLOW]...
 ```
 
 | Argument or option | Meaning |
@@ -518,6 +518,7 @@ metadata:package:export <name> <release> <directory> [--object=OBJECT]... [--for
 | `--label`, `--description` | The title (default: from the name) and a line about the package |
 | `--license` | An SPDX identifier, such as `MIT` (default `proprietary`) |
 | `--seed` | Export the records of an object as a seed: `object`, or `object:key` to name its key field (default: its first unique field). Repeatable |
+| `--workflow` | A workflow to export, by name, as its draft reads (else its active version); installed as a draft (see [Packages](packages.md#workflows)). Repeatable |
 
 ```bash
 symfony console metadata:package:export acme/shop 1.0.0 packages/shop --object=category --object=product --form=catalogue --license=MIT

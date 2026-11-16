@@ -16,7 +16,7 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'metadata:package:install', description: 'Install a package: its objects and their tables, fields, views, forms and translations, all or nothing')]
+#[AsCommand(name: 'metadata:package:install', description: 'Install a package: its objects and their tables, fields, views, forms, translations and workflows (as drafts), all or nothing')]
 final class InstallPackageConsoleCommand
 {
     public function __construct(
@@ -72,6 +72,7 @@ final class InstallPackageConsoleCommand
                 ['Forms' => [] === $report->forms ? '—' : implode(', ', $report->forms)],
                 ['Translations' => (string) $report->translations],
                 ['Records' => (string) $report->records],
+                ['Workflows (drafts)' => [] === $report->workflows ? '—' : implode(', ', $report->workflows)],
             );
             if ([] !== $report->skippedLocales) {
                 $io->warning(\sprintf('Languages this instance does not have, left out: %s.', implode(', ', $report->skippedLocales)));

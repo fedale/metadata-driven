@@ -21,6 +21,8 @@ use App\Module\Package\Domain\Model\PackageItem;
 use App\Module\Package\Domain\Repository\PackageInstallationRepository;
 use App\Module\Package\Domain\Repository\PackageItemRepository;
 use App\Module\Package\Domain\Repository\PersistenceReset;
+use App\Module\Workflow\Contract\Exception\InvalidWorkflowSource;
+use App\Module\Workflow\Contract\PackagedWorkflowsInterface;
 use App\Shared\Transaction\TransactionRunner;
 use Fedale\PackageFormat\Document;
 use Fedale\PackageFormat\DocumentKind;
@@ -41,7 +43,8 @@ use Symfony\Component\Yaml\Yaml;
  * The order follows what each step needs to exist before it: objects; fields, those naming
  * another field after it (a cascade, a junction); conditions, record label, search and unique
  * sets; the {t:name} texts, before the layouts placing them; views and forms; the other
- * translations, whose keys name the items; the records of the seeds (SeedWriter).
+ * translations, whose keys name the items; the workflows, as drafts (an admin activates them, and
+ * their steps then act with that admin's permissions); the records of the seeds (SeedWriter).
  */
 final class PackageInstaller
 {
@@ -60,6 +63,7 @@ final class PackageInstaller
         private readonly PersistenceReset $persistence,
         private readonly SeedFingerprints $fingerprints,
         private readonly RequiredPackages $required,
+        private readonly PackagedWorkflowsInterface $workflows,
     ) {
     }
 
@@ -184,6 +188,14 @@ final class PackageInstaller
         foreach ($forms as $form) {
             $prefixes = [...$prefixes, TranslationKey::form($form), 'section.'.$form, 'description.'.$form, 'service.'.$form];
         }
+        $localWorkflows = array_flip(array_map(static fn ($workflow): string => $workflow->name, $this->workflows->all()));
+        foreach ($package->documentsOf(DocumentKind::Workflow) as $workflow) {
+            $name = self::string($workflow->spec['name'] ?? null);
+            if (isset($localWorkflows[$name])) {
+                $collisions[] = \sprintf('%s: spec.name: This instance already has a workflow "%s".', $workflow->path, $name);
+            }
+        }
+
         $localTexts = array_flip(array_map(static fn (TextDto $text): string => $text->key(), $this->translations->texts()));
         foreach ($package->documentsOf(DocumentKind::Translations) as $document) {
             foreach (array_keys(self::map($document->spec['entries'] ?? [])) as $key) {
@@ -275,6 +287,20 @@ final class PackageInstaller
 
         $count += $this->translate($translations, $enabled, static fn (string $key): bool => !TranslationKey::isText($key));
 
+        // The workflows, as drafts: nothing of theirs runs until an admin activates them.
+        $workflows = [];
+        foreach ($package->documentsOf(DocumentKind::Workflow) as $workflow) {
+            $name = self::string($workflow->spec['name'] ?? null);
+            $definition = WorkflowReferences::map(self::map($workflow->spec['definition'] ?? []), $names->object(...), $names->workflow(...));
+            try {
+                $localId = $this->workflows->create($name, \is_string($workflow->spec['description'] ?? null) ? $workflow->spec['description'] : null, $definition);
+            } catch (InvalidWorkflowSource $e) {
+                throw InstallRefused::at($workflow->path, 'spec.definition', $e->getMessage());
+            }
+            $items[] = $this->item($package, ItemKind::Workflow, $workflow->id, $localId);
+            $workflows[] = $name;
+        }
+
         // The records last: their tables, fields and forms all exist by now.
         $records = $this->seeds->write($package, $names, null, $this->required->records($package, $required, $requiredItems));
 
@@ -295,6 +321,7 @@ final class PackageInstaller
             $count,
             $records,
             array_values(array_unique($skipped)),
+            $workflows,
         );
     }
 

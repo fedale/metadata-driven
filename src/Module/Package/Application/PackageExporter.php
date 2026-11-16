@@ -16,6 +16,9 @@ use App\Module\Package\Application\Command\ExportPackageCommand;
 use App\Module\Package\Domain\Exception\InvalidExport;
 use App\Module\Package\Domain\Model\ItemKind;
 use App\Module\Package\Domain\Repository\PackageItemRepository;
+use App\Module\Workflow\Contract\Dto\WorkflowSource;
+use App\Module\Workflow\Contract\Exception\InvalidWorkflowSource;
+use App\Module\Workflow\Contract\PackagedWorkflowsInterface;
 use Fedale\PackageFormat\Document;
 use Fedale\PackageFormat\DocumentKind;
 use Fedale\PackageFormat\FieldTypes\FieldOwner;
@@ -27,7 +30,8 @@ use Fedale\PackageFormat\PackageChecker;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * Writes objects, their fields and views, forms and their translations as a package.
+ * Writes objects, their fields and views, forms and their translations, and workflows, as a
+ * package.
  *
  * Inside the app items point at each other by name; in a package, by id. The ids recorded by a
  * previous export of the same package are kept, so that an object or a field renamed since keeps
@@ -47,6 +51,7 @@ final class PackageExporter
         private readonly PackageChecker $checker,
         private readonly SeedExporter $seedExporter,
         private readonly RequiredPackages $required,
+        private readonly PackagedWorkflowsInterface $workflows,
     ) {
     }
 
@@ -62,7 +67,7 @@ final class PackageExporter
         if (1 !== preg_match(Format::VERSION_PATTERN, $command->version)) {
             throw InvalidExport::invalidVersion($command->version);
         }
-        if ([] === $command->objects && [] === $command->forms) {
+        if ([] === $command->objects && [] === $command->forms && [] === $command->workflows) {
             throw InvalidExport::nothingToExport();
         }
 
@@ -96,6 +101,7 @@ final class PackageExporter
                 }
             }
         }
+        [$workflows, $calledElsewhere] = $this->exportedWorkflows($command, $objects, $requirement, $requires);
         $requires = array_keys($requires);
         sort($requires);
         $requiredItems = $this->required->items($requires);
@@ -126,6 +132,13 @@ final class PackageExporter
         }
         foreach ($forms as $form) {
             $documents[] = $this->formDocument($form, $ids->of(ItemKind::Form, $form->id, $prefix.'.'.$form->name), $refs);
+        }
+        $workflowIds = $calledElsewhere ? $requiredItems->workflowIds() : [];
+        foreach ($workflows as $name => $workflow) {
+            $workflowIds[$name] = $ids->of(ItemKind::Workflow, $workflow->id, $prefix.'.workflow.'.self::slug($name));
+        }
+        foreach ($workflows as $name => $workflow) {
+            $documents[] = $this->workflowDocument($workflow, $workflowIds[$name], $refs, $workflowIds);
         }
         $documents = [...$documents, ...$this->translationDocuments($prefix, $objects, $forms)];
         [$seeds, $files] = $this->seedExporter->export($prefix, $objects, $command->seeds, $refs, [] === $command->seeds ? [] : $this->required->seededKeys($required, $requiredItems));
@@ -196,8 +209,109 @@ final class PackageExporter
             }
         }
         $documents = [...$documents, ...$this->translationDocuments(Format::idPrefix($package), $objects, $forms)];
+        // Its workflows as their current definition reads (an admin's draft, else the active one).
+        $ownedWorkflows = $owned[ItemKind::Workflow->value] ?? [];
+        $sources = array_intersect_key($this->workflows->all(), $ownedWorkflows);
+        $workflowIds = $required->workflowIds();
+        foreach ($sources as $id => $workflow) {
+            $workflowIds[$workflow->name] = $ownedWorkflows[$id];
+        }
+        foreach ($sources as $id => $workflow) {
+            $documents[] = $this->workflowDocument($workflow, $ownedWorkflows[$id], $refs, $workflowIds);
+        }
 
         return new Package(new Document(DocumentKind::Package, $package, [], Format::MANIFEST), $documents);
+    }
+
+    /**
+     * The workflows named, by name: each readable, the package's own (never another installed
+     * package's), every object it names exported or required, every workflow it calls exported
+     * or another package's, which the export then requires.
+     *
+     * @param array<string, ObjectDefinitionDto> $objects     the exported objects
+     * @param \Closure(string): ?string          $requirement the package owning an object outside the export
+     * @param array<string, true>                $requires    the packages required, added to
+     *
+     * @return array{array<string, WorkflowSource>, bool} the workflows by name; whether one calls another package's
+     *
+     * @throws InvalidExport
+     */
+    private function exportedWorkflows(ExportPackageCommand $command, array $objects, \Closure $requirement, array &$requires): array
+    {
+        if ([] === $command->workflows) {
+            return [[], false];
+        }
+        $byName = [];
+        foreach ($this->workflows->all() as $workflow) {
+            $byName[$workflow->name] = $workflow;
+        }
+        $owners = $this->required->workflowOwners();
+        $workflows = [];
+        foreach (array_unique($command->workflows) as $name) {
+            $workflow = $byName[$name] ?? throw InvalidExport::noWorkflow($name);
+            if (($owners[$name] ?? $command->name) !== $command->name) {
+                throw InvalidExport::workflowOwnedByAnother($name, $owners[$name]);
+            }
+            try {
+                $this->workflows->canonical($workflow->definition);
+            } catch (InvalidWorkflowSource $e) {
+                throw InvalidExport::brokenWorkflow($name, $e->getMessage());
+            }
+            $workflows[$name] = $workflow;
+        }
+        $elsewhere = false;
+        foreach ($workflows as $name => $workflow) {
+            $named = WorkflowReferences::of($workflow->definition);
+            foreach ($named['objects'] as $object) {
+                if (!isset($objects[$object])) {
+                    $requires[$requirement($object) ?? throw InvalidExport::workflowOutsideTheExport($name, \sprintf('object "%s"', $object))] = true;
+                }
+            }
+            foreach ($named['workflows'] as $called) {
+                if (!isset($workflows[$called])) {
+                    $owner = $owners[$called] ?? null;
+                    if (null === $owner || $owner === $command->name) {
+                        throw InvalidExport::workflowOutsideTheExport($name, \sprintf('workflow "%s"', $called));
+                    }
+                    $requires[$owner] = true;
+                    $elsewhere = true;
+                }
+            }
+        }
+
+        return [$workflows, $elsewhere];
+    }
+
+    /**
+     * A workflow's document: its objects, and the workflows it calls, as ids (a reference to
+     * an item the package does not own, in an installed package's state, is "local:<name>").
+     *
+     * @param array<string, string> $workflowIds workflow name => id
+     */
+    private function workflowDocument(WorkflowSource $workflow, string $id, ItemReferences $refs, array $workflowIds): Document
+    {
+        $spec = ['name' => $workflow->name];
+        if (null !== $workflow->description) {
+            $spec['description'] = $workflow->description;
+        }
+        $spec['definition'] = WorkflowReferences::map(
+            $workflow->definition,
+            static fn (string $object): string => $refs->object($object),
+            static fn (string $called): string => $workflowIds[$called] ?? ItemReferences::LOCAL.$called,
+        );
+        $segments = explode('.', $id);
+
+        return new Document(DocumentKind::Workflow, $id, $spec, \sprintf('workflows/%s.yaml', end($segments)));
+    }
+
+    /**
+     * A workflow's name as the last segment of its id: "Remind overdue" is remind_overdue.
+     */
+    private static function slug(string $name): string
+    {
+        $slug = trim((string) preg_replace('/[^a-z0-9]+/', '_', strtolower(iconv('UTF-8', 'ASCII//TRANSLIT', $name) ?: $name)), '_');
+
+        return '' === $slug ? 'workflow' : (ctype_digit($slug[0]) ? 'w_'.$slug : $slug);
     }
 
     /**

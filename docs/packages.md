@@ -1,7 +1,7 @@
 # Packages
 
 A package packages a model: objects with their fields, their form and grid views, forms,
-their translations, and records to start with (seeds). You write one from the objects you built, keep it in version
+their translations, records to start with (seeds), and workflows. You write one from the objects you built, keep it in version
 control, share it, validate it without a database, and install it on another instance.
 
 **Today** a package can be exported, validated, packed, published in a signed index, and
@@ -65,7 +65,7 @@ Every file is a YAML document with the same four keys:
 
 ```yaml
 format: metadata-driven/v2        # the version of the format
-kind: Object                      # Package, Object, Form, View, Translations or Seed
+kind: Object                      # Package, Object, Form, View, Translations, Seed or Workflow
 id: acme.product                  # the item's identity in the package
 spec:                             # the item, as its kind describes it
   name: product
@@ -170,6 +170,53 @@ the target's seed, every file is in the package. Whether a value fits its field 
 pattern) is checked at install, record by record, with the rules of the object; a refused
 record names its line (`seeds/product.yaml: seeds/products.csv:3: sku: ...`) and rolls back the
 whole install.
+
+## Workflows
+
+```bash
+symfony console metadata:package:export acme/shop 1.1.0 packages/shop --object=product --object=tag \
+  --workflow="Restock" --workflow="Tag name"
+```
+
+A workflow goes into `workflows/<name>.yaml`: its name, its description, and its definition as
+its draft reads (else its active version), the object of its trigger and of its steps, and the
+workflow each `run_workflow` step calls, turned into ids (its fields stay named by name, within
+their object, as in a layout):
+
+```yaml
+format: metadata-driven/v2
+kind: Workflow
+id: acme.workflow.restock
+spec:
+  name: Restock
+  description: A product with no seats left gets a tag.
+  definition:
+    trigger: { on: updated, object: acme.product, when: after, fields: [seats] }
+    steps:
+      - { key: empty, type: filter, when: { field: $trigger.record.seats, op: eq, value: 0 } }
+      - { key: name, type: run_workflow, workflow: acme.workflow.tag_name, input: { sku: '{{ $trigger.record.sku }}' } }
+      - { key: tag, type: create_record, object: acme.tag, values: { name: '{{ name.tag }}' } }
+```
+
+- **Exported** with what it names: each object it names, and each workflow it calls, exported
+  too or belonging to an installed package, which the export then requires. A workflow of another
+  installed package is exported with that one. A draft that does not read is refused: fix it first.
+- **Installed as a draft**, always: a workflow runs with the permissions of whoever activated
+  it, and an install has no one to lend them (a command, a new workspace's packages). An admin
+  reads it on the workflows page, tests it and activates it; its steps' roles and permissions are
+  checked then, as for any workflow. An install is refused when this instance has a workflow of
+  the same name, or when the app refuses a definition's structure.
+- **Upgraded as a draft**: a workflow the new version changed becomes the workflow's draft (renamed
+  if it was); its active version keeps running until an admin activates the draft. What an admin
+  changed (its draft, else its active version) and the new version did not is kept; both changed
+  is a conflict, resolved by `--strategy` as the other items. A definition written another way
+  (an order of keys, a default left out) is no change. A workflow the new version removes is
+  deactivated and left to this instance, its versions and runs with it.
+- **Version numbers**: a workflow added, or its definition changed, needs a minor version; its
+  description changes in a patch; removing or renaming one (the workflows calling it name it)
+  needs a major.
+- The platform's events (`workspace_created`, `member_added`) are the system admin's: no package
+  carries a workflow on them. Its `$secrets` are the workspace's: set them there.
 
 ## Validating a package
 
@@ -455,8 +502,8 @@ The new version's number must fit what it changed since the version installed:
 | Version | May |
 |---|---|
 | Major (`2.0.0` after `1.4.2`) | change anything: remove, rename, carry migration steps |
-| Minor (`1.5.0`) | add items, change settings, conditions, search, unique sets |
-| Patch (`1.4.3`) | change labels, layouts, forms and translations only |
+| Minor (`1.5.0`) | add items, change settings, conditions, search, unique sets, a workflow's definition |
+| Patch (`1.4.3`) | change labels, layouts, forms, translations and a workflow's description only |
 
 `objects/tag.yaml: field acme.tag.colour: an addition needs a new minor version, 1.0.1 is not
 one.` Who installs a minor version expects to lose nothing.

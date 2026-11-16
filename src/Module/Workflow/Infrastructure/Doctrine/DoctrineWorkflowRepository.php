@@ -59,6 +59,11 @@ final class DoctrineWorkflowRepository implements WorkflowRepository
 
     public function remove(Workflow $workflow): void
     {
+        // Its versions too: the database deletes them with it, and a version left managed would
+        // point at a workflow no longer there on the next flush.
+        foreach ($this->versionsOf($workflow) as $version) {
+            $this->entityManager->remove($version);
+        }
         $this->entityManager->remove($workflow);
         $this->entityManager->flush();
     }

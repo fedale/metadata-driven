@@ -27,6 +27,7 @@
                 <dt>{{ 'admin.forms'|trans }}</dt><dd>{{ report.forms is empty ? '—' : report.forms|join(', ') }}</dd>
                 <dt>{{ 'admin.translations'|trans }}</dt><dd>{{ report.translations }}</dd>
                 <dt>{{ 'admin.records'|trans }}</dt><dd>{{ report.records }}</dd>
+                <dt>{{ 'admin.package_admin.workflows_drafts'|trans }}</dt><dd>{{ report.workflows is empty ? '—' : report.workflows|join(', ') }}</dd>
             </dl>
             {% if report.skippedLocales is not empty %}
                 <p class="gv-muted">{{ 'admin.package_admin.skipped_locales'|trans({'%locales%': report.skippedLocales|join(', ')}) }}</p>
