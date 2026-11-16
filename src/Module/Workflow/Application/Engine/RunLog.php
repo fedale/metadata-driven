@@ -14,6 +14,10 @@ final class RunLog
     public const string COMPLETED = 'completed';
     public const string FAILED = 'failed';
     public const string REFUSED = 'refused';
+    /** Stopped at a wait step: it resumes at resumeAt, from resumeStep. */
+    public const string WAITING = 'waiting';
+    /** Waited, and the version it ran was no longer active: it ends there. */
+    public const string CANCELLED = 'cancelled';
 
     public readonly string $id;
 
@@ -25,6 +29,14 @@ final class RunLog
     public array $chain = [];
 
     public ?\DateTimeImmutable $finishedAt = null;
+
+    /** A waiting run's: when it resumes, and the index of the definition's step it resumes from. */
+    public ?\DateTimeImmutable $resumeAt = null;
+
+    public ?int $resumeStep = null;
+
+    /** The steps logged before this part of the run (a resumed run's), already stored. */
+    public int $stepOffset = 0;
 
     /** @var list<array{key: string, type: string, status: string, input: mixed, output: mixed, error: ?string, duration_ms: int}> */
     public array $steps = [];
@@ -38,8 +50,27 @@ final class RunLog
         public readonly ?string $triggeredBy,
         public readonly int $depth,
         public readonly \DateTimeImmutable $startedAt,
+        ?string $id = null,
     ) {
-        $this->id = Uuid::v7()->toRfc4122();
+        $this->id = $id ?? Uuid::v7()->toRfc4122();
+    }
+
+    /**
+     * Stops at a wait: what ran so far is kept, the rest resumes then.
+     */
+    public function wait(\DateTimeImmutable $until, int $resumeStep): void
+    {
+        $this->status = self::WAITING;
+        $this->resumeAt = $until;
+        $this->resumeStep = $resumeStep;
+    }
+
+    /**
+     * How many steps this run executed, those of its parts before included.
+     */
+    public function executed(): int
+    {
+        return $this->stepOffset + \count($this->steps);
     }
 
     public function step(string $key, string $type, string $status, mixed $input, mixed $output, ?string $error, int $durationMs): void

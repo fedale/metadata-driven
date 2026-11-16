@@ -27,6 +27,8 @@ parameters:
     app.workflow.max_executed_steps: 1000
     # The records one search reads, the items one iterator runs on.
     app.workflow.max_records: 200
+    # The longest a run waits (the wait step).
+    app.workflow.max_wait_days: 30
     app.workflow.runs_keep_days: 30
     # Workspaces (docs/architecture.md, "Workspaces"). A request for <slug>.<base host> is for that
     # workspace's; one for the base host itself, or for any other host, and a command without

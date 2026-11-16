@@ -97,6 +97,7 @@ the step's output), a `type`, and its options.
 | `refuse` | `message` | Before a write, refuses it; after one, ends the run as failed |
 | `search_records` | `object`, `where` (tests, all of which hold), `sort`, `direction` (`asc`, `desc`), `limit`; `act_as` | Reads the records of an object: the first ones in its order (see [Search and iterator](#search-and-iterator)) |
 | `iterator` | `items` (one `{{ path }}` to a list), `steps` | Runs its steps once per item |
+| `wait` | `for` (`30 minutes`, `2 days`) or `until` (a date or a date-time, with `{{ … }}`) | Stops the run; the steps after it run then (see [Waits](#waits)) |
 
 The four steps that write records also take `act_as` (see [Permissions](#permissions)) and
 `emit_events`: `false` by default, so that the records a workflow writes start no workflow; `true`
@@ -209,6 +210,28 @@ steps:
   `refuse` or a failure ends the run. The steps after it read `<key>.count`, never the steps inside
   it. Iterators nest; every step they run counts against `app.workflow.max_executed_steps`.
 
+### Waits
+
+```yaml
+trigger: { on: created, object: invoice, when: after }
+steps:
+  - { key: later, type: wait, for: 7 days }
+  - { key: unpaid, type: filter, when: { field: $trigger.record.paid_on, op: empty } }
+  - { key: reminder, type: create_record, object: reminder, values: { invoice: '{{ $trigger.record.id }}' } }
+```
+
+- A `wait` stops the run for a duration (`for`: minutes, hours, days or weeks) or until a date
+  (`until`: `2026-12-31`, `2026-12-31T09:00:00+01:00`, or a field's `{{ … }}`); a date passed
+  already waits not. At most `app.workflow.max_wait_days` (30).
+- What the run did before the wait is kept; the run is **waiting** (its page shows it), and the
+  worker resumes it then, from the step after the wait, in a transaction of its own, as whoever
+  triggered it. `$now` and `$today` are the resumed run's; `$trigger` holds the record as it was
+  when the run started (a `search_records` reads it as it is). A version deactivated or replaced
+  meanwhile **cancels** the run when it would resume.
+- A wait is one of a definition's first steps, not inside an `if` or an `iterator`; in after-runs
+  and manual runs (a manual run goes on in the worker), never before a write, nor in the system
+  admin's workflows. A test on a record does not wait.
+
 A step that writes outputs the record as written (`{{ reminder.id }}`); an `if`, the branch it
 took; a filter, whether it passed. A step reads only the steps run before it on every way there:
 not the steps of another branch.
@@ -249,14 +272,16 @@ records it ran on, whatever object: give `admin.workflows` to whoever may see th
 | `app.workflow.runs_per_minute` | `100` | The runs a workspace may start a minute; beyond, a write a before-workflow guards is refused, a manual run fails, and an after-run goes back to the queue a minute later (ten times, then it fails) |
 | `app.workflow.max_executed_steps` | `1000` | The steps one run may execute; beyond, the run fails (a definition holds 50 at most) |
 | `app.workflow.max_records` | `200` | The records one search reads, the items one iterator runs on |
+| `app.workflow.max_wait_days` | `30` | The longest a run waits |
 | `app.workflow.runs_keep_days` | `30` | How long the runs are kept |
 
 A run is **completed**, **failed** (an after-run or a manual run that could not finish: nothing
-of it stays), or
-**refused** (a before-run that refused its write). A refused run is kept, though its write was
-rolled back. The steps run are counted per workspace and day.
+of it stays, since its last wait), **refused** (a before-run that refused its write), **waiting**
+(stopped at a wait) or **cancelled** (its version was no longer active when it would resume). A
+refused run is kept, though its write was rolled back. The steps run are counted per workspace and
+day.
 
-`workflow:runs:gc` deletes the old runs of its workspace; with several workspaces, schedule
+`workflow:runs:gc` deletes the old runs of its workspace, never one that waits; with several workspaces, schedule
 `workspace:run --all -- workflow:runs:gc` (see [Console commands](console.md#workflowrunsgc)).
 
 ## The system admin's workflows

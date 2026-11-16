@@ -12,7 +12,7 @@ parameters:
     excludePaths:
         - tests/bootstrap.php
     symfony:
-        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
+        containerXmlPath: var/cache/test/App_KernelTestDebugContainer.xml
     doctrine:
         objectManagerLoader: tests/object-manager.php
     ignoreErrors:

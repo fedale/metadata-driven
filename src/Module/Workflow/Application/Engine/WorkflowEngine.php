@@ -23,10 +23,12 @@ use App\Module\Record\Contract\RecordEventScopeInterface;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
 use App\Module\Workflow\Application\Definition\Definition;
+use App\Module\Workflow\Application\Definition\DefinitionParser;
 use App\Module\Workflow\Application\Definition\Step;
 use App\Module\Workflow\Application\Definition\StepType;
 use App\Module\Workflow\Application\Definition\Timing;
 use App\Module\Workflow\Application\Definition\TriggerEvent;
+use App\Module\Workflow\Application\Engine\Message\ResumeRun;
 use App\Module\Workflow\Application\Engine\Message\RunWorkflow;
 use App\Shared\Transaction\TransactionRunner;
 use App\Shared\Workspace\CurrentWorkspace;
@@ -92,6 +94,8 @@ final class WorkflowEngine implements ResetInterface
         private readonly int $maxExecutedSteps,
         #[Autowire('%app.workflow.max_records%')]
         private readonly int $maxRecords,
+        #[Autowire('%app.workflow.max_wait_days%')]
+        private readonly int $maxWaitDays,
         private readonly WorkspaceSessions $sessions,
         private readonly PackageInstallationInterface $packages,
         private readonly MessageBusInterface $bus,
@@ -309,7 +313,7 @@ final class WorkflowEngine implements ResetInterface
         try {
             $this->transactions->run(function () use ($workflow, $chain, $run): void {
                 $this->steps($workflow->definition->steps, $chain, $run, null);
-                if (RunLog::COMPLETED !== $run->status) {
+                if (RunLog::COMPLETED !== $run->status && RunLog::WAITING !== $run->status) {
                     // A refuse: nothing of the run is kept.
                     throw new StepFailed((string) $run->error);
                 }
@@ -422,6 +426,70 @@ final class WorkflowEngine implements ResetInterface
         $run->finishedAt ??= new \DateTimeImmutable();
         $this->runs->save($run);
         --$this->pending;
+        if (RunLog::WAITING === $run->status && null !== $run->resumeAt && $this->workspace->isSelected()) {
+            // Stored first: the message finds it, even handled at once (the tests' transport).
+            $delay = max(0, (int) (($run->resumeAt->format('U.u') - microtime(true)) * 1000));
+            $this->bus->dispatch(new ResumeRun($run->id, $this->workspace->id()), [new DelayStamp($delay)]);
+        }
+    }
+
+    /**
+     * A run that waited: the steps after its wait, in its workspace, as whoever triggered it, in
+     * a transaction of their own, all or nothing from there. The version it ran no longer active,
+     * it is cancelled.
+     */
+    public function resume(ResumeRun $message): ?RunLog
+    {
+        $work = function () use ($message): ?RunLog {
+            $waiting = $this->runs->waiting($message->runId);
+            if (null === $waiting) {
+                return null;
+            }
+            $workflow = $this->workflows->byId($waiting->workflowId);
+            $active = null !== $workflow && $workflow->versionId === $waiting->versionId;
+            $workflow ??= new ActiveWorkflow($waiting->workflowId, '', $waiting->versionId, null, (new DefinitionParser())->fromArray(['trigger' => ['on' => 'manual', 'object' => $waiting->object, 'label' => '-'], 'steps' => [['key' => 'x', 'type' => 'refuse', 'message' => '-']]]));
+            ++$this->pending;
+            $run = new RunLog($workflow, $waiting->object, $waiting->recordId, $waiting->action, $waiting->timing, $waiting->triggeredBy, $waiting->depth, $waiting->startedAt, $waiting->id);
+            $run->stepOffset = $waiting->stepCount;
+            $chain = new DataChain($waiting->chain);
+            if (!$active) {
+                $run->end(RunLog::CANCELLED, 'The version it ran is no longer active.');
+                $run->chain = $chain->toArray();
+                $this->store($run);
+
+                return $run;
+            }
+            [$previous, $this->actingAs] = [$this->actingAs, $waiting->triggeredBy];
+            try {
+                $now = new \DateTimeImmutable();
+                $chain->set('$now', $now->format(\DateTimeInterface::ATOM));
+                $chain->set('$today', $now->format('Y-m-d'));
+                try {
+                    $this->transactions->run(function () use ($workflow, $waiting, $chain, $run): void {
+                        $this->steps(\array_slice($workflow->definition->steps, $waiting->resumeStep), $chain, $run, null);
+                        if (RunLog::COMPLETED !== $run->status && RunLog::WAITING !== $run->status) {
+                            throw new StepFailed((string) $run->error);
+                        }
+                    });
+                    $run->end($run->status, $run->error);
+                } catch (StepFailed $e) {
+                    $run->end(RunLog::FAILED, $e->getMessage());
+                } finally {
+                    $run->chain = $chain->toArray();
+                }
+                $this->transactions->whenDone(fn () => $this->store($run));
+
+                return $run;
+            } finally {
+                $this->actingAs = $previous;
+            }
+        };
+        if ($this->workspace->isSelected() && $this->workspace->id() === $message->workspaceId) {
+            return $work();
+        }
+        $workspace = $this->workspaces->byId($message->workspaceId);
+
+        return null === $workspace ? null : $this->sessions->within($workspace, $work);
     }
 
     /**
@@ -531,7 +599,7 @@ final class WorkflowEngine implements ResetInterface
      */
     private function step(Step $step, DataChain $chain, RunLog $run, ?RecordWriting $writing): bool
     {
-        if (\count($run->steps) >= $this->maxExecutedSteps) {
+        if ($run->executed() >= $this->maxExecutedSteps) {
             throw new StepFailed(\sprintf('More than %d steps executed in one run: stopped.', $this->maxExecutedSteps));
         }
         $started = hrtime(true);
@@ -556,6 +624,7 @@ final class WorkflowEngine implements ResetInterface
                 StepType::Refuse => $this->refuse($step, $chain, $run, null !== $writing),
                 StepType::SearchRecords => $this->search($step, $chain, $run),
                 StepType::InstallPackage, StepType::AssignRole => $this->platform($step, $chain),
+                StepType::Wait => $this->wait($step, $chain, $run),
                 default => $this->write($step, $chain, $run),
             };
         } catch (StepFailed $e) {
@@ -636,6 +705,48 @@ final class WorkflowEngine implements ResetInterface
         $records = array_map(fn (RecordOutput $record): array => ['id' => $record->id, ...$this->readable($object, $record->values)], $result->records);
 
         return [$input, ['records' => $records, 'count' => \count($records), 'total' => $result->total, 'first' => $records[0] ?? null], true];
+    }
+
+    /**
+     * Stops the run until a duration passed or a date came: the steps before it are kept, those
+     * after it resume then (store() queues them). A date passed already waits not; a test does
+     * not wait.
+     *
+     * @return array{array<string, mixed>, array<string, mixed>, bool}
+     *
+     * @throws StepFailed
+     */
+    private function wait(Step $step, DataChain $chain, RunLog $run): array
+    {
+        $now = new \DateTimeImmutable();
+        $text = '';
+        if (null !== $for = $step->string('for')) {
+            $until = $now->modify('+'.$for);
+            $input = ['for' => $for];
+        } else {
+            $text = $chain->text($step->string('until'));
+            $input = ['until' => $text];
+            try {
+                $until = '' === trim($text) ? false : new \DateTimeImmutable($text);
+            } catch (\Exception) {
+                $until = false;
+            }
+        }
+        if (false === $until) {
+            throw new StepFailed(\sprintf('"%s" is no date to wait until.', $text));
+        }
+        if ($until > $now->modify(\sprintf('+%d days', $this->maxWaitDays))) {
+            throw new StepFailed(\sprintf('A run waits %d days at most.', $this->maxWaitDays));
+        }
+        $output = ['until' => $until->format(\DateTimeInterface::ATOM)];
+        if ($this->dryRun || $until <= $now) {
+            return [$input, $output, true];
+        }
+        // A wait is one of the definition's first steps (DefinitionParser): it resumes after it.
+        $index = array_search($step->key, array_map(static fn (Step $top): string => $top->key, $run->workflow->definition->steps), true);
+        $run->wait($until, (false === $index ? \count($run->workflow->definition->steps) : $index) + 1);
+
+        return [$input, $output, false];
     }
 
     /**

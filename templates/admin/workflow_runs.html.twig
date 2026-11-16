@@ -6,7 +6,7 @@
     <p><a href="{{ path(wf ~ 'edit', {id: workflow.id.toRfc4122}) }}">&larr; {{ workflow.name }}</a></p>
     <h1>{{ 'admin.workflow.runs'|trans }}</h1>
     <p>
-        {% for filter in [null, 'completed', 'failed', 'refused'] %}
+        {% for filter in [null, 'completed', 'failed', 'refused', 'waiting', 'cancelled'] %}
             {% if filter == status %}<strong>{% endif %}
             <a href="{{ path(wf ~ 'runs', {id: workflow.id.toRfc4122, status: filter}) }}">{{ (filter ? 'admin.workflow.run_' ~ filter : 'admin.workflow.all_runs')|trans }}</a>
             {% if filter == status %}</strong>{% endif %}{% if not loop.last %} · {% endif %}

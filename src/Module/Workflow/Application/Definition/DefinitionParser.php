@@ -20,6 +20,9 @@ final class DefinitionParser
     public const int MAX_STEPS = 50;
 
     /** A path on the data chain: a root ($trigger, or a step's key), then names. */
+    /** A wait's duration: 30 minutes, 2 days. */
+    private const string DURATION = '/^[1-9]\d{0,4} (minute|hour|day|week)s?$/';
+
     public const string PATH = '\$?[a-z_][a-z0-9_]*(?:\.[a-z0-9_]+)*';
 
     public const string TEMPLATE = '/\{\{\s*('.self::PATH.')\s*\}\}/';
@@ -249,6 +252,17 @@ final class DefinitionParser
         } elseif (!$this->platform && $type->isPlatform()) {
             $this->error($path.'.type', \sprintf('%s is a step of the system admin\'s workflows, on the platform\'s events.', $type->value));
         }
+        if (StepType::Wait === $type) {
+            if (\array_key_exists('for', $step) === \array_key_exists('until', $step)) {
+                $this->error($path, 'A wait takes for (a duration) or until (a date), one of them.');
+            }
+            if (Timing::Before === $timing && !$this->manual) {
+                $this->error($path.'.type', 'A write waits for no one: no wait in a workflow run before the write.');
+            }
+            if (1 !== preg_match('/^steps\.\d+$/', $path)) {
+                $this->error($path.'.type', 'A wait is one of the first steps: not inside an if or an iterator, which it would have to resume halfway through.');
+            }
+        }
         if ((Timing::After === $timing || $this->manual) && StepType::SetValues === $type) {
             $this->error($path.'.type', 'set_values changes the values being written: only in a workflow run before the write.');
         }
@@ -272,7 +286,8 @@ final class DefinitionParser
                 'act_as', 'role' => $options[$option] = $this->role($value, $at),
                 'package' => $options[$option] = \is_string($value) && 1 === preg_match('/^[a-z0-9][a-z0-9_.-]*\/[a-z0-9][a-z0-9_.-]*(@[0-9A-Za-z.+-]+)?$/', $value) ? $value : $this->error($at, 'A package of the indexes: vendor/name, or vendor/name@1.0.0.'),
                 'repo' => $options[$option] = \is_string($value) && '' !== trim($value) ? trim($value) : $this->error($at, 'The name of an index (metadata:package:repo list).'),
-                'email' => $options[$option] = $this->text($value, $at),
+                'email', 'until' => $options[$option] = $this->text($value, $at),
+                'for' => $options[$option] = \is_string($value) && 1 === preg_match(self::DURATION, $value) ? $value : $this->error($at, 'A duration: a number and minutes, hours, days or weeks, e.g. 30 minutes.'),
                 'emit_events' => $options[$option] = $this->flag($value, $at),
                 'where' => $options[$option] = $this->where($value, $at),
                 'sort' => $options[$option] = 'id' === $value ? 'id' : $this->name($value, $at),

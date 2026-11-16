@@ -447,6 +447,9 @@ admin:
         type_upsert_record: Create or update a record
         type_set_values: Set values
         type_refuse: Refuse
+        type_wait: 'Wait'
+        wait_for: 'For (30 minutes, 2 days)'
+        wait_until: 'Or until'
         type_install_package: 'Install a package'
         type_assign_role: 'Give a role'
         on_workspace_created: 'a workspace created'
@@ -540,6 +543,8 @@ admin:
         run_completed: Completed
         run_failed: Failed
         run_refused: Refused
+        run_waiting: Waiting
+        run_cancelled: Cancelled
         runs_help: 'Kept 30 days. A run refused stopped the write it guarded.'
         no_runs: No run.
         started: Started
@@ -638,6 +643,7 @@ workflow:
         intro: 'Runs on this %object%: its answers first.'
         submit: Run
         completed: '"%label%" done.'
+        waiting: '"%label%" goes on: it waits until %until% (UTC), what it did so far is kept.'
         failed: '"%label%" failed, nothing was kept: %error%'
         done_on: '"%label%" done on %count% record(s).'
         failed_on: '"%label%" failed on %count% record(s), nothing of theirs was kept: %error%'

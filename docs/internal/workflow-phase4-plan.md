@@ -58,6 +58,15 @@ the system admin's runs go to the worker from kernel.terminate and console.termi
   of their own (all or nothing from there); the run's page shows the wait. A waiting run of a
   version deactivated meanwhile is cancelled when it resumes.
 
+### Done (2026-11-16, branch `workflow_wait`)
+
+As planned, in after-runs and manual runs (a manual run that waits goes on in the worker, its
+message says so); not in the system admin's workflows. On the way: `workflow_run` gets
+`resume_at` and `resume_step` (migration `Version20261116120000`); a resumed run updates its row
+and adds its steps after the others; `workflow:runs:gc` keeps the waiting runs; the tests route
+`ResumeRun` to an in-memory transport (`messenger.transport.delayed`) and resume when they say;
+phpstan reads the test container now (`make phpstan` warms it), where that transport is.
+
 ## 4c: HTTP requests
 
 - **`http_request`**: `method`, `url`, `headers`, `body` (a map sent as JSON, or a text), `timeout`

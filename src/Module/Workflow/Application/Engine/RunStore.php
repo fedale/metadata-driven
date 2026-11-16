@@ -12,7 +12,15 @@ interface RunStore
     /**
      * Stores a run with its steps, and counts its steps in the day's usage.
      */
+    /**
+     * Stores a run: a new one, or a resumed one again (its row updated, its new steps added).
+     */
     public function save(RunLog $run): void;
+
+    /**
+     * A run of the current workspace (or the system's) that waits.
+     */
+    public function waiting(string $id): ?WaitingRun;
 
     /**
      * The runs started since then, in the current workspace.
