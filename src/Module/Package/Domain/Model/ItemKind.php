@@ -14,4 +14,6 @@ enum ItemKind: string
     case Field = 'field';
     case View = 'view';
     case Form = 'form';
+    /** A workflow: its local id is the workflow's. */
+    case Workflow = 'workflow';
 }

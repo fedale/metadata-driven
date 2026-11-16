@@ -22,6 +22,9 @@ final class PackageNames
     /** @var array<string, string> field id => name */
     private array $fields = [];
 
+    /** @var array<string, string> workflow id => name */
+    private array $workflows = [];
+
     public function __construct(
         Package $package,
         private readonly RequiredItems $required = new RequiredItems(),
@@ -34,6 +37,14 @@ final class PackageNames
                 }
             }
         }
+        foreach ($package->documentsOf(DocumentKind::Workflow) as $workflow) {
+            $this->workflows[$workflow->id] = \is_string($workflow->spec['name'] ?? null) ? $workflow->spec['name'] : '';
+        }
+    }
+
+    public function workflow(string $id): string
+    {
+        return $this->workflows[$id] ?? $this->required->workflow($id) ?? throw new \LogicException(\sprintf('No workflow has the id "%s": the package was not checked.', $id));
     }
 
     public function object(string $id): string

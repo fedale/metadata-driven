@@ -5,8 +5,7 @@ Status: **agreed** (2026-11-16). Phase 6 of [workflow-plan.md](workflow-plan.md)
 ## Decisions (user, 2026-11-16)
 
 1. **Now: schedules**, then **the workspaces' secrets**, then **incoming webhooks** (asked the
-   same day), then **sub-workflows**. The rest of the phase (workflows in packages, quotas per
-   plan) waits.
+   same day), then **sub-workflows**, then **workflows in packages**. Quotas per plan wait.
 2. **Email and notifications stay out** until the application sends email.
 
 ## Schedules
@@ -100,3 +99,30 @@ transaction, its result read by the steps after); a **`return`** step gives the 
 As above. The visual editor offers the trigger (its inputs edited as a form's), both steps (the
 active workflows on `called` to choose from, their inputs), and the picker the values a called
 workflow may return. The inputs are scalars (a form's types): lists and maps wait.
+
+## Workflows in packages
+
+Decisions (user, 2026-11-16): installed **as drafts** (no one to lend them permissions at an
+install); the whole cycle (the format, export, install, upgrade, version numbers); an upgrade
+writes the new version as the workflow's **draft**, the active one running on, a change on both
+sides a conflict.
+
+- **The format** (fedale/metadata-driven-package-format 2.3.0): kind `Workflow`
+  (`workflows/<name>.yaml`): `name`, `description`, `definition` with the objects of its trigger
+  and steps, and the workflow of each `run_workflow`, as ids; no platform event. The checker
+  resolves the ids (in the package, then the packages it requires); `ItemStates` makes each
+  workflow an item (its definition's keys sorted: jsonb orders them its own way); `VersionCheck`:
+  added or definition changed, a minor; description, a patch; removed or renamed, a major.
+- **The app**: the Workflow contract's `PackagedWorkflowsInterface` (Package may depend on
+  WorkflowContract now); items of kind `workflow` in `core.package_item` (its local id the
+  workflow's). The exporter (`--workflow`), the installer (drafts, a local name refused), the
+  owned state (the current definition: draft, else active, else latest), the upgrader (the new
+  version's definitions made canonical first, through stand-in names; drafts; removals
+  deactivated and left to the instance).
+
+### Done (2026-11-16, branch `workflow_packages`)
+
+As above; the library tagged 2.3.0 by the user, required as `^2.3`. Found on the
+way: `DoctrineWorkflowRepository::remove()` left the versions managed, which failed the next flush
+in the same request; they go with their workflow now. A workflow references objects by name: an
+object renamed breaks it (in packages and out), as before.

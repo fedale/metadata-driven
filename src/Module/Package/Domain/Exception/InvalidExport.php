@@ -20,7 +20,27 @@ final class InvalidExport extends PackageException
 
     public static function nothingToExport(): self
     {
-        return new self('Nothing to export: name at least one object or form.');
+        return new self('Nothing to export: name at least one object, form or workflow.');
+    }
+
+    public static function noWorkflow(string $workflow): self
+    {
+        return new self(\sprintf('There is no workflow "%s".', $workflow));
+    }
+
+    public static function workflowOwnedByAnother(string $workflow, string $package): self
+    {
+        return new self(\sprintf('Workflow "%s" belongs to the installed package %s: export it with that one. A package requiring %s can call it.', $workflow, $package, $package));
+    }
+
+    public static function workflowOutsideTheExport(string $workflow, string $what): self
+    {
+        return new self(\sprintf('Workflow "%s" names %s, which is not exported: add it to the export.', $workflow, $what));
+    }
+
+    public static function brokenWorkflow(string $workflow, string $why): self
+    {
+        return new self(\sprintf('Workflow "%s" cannot be read: %s Fix its draft first.', $workflow, $why));
     }
 
     public static function outsideTheExport(string $object, string $setting, string $target): self

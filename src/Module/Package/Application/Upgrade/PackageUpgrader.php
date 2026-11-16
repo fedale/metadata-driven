@@ -15,6 +15,7 @@ use App\Module\Package\Application\PackageNames;
 use App\Module\Package\Application\RequiredItems;
 use App\Module\Package\Application\RequiredPackages;
 use App\Module\Package\Application\SeedWriter;
+use App\Module\Package\Application\WorkflowReferences;
 use App\Module\Package\Domain\Exception\InstallRefused;
 use App\Module\Package\Domain\Exception\UpgradeRefused;
 use App\Module\Package\Domain\Model\ItemKind;
@@ -29,7 +30,10 @@ use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordEventScopeInterface;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
+use App\Module\Workflow\Contract\Exception\InvalidWorkflowSource;
+use App\Module\Workflow\Contract\PackagedWorkflowsInterface;
 use App\Shared\Transaction\TransactionRunner;
+use Fedale\PackageFormat\Document;
 use Fedale\PackageFormat\DocumentKind;
 use Fedale\PackageFormat\FieldTypes\FieldTypeCatalog;
 use Fedale\PackageFormat\FieldTypes\ReferenceKind;
@@ -50,9 +54,10 @@ use Symfony\Component\Yaml\Yaml;
  * metadata API as the admin; a dry run goes all the way, then rolls back.
  *
  * The order: renames (an object or a field keeps its table, column and every reference); new
- * objects and fields; changed fields and objects; texts; views and forms; translations; last,
- * what the new version removed: views and forms deleted, fields and objects archived (their
- * data kept).
+ * objects and fields; changed fields and objects; texts; views and forms; translations;
+ * workflows, each new or changed one a draft (the active version keeps running until an admin
+ * activates it); last, what the new version removed: views and forms deleted, fields and objects
+ * archived (their data kept), workflows deactivated and left to the instance.
  *
  * Changes the app cannot make to an existing item (a field's type, whether it is required or
  * unique, an object's icon, a field moved to another object) refuse the upgrade.
@@ -84,6 +89,7 @@ final class PackageUpgrader
         private readonly SeedWriter $seedWriter,
         private readonly SeedFingerprints $fingerprints,
         private readonly RequiredPackages $required,
+        private readonly PackagedWorkflowsInterface $workflows,
     ) {
     }
 
@@ -97,7 +103,7 @@ final class PackageUpgrader
     {
         $resolution = $resolution instanceof Resolution ? $resolution : new Resolution($resolution);
         $prepared = $this->prepare($theirs, $resolution);
-        [$installation, , $mine, $plan, $seeds, $steps, $required] = $prepared;
+        [$installation, , $mine, $plan, $seeds, $steps, $required, $theirs] = $prepared;
 
         $unresolved = [
             ...array_map(static fn (Change $change): string => $change->describe().', changed here too', array_values(array_filter($plan->conflicts(), static fn (Change $change): bool => null === $resolution->for($change->key())))),
@@ -162,7 +168,7 @@ final class PackageUpgrader
     public function preview(Package $theirs): UpgradePreview
     {
         try {
-            [$installation, , $mine, $plan, $seeds, $steps] = $this->prepare($theirs, new Resolution());
+            [$installation, , $mine, $plan, $seeds, $steps, , $theirs] = $this->prepare($theirs, new Resolution());
         } catch (UpgradeRefused $e) {
             $installed = $this->installations->findByName($theirs->name());
 
@@ -191,7 +197,7 @@ final class PackageUpgrader
     /**
      * Everything an upgrade decides before it changes anything.
      *
-     * @return array{PackageInstallation, Package, Package, UpgradePlan, SeedChanges, list<array{version: string, from: string, to: string}>, array{packages: list<Package>, names: list<string>, items: RequiredItems}} the installation, the version installed, what the instance holds, the plan, the records, the migration steps, the required packages
+     * @return array{PackageInstallation, Package, Package, UpgradePlan, SeedChanges, list<array{version: string, from: string, to: string}>, array{packages: list<Package>, names: list<string>, items: RequiredItems}, Package} the installation, the version installed, what the instance holds, the plan, the records, the migration steps, the required packages, the new version (its workflows as the app writes them)
      *
      * @throws UpgradeRefused
      */
@@ -203,6 +209,7 @@ final class PackageUpgrader
         if ([] !== $problems) {
             throw new UpgradeRefused(array_map(strval(...), $problems));
         }
+        $theirs = $this->withCanonicalWorkflows($theirs);
         $installation = $this->installations->findByName($theirs->name()) ?? throw UpgradeRefused::notInstalled($theirs->name());
         if (!version_compare($theirs->version(), $installation->getVersion(), '>')) {
             throw UpgradeRefused::notNewer($theirs->name(), $installation->getVersion(), $theirs->version());
@@ -234,7 +241,37 @@ final class PackageUpgrader
             $this->seedPlanner->plan($base, $installation->getSnapshot(), $theirs, $mine, $resolution),
             $steps,
             $requirements,
+            $theirs,
         ];
+    }
+
+    /**
+     * The new version, its workflows' definitions as the app writes them: the instance's state
+     * holds them so (a default filled in, an order of keys), and a definition written otherwise
+     * must not look changed.
+     *
+     * @throws UpgradeRefused a definition whose structure the app refuses
+     */
+    private function withCanonicalWorkflows(Package $package): Package
+    {
+        if ([] === $package->documentsOf(DocumentKind::Workflow)) {
+            return $package;
+        }
+        $documents = [];
+        foreach ($package->documents as $document) {
+            if (DocumentKind::Workflow === $document->kind) {
+                [$named, $back] = WorkflowReferences::standIns(self::map($document->spec['definition'] ?? null));
+                try {
+                    $definition = $back($this->workflows->canonical($named));
+                } catch (InvalidWorkflowSource $e) {
+                    throw UpgradeRefused::at($document->path, 'spec.definition', $e->getMessage());
+                }
+                $document = new Document($document->kind, $document->id, ['definition' => $definition] + $document->spec, $document->path);
+            }
+            $documents[] = $document;
+        }
+
+        return new Package($package->manifest, $documents, $package->directory, $package->files);
     }
 
     /**
@@ -359,6 +396,15 @@ final class PackageUpgrader
         }
         $this->translate(array_filter($translations, static fn (Change $change): bool => !TranslationKey::isText(self::string($change->state()->extra['key']))), $names, $enabled);
 
+        // The workflows, every object they name there by now; a run_workflow names the new
+        // version's names.
+        foreach ($theirs->documentsOf(DocumentKind::Workflow) as $workflow) {
+            $names->renameWorkflow($workflow->id, self::string($workflow->spec['name'] ?? null));
+        }
+        foreach ([...$byKind['workflow']['change'] ?? [], ...$byKind['workflow']['add'] ?? []] as $change) {
+            $items = [...$items, ...$this->saveWorkflow($change, $theirs, $names)];
+        }
+
         // What the new version removed, last: nothing of it may still be in use.
         foreach ($byKind['translation']['remove'] ?? [] as $change) {
             $locale = self::string($change->state()->extra['locale']);
@@ -376,6 +422,14 @@ final class PackageUpgrader
         foreach ($byKind['form']['remove'] ?? [] as $change) {
             $this->step($change, fn () => $this->metadata->deleteForm(self::string(self::value($change->mine)['name'])));
             $gone[] = $this->localId(ItemKind::Form, $change->state()->id, $theirs->name());
+        }
+        foreach ($byKind['workflow']['remove'] ?? [] as $change) {
+            // Stopped, and left to the instance: its runs, its versions stay.
+            $localId = $this->localId(ItemKind::Workflow, $change->state()->id, $theirs->name());
+            if (null !== $localId) {
+                $this->workflows->deactivate($localId);
+                $gone[] = $localId;
+            }
         }
         foreach ($byKind['field']['remove'] ?? [] as $change) {
             $id = $change->state()->id;
@@ -602,6 +656,35 @@ final class PackageUpgrader
     }
 
     /**
+     * A workflow the new version adds or changes: a new workflow, or the draft of the one the
+     * package owns, renamed if it was. Never activated.
+     *
+     * @return list<PackageItem>
+     */
+    private function saveWorkflow(Change $change, Package $theirs, CurrentNames $names): array
+    {
+        $new = self::value($change->theirs);
+        $name = self::string($new['name']);
+        $description = \is_string($new['description']) ? $new['description'] : null;
+        $definition = WorkflowReferences::map(self::map($new['definition']), $names->object(...), $names->workflow(...));
+        $localId = null === $change->mine ? null : $this->localId(ItemKind::Workflow, $change->state()->id, $theirs->name());
+        try {
+            if (null !== $localId) {
+                $this->workflows->draft($localId, $name, $description, $definition);
+
+                return [];
+            }
+            $created = $this->workflows->create($name, $description, $definition);
+        } catch (InvalidWorkflowSource $e) {
+            throw UpgradeRefused::at($change->state()->document->path, 'workflow '.$change->state()->id, $e->getMessage());
+        }
+        // One the user deleted, back: its old record goes.
+        $this->forget($theirs->name(), $this->localId(ItemKind::Workflow, $change->state()->id, $theirs->name()));
+
+        return [$this->item($theirs, ItemKind::Workflow, $change->state()->id, $created)];
+    }
+
+    /**
      * @param array<Change> $changes
      * @param list<string>  $enabled
      */
@@ -667,6 +750,7 @@ final class PackageUpgrader
         $names = new CurrentNames($this->fieldTypes);
         $names->learn($mine);
         $reasons = [];
+        $localWorkflows = null;
         foreach ($changes as $change) {
             $state = $change->state();
             $name = \is_array($state->value) && \is_string($state->value['name'] ?? null) ? $state->value['name'] : null;
@@ -680,6 +764,9 @@ final class PackageUpgrader
             if ('form' === $state->kind && (ChangeAction::Add === $change->action || $renamed) && $this->registry->hasForm($name)) {
                 $reasons[] = \sprintf('%s: form %s: this instance already has a form "%s".', $state->document->path, $state->id, $name);
             }
+            if ('workflow' === $state->kind && (ChangeAction::Add === $change->action || $renamed) && isset(($localWorkflows ??= $this->localWorkflows($mine))[$name])) {
+                $reasons[] = \sprintf('%s: workflow %s: this instance already has a workflow "%s".', $state->document->path, $state->id, $name);
+            }
             $object = 'field' === $state->kind && (ChangeAction::Add === $change->action || $renamed) ? $names->ownedObject(self::string($state->value['object'] ?? null)) : null;
             if (null !== $object && !$names->ownsField(self::string($state->value['object'] ?? null), $name) && $this->registry->hasObject($object)) {
                 $definition = $this->registry->getObject($object);
@@ -690,6 +777,24 @@ final class PackageUpgrader
         }
 
         return $reasons;
+    }
+
+    /**
+     * The names of the instance's workflows the package does not own.
+     *
+     * @return array<string, true>
+     */
+    private function localWorkflows(Package $mine): array
+    {
+        $owned = array_map(static fn (Document $workflow): mixed => $workflow->spec['name'] ?? null, $mine->documentsOf(DocumentKind::Workflow));
+        $local = [];
+        foreach ($this->workflows->all() as $workflow) {
+            if (!\in_array($workflow->name, $owned, true)) {
+                $local[$workflow->name] = true;
+            }
+        }
+
+        return $local;
     }
 
     /**

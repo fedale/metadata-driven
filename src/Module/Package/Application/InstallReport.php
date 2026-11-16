@@ -13,6 +13,7 @@ final readonly class InstallReport
      * @param list<string> $objects        the objects created
      * @param list<string> $forms          the forms saved
      * @param list<string> $skippedLocales languages of the package this instance does not have
+     * @param list<string> $workflows      the workflows created, as drafts
      */
     public function __construct(
         public string $name,
@@ -27,6 +28,7 @@ final readonly class InstallReport
         public int $translations,
         public int $records,
         public array $skippedLocales,
+        public array $workflows = [],
     ) {
     }
 }

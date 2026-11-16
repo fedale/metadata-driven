@@ -391,8 +391,10 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   `doctrine:migrations:migrate`) done on branch `workflow_webhook`, merged into `main` on
   2026-11-16 (the security review asked, and got, the requests counted as they come).
   Sub-workflows (`on: called`, the `run_workflow` and `return` steps, in line in the caller's
-  run; calling needs the called workflow's run permission) done on branch `sub_workflows`. Left
-  of phase 6: workflows in packages, quotas per plan.
+  run; calling needs the called workflow's run permission) done on branch `sub_workflows`, merged
+  into `main` on 2026-11-16. Workflows in packages (kind `Workflow` of the package format 2.3.0,
+  tagged by the user; installed and upgraded as drafts) done on branch `workflow_packages`,
+  merged into `main` on 2026-11-16. Left of phase 6: quotas per plan.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

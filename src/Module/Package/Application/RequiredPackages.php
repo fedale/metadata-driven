@@ -11,6 +11,7 @@ use App\Module\Package\Domain\Model\ItemKind;
 use App\Module\Package\Domain\Model\PackageInstallation;
 use App\Module\Package\Domain\Repository\PackageInstallationRepository;
 use App\Module\Package\Domain\Repository\PackageItemRepository;
+use App\Module\Workflow\Contract\PackagedWorkflowsInterface;
 use Fedale\PackageFormat\Constraint;
 use Fedale\PackageFormat\DocumentKind;
 use Fedale\PackageFormat\Package;
@@ -29,7 +30,33 @@ final class RequiredPackages
         private readonly MetadataRegistryInterface $metadata,
         private readonly SeedFingerprints $fingerprints,
         private readonly SeedRecords $seedRecords,
+        private readonly PackagedWorkflowsInterface $workflows,
     ) {
+    }
+
+    /**
+     * The installed package owning each workflow that one owns, by the workflow's current name.
+     *
+     * @return array<string, string> workflow name => package name
+     */
+    public function workflowOwners(): array
+    {
+        $owned = [];
+        foreach ($this->installations->all() as $installation) {
+            foreach ($this->items->itemsOf($installation->getName()) as $item) {
+                if (ItemKind::Workflow === $item->getKind()) {
+                    $owned[$item->getLocalId()] = $installation->getName();
+                }
+            }
+        }
+        $owners = [];
+        foreach ($this->workflows->all() as $id => $workflow) {
+            if (isset($owned[$id])) {
+                $owners[$workflow->name] = $owned[$id];
+            }
+        }
+
+        return $owners;
     }
 
     /**
@@ -174,7 +201,16 @@ final class RequiredPackages
             }
         }
 
-        return new RequiredItems($objects, $fields);
+        $workflows = [];
+        if ([] !== ($owned[ItemKind::Workflow->value] ?? [])) {
+            foreach ($this->workflows->all() as $id => $workflow) {
+                if (isset($owned[ItemKind::Workflow->value][$id])) {
+                    $workflows[$owned[ItemKind::Workflow->value][$id]] = $workflow->name;
+                }
+            }
+        }
+
+        return new RequiredItems($objects, $fields, $workflows);
     }
 
     /**
