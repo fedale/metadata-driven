@@ -111,7 +111,8 @@ final class ManualRunController extends AbstractController
         if (null === $workflow->definition->trigger->selection) {
             throw $this->createNotFoundException('This workflow runs on one record at a time.');
         }
-        if (!$this->runs->mayRun($workflow)) {
+        // Before the selection is read: its count alone tells about the records.
+        if (!$this->runs->mayRunOnSelection($workflow)) {
             throw $this->createAccessDeniedException();
         }
         $object = $this->metadata->getObject($workflow->definition->trigger->object);

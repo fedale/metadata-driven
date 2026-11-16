@@ -145,6 +145,15 @@ final class ManualRuns
     }
 
     /**
+     * Whether the current user may run it on a selection: its permission, and reading the records
+     * (else even how many a grid's filters select would tell them something).
+     */
+    public function mayRunOnSelection(ActiveWorkflow $workflow): bool
+    {
+        return $this->mayRun($workflow) && $this->access->canRecords($workflow->definition->trigger->object, RecordAction::Read);
+    }
+
+    /**
      * Runs it, its answers checked: as the current user, who must hold its permission and read
      * the record; or, $asSomeone false (a command), as no one, whose writing steps need an act_as.
      *
