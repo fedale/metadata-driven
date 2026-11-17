@@ -8,6 +8,7 @@ use App\Module\Workflow\Application\Definition\DefinitionParser;
 use App\Module\Workflow\Application\Definition\StepType;
 use App\Module\Workflow\Application\EditorModel;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Yaml\Yaml;
 
 final class EditorModelTest extends TestCase
 {
@@ -138,9 +139,90 @@ final class EditorModelTest extends TestCase
         self::assertEquals((new DefinitionParser())->parse("trigger: { on: called }\nsteps: [{ key: r, type: return }]"), $parser->parse(EditorModel::toSource(EditorModel::fromSource("trigger: { on: called }\nsteps: [{ key: r, type: return }]") ?? [])));
     }
 
+    public function testValuesKeepTheirTypeThroughTheEditor(): void
+    {
+        $source = <<<'YAML'
+            trigger: { on: manual, object: person, label: Go }
+            steps:
+              - key: card
+                type: create_record
+                object: card
+                values: { zip: '00100', phone: '0612345678', price: '1.50', flag: 'true', word: 'null', quoted: "'x'", list_text: '[a, b]', closed_at: null, note: '', big: '99999999999999999999', count: 2, ratio: 2.0, urgent: true, address: { city: Roma }, tags: ['{{ $trigger.record.id }}', open] }
+              - { key: found, type: search_records, object: card, where: [{ field: zip, op: eq, value: '007' }, { field: count, op: gt, value: 7 }] }
+              - { key: same, type: filter, when: { field: found.count, op: eq, value: '1' } }
+              - { key: naming, type: run_workflow, workflow: Naming, input: { code: '0042' } }
+            YAML;
+        $model = EditorModel::fromSource($source);
+        self::assertNotNull($model);
+        // A text shows as it is; one that would read as something else, quoted.
+        self::assertSame(['field' => 'zip', 'value' => '00100'], self::at($model, 'steps.0.values.0'));
+        self::assertSame(['field' => 'price', 'value' => "'1.50'"], self::at($model, 'steps.0.values.2'));
+        self::assertSame(['field' => 'flag', 'value' => "'true'"], self::at($model, 'steps.0.values.3'));
+        self::assertSame(['field' => 'closed_at', 'value' => 'null'], self::at($model, 'steps.0.values.7'));
+        self::assertSame(['field' => 'note', 'value' => ''], self::at($model, 'steps.0.values.8'));
+
+        self::assertSame(self::at(self::yaml($source), 'steps'), self::at(self::yaml(EditorModel::toSource($model)), 'steps'));
+    }
+
+    public function testATextTypedInTheEditorIsANumberOnlyWhenWrittenAsOne(): void
+    {
+        $values = [
+            ['field' => 'count', 'value' => '100'],
+            ['field' => 'price', 'value' => '1.5'],
+            ['field' => 'zip', 'value' => '00100'],
+            ['field' => 'quoted', 'value' => "'100'"],
+            ['field' => 'none', 'value' => 'null'],
+            ['field' => 'path', 'value' => '{{ $trigger.record.id }}'],
+            ['field' => 'paths', 'value' => '[{{ $trigger.record.id }}, open]'],
+        ];
+        $model = ['trigger' => ['on' => 'manual', 'object' => 'person', 'label' => 'Go'], 'steps' => [['key' => 'card', 'type' => 'create_record', 'object' => 'card', 'values' => $values]]];
+
+        self::assertSame(
+            ['count' => 100, 'price' => 1.5, 'zip' => '00100', 'quoted' => '100', 'none' => null, 'path' => '{{ $trigger.record.id }}', 'paths' => '[{{ $trigger.record.id }}, open]'],
+            self::at(self::yaml(EditorModel::toSource($model)), 'steps.0.values'),
+        );
+    }
+
+    public function testSelectOptionsWithACommaStayWhole(): void
+    {
+        $source = "trigger: { on: manual, object: person, label: Go, form: [{ name: who, label: Who, type: select, options: ['Rossi, Mario', 'Bianchi, Luca'] }] }\nsteps: [{ key: no, type: refuse, message: no }]";
+        $model = EditorModel::fromSource($source);
+        self::assertNotNull($model);
+        self::assertSame("['Rossi, Mario', 'Bianchi, Luca']", self::at($model, 'trigger.form.0.options'));
+
+        self::assertSame(['Rossi, Mario', 'Bianchi, Luca'], self::at(self::yaml(EditorModel::toSource($model)), 'trigger.form.0.options'));
+    }
+
+    public function testAStepOfAnUnknownTypeKeepsItsOptions(): void
+    {
+        $source = "trigger: { on: manual, object: person, label: Go }\nsteps: [{ key: card, type: creat_record, object: card, values: { zip: '00100' }, other: [1, 2] }]";
+        $model = EditorModel::fromSource($source);
+        self::assertNotNull($model);
+
+        // A draft may hold a type mistyped: saved as it was written.
+        self::assertSame(self::at(self::yaml($source), 'steps'), self::at(self::yaml(EditorModel::toSource($model)), 'steps'));
+
+        // The type corrected on the page: the options the page showed are the step's.
+        $step = self::at($model, 'steps.0');
+        self::assertIsArray($step);
+        $corrected = EditorModel::toSource(['trigger' => $model['trigger'], 'steps' => [['type' => 'create_record'] + $step]]);
+        self::assertSame([['key' => 'card', 'type' => 'create_record', 'object' => 'card', 'values' => ['zip' => '00100']]], self::at(self::yaml($corrected), 'steps'));
+    }
+
     public function testUnreadableYamlHasNoModel(): void
     {
         self::assertNull(EditorModel::fromSource("trigger: [\n"));
+    }
+
+    /**
+     * @return array<mixed>
+     */
+    private static function yaml(string $source): array
+    {
+        $data = Yaml::parse($source);
+        self::assertIsArray($data);
+
+        return $data;
     }
 
     /**

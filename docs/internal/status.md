@@ -401,9 +401,12 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   A code review of phases 1b to 4c (2026-11-17, read on `main`) found no way to more power and no
   cross-workspace read, and a list of defects, fixed one branch each. First, a `refuse` in an
   after-run from the queue kept what the run had written (`runQueued` lacked the check of the
-  other entry points): fixed on branch `refuse_after_run`, waiting for the user's review. Still
-  to do, in this order: the visual editor retyping values on save (`'00100'` → `100`, `null` →
-  `''`, select options with a comma, an unknown step type losing its options); the test on a
+  other entry points): fixed on branch `refuse_after_run`, merged into `main` on 2026-11-17.
+  Second, the visual editor retyped values on save (`'00100'` → `100`, `null` → `''`), split a
+  select's options at their commas and dropped the options of a step of an unknown type: a
+  value's text now reads back as the value it shows (`EditorModel::valueText()` and `typed()`,
+  quotes for a text that would read as something else), fixed on branch `editor_round_trip`,
+  waiting for the user's review. Still to do, in this order: the test on a
   record really sending its `http_request` (the user decides: skip it, or say so in the guide);
   a run whose log cannot be stored run again by the queue's retries, and a system workflow's
   unexpected failure leaving no run; the limits (no time limit for a run, an `each` selection
