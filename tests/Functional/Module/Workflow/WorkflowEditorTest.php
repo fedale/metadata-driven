@@ -181,7 +181,7 @@ final class WorkflowEditorTest extends WebTestCase
 
         $html = (string) $this->editor()->set('testRecord', $ada->id)->call('runTest')->render();
 
-        self::assertStringContainsString('Rolled back: nothing was kept.', $html);
+        self::assertStringContainsString('Rolled back: nothing was kept, no request was sent.', $html);
         self::assertStringContainsString('Pet of Ada', $html);
     }
 

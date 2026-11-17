@@ -1129,6 +1129,11 @@ final class WorkflowEngine implements ResetInterface
             $options['body'] = DataChain::asText($body);
         }
         $input = ['method' => $method, 'url' => $url, 'headers' => $headers, 'body' => $body];
+        if ($this->dryRun) {
+            // A test rolls back what it wrote, and a request cannot be: shown as it would go
+            // (the caller masks its secrets), not sent. The steps after it read no answer.
+            return [$input, ['sent' => false, 'status' => null, 'headers' => [], 'body' => null]];
+        }
 
         $response = $this->http->send($method, $url, $options, $retries);
         $status = $response['status'];

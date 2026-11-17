@@ -170,7 +170,7 @@ final class WorkflowAdminControllerTest extends WebTestCase
         $ada = $crawler->filter('select[name="workflow[test_record]"] option')->eq(1)->attr('value');
         $this->client->submitForm('Test on this record', ['workflow[test_record]' => $ada]);
         self::assertResponseIsSuccessful();
-        self::assertSelectorTextContains('#test', 'Rolled back: nothing was kept.');
+        self::assertSelectorTextContains('#test', 'Rolled back: nothing was kept, no request was sent.');
         self::assertSelectorTextContains('#test pre', 'Pet of Ada');
 
         // Nothing kept: no pet, no run.

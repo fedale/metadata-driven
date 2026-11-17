@@ -576,12 +576,12 @@ admin:
         variables_context: The run
         variables_steps: The steps
         test_record: 'Test on'
-        test_help: 'A record of the trigger''s object: the draft runs for real on it, then everything is rolled back.'
+        test_help: 'A record of the trigger''s object: the draft runs for real on it, then everything is rolled back. A request to the outside is shown as it would go, not sent.'
         test: Test on this record
         test_choose: 'Choose a record of "%object%" to test the draft on.'
         test_cannot_read: 'You may not read the records of "%object%": the test would show them.'
         test_result: Test
-        test_rolled_back: 'Rolled back: nothing was kept.'
+        test_rolled_back: 'Rolled back: nothing was kept, no request was sent.'
         test_no_step: No step ran.
         reference: Objects and fields
         reference_help: 'Paths read the data of the run: <code>$trigger.record.&lt;field&gt;</code>, <code>$trigger.before.&lt;field&gt;</code> (updates), <code>$user.email</code>, <code>$today</code>, and each step''s output by its key, <code>{{ reminder.id }}</code>. A step writes as whoever triggered the event, or as the role of its <code>act_as</code>, which you must be able to give.'
