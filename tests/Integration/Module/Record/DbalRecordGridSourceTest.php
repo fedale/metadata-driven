@@ -47,6 +47,17 @@ final class DbalRecordGridSourceTest extends KernelTestCase
         $records->delete('pet', $record->id);
     }
 
+    public function testAnUnboundedReadIsCutInsideAtMost(): void
+    {
+        $all = new GridQuery(source: ['object' => 'pet']);
+
+        // A reader that only needs to know whether there are more rows than it takes.
+        self::assertCount(2, $this->source->atMost(2, fn (): array => [...$this->source->fetch($all)]));
+        // A window asked for is the caller's, and outside atMost() nothing is cut.
+        self::assertCount(3, $this->source->atMost(2, fn (): array => [...$this->source->fetch($all->withWindow(0, 3))]));
+        self::assertCount(3, [...$this->source->fetch($all)]);
+    }
+
     public function testRowsAreTypedArraysKeyedByField(): void
     {
         $rows = $this->rows(new GridQuery(source: ['object' => 'pet'], sort: [new SortOrder('name', SortDirection::Asc)]));

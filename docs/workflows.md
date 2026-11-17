@@ -302,8 +302,10 @@ steps:
   grid. *Select all* takes every record of the grid's current filters and search. At most
   `app.workflow.max_records` records at a time; the user must read them (else the modal is
   refused before the selection is read) and hold the workflow's permission. With `each`, a run per record, each all or nothing, a failed one stopping no other
-  (the message tells how many completed, and the first error); the workflow shows on a record's
-  page too. With `all`, one run, all or nothing, on `$trigger.records` (read with an
+  (the message tells how many completed, how many go on after a wait, and the first error); the
+  workflow shows on a record's page too. Each run counts for `app.workflow.runs_per_minute`: a
+  selection of more records than the workspace may still start runs this minute is refused whole,
+  before any runs (with the defaults, `each` takes 100 records at a time, `all` 200). With `all`, one run, all or nothing, on `$trigger.records` (read with an
   [iterator](#search-and-iterator)), and no `$trigger.record`.
 
 ### Search and iterator
@@ -436,8 +438,9 @@ records it ran on, whatever object: give `admin.workflows` to whoever may see th
 | Parameter (`config/services.yaml`) | Default | Meaning |
 |---|---|---|
 | `app.workflow.max_depth` | `3` | The longest chain of runs started by one another's writes (`emit_events`) or calls (`run_workflow`) |
-| `app.workflow.runs_per_minute` | `100` | The runs a workspace may start a minute; beyond, a write a before-workflow guards is refused, a manual run fails, and an after-run goes back to the queue a minute later (ten times, then it fails) |
+| `app.workflow.runs_per_minute` | `100` | The runs a workspace may start a minute; beyond, a write a before-workflow guards is refused, a manual run fails, and an after-run goes back to the queue a minute later (ten times, then it fails). A run resumed after a wait counts for the minute it goes on in |
 | `app.workflow.max_executed_steps` | `1000` | The steps one run may execute; beyond, the run fails (a definition holds 50 at most) |
+| `app.workflow.max_run_seconds` | `300` | The seconds one run may take, checked between its steps (a run resumed after a wait, each of its parts); beyond, the run fails. A step under way is not cut: an `http_request` has its own `timeout` |
 | `app.workflow.max_records` | `200` | The records one search reads, the items one iterator runs on |
 | `app.workflow.max_wait_days` | `30` | The longest a run waits |
 | `app.workflow.runs_keep_days` | `30` | How long the runs are kept |

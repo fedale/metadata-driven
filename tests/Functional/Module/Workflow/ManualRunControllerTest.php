@@ -151,6 +151,22 @@ final class ManualRunControllerTest extends WebTestCase
         self::assertSelectorTextContains('.md-run-selection', 'Runs on each of the 3');
     }
 
+    public function testASelectionOfRunsThatWaitIsNoFailure(): void
+    {
+        $workflow = $this->activate('Later', "trigger: { on: manual, object: person, label: Later, selection: each }\nsteps: [{ key: later, type: wait, for: 2 days }, { key: seen, type: filter, when: { field: \$trigger.record.id, op: not_empty } }]");
+        $bob = self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('person', ['full_name' => 'Bob']));
+        $this->holdEveryWorkflow();
+
+        $this->client->request('GET', '/w/'.$workflow->getId()->toRfc4122().'/run-selection?ids%5B%5D='.$this->ada->id.'&ids%5B%5D='.$bob->id);
+        $this->client->submitForm('Run');
+        self::assertResponseRedirects('/o/person', 303);
+        $this->client->followRedirect();
+
+        // Stopped at their wait, to go on in two days: said so, and no error.
+        self::assertSelectorTextContains('.md-flash--success', '"Later" goes on for 2 record(s): it waits until');
+        self::assertSelectorNotExists('.md-flash--error');
+    }
+
     public function testItsPermissionIsGivenOnTheRolesPage(): void
     {
         $this->activate('Pet', "trigger: { on: manual, object: person, label: Give a pet }\nsteps: [{ key: pet, type: filter, when: { field: \$trigger.record.city, op: empty } }]");

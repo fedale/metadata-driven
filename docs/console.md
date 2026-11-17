@@ -787,7 +787,9 @@ workflow:run [--record=ID]... [--input=NAME=VALUE]... <workflow>
 | `--input` | An answer of its form, `name=value`, repeatable; checked as on the page (`--input due_on=2026-12-31`, `--input urgent=true`) |
 
 It exits with 1 when the run fails or may not start (no such workflow, an answer that will not
-do: each listed), 2 when an `--input` is not `name=value`.
+do, a `--record` that is no id: each listed), 2 when an `--input` is not `name=value`. A run
+stopped at a `wait` did not fail: the command says until when it waits, and the worker goes on
+with it.
 
 ## `workflow:runs:gc`
 

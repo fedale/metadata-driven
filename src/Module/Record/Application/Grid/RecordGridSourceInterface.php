@@ -23,4 +23,17 @@ interface RecordGridSourceInterface extends GridDataSourceInterface
 {
     public const string LABEL_SUFFIX = '__label';
     public const string FILE_SUFFIX = '__file';
+
+    /**
+     * Runs $read with every unbounded fetch() (the export's, GridQuery::$limit null) cut to $limit
+     * rows: for a reader that needs to know only whether there are more rows than it takes, as a
+     * grid's selection does, without the whole table read.
+     *
+     * @template T
+     *
+     * @param callable(): T $read
+     *
+     * @return T
+     */
+    public function atMost(int $limit, callable $read): mixed;
 }

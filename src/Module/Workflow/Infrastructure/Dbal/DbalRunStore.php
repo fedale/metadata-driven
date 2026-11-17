@@ -122,7 +122,9 @@ final class DbalRunStore implements RunStore
     public function countSince(\DateTimeImmutable $since): int
     {
         $count = $this->connection->fetchOne(
-            \sprintf('SELECT COUNT(*) FROM core.workflow_run WHERE %s AND started_at >= ?', WorkspaceScope::currentOrSystem('workspace_id')),
+            // A run that waited keeps the start of its first part: its last part counts by when it
+            // was stored, or the runs resumed at once would count for none.
+            \sprintf('SELECT COUNT(*) FROM core.workflow_run WHERE %s AND GREATEST(started_at, finished_at) >= ?', WorkspaceScope::currentOrSystem('workspace_id')),
             [$since->format(self::TIMESTAMP)],
         );
 

@@ -703,6 +703,7 @@ workflow:
         waiting: '"%label%" goes on: it waits until %until% (UTC), what it did so far is kept.'
         failed: '"%label%" failed, nothing was kept: %error%'
         done_on: '"%label%" done on %count% record(s).'
+        waiting_on: '"%label%" goes on for %count% record(s): it waits until %until% (UTC), what it did so far is kept.'
         failed_on: '"%label%" failed on %count% record(s), nothing of theirs was kept: %error%'
         on_each: 'Runs on each of the %count% %object% selected, one at a time.'
         on_all: 'Runs once on the %count% %object% selected.'

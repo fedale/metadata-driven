@@ -83,6 +83,11 @@ final class ManualRuns
         if ($trigger->runsOnAll()) {
             return [$this->engine->runManual($workflow, null, $answers, $records)];
         }
+        // A run each: refused whole when the minute's runs would end halfway through them (and
+        // the workspace's other writes be refused with them, until the minute is over).
+        if (\count($records) > $left = $this->engine->runsLeftThisMinute()) {
+            throw new ManualRunRefused(\sprintf('%d records selected, a run each: the workspace may start %d more this minute. Select fewer, or run it again in a minute.', \count($records), $left), ManualRunRefused::INVALID);
+        }
 
         return array_map(fn (RecordOutput $record): RunLog => $this->engine->runManual($workflow, $record, $answers), $records);
     }
@@ -98,7 +103,13 @@ final class ManualRuns
      */
     private function selection(string $object, array $recordIds): array
     {
-        $recordIds = array_values(array_unique(array_filter($recordIds, static fn (string $id): bool => Uuid::isValid($id))));
+        foreach ($recordIds as $id) {
+            if (!Uuid::isValid($id)) {
+                throw new ManualRunRefused(\sprintf('"%s" is no record id.', $id), ManualRunRefused::INVALID);
+            }
+        }
+        // As the database writes them: an id in capitals is the same record.
+        $recordIds = array_values(array_unique(array_map(strtolower(...), $recordIds)));
         if ([] === $recordIds) {
             throw new ManualRunRefused('No record selected.', ManualRunRefused::INVALID);
         }

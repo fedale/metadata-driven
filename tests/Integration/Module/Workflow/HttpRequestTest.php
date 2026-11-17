@@ -22,6 +22,7 @@ use App\Tests\Support\FakePackageServer;
 use Doctrine\DBAL\Connection;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
@@ -33,6 +34,7 @@ use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
  */
 final class HttpRequestTest extends KernelTestCase
 {
+    use ClockSensitiveTrait;
     use CreatesRelatedObjects;
 
     private const string HOOK = <<<'YAML'
@@ -115,6 +117,24 @@ final class HttpRequestTest extends KernelTestCase
         $stored = json_decode($output, true);
         self::assertIsArray($stored);
         self::assertSame('caf? ok', $stored['body'] ?? null);
+    }
+
+    public function testARunStopsPastItsTime(): void
+    {
+        $clock = self::mockTime();
+        $limit = self::getContainer()->getParameter('app.workflow.max_run_seconds');
+        // A host that answers late, again and again: no count of steps bounds that.
+        $this->answerEverything(static function () use ($clock, $limit): MockResponse {
+            $clock->sleep($limit + 1);
+
+            return new MockResponse('ok');
+        });
+        $this->activate("trigger: { on: created, object: person, when: after }\nsteps: [{ key: slow, type: http_request, url: 'https://api.example.test/x' }, { key: more, type: http_request, url: 'https://api.example.test/x' }]");
+
+        self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('person', ['full_name' => 'Ada']));
+
+        self::assertSame(['failed', \sprintf('The run took more than %d seconds: stopped.', $limit)], [$this->runStatus(), $this->runError()]);
+        self::assertCount(1, FakePackageServer::requests());
     }
 
     public function testATestOnARecordSendsNothing(): void
