@@ -16,7 +16,8 @@ use Symfony\Component\Yaml\Yaml;
  * activated. Every step has every option (empty when unused), so that the page binds to them;
  * values are rows of a field and a text; a condition is all or any of a list of tests, and a
  * condition nested deeper is kept as it was, as YAML, to edit in the YAML tab. Writing the model
- * back loses the comments of the YAML it was read from.
+ * back loses the comments of the YAML it was read from, and nothing else: a value keeps its type
+ * (see valueText() and typed()), and a step of a type unknown is kept as it was written.
  */
 final class EditorModel
 {
@@ -54,7 +55,7 @@ final class EditorModel
                         'label' => self::text($input['label'] ?? ''),
                         'type' => self::text($input['type'] ?? 'text'),
                         'required' => true === ($input['required'] ?? false),
-                        'options' => \is_array($input['options'] ?? null) ? implode(', ', array_map(self::text(...), $input['options'])) : '',
+                        'options' => \is_array($input['options'] ?? null) ? self::optionsText(array_values(array_map(self::text(...), $input['options']))) : '',
                     ] : self::newInput(),
                     // A called trigger's inputs, edited as a manual one's form.
                     \is_array($trigger['form'] ?? null) ? $trigger['form'] : (\is_array($trigger['input'] ?? null) ? $trigger['input'] : []),
@@ -208,7 +209,7 @@ final class EditorModel
                 'label' => self::text($input['label'] ?? ''),
                 'type' => $type,
                 'required' => true === ($input['required'] ?? false) ? true : null,
-                'options' => 'select' === $type ? array_values(array_filter(array_map(trim(...), explode(',', self::text($input['options'] ?? ''))), static fn (string $option): bool => '' !== $option)) : null,
+                'options' => 'select' === $type ? self::optionsFrom(self::text($input['options'] ?? '')) : null,
             ], static fn (mixed $value): bool => null !== $value && '' !== $value);
         }
 
@@ -255,6 +256,9 @@ final class EditorModel
             $model[] = [
                 'key' => self::text($step['key'] ?? ''),
                 'type' => self::text($step['type'] ?? ''),
+                // A type the editor does not know (mistyped, in a draft): the step as it was written,
+                // for the options the page cannot show.
+                'raw' => null === StepType::tryFrom(self::text($step['type'] ?? '')) ? Yaml::dump($step, 0) : null,
                 ...$options,
                 'values' => $values,
                 'input' => $input,
@@ -288,6 +292,13 @@ final class EditorModel
             }
             $type = StepType::tryFrom(self::text($step['type'] ?? ''));
             $out = ['key' => self::text($step['key'] ?? ''), 'type' => self::text($step['type'] ?? '')];
+            if (null === $type && \is_string($step['raw'] ?? null)) {
+                // Still unknown: nothing of what was written is lost, the key as the page has it.
+                $raw = self::yamlOrText($step['raw']);
+                $data[] = \is_array($raw) ? [...array_combine(array_map(strval(...), array_keys($raw)), array_values($raw)), ...$out] : $out;
+
+                continue;
+            }
             foreach (array_keys(null === $type ? [] : $type->options()) as $option) {
                 $out = match ($option) {
                     // A return may give nothing.
@@ -349,7 +360,7 @@ final class EditorModel
      */
     private static function testFrom(array $test): array
     {
-        return ['field' => self::text($test['field'] ?? ''), 'op' => self::text($test['op'] ?? 'eq'), 'value' => self::valueText($test['value'] ?? null)];
+        return ['field' => self::text($test['field'] ?? ''), 'op' => self::text($test['op'] ?? 'eq'), 'value' => \array_key_exists('value', $test) ? self::valueText($test['value']) : ''];
     }
 
     /**
@@ -414,41 +425,114 @@ final class EditorModel
     }
 
     /**
-     * A value as the editor shows it: a text; a list as YAML on one line.
+     * A value as the editor shows it, in one line of text that typed() reads back as the same
+     * value: a text as it is, unless it would read as something else ('1.50', 'true', '[a]'),
+     * then quoted as YAML quotes it; null, true, false and numbers as YAML writes them; a list or
+     * a map as YAML on one line.
      */
     private static function valueText(mixed $value): string
     {
+        if (\is_string($value)) {
+            if (self::typed($value) === $value) {
+                return $value;
+            }
+            $quoted = Yaml::dump($value, 0);
+
+            return \in_array($quoted[0] ?? '', ["'", '"'], true) ? $quoted : "'".str_replace("'", "''", $value)."'";
+        }
+
         return match (true) {
-            null === $value => '',
+            null === $value => 'null',
             \is_bool($value) => $value ? 'true' : 'false',
-            \is_scalar($value) => (string) $value,
+            \is_int($value) => (string) $value,
             default => Yaml::dump($value, 0),
         };
     }
 
     /**
-     * A text of the editor as the definition holds it: true, false, numbers and lists ([a, b])
-     * typed; anything else, {{ … }} paths included, a text.
+     * A text of the editor as the definition holds it. Typed: null, true, false; a number written
+     * as one (100, -2, 1.5: a text with leading zeros, as a postcode, or too long for an integer
+     * stays a text); a list ([a, b]) or a map ({ a: 1 }); a text in quotes ('100'), the way to
+     * write one that would read as any of these. Anything else, {{ … }} paths included, a text.
      */
     private static function typed(string $text): mixed
     {
+        if ('null' === $text) {
+            return null;
+        }
         if (\in_array($text, ['true', 'false'], true)) {
             return 'true' === $text;
         }
-        if (is_numeric($text) && 1 === preg_match('/^-?\d+(\.\d+)?$/', $text)) {
-            return str_contains($text, '.') ? (float) $text : (int) $text;
+        if ((string) (int) $text === $text) {
+            return (int) $text;
         }
-        if (str_starts_with($text, '[') && str_ends_with($text, ']') && !str_contains($text, '{{')) {
-            try {
-                $list = Yaml::parse($text);
+        if (1 === preg_match('/^-?(0|[1-9]\d*)\.\d+$/', $text)) {
+            return (float) $text;
+        }
+        $first = $text[0] ?? '';
+        $last = substr($text, -1);
+        $quoted = \strlen($text) > 1 && $first === $last && \in_array($first, ["'", '"'], true);
+        $collection = ('[' === $first && ']' === $last) || ('{' === $first && '}' === $last && !str_starts_with($text, '{{'));
+        if (!$quoted && !$collection) {
+            return $text;
+        }
+        try {
+            $parsed = Yaml::parse($text);
+        } catch (ParseException) {
+            return $text;
+        }
+        if ($quoted) {
+            return \is_string($parsed) ? $parsed : $text;
+        }
+        if (!\is_array($parsed)) {
+            return $text;
+        }
+        // A path written without quotes in a list ([{{ a.id }}, open]) reads as a map of YAML:
+        // typed only when every {{ of the text ended up inside a text of the list.
+        $paths = 0;
+        array_walk_recursive($parsed, static function (mixed $leaf) use (&$paths): void {
+            $paths += \is_string($leaf) ? substr_count($leaf, '{{') : 0;
+        });
 
-                return \is_array($list) ? $list : $text;
-            } catch (ParseException) {
-                return $text;
+        return substr_count($text, '{{') === $paths ? $parsed : $text;
+    }
+
+    /**
+     * A select's options as one line of text: separated by commas, or, when one of them holds a
+     * comma (or the line would read as a list), the list as YAML.
+     *
+     * @param list<string> $options
+     */
+    private static function optionsText(array $options): string
+    {
+        $line = implode(', ', $options);
+        foreach ($options as $option) {
+            if (str_contains($option, ',') || trim($option) !== $option || '' === $option) {
+                return Yaml::dump($options, 0);
             }
         }
 
-        return $text;
+        return str_starts_with($line, '[') ? Yaml::dump($options, 0) : $line;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function optionsFrom(string $line): array
+    {
+        $line = trim($line);
+        if (str_starts_with($line, '[') && str_ends_with($line, ']')) {
+            try {
+                $list = Yaml::parse($line);
+                if (\is_array($list)) {
+                    return array_values(array_filter(array_map(self::text(...), $list), static fn (string $option): bool => '' !== $option));
+                }
+            } catch (ParseException) {
+                // Not a list after all: read as options separated by commas.
+            }
+        }
+
+        return array_values(array_filter(array_map(trim(...), explode(',', $line)), static fn (string $option): bool => '' !== $option));
     }
 
     /**

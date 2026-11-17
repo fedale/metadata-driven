@@ -33,7 +33,13 @@ steps:
     branches of an `if` indented under it, with their steps. Steps are added by type, moved and
     removed; values are rows of a field and a text; a condition is *all of* or *any of* a list of
     tests (a condition nested deeper shows as YAML, to edit in the YAML tab). Saving writes the
-    draft's YAML again: comments written in the YAML tab are lost.
+    draft's YAML again: comments written in the YAML tab are lost, nothing else.
+    A value's text is read as YAML reads it: `null`, `true`, `false`, a number written as one
+    (`100`, `1.5`; `00100` stays a text, as a postcode must), a list (`[a, b]`) or a map
+    (`{ a: 1 }`); in quotes (`'100'`, `'true'`) it is a text, and a text that would read as
+    something else shows in quotes. A select's options are separated by commas, or written as a
+    list when one holds a comma (`['Rossi, Mario', 'Bianchi, Luca']`). A step whose type the
+    editor does not know (mistyped) is saved as it was written.
   - **YAML**: the definition as text, comments kept.
 
   *Save the draft* keeps it; *Save and activate* checks it first, and lists every problem by its
