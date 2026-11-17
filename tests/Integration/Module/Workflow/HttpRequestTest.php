@@ -99,6 +99,24 @@ final class HttpRequestTest extends KernelTestCase
         self::assertSame('completed', $this->runStatus());
     }
 
+    public function testAnAnswerThatIsNoUtf8IsStoredWithItsRunAndSentOnce(): void
+    {
+        // Latin-1 and a NUL: neither JSON nor jsonb takes them as they are.
+        $this->answerEverything(static fn (): MockResponse => new MockResponse("caf\xE9\0 ok", ['http_code' => 200, 'response_headers' => ['content-type' => 'text/plain']]));
+        $this->activate("trigger: { on: created, object: person, when: after }\nsteps: [{ key: hook, type: http_request, url: 'https://api.example.test/x' }]");
+
+        self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('person', ['full_name' => 'Ada']));
+
+        // The run is stored after its steps: failing there, the queue would run it all again.
+        self::assertSame('completed', $this->runStatus());
+        self::assertCount(1, FakePackageServer::requests());
+        $output = self::getContainer()->get(Connection::class)->fetchOne('SELECT output FROM core.workflow_run_step');
+        self::assertIsString($output);
+        $stored = json_decode($output, true);
+        self::assertIsArray($stored);
+        self::assertSame('caf? ok', $stored['body'] ?? null);
+    }
+
     public function testATestOnARecordSendsNothing(): void
     {
         $this->answerEverything(static fn (): MockResponse => new MockResponse('{"ticket": 42}', ['http_code' => 201, 'response_headers' => ['content-type' => 'application/json']]));

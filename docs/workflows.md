@@ -455,6 +455,11 @@ of it stays, since its last wait), **refused** (a before-run that refused its wr
 refused run is kept, though its write was rolled back. The steps run are counted per workspace and
 day.
 
+A run is stored once its steps are done, whatever it holds: in an answer from outside that is not
+UTF-8, the invalid bytes are replaced in the log (and a NUL character dropped). A run that still
+cannot be stored (the database gone) is written to the application's log, and **not run again**:
+its writes and its requests are done already.
+
 `workflow:runs:gc` deletes the old runs of its workspace, never one that waits; with several workspaces, schedule
 `workspace:run --all -- workflow:runs:gc` (see [Console commands](console.md#workflowrunsgc)).
 
@@ -502,7 +507,8 @@ console's commands do: no `act_as`, no permission checked; only system admins de
 no workspace sees them or their runs (`$user` is null, `$workspace` the workspace concerned).
 They run **in the background**, once the response is sent (or the command done): one after another, each step
 entering the workspace for what it does there; a failed step fails the run, what the steps before
-it did stays. Their runs are listed on the console's pages. A workspace's workflow may not use
+it did stays (an error no step expects fails it too: *It broke: …*, the error in the application's
+log). Their runs are listed on the console's pages. A workspace's workflow may not use
 these triggers or steps, and the console defines no workflow on a record's.
 
 ## Under the hood

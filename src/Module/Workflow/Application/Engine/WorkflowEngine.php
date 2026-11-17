@@ -44,6 +44,7 @@ use App\Shared\Workspace\CurrentWorkspace;
 use App\Shared\Workspace\Workspace;
 use App\Shared\Workspace\Workspaces;
 use App\Shared\Workspace\WorkspaceSessions;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -113,6 +114,7 @@ final class WorkflowEngine implements ResetInterface
         private readonly RecordTransitionsInterface $transitions,
         private readonly WorkflowSecrets $secrets,
         private readonly WorkflowQuota $quota,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -483,16 +485,25 @@ final class WorkflowEngine implements ResetInterface
         $run = new RunLog($workflow, '', null, $workflow->definition->trigger->on->value, 'platform', null, 1, new \DateTimeImmutable());
         $chain = $this->chain($trigger, ['slug' => $workspace->slug, 'name' => $workspace->name]);
         $this->platformWorkspace = $workspace;
+        $broken = null;
         try {
             $this->steps($workflow->definition->steps, $chain, $run, null);
             $run->end($run->status, $run->error);
         } catch (StepFailed $e) {
             $run->end(RunLog::FAILED, $e->getMessage());
+        } catch (\Throwable $e) {
+            // Not a step's own failure (the database, a bug): the run is kept all the same, for
+            // the console's pages to show what the steps before it did, then the error goes on.
+            $run->end(RunLog::FAILED, \sprintf('It broke: %s', $e->getMessage()));
+            $broken = $e;
         } finally {
             $this->platformWorkspace = null;
             $run->chain = $chain->toArray();
         }
         $this->store($run);
+        if (null !== $broken) {
+            throw $broken;
+        }
 
         return $run;
     }
@@ -525,15 +536,24 @@ final class WorkflowEngine implements ResetInterface
         return new RunLog($workflow, $object, $recordId, $action->value, $when->value, $this->who(), $depth, new \DateTimeImmutable());
     }
 
+    /**
+     * Never throws: a run is stored once the transaction it ran in ended, and an error here
+     * would fail a message whose run is done already. The queue would then run it again, its
+     * writes and its requests a second time. A run that cannot be stored is logged instead.
+     */
     private function store(RunLog $run): void
     {
         $run->finishedAt ??= new \DateTimeImmutable();
-        $this->runs->save($run);
         --$this->pending;
-        if (RunLog::WAITING === $run->status && null !== $run->resumeAt && $this->workspace->isSelected()) {
-            // Stored first: the message finds it, even handled at once (the tests' transport).
-            $delay = max(0, (int) (($run->resumeAt->format('U.u') - microtime(true)) * 1000));
-            $this->bus->dispatch(new ResumeRun($run->id, $this->workspace->id()), [new DelayStamp($delay)]);
+        try {
+            $this->runs->save($run);
+            if (RunLog::WAITING === $run->status && null !== $run->resumeAt && $this->workspace->isSelected()) {
+                // Stored first: the message finds it, even handled at once (the tests' transport).
+                $delay = max(0, (int) (($run->resumeAt->format('U.u') - microtime(true)) * 1000));
+                $this->bus->dispatch(new ResumeRun($run->id, $this->workspace->id()), [new DelayStamp($delay)]);
+            }
+        } catch (\Throwable $e) {
+            $this->logger->error('The run {run} of the workflow "{name}" ({status}) could not be stored: {message}', ['run' => $run->id, 'name' => $run->workflow->name, 'status' => $run->status, 'message' => $e->getMessage(), 'exception' => $e]);
         }
     }
 
