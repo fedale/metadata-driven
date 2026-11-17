@@ -157,8 +157,10 @@ final class ManualRunController extends AbstractController
     private function flashSelection(ActiveWorkflow $workflow, array $runs): void
     {
         $label = (string) $workflow->definition->trigger->label;
-        $failed = array_values(array_filter($runs, static fn (RunLog $run): bool => RunLog::COMPLETED !== $run->status));
-        $done = \count($runs) - \count($failed);
+        // A run stopped at a wait goes on later: it did not fail.
+        $waiting = array_values(array_filter($runs, static fn (RunLog $run): bool => RunLog::WAITING === $run->status));
+        $failed = array_values(array_filter($runs, static fn (RunLog $run): bool => !\in_array($run->status, [RunLog::COMPLETED, RunLog::WAITING], true)));
+        $done = \count($runs) - \count($failed) - \count($waiting);
         if ($workflow->definition->trigger->runsOnAll()) {
             $this->flash($workflow, $runs[0]);
 
@@ -166,6 +168,9 @@ final class ManualRunController extends AbstractController
         }
         if ($done > 0) {
             $this->addFlash('success', $this->translator->trans('workflow.run.done_on', ['%label%' => $label, '%count%' => $done]));
+        }
+        if ([] !== $waiting) {
+            $this->addFlash('success', $this->translator->trans('workflow.run.waiting_on', ['%label%' => $label, '%count%' => \count($waiting), '%until%' => $waiting[0]->resumeAt?->format('Y-m-d H:i')]));
         }
         if ([] !== $failed) {
             $this->addFlash('error', $this->translator->trans('workflow.run.failed_on', ['%label%' => $label, '%count%' => \count($failed), '%error%' => (string) $failed[0]->error]));

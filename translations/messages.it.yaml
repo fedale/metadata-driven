@@ -700,6 +700,7 @@ workflow:
         waiting: '"%label%" prosegue: attende fino al %until% (UTC), quanto fatto finora è salvato.'
         failed: '"%label%" non riuscito, nulla è stato salvato: %error%'
         done_on: '"%label%" eseguito su %count% record.'
+        waiting_on: '"%label%" prosegue per %count% record: attende fino al %until% (UTC), quanto fatto finora è salvato.'
         failed_on: '"%label%" non riuscito su %count% record, nulla di loro è stato salvato: %error%'
         on_each: 'Viene eseguito su ognuno dei %count% record selezionati (%object%), uno alla volta.'
         on_all: 'Viene eseguito una volta sui %count% record selezionati (%object%).'

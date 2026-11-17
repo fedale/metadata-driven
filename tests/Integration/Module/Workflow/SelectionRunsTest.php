@@ -14,6 +14,7 @@ use App\Module\User\Contract\UserManagerInterface;
 use App\Module\User\Infrastructure\Security\UserProvider;
 use App\Module\Workflow\Application\Engine\ActiveWorkflow;
 use App\Module\Workflow\Application\Engine\RunLog;
+use App\Module\Workflow\Application\Engine\RunStore;
 use App\Module\Workflow\Application\ManualRunRefused;
 use App\Module\Workflow\Application\ManualRuns;
 use App\Module\Workflow\Application\WorkflowManager;
@@ -98,10 +99,54 @@ final class SelectionRunsTest extends KernelTestCase
         self::assertSame(['Give pets'], array_map(static fn (ActiveWorkflow $active): ?string => $active->definition->trigger->label, $this->runs()->runnableOnSelection('person')));
     }
 
+    public function testAnIdInCapitalsIsTheSameRecord(): void
+    {
+        $workflow = $this->workflow("trigger: { on: manual, object: person, label: Give a pet, selection: each }\nsteps: [{ key: pet, type: create_record, object: pet, values: { name: 'Pet of {{ \$trigger.record.full_name }}' } }]");
+
+        $runs = $this->runs()->runOnSelection($workflow, [strtoupper($this->people['Ada']), $this->people['Ada']], []);
+
+        self::assertSame([RunLog::COMPLETED], array_map(static fn (RunLog $run): string => $run->status, $runs));
+        self::assertSame(['Pet of Ada'], $this->pets());
+    }
+
+    public function testARunEachIsRefusedWholePastTheRunsOfTheMinute(): void
+    {
+        $workflow = $this->workflow("trigger: { on: manual, object: person, label: Give a pet, selection: each }\nsteps: [{ key: pet, type: create_record, object: pet, values: { name: 'Pet of {{ \$trigger.record.full_name }}' } }]");
+        // All but two of the minute's runs are spent.
+        $limit = self::getContainer()->getParameter('app.workflow.runs_per_minute');
+        for ($i = 0; $i < $limit - 2; ++$i) {
+            $run = new RunLog($workflow, 'person', null, 'manual', 'after', null, 1, new \DateTimeImmutable());
+            $run->end(RunLog::COMPLETED);
+            self::getContainer()->get(RunStore::class)->save($run);
+        }
+
+        // Three runs would stop after two, and leave the workspace none for its writes.
+        self::assertSame(
+            '3 records selected, a run each: the workspace may start 2 more this minute. Select fewer, or run it again in a minute.',
+            $this->refusal(fn () => $this->runs()->runOnSelection($workflow, array_values($this->people), []))->getMessage(),
+        );
+        self::assertSame([], $this->pets());
+
+        $runs = $this->runs()->runOnSelection($workflow, [$this->people['Ada'], $this->people['Bob']], []);
+        self::assertSame([RunLog::COMPLETED, RunLog::COMPLETED], array_map(static fn (RunLog $run): string => $run->status, $runs));
+    }
+
+    public function testARunThatWaitsIsNoFailureForTheCommand(): void
+    {
+        $this->workflow("trigger: { on: manual, object: person, label: Later, selection: each }\nsteps: [{ key: later, type: wait, for: 2 days }, { key: pet, type: create_record, object: pet, values: { name: x } }]", 'Later');
+        $command = new CommandTester((new Application(self::bootKernel()))->find('workflow:run'));
+
+        self::assertSame(0, $command->execute(['workflow' => 'Later', '--record' => [$this->people['Ada'], $this->people['Bob']]]), $command->getDisplay());
+        self::assertStringContainsString('waits until', $command->getDisplay());
+        self::assertStringNotContainsString('failed', $command->getDisplay());
+    }
+
     public function testRefusesWhatItMayNotRun(): void
     {
         $workflow = $this->workflow("trigger: { on: manual, object: person, label: Look, selection: each }\nsteps: [{ key: a, type: filter, when: { field: \$trigger.record.city, op: empty } }]");
-        self::assertSame('No record selected.', $this->refusal(fn () => $this->runs()->runOnSelection($workflow, ['nope'], []))->getMessage());
+        self::assertSame('No record selected.', $this->refusal(fn () => $this->runs()->runOnSelection($workflow, [], []))->getMessage());
+        // Not left out in silence: the others would run, the one mistyped never.
+        self::assertSame('"nope" is no record id.', $this->refusal(fn () => $this->runs()->runOnSelection($workflow, [$this->people['Ada'], 'nope'], []))->getMessage());
         self::assertSame('1 of the records selected are no more: run it again on the others.', $this->refusal(fn () => $this->runs()->runOnSelection($workflow, [$this->people['Ada'], '01a1e051-e8fe-7538-9ce4-ae37148a9711'], []))->getMessage());
 
         // The clerk holds the run permission, not reading people.

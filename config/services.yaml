@@ -25,6 +25,8 @@ parameters:
     app.workflow.runs_per_minute: 100
     # The steps one run may execute, an iterator's counted (a definition holds 50 at most).
     app.workflow.max_executed_steps: 1000
+    # The seconds one run may take (a resumed run, each of its parts), checked between its steps.
+    app.workflow.max_run_seconds: 300
     # The records one search reads, the items one iterator runs on.
     app.workflow.max_records: 200
     # The longest a run waits (the wait step).

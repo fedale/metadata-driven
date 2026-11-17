@@ -70,6 +70,9 @@ final class RunWorkflowConsoleCommand
         foreach ($runs as $run) {
             if (RunLog::COMPLETED === $run->status) {
                 $io->success(\sprintf('Run %s completed: %d step(s).', $run->id, \count($run->steps)));
+            } elseif (RunLog::WAITING === $run->status) {
+                // Stopped at a wait: the worker goes on with it, what it did so far is kept.
+                $io->success(\sprintf('Run %s waits until %s (UTC): %d step(s) so far.', $run->id, $run->resumeAt?->format('Y-m-d H:i') ?? '?', \count($run->steps)));
             } else {
                 ++$failed;
                 $io->error(\sprintf('Run %s failed, nothing was kept: %s', $run->id, $run->error));

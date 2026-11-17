@@ -45,6 +45,9 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
     /** Between the labels of the linked records in a cell. */
     private const string LINK_LABEL_SEPARATOR = ', ';
 
+    /** The rows an unbounded fetch() reads at most, inside atMost(). */
+    private ?int $atMost = null;
+
     public function __construct(
         private readonly Connection $connection,
         private readonly MetadataRegistryInterface $metadata,
@@ -54,6 +57,17 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
         private readonly FieldTypeRegistryInterface $fieldTypes,
         private readonly FileStorageInterface $files,
     ) {
+    }
+
+    public function atMost(int $limit, callable $read): mixed
+    {
+        // For the time of the read only: the source is one service for every grid and request.
+        [$previous, $this->atMost] = [$this->atMost, $limit];
+        try {
+            return $read();
+        } finally {
+            $this->atMost = $previous;
+        }
     }
 
     public function count(GridQuery $query): int
@@ -71,7 +85,7 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
         $qb = $this->filtered($object, $query)
             ->select($this->table->selectList($object, self::ALIAS))
             ->setFirstResult($query->offset)
-            ->setMaxResults($query->limit);
+            ->setMaxResults($query->limit ?? $this->atMost);
 
         // Each relation brings the label of the related record ("<field>__label").
         $labels = [];

@@ -132,6 +132,20 @@ final class BackgroundRunsTest extends KernelTestCase
         self::assertSame([], $this->pets());
     }
 
+    public function testARunResumedCountsForTheMinuteItGoesOnIn(): void
+    {
+        $active = self::getContainer()->get(ActiveWorkflows::class)->byId($this->workflow->getId()->toRfc4122());
+        self::assertNotNull($active);
+        $runs = self::getContainer()->get(RunStore::class);
+        // Started two days ago, it waited: its last part is stored now.
+        $run = new RunLog($active, 'person', null, 'create', 'after', null, 1, new \DateTimeImmutable('-2 days'));
+        $run->end(RunLog::COMPLETED);
+        $run->finishedAt = new \DateTimeImmutable();
+        $runs->save($run);
+
+        self::assertSame(1, $runs->countSince(new \DateTimeImmutable('-1 minute')));
+    }
+
     public function testAWriteQueuesItsAfterRuns(): void
     {
         // The tests' transport runs it at once; the run is the queue's, as whoever wrote.

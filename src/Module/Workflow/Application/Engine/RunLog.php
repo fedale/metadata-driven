@@ -35,6 +35,9 @@ final class RunLog
 
     public ?int $resumeStep = null;
 
+    /** When this part of the run must be done (a Unix time), set at its first step: not stored. */
+    public ?float $deadline = null;
+
     /** @var array<string, mixed>|null a called workflow's: the values its return step gave, which end the run */
     public ?array $returned = null;
 

@@ -414,10 +414,15 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   it again, up to four times; a system workflow that broke on an error no step expects left no
   run. The log is now made storable (`DbalRunStore::storable()`), `WorkflowEngine::store()` logs
   and never throws, and `runPlatform()` keeps the broken run as failed before the error goes on:
-  fixed on branch `run_log_storage`, merged into `main` on 2026-11-17. Still to do, in this order:
-  the limits (no time limit for a run, an `each` selection
-  past `runs_per_minute`, *Select all* reading the whole grid, a waiting run shown as failed on
-  a selection and by `workflow:run`, uppercase record ids, resumed runs not counted); an object
+  fixed on branch `run_log_storage`, merged into `main` on 2026-11-17. Fifth, the limits, on
+  branch `workflow_limits`, merged into `main` on 2026-11-17: a run's time
+  (`app.workflow.max_run_seconds`, 300, checked between steps); an `each` selection of more
+  records than the minute's runs left refused whole, before any runs (so `each` takes 100 at a
+  time with the defaults: `max_records` and `runs_per_minute` are as the user set them on
+  2026-11-13); *Select all* reading `max_records` + 1 rows of the grid, not all
+  (`RecordGridSourceInterface::atMost()`); a run stopped at a wait no longer told as failed on
+  a selection and by `workflow:run`; a record id in capitals the same record, one mistyped
+  refused, not left out; a resumed run counted for the minute it goes on in. Still to do: an object
   deleted after activation crashing the run; `assign_role` to an email that is no member.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its

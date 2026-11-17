@@ -6,6 +6,7 @@ namespace App\Module\Record\UI\Grid;
 
 use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Record\Application\Grid\RecordGridSourceInterface;
 use App\Module\Record\Contract\RecordSelectionInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
@@ -19,6 +20,7 @@ final class GridRecordSelection implements RecordSelectionInterface
         private readonly RequestStack $requests,
         private readonly MetadataRegistryInterface $metadata,
         private readonly RecordGridFactory $grids,
+        private readonly RecordGridSourceInterface $source,
     ) {
     }
 
@@ -36,7 +38,10 @@ final class GridRecordSelection implements RecordSelectionInterface
         $object = $this->metadata->getObject($objectName);
         $view = null === $gridName ? $object->view(ViewKind::Grid) : $object->view(ViewKind::Grid, $gridName);
         $ids = [];
-        foreach ($this->grids->create($object, $view)->getExportRows() as $row) {
+        // One row more than the caller takes tells a selection too big: the grid's export would
+        // read every record of the object, with its relations and files, to say so.
+        $rows = $this->source->atMost($max + 1, fn (): iterable => $this->grids->create($object, $view)->getExportRows());
+        foreach ($rows as $row) {
             $id = $row->getIdentifier();
             if (null !== $id) {
                 $ids[] = $id;

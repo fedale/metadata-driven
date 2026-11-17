@@ -44,6 +44,7 @@ use App\Shared\Workspace\CurrentWorkspace;
 use App\Shared\Workspace\Workspace;
 use App\Shared\Workspace\Workspaces;
 use App\Shared\Workspace\WorkspaceSessions;
+use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -115,6 +116,9 @@ final class WorkflowEngine implements ResetInterface
         private readonly WorkflowSecrets $secrets,
         private readonly WorkflowQuota $quota,
         private readonly LoggerInterface $logger,
+        private readonly ClockInterface $clock,
+        #[Autowire('%app.workflow.max_run_seconds%')]
+        private readonly int $maxRunSeconds,
     ) {
     }
 
@@ -649,6 +653,15 @@ final class WorkflowEngine implements ResetInterface
             : null;
     }
 
+    /**
+     * How many runs the workspace may still start this minute: a selection run on each of its
+     * records asks before it starts any, not to stop halfway.
+     */
+    public function runsLeftThisMinute(): int
+    {
+        return max(0, $this->runsPerMinute - $this->runs->countSince(new \DateTimeImmutable('-1 minute')) - $this->pending);
+    }
+
     private function tooMany(): ?string
     {
         return $this->runs->countSince(new \DateTimeImmutable('-1 minute')) + $this->pending > $this->runsPerMinute
@@ -745,6 +758,14 @@ final class WorkflowEngine implements ResetInterface
     {
         if ($run->executed() >= $this->maxExecutedSteps) {
             throw new StepFailed(\sprintf('More than %d steps executed in one run: stopped.', $this->maxExecutedSteps));
+        }
+        // From its first step (a resumed run's part, from its own): no count of steps bounds
+        // the time of slow ones, as requests to a host that answers late, and the run holds a
+        // transaction and a worker (or a request) meanwhile. Checked between steps.
+        $now = (float) $this->clock->now()->format('U.u');
+        $run->deadline ??= $now + $this->maxRunSeconds;
+        if ($now > $run->deadline) {
+            throw new StepFailed(\sprintf('The run took more than %d seconds: stopped.', $this->maxRunSeconds));
         }
         $started = hrtime(true);
         if (StepType::If === $step->type) {
