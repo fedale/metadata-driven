@@ -127,6 +127,22 @@ final class PlatformWorkflowsTest extends KernelTestCase
         self::assertSame([RunLog::FAILED, 'beta: "ROLE_BOSS" is no role of this workspace.'], [$runs[0]->status, $runs[0]->error]);
     }
 
+    public function testARoleIsGivenToAMemberOnly(): void
+    {
+        // On a new member, a role for someone else: an email that is no member of beta.
+        $this->activate('Friends', "trigger: { on: member_added }\nsteps: [{ key: friend, type: assign_role, email: friend@example.com, role: ROLE_CLERK }]");
+        $users = self::getContainer()->get(UserManagerInterface::class);
+        $users->createUser('nina@example.com', 'correct horse battery staple');
+        self::getContainer()->get(PlatformWorkflows::class)->reset();
+        $users->addToWorkspace('nina@example.com', $this->beta->id);
+
+        $runs = self::getContainer()->get(PlatformWorkflows::class)->runPending();
+
+        self::assertSame([RunLog::FAILED, 'beta: friend@example.com is no member of this workspace.'], [$runs[0]->status, $runs[0]->error]);
+        // Nothing waits for whoever joins with that email later.
+        self::assertSame([], $this->sessions()->within($this->beta, static fn (): array => self::getContainer()->get(WorkspaceRolesInterface::class)->rolesOf('friend@example.com')));
+    }
+
     public function testARunThatBreaksIsKeptAsFailed(): void
     {
         $this->activate('Clerks', "trigger: { on: member_added }\nsteps: [{ key: all, type: filter, when: { field: \$trigger.workspace.slug, op: not_empty } }, { key: clerk, type: assign_role, email: '{{ \$trigger.member.email }}', role: ROLE_CLERK }]");

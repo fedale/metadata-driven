@@ -9,6 +9,7 @@ use App\Module\Access\Contract\Permissions;
 use App\Module\Access\Contract\RecordAction;
 use App\Module\Access\Contract\WorkspaceRolesInterface;
 use App\Module\FieldType\Contract\Dto\StatusMachine;
+use App\Module\Metadata\Contract\Exception\MetadataException;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Package\Contract\Exception\PackageInstallFailed;
 use App\Module\Package\Contract\PackageInstallationInterface;
@@ -26,6 +27,7 @@ use App\Module\Record\Contract\RecordEventScopeInterface;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
 use App\Module\Record\Contract\RecordTransitionsInterface;
+use App\Module\User\Contract\UserManagerInterface;
 use App\Module\Workflow\Application\Definition\Definition;
 use App\Module\Workflow\Application\Definition\DefinitionParser;
 use App\Module\Workflow\Application\Definition\FormInput;
@@ -117,6 +119,7 @@ final class WorkflowEngine implements ResetInterface
         private readonly WorkflowQuota $quota,
         private readonly LoggerInterface $logger,
         private readonly ClockInterface $clock,
+        private readonly UserManagerInterface $users,
         #[Autowire('%app.workflow.max_run_seconds%')]
         private readonly int $maxRunSeconds,
     ) {
@@ -797,10 +800,13 @@ final class WorkflowEngine implements ResetInterface
                 StepType::Transition => $this->takeTransition($step, $chain, $run),
                 default => $this->write($step, $chain, $run),
             };
-        } catch (StepFailed $e) {
+        } catch (StepFailed|MetadataException $e) {
             $run->step($step->key, $step->type->value, 'failed', $chain->render($step->options), null, $e->getMessage(), self::since($started));
 
-            throw $e;
+            // The metadata's: an object or a field the definition names, checked when it was
+            // activated and gone since. The step fails with its reason, as any other; let go,
+            // it would break the write a workflow guards, and leave a queued run without its log.
+            throw $e instanceof StepFailed ? $e : new StepFailed($e->getMessage(), 0, $e);
         }
         $run->step($step->key, $step->type->value, 'completed', $input, $output, null, self::since($started));
         $chain->set($step->key, $output);
@@ -1211,6 +1217,11 @@ final class WorkflowEngine implements ResetInterface
         $role = (string) $step->string('role');
         if ('' === $email) {
             throw new StepFailed('No one to give the role to: the email is empty.');
+        }
+        // A role given to an email that is no member would wait for whoever joins with it later,
+        // unseen on the members' page until then.
+        if (!\in_array($email, array_map(mb_strtolower(...), $this->users->membersOf($workspace->id)), true)) {
+            throw new StepFailed(\sprintf('%s: %s is no member of this workspace.', $workspace->slug, $email));
         }
         try {
             $given = $this->sessions->within($workspace, function () use ($email, $role): bool {

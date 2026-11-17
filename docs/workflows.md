@@ -458,6 +458,10 @@ of it stays, since its last wait), **refused** (a before-run that refused its wr
 refused run is kept, though its write was rolled back. The steps run are counted per workspace and
 day.
 
+A definition is checked when it is activated, and the metadata may change after: a step naming an
+object or a field that is no more (archived, renamed) **fails**, with that reason, as any step
+that fails. Before a write, that refuses the write: deactivate the workflow, or correct it.
+
 A run is stored once its steps are done, whatever it holds: in an answer from outside that is not
 UTF-8, the invalid bytes are replaced in the log (and a NUL character dropped). A run that still
 cannot be stored (the database gone) is written to the application's log, and **not run again**:
@@ -503,7 +507,7 @@ steps:
 | Step | Options | Does |
 |---|---|---|
 | `install_package` | `package` (`vendor/name`, `vendor/name@1.0.0`), `repo` (an index, by name) | Installs it in the workspace from the indexes, with the packages it requires, all or nothing; outputs `installed` |
-| `assign_role` | `email` (with `{{ … }}`), `role` | Gives a role of the workspace (it must be there when the step runs) to the email; outputs `given` (false when held already) |
+| `assign_role` | `email` (with `{{ … }}`), `role` | Gives a role of the workspace (it must be there when the step runs) to the email, a member of the workspace (else the step fails); outputs `given` (false when held already) |
 
 `if`, `filter` and `refuse` work as anywhere; no other step. They act **as the system**, as the
 console's commands do: no `act_as`, no permission checked; only system admins define them, and

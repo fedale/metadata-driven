@@ -6,8 +6,10 @@ namespace App\Tests\Integration\Module\Workflow;
 
 use App\Module\Access\Application\PermissionSynchronizer;
 use App\Module\Access\Contract\Permissions;
+use App\Module\Metadata\Application\Handler\ArchiveHandler;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordOutput;
+use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
 use App\Module\User\Contract\UserManagerInterface;
@@ -16,6 +18,7 @@ use App\Module\Workflow\Application\Engine\RunLog;
 use App\Module\Workflow\Application\ManualRuns;
 use App\Module\Workflow\Application\WorkflowManager;
 use App\Tests\Support\CreatesRelatedObjects;
+use Doctrine\DBAL\Connection;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
@@ -112,6 +115,33 @@ final class SearchAndIteratorTest extends KernelTestCase
               - { key: none, type: iterator, items: '{{ \$trigger.record.city }}', steps: [{ key: a, type: filter, when: { field: none.item, op: empty } }] }
             YAML);
         self::assertSame([RunLog::FAILED, '{{ $trigger.record.city }} is no list: nothing to run on.'], [$run->status, $run->error]);
+    }
+
+    public function testAnObjectGoneSinceTheActivationFailsTheStep(): void
+    {
+        self::getContainer()->get(RbacManagerInterface::class)->assign('owner@example.com', 'record.visit.read');
+        $manager = self::getContainer()->get(WorkflowManager::class);
+        $guard = $manager->create('Guard', null, "trigger: { on: updated, object: person, when: before }\nsteps: [{ key: visits, type: search_records, object: visit }]");
+        $manager->activate($guard);
+        $manual = $manager->create('Count', null, "trigger: { on: manual, object: person, label: Count }\nsteps: [{ key: visits, type: search_records, object: visit }]");
+        $manager->activate($manual);
+        // Checked when they were activated; archived since.
+        self::getContainer()->get(ArchiveHandler::class)->archiveObject('visit');
+
+        // Before a write: refused with a reason, as any step that fails, not an error of the page.
+        try {
+            self::getContainer()->get(RecordManagerInterface::class)->update($this->ada->id, new RecordInput('person', ['city' => 'Pisa']));
+            self::fail('Refused.');
+        } catch (RecordValidationFailed $e) {
+            self::assertSame(['' => ['The workflow "Guard" could not run: Object "visit" does not exist.']], $e->errors);
+        }
+
+        self::getContainer()->get(RbacManagerInterface::class)->assign('owner@example.com', Permissions::workflowRun($manual->getId()->toRfc4122()));
+        $this->signIn('owner@example.com');
+        $runs = self::getContainer()->get(ManualRuns::class);
+        $run = $runs->run($runs->get($manual->getId()->toRfc4122()), $this->ada->id, []);
+        self::assertSame([RunLog::FAILED, 'Object "visit" does not exist.'], [$run->status, $run->error]);
+        self::assertSame(['refused', 'failed'], self::getContainer()->get(Connection::class)->fetchFirstColumn('SELECT status FROM core.workflow_run ORDER BY started_at'));
     }
 
     private function runAs(string $email, string $yaml): RunLog

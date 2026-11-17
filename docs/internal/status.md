@@ -422,8 +422,14 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   2026-11-13); *Select all* reading `max_records` + 1 rows of the grid, not all
   (`RecordGridSourceInterface::atMost()`); a run stopped at a wait no longer told as failed on
   a selection and by `workflow:run`; a record id in capitals the same record, one mistyped
-  refused, not left out; a resumed run counted for the minute it goes on in. Still to do: an object
-  deleted after activation crashing the run; `assign_role` to an email that is no member.
+  refused, not left out; a resumed run counted for the minute it goes on in. Sixth and last, on
+  branch `workflow_missing_object`, merged into `main` on 2026-11-17: a step naming an object
+  archived since the activation fails with its reason (it broke the write a before-workflow
+  guards, and left a queued run without its log), and `assign_role` gives a role to a member of
+  the workspace only. Not done, to decide: archiving or renaming an object does not tell the
+  workflows that name it (`MetadataUsages` knows nothing of them), so the first sign is the
+  failed run; an unquoted YAML date (`due_on: 2026-12-31`) is read as a timestamp by the
+  parser and the visual editor.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`
