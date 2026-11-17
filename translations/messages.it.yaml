@@ -573,12 +573,12 @@ admin:
         variables_context: L'esecuzione
         variables_steps: I passi
         test_record: 'Prova su'
-        test_help: 'Un record dell''oggetto dell''evento: la bozza gira davvero su di lui, poi tutto viene annullato.'
+        test_help: 'Un record dell''oggetto dell''evento: la bozza gira davvero su di lui, poi tutto viene annullato. Una richiesta verso l''esterno viene mostrata come partirebbe, non inviata.'
         test: Prova su questo record
         test_choose: 'Scegli un record di "%object%" su cui provare la bozza.'
         test_cannot_read: 'Non puoi leggere i record di "%object%": la prova li mostrerebbe.'
         test_result: Prova
-        test_rolled_back: 'Annullata: non è rimasto niente.'
+        test_rolled_back: 'Annullata: non è rimasto niente, nessuna richiesta è partita.'
         test_no_step: Nessun passo eseguito.
         reference: Oggetti e campi
         reference_help: 'I percorsi leggono i dati dell''esecuzione: <code>$trigger.record.&lt;campo&gt;</code>, <code>$trigger.before.&lt;campo&gt;</code> (modifiche), <code>$user.email</code>, <code>$today</code>, e l''output di ogni passo con la sua chiave, <code>{{ reminder.id }}</code>. Un passo scrive come chi ha scatenato l''evento, o come il ruolo del suo <code>act_as</code>, che devi poter assegnare.'

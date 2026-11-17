@@ -52,7 +52,10 @@ steps:
   error are shown on the page, and nothing is kept (no record written, no run stored). It acts with
   your permissions, and offers only the records you may read (`record.<object>.read`); a before-trigger runs as the update of the record with its own values (a create
   for a trigger on `created`), an after-trigger as the record written. Its writes start no other
-  workflow, whatever `emit_events` says, and the limits don't apply.
+  workflow, whatever `emit_events` says, and the limits don't apply. An `http_request` is **not
+  sent** (a request cannot be rolled back): its step shows the request as it would go, its
+  secrets masked, and outputs `sent: false` with no `status` and no `body`, so the steps after it
+  read no answer.
 - **Versions**: activating a draft makes it the active version, the previous one archived. Editing
   an active workflow writes a new draft while the active version keeps running. *Deactivate* stops
   it; *Use as draft* on an archived or deactivated version copies its definition into the draft,
@@ -381,7 +384,8 @@ steps:
   `http` and `https` only. Tried again, it waits 1, then 2, then 4 seconds
   (`app.workflow.http_retry_delay_ms`).
 - In after-runs, manual runs and the system admin's workflows; never before a write (no call to
-  the outside while a write waits). The request and its answer are in the run's log.
+  the outside while a write waits). The request and its answer are in the run's log. A
+  [test on a record](#the-page) sends nothing.
 - **Secrets**: tokens and keys go on the **Secrets** page of the workflows
   (`/admin/workflows/secrets`, `admin.workflows`), encrypted (`WORKFLOW_SECRETS_KEY`), a value
   never shown again once written. `{{ $secrets.crm_token }}` reads one in a request's `url`,

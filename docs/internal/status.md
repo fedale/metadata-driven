@@ -406,9 +406,10 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   select's options at their commas and dropped the options of a step of an unknown type: a
   value's text now reads back as the value it shows (`EditorModel::valueText()` and `typed()`,
   quotes for a text that would read as something else), fixed on branch `editor_round_trip`,
-  waiting for the user's review. Still to do, in this order: the test on a
-  record really sending its `http_request` (the user decides: skip it, or say so in the guide);
-  a run whose log cannot be stored run again by the queue's retries, and a system workflow's
+  merged into `main` on 2026-11-17. Third, the test on a record really sent its `http_request`,
+  secrets included: by the user's choice (2026-11-17) it is shown as it would go and not sent
+  (`sent: false`, no answer for the steps after it), fixed on branch `test_without_http`, merged
+  into `main` on 2026-11-17. Still to do, in this order: a run whose log cannot be stored run again by the queue's retries, and a system workflow's
   unexpected failure leaving no run; the limits (no time limit for a run, an `each` selection
   past `runs_per_minute`, *Select all* reading the whole grid, a waiting run shown as failed on
   a selection and by `workflow:run`, uppercase record ids, resumed runs not counted); an object

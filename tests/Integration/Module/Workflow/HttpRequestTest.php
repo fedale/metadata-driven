@@ -12,6 +12,7 @@ use App\Module\User\Contract\UserManagerInterface;
 use App\Module\User\Infrastructure\Security\UserProvider;
 use App\Module\Workflow\Application\Definition\DefinitionParser;
 use App\Module\Workflow\Application\Engine\StepFailed;
+use App\Module\Workflow\Application\Engine\WorkflowEngine;
 use App\Module\Workflow\Application\Engine\WorkflowHttp;
 use App\Module\Workflow\Application\WorkflowManager;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
@@ -96,6 +97,26 @@ final class HttpRequestTest extends KernelTestCase
         self::getContainer()->get(WorkflowManager::class)->deactivate(self::getContainer()->get(WorkflowRepository::class)->findByName('Hook') ?? throw new \LogicException());
         self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('person', ['full_name' => 'Bob']));
         self::assertSame('completed', $this->runStatus());
+    }
+
+    public function testATestOnARecordSendsNothing(): void
+    {
+        $this->answerEverything(static fn (): MockResponse => new MockResponse('{"ticket": 42}', ['http_code' => 201, 'response_headers' => ['content-type' => 'application/json']]));
+        $ada = self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('person', ['full_name' => 'Ada', 'city' => 'Pisa']));
+
+        $run = self::getContainer()->get(WorkflowEngine::class)->dryRun((new DefinitionParser())->parse(self::HOOK), 'Hook', $ada->id);
+
+        // A request cannot be rolled back: the test shows it as it would go, and sends nothing.
+        self::assertSame('completed', $run->status, (string) $run->error);
+        self::assertSame([], FakePackageServer::requests());
+        self::assertSame(
+            ['method' => 'POST', 'url' => 'https://api.example.test/people/'.$ada->id, 'headers' => ['X-Workspace' => 'default'], 'body' => ['name' => 'Ada', 'city' => 'Pisa']],
+            $run->steps[0]['input'],
+        );
+        self::assertSame(['sent' => false, 'status' => null, 'headers' => [], 'body' => null], $run->steps[0]['output']);
+        // The steps after it read no answer.
+        self::assertIsArray($run->steps[1]['output']);
+        self::assertSame('Ticket', $run->steps[1]['output']['city'] ?? null);
     }
 
     public function testNeverAPrivateNetworkNorAnotherScheme(): void
