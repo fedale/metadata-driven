@@ -4,7 +4,7 @@ Internal notes for whoever (human or agent) picks the work up, on any machine. R
 starting a task; update it in the same branch whenever a decision is taken, a feature lands or the
 work queue changes. The user-facing documentation is in [../README.md](../README.md).
 
-Last updated: 2026-11-14.
+Last updated: 2026-11-17.
 
 ## Setting up on a new machine
 
@@ -371,7 +371,7 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   `cancelled` when their version is no longer active; migration `Version20261116120000`, run
   `doctrine:migrations:migrate`; `app.workflow.max_wait_days`) done on branch `workflow_wait`,
   merged into `main` on 2026-11-16. 4c, the `http_request` step (`WorkflowHttp`, never a private
-  network; retries) done on branch `workflow_http`, waiting for review: phase 4 complete with it.
+  network; retries) done on branch `workflow_http`, merged into `main` on 2026-11-16: phase 4 complete with it.
   Phase 5 planned in [workflow-phase5-plan.md](workflow-phase5-plan.md) (2026-11-16): 5a, the
   `status` field type (states, transitions with their roles; `StateGuard` in `RecordManager`,
   `RecordTransitionsInterface`, the buttons of the record's page) done on branch
@@ -398,6 +398,18 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   `core.workspace.plan`, migration `Version20261116180000`, run `doctrine:migrations:migrate`; the
   workflow steps a month, checked where a run starts) done on branch `workflow_quotas`, merged
   into `main` on 2026-11-16: phase 6 complete (email and notifications left out).
+  A code review of phases 1b to 4c (2026-11-17, read on `main`) found no way to more power and no
+  cross-workspace read, and a list of defects, fixed one branch each. First, a `refuse` in an
+  after-run from the queue kept what the run had written (`runQueued` lacked the check of the
+  other entry points): fixed on branch `refuse_after_run`, waiting for the user's review. Still
+  to do, in this order: the visual editor retyping values on save (`'00100'` → `100`, `null` →
+  `''`, select options with a comma, an unknown step type losing its options); the test on a
+  record really sending its `http_request` (the user decides: skip it, or say so in the guide);
+  a run whose log cannot be stored run again by the queue's retries, and a system workflow's
+  unexpected failure leaving no run; the limits (no time limit for a run, an `each` selection
+  past `runs_per_minute`, *Select all* reading the whole grid, a waiting run shown as failed on
+  a selection and by `workflow:run`, uppercase record ids, resumed runs not counted); an object
+  deleted after activation crashing the run; `assign_role` to an email that is no member.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

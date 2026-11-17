@@ -221,7 +221,13 @@ final class WorkflowEngine implements ResetInterface
                 $chain = $this->chain($message->trigger);
                 try {
                     // All of the run or nothing.
-                    $this->transactions->run(fn () => $this->steps($workflow->definition->steps, $chain, $run, null));
+                    $this->transactions->run(function () use ($workflow, $chain, $run): void {
+                        $this->steps($workflow->definition->steps, $chain, $run, null);
+                        if (RunLog::COMPLETED !== $run->status && RunLog::WAITING !== $run->status) {
+                            // A refuse ends the run without throwing: nothing of the run is kept.
+                            throw new StepFailed((string) $run->error);
+                        }
+                    });
                     $run->end($run->status, $run->error);
                 } catch (StepFailed $e) {
                     $run->end(RunLog::FAILED, $e->getMessage());

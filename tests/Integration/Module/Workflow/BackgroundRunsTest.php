@@ -71,6 +71,25 @@ final class BackgroundRunsTest extends KernelTestCase
         self::assertSame([RunLog::FAILED, 'clerk@example.com does not hold record.pet.create.'], [$run?->status, $run?->error]);
     }
 
+    public function testARefuseKeepsNothingOfTheRun(): void
+    {
+        $manager = self::getContainer()->get(WorkflowManager::class);
+        $strict = $manager->create('Strict', null, <<<'YAML'
+            trigger: { on: created, object: person, when: after }
+            steps:
+              - { key: pet, type: create_record, object: pet, values: { name: 'Pet of {{ $trigger.record.full_name }}' } }
+              - { key: no, type: refuse, message: 'No pet for {{ $trigger.record.full_name }}.' }
+            YAML);
+        $manager->activate($strict);
+
+        $run = $this->engine()->runQueued($this->message('owner@example.com', $strict));
+
+        // The pet was written before the refuse: rolled back with the run, which is kept as failed.
+        self::assertSame([RunLog::FAILED, 'No pet for Ada.'], [$run?->status, $run?->error]);
+        self::assertSame([], $this->pets());
+        self::assertSame(['failed'], self::getContainer()->get(Connection::class)->fetchFirstColumn('SELECT status FROM core.workflow_run'));
+    }
+
     public function testAVersionNoLongerActiveRunsNoMore(): void
     {
         $message = $this->message('owner@example.com');
@@ -108,9 +127,9 @@ final class BackgroundRunsTest extends KernelTestCase
         self::assertSame('owner@example.com', self::getContainer()->get(Connection::class)->fetchOne('SELECT triggered_by FROM core.workflow_run'));
     }
 
-    private function message(string $triggeredBy): RunWorkflow
+    private function message(string $triggeredBy, ?Workflow $workflow = null): RunWorkflow
     {
-        $active = self::getContainer()->get(ActiveWorkflows::class)->byId($this->workflow->getId()->toRfc4122());
+        $active = self::getContainer()->get(ActiveWorkflows::class)->byId(($workflow ?? $this->workflow)->getId()->toRfc4122());
         self::assertNotNull($active);
 
         return new RunWorkflow(
