@@ -145,6 +145,37 @@ final class DbalRunStore implements RunStore
 
     private static function json(mixed $value): string
     {
-        return json_encode($value, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES | \JSON_PRESERVE_ZERO_FRACTION);
+        return json_encode(self::storable($value), \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES | \JSON_PRESERVE_ZERO_FRACTION);
+    }
+
+    /**
+     * A run's data as jsonb takes it. A run holds what came from outside (an http_request's
+     * answer, a webhook's body), and it is stored after its writes committed: what JSON or
+     * PostgreSQL refuses must not fail the run then. A text that is not UTF-8 has its invalid
+     * bytes replaced, a NUL character is dropped (jsonb has none), a number that is no number
+     * (INF, NAN) is null.
+     */
+    private static function storable(mixed $value): mixed
+    {
+        if (\is_string($value)) {
+            return self::storableText($value);
+        }
+        if (\is_float($value)) {
+            return is_finite($value) ? $value : null;
+        }
+        if (!\is_array($value)) {
+            return $value;
+        }
+        $storable = [];
+        foreach ($value as $key => $item) {
+            $storable[\is_string($key) ? self::storableText($key) : $key] = self::storable($item);
+        }
+
+        return $storable;
+    }
+
+    private static function storableText(string $text): string
+    {
+        return str_replace("\0", '', mb_scrub($text, 'UTF-8'));
     }
 }

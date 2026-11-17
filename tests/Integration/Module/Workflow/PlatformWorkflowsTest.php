@@ -127,6 +127,31 @@ final class PlatformWorkflowsTest extends KernelTestCase
         self::assertSame([RunLog::FAILED, 'beta: "ROLE_BOSS" is no role of this workspace.'], [$runs[0]->status, $runs[0]->error]);
     }
 
+    public function testARunThatBreaksIsKeptAsFailed(): void
+    {
+        $this->activate('Clerks', "trigger: { on: member_added }\nsteps: [{ key: all, type: filter, when: { field: \$trigger.workspace.slug, op: not_empty } }, { key: clerk, type: assign_role, email: '{{ \$trigger.member.email }}', role: ROLE_CLERK }]");
+        $users = self::getContainer()->get(UserManagerInterface::class);
+        $users->createUser('nina@example.com', 'correct horse battery staple');
+        self::getContainer()->get(PlatformWorkflows::class)->reset();
+        $users->addToWorkspace('nina@example.com', $this->beta->id);
+        // Not a step's own failure: an error no step expects, as the database's are.
+        $connection = self::getContainer()->get(Connection::class);
+        $connection->executeStatement("CREATE FUNCTION pg_temp.full_disk() RETURNS trigger AS \$\$ BEGIN RAISE EXCEPTION 'The disk is full.'; END \$\$ LANGUAGE plpgsql");
+        // The roles' tables are the workspace's own: named from inside it.
+        $this->sessions()->within($this->beta, static fn (): mixed => $connection->executeStatement('CREATE TRIGGER full_disk BEFORE INSERT ON auth_assignment FOR EACH ROW EXECUTE FUNCTION pg_temp.full_disk()'));
+
+        // Logged, and no run handed back.
+        self::assertSame([], self::getContainer()->get(PlatformWorkflows::class)->runPending());
+
+        // The console's pages show it, with the steps run before it broke.
+        $run = $this->sessions()->asSystem(static fn (): array|false => $connection->fetchAssociative('SELECT r.status, r.error, (SELECT COUNT(*) FROM core.workflow_run_step s WHERE s.run_id = r.id) AS steps FROM core.workflow_run r WHERE r.workspace_id IS NULL'));
+        self::assertIsArray($run);
+        self::assertSame(['failed', 1], [$run['status'], $run['steps']]);
+        self::assertIsString($run['error']);
+        self::assertStringStartsWith('It broke: ', $run['error']);
+        self::assertStringContainsString('The disk is full.', $run['error']);
+    }
+
     public function testEachSideDefinesItsOwn(): void
     {
         // A workspace defines no workflow on the platform's events...

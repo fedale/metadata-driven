@@ -409,8 +409,13 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   merged into `main` on 2026-11-17. Third, the test on a record really sent its `http_request`,
   secrets included: by the user's choice (2026-11-17) it is shown as it would go and not sent
   (`sent: false`, no answer for the steps after it), fixed on branch `test_without_http`, merged
-  into `main` on 2026-11-17. Still to do, in this order: a run whose log cannot be stored run again by the queue's retries, and a system workflow's
-  unexpected failure leaving no run; the limits (no time limit for a run, an `each` selection
+  into `main` on 2026-11-17. Fourth, a run whose log could not be stored (an answer that is not
+  UTF-8, the database gone) failed its message once its writes were committed, and the queue ran
+  it again, up to four times; a system workflow that broke on an error no step expects left no
+  run. The log is now made storable (`DbalRunStore::storable()`), `WorkflowEngine::store()` logs
+  and never throws, and `runPlatform()` keeps the broken run as failed before the error goes on:
+  fixed on branch `run_log_storage`, merged into `main` on 2026-11-17. Still to do, in this order:
+  the limits (no time limit for a run, an `each` selection
   past `runs_per_minute`, *Select all* reading the whole grid, a waiting run shown as failed on
   a selection and by `workflow:run`, uppercase record ids, resumed runs not counted); an object
   deleted after activation crashing the run; `assign_role` to an email that is no member.

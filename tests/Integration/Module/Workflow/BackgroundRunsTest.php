@@ -90,6 +90,20 @@ final class BackgroundRunsTest extends KernelTestCase
         self::assertSame(['failed'], self::getContainer()->get(Connection::class)->fetchFirstColumn('SELECT status FROM core.workflow_run'));
     }
 
+    public function testARunThatCannotBeStoredIsNotRunAgain(): void
+    {
+        $connection = self::getContainer()->get(Connection::class);
+        $connection->executeStatement("CREATE FUNCTION pg_temp.full_disk() RETURNS trigger AS \$\$ BEGIN RAISE EXCEPTION 'The disk is full.'; END \$\$ LANGUAGE plpgsql");
+        $connection->executeStatement('CREATE TRIGGER full_disk BEFORE INSERT ON core.workflow_run FOR EACH ROW EXECUTE FUNCTION pg_temp.full_disk()');
+
+        // Its pet is written already: an error from here would have the queue run it all again.
+        $run = $this->engine()->runQueued($this->message('owner@example.com'));
+
+        self::assertSame(RunLog::COMPLETED, $run?->status);
+        self::assertSame(['Pet of Ada'], $this->pets());
+        self::assertSame(0, $connection->fetchOne('SELECT COUNT(*) FROM core.workflow_run'));
+    }
+
     public function testAVersionNoLongerActiveRunsNoMore(): void
     {
         $message = $this->message('owner@example.com');
