@@ -56,6 +56,11 @@ account:
     last_name: Last name
     save_name: Save
     renamed: Name saved.
+    notifications: Notifications
+    by_email: 'Also by email'
+    by_email_help: 'Every notification of every workspace you are a member of comes to your email too, not only to the bell.'
+    save_notifications: Save
+    notifications_saved: 'Notifications choice saved.'
     password: Password
     password_intro: 'Your sessions elsewhere, on other devices and other workspaces, end when it changes.'
     current_password: Current password
@@ -86,6 +91,18 @@ password_reset:
     repeat: Repeat it
     save: Save the password
     done: 'Your password is changed: sign in with it.'
+notifications:
+    title: Notifications
+    intro: 'What the workspace tells you: from its workflows, for now. They are kept 90 days.'
+    choose: 'Get them by email too'
+    empty: 'No notifications.'
+    see_all: 'See them all'
+    mark_all_read: 'Mark all as read'
+    all_read: 'All your notifications are read.'
+    pages: Pages
+    page: 'Page %page% of %pages%'
+    newer: Newer
+    older: Older
 login:
     title: Sign in
     email: Email

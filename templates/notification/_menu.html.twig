@@ -1,0 +1,12 @@
+<turbo-frame id="notification-menu">
+    {% if notifications is empty %}
+        <p class="md-bell__empty gv-muted">{{ 'notifications.empty'|trans }}</p>
+    {% else %}
+        <ul class="md-notifications">
+            {% for notification in notifications %}
+                {{ include('notification/_item.html.twig') }}
+            {% endfor %}
+        </ul>
+    {% endif %}
+    <p class="md-bell__all"><a href="{{ path('notification_index') }}" data-turbo-frame="_top">{{ 'notifications.see_all'|trans }}</a></p>
+</turbo-frame>

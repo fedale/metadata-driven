@@ -55,9 +55,9 @@ final class DbalMembershipRepository implements MembershipRepository
 
     public function membersWithProfiles(string $workspaceId): array
     {
-        /** @var list<array{email: string, first_name: string|null, last_name: string|null, last_login_at: string|null}> $rows */
+        /** @var list<array{email: string, first_name: string|null, last_name: string|null, last_login_at: string|null, locale: string|null, notify_by_email: bool|null, is_active: bool}> $rows */
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT u.email, p.first_name, p.last_name, u.last_login_at
+            'SELECT u.email, p.first_name, p.last_name, u.last_login_at, p.locale, p.notify_by_email, u.is_active
                FROM core.workspace_membership m
                JOIN core.app_user u ON u.id = m.user_id
                LEFT JOIN core.app_user_profile p ON p.user_id = u.id

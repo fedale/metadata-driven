@@ -68,6 +68,12 @@ interface UserManagerInterface
     public function profile(string $email): Profile;
 
     /**
+     * Whether the account's notifications come by email too, in every workspace (accounts are
+     * global), not only to the bell.
+     */
+    public function chooseNotificationsByEmail(string $email, bool $byEmail): void;
+
+    /**
      * @throws UserException unknown user
      */
     public function rename(string $email, ?string $firstName, ?string $lastName): void;

@@ -143,6 +143,20 @@ A new module, **Notification**: `Notification: [NotificationContract, UserContra
 - **The choice**: on `/account`, "Also by email" (off by default), stored on the account
   (global, as the locale). An email for each notification; a daily digest is a later step.
 
+### Done (2026-11-19, branch `notifications`)
+
+As planned, but for the email channel: both channels are the module's, `inbox` (`InboxChannel`)
+and `mail` (`MailChannel`, through the shared `Mailer`, for one sender, layout and language),
+rather than Notifier's own email channel. `symfony/notifier` 8.1; `WorkspaceNotification` names
+its channels per member, so the policy of `notifier.yaml` is a fallback only. `Member` carries the
+language, the choice and whether the account is active; `Profile` the choice. A notification's
+link is a path of the workspace, checked by `NotificationMessage` (no address elsewhere, no
+`//`, no backslash): `/notifications/<id>/open` can't redirect away. Migration
+`Version20261119110000`; `notification` added to `WorkspaceScope::TABLES`. The bell is a
+`<details>` with a lazy Turbo Frame (it loads when the bell opens, again at each opening).
+`NotifierInterface` is public in the tests until part E uses it. Tests: `NotificationMessageTest`
+(9), `NotifierTest` (4), `NotificationControllerTest` (6).
+
 ## Part E: workflow steps (branch `workflow_email_notify`)
 
 ```yaml

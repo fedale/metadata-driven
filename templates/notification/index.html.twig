@@ -1,0 +1,33 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'notifications.title'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="md-page__header">
+        <h1>{{ 'notifications.title'|trans }}</h1>
+        {% if unread > 0 %}
+            <form method="post" action="{{ path('notification_read_all') }}" class="md-page__actions">
+                <input type="hidden" name="_token" value="{{ csrf_token('submit') }}" data-controller="csrf-protection">
+                <button type="submit" class="gv-btn">{{ 'notifications.mark_all_read'|trans }}</button>
+            </form>
+        {% endif %}
+    </div>
+    <p class="gv-muted">{{ 'notifications.intro'|trans }} <a href="{{ path('app_account') ~ '#notifications' }}">{{ 'notifications.choose'|trans }}</a></p>
+
+    {% if notifications is empty %}
+        <p class="gv-muted">{{ 'notifications.empty'|trans }}</p>
+    {% else %}
+        <ul class="md-notifications md-notifications--page">
+            {% for notification in notifications %}
+                {{ include('notification/_item.html.twig') }}
+            {% endfor %}
+        </ul>
+        {% if pages > 1 %}
+            <nav class="md-pager" aria-label="{{ 'notifications.pages'|trans }}">
+                {% if page > 1 %}<a href="{{ path('notification_index', {page: page - 1}) }}" rel="prev">&larr; {{ 'notifications.newer'|trans }}</a>{% endif %}
+                <span>{{ 'notifications.page'|trans({'%page%': page, '%pages%': pages}) }}</span>
+                {% if page < pages %}<a href="{{ path('notification_index', {page: page + 1}) }}" rel="next">{{ 'notifications.older'|trans }} &rarr;</a>{% endif %}
+            </nav>
+        {% endif %}
+    {% endif %}
+{% endblock %}

@@ -444,8 +444,13 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   members page and the console; `invitation_email`, 20 an hour per inviter) done on branch
   `invitation_email`, merged into `main` on 2026-11-19. Part C (the password reset:
   `/password/forgot`, `core.password_reset`, migration `Version20261119100000`, run
-  `doctrine:migrations:migrate`) done on branch `password_reset` (2026-11-19), waiting for the
-  user's review.
+  `doctrine:migrations:migrate`) done on branch `password_reset`, merged into `main` on
+  2026-11-19. Part D (notifications: the Notification module, the bell, `/notifications`, the
+  choice by email on `/account`, `notifications:gc`; migration `Version20261119110000`, run
+  `doctrine:migrations:migrate`) done on branch `notifications` (2026-11-19), waiting for the
+  user's review. Open: `HostWorkspaceUrls` takes the scheme and port of a link from the request
+  (the host from the configuration); from `DEFAULT_URI` only, or `framework.trusted_hosts`, is
+  the user's call (a security review's remark on part C).
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

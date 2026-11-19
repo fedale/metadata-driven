@@ -1,0 +1,12 @@
+{% extends 'email/base.txt.twig' %}
+
+{% block content %}{{ title }}
+{% if text %}
+
+{{ text }}{% endif %}{% if origin %}
+
+{{ origin }}{% endif %}{% if link %}
+
+{{ 'notification.open'|trans({}, 'email') }}: {{ link }}{% endif %}{% endblock %}
+
+{% block footer %}{{ 'notification.why'|trans({}, 'email') }} {{ account }}{% endblock %}

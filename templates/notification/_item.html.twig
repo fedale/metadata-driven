@@ -1,0 +1,11 @@
+{# One notification, in the bell's menu and in the history: a link that marks it read, then leads to its page. #}
+<li class="md-notification{{ notification.read ? '' : ' md-notification--unread' }}">
+    <a href="{{ path('notification_open', {id: notification.id}) }}" class="md-notification__link" data-turbo-frame="_top">
+        <span class="md-notification__title">{{ notification.title }}</span>
+        {% if notification.text %}<span class="md-notification__text">{{ notification.text }}</span>{% endif %}
+        <span class="md-notification__meta">
+            <time datetime="{{ notification.createdAt|date('c') }}">{{ notification.createdAt|format_datetime('medium', 'short', locale: app.request.locale) }}</time>
+            {% if notification.origin %} · {{ notification.origin }}{% endif %}
+        </span>
+    </a>
+</li>

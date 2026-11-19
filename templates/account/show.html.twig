@@ -15,6 +15,15 @@
         {{ form_end(name_form) }}
     </section>
 
+    <section class="md-admin__section" id="notifications">
+        <h2>{{ 'account.notifications'|trans }}</h2>
+        {{ form_start(notifications_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+            {{ form_errors(notifications_form) }}
+            {{ form_rest(notifications_form) }}
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'account.save_notifications'|trans }}</button>
+        {{ form_end(notifications_form) }}
+    </section>
+
     <section class="md-admin__section">
         <h2>{{ 'account.password'|trans }}</h2>
         <p class="gv-muted">{{ 'account.password_intro'|trans }}</p>

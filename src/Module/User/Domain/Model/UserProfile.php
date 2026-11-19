@@ -15,6 +15,8 @@ class UserProfile
     private ?string $lastName;
     /** The language the user reads the application in; null: the browser's. */
     private ?string $locale = null;
+    /** Whether the notifications come by email too, not only to the bell. */
+    private bool $notifyByEmail = false;
     private \DateTimeImmutable $updatedAt;
 
     public function __construct(
@@ -43,6 +45,17 @@ class UserProfile
     public function getLocale(): ?string
     {
         return $this->locale;
+    }
+
+    public function chooseNotificationsByEmail(bool $byEmail): void
+    {
+        $this->notifyByEmail = $byEmail;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function notifiesByEmail(): bool
+    {
+        return $this->notifyByEmail;
     }
 
     public function getFullName(): string

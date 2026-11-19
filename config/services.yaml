@@ -39,6 +39,8 @@ parameters:
     # secret is written nor read.
     app.workflow.secrets_key: '%env(default::WORKFLOW_SECRETS_KEY)%'
     app.workflow.runs_keep_days: 30
+    # How long the notifications are kept, read or not (notifications:gc).
+    app.notification.keep_days: 90
     # Workspaces (docs/architecture.md, "Workspaces"). A request for <slug>.<base host> is for that
     # workspace's; one for the base host itself, or for any other host, and a command without
     # --workspace, are for the default workspace's. Empty: no default, every request names its workspace.
@@ -135,4 +137,8 @@ when@test:
             public: true
         App\Shared\Infrastructure\Workspace\WorkspaceRegistry:
             autowire: true
+            public: true
+        # Used by no service yet (the workflows' notify step will be): kept for the tests.
+        App\Module\Notification\Contract\NotifierInterface:
+            alias: App\Module\Notification\Application\Notifier
             public: true

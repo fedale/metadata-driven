@@ -14,7 +14,7 @@ doctrine:
         # their secrets and webhook tokens (core.workflow_secret, core.workflow_webhook).
         # The comparison names core's tables with or without their schema, and a workspace's with
         # theirs.
-        schema_filter: '~^(?!(core\.)?(metadata_state|workspace|workspace_membership|workspace_invitation|workflow_run|workflow_run_step|workflow_usage|workflow_secret|workflow_webhook|password_reset)$)(core\.)?[^.]+$~'
+        schema_filter: '~^(?!(core\.)?(metadata_state|workspace|workspace_membership|workspace_invitation|workflow_run|workflow_run_step|workflow_usage|workflow_secret|workflow_webhook|password_reset|notification)$)(core\.)?[^.]+$~'
 
         profiling_collect_backtrace: '%kernel.debug%'
     orm:
