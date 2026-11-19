@@ -435,6 +435,12 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   `MetadataInWorkflows`, the places found by `DefinitionNames`; see lifecycle.md. An unquoted
   YAML date is now the text it shows, in the parser and the visual editor (`WorkflowYaml`:
   `Yaml::PARSE_DATETIME`, the date turned back into Y-m-d, a date-time into ISO 8601 in UTC).
+- **Email and notifications**: planned in [notifications-plan.md](notifications-plan.md),
+  agreed on 2026-11-19: Symfony Mailer and Notifier, Mailpit in development; sending email,
+  invitations by email, a password reset, notifications in the application (and by email by
+  choice), the workflow steps `send_email` and `notify`. Part A (sending email: the shared
+  `Mailer` port, `WorkspaceUrls`, Mailpit, `mail:test`) done on branch `mail_sending`
+  (2026-11-19), waiting for the user's review. Run `make up` for Mailpit.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

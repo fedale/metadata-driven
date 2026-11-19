@@ -1,0 +1,10 @@
+framework:
+    mailer:
+        dsn: '%env(MAILER_DSN)%'
+
+# The tests send nothing, whatever the machine's MAILER_DSN: they read the emails from the
+# mailer's assertions (assertEmailCount(), getMailerMessage()).
+when@test:
+    framework:
+        mailer:
+            dsn: 'null://null'

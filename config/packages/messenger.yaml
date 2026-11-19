@@ -21,6 +21,8 @@ framework:
             sync: 'sync://'
 
         routing:
+            # The emails, rendered in the request, sent by the worker.
+            Symfony\Component\Mailer\Messenger\SendEmailMessage: async
             App\Module\Workflow\Application\Engine\Message\RunWorkflow: async
             App\Module\Workflow\Application\Engine\Message\RunPlatformEvents: async
             App\Module\Workflow\Application\Engine\Message\ResumeRun: async

@@ -1,0 +1,7 @@
+# I testi delle email dell'applicazione (templates/email/), in italiano.
+footer:
+    automatic: 'Questa email è stata inviata automaticamente: le risposte non vengono lette.'
+mail_test:
+    subject: 'Un''email di prova'
+    body: 'Questa è un''email di prova: l''applicazione invia email.'
+    sent_at: 'Inviata alle %at% (UTC).'

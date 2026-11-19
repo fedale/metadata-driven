@@ -44,6 +44,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:package:publish`](#metadatapackagepublish) | Prepare a package version for the central catalog: copied into a checkout of it, ready for a pull request |
 | [`metadata:package:upgrade`](#metadatapackageupgrade) | Upgrade an installed package to a new version: only what it changed, what this instance changed kept |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
+| [`mail:test`](#mailtest) | Send a test email, to check `MAILER_DSN` and `MAILER_FROM` |
 | [`workspace:create`](#workspacecreate), [`workspace:list`](#workspacelist), [`workspace:suspend`, `workspace:resume`](#workspacesuspend-workspaceresume), [`workspace:delete`](#workspacedelete), [`workspace:plan`](#workspaceplan), [`workspace:run`](#workspacerun) | Create, list, suspend, resume and delete workspaces, put one on a plan; run a command for several of them |
 | [`workspace:files:move`](#workspacefilesmove) | Move the files stored before workspaces had directories into their workspace's directory, once |
 | `system:admin` | List, grant or revoke the system admins who may enter the system console — see [Workspaces](workspaces.md#the-system-console) |
@@ -810,6 +811,25 @@ Run it on a schedule, for every workspace:
 ```
 45 3 * * * cd /srv/app && php bin/console workspace:run --all -- workflow:runs:gc --no-interaction
 ```
+
+
+## `mail:test`
+
+Send a test email, to check the email setup (`MAILER_DSN`, `MAILER_FROM`; see
+[Getting started](getting-started.md#email)). It is queued like every email, so it leaves when
+the worker takes it (`messenger:consume async`).
+
+```
+mail:test <to> [--locale=LOCALE]
+```
+
+| Argument, option | Meaning |
+|---|---|
+| `to` | The address to send it to |
+| `--locale` | Its language, `en` or `it`; the application's by default |
+
+It comes from the command's workspace, under its name. In development, Mailpit shows it on
+`http://localhost:8025`.
 
 ## Workspaces
 

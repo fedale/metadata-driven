@@ -1,0 +1,7 @@
+{# The text twin of base.html.twig: a .txt.twig is not escaped (Twig's autoescape by name). #}
+{{ sender_name }}
+
+{% block content %}{% endblock %}
+
+--
+{% block footer %}{{ 'footer.automatic'|trans({}, 'email') }}{% endblock %}

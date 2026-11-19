@@ -56,6 +56,13 @@ parameters:
     # The RBAC role that passes every check (fedale_rbac.yaml); workspace:create gives it to a new
     # workspace's first admin. App\Module\Access\Contract\Permissions::SUPER_ADMIN_ROLE says the same.
     app.super_admin_role: 'ROLE_SUPER_ADMIN'
+    # Email (docs/getting-started.md, "Email"): where it goes, null://null sending nothing
+    # (Mailpit's smtp://localhost:1025 in development), and the address it comes from, empty for
+    # noreply@<base host>. The name shown is the workspace's, or the application's below.
+    env(MAILER_DSN): 'null://null'
+    env(MAILER_FROM): ''
+    app.mail.from: '%env(MAILER_FROM)%'
+    app.mail.sender_name: 'Metadata-driven'
 
 services:
     # default configuration for services in *this* file

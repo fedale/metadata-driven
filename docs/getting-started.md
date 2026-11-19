@@ -14,7 +14,7 @@ from Packagist, in their released versions: `composer install` is enough.
 
 ```bash
 composer install
-make up        # PostgreSQL 17 and Redis in Docker
+make up        # PostgreSQL 17, Redis and Mailpit in Docker
 make db        # create the database, run the migrations
 make assets    # compile the Sass stylesheets (pages do not render without them)
 symfony serve -d
@@ -25,6 +25,23 @@ symfony run -d --watch=config,src symfony console messenger:consume async schedu
 `WORKFLOW_SECRETS_KEY` encrypts the workflows' secrets: `symfony console workflow:secrets:key`
 prints one, to put there too.
 Without the worker, the workflows that run after a write wait in the queue.
+
+### Email
+
+The application sends its emails through the worker too: without it, they wait in the queue.
+In development, Mailpit catches every one of them: read them on `http://localhost:8025`. The
+Symfony CLI points `MAILER_DSN` at it by itself (`symfony var:export MAILER_DSN`), and
+`symfony console mail:test you@example.com` sends one to check.
+
+| Variable | Meaning |
+|---|---|
+| `MAILER_DSN` | Where emails go: `null://null` (the default) sends nothing; `smtp://user:password@smtp.example.com:587` an SMTP server; a provider's DSN with its bridge (`composer require symfony/mailgun-mailer`, for instance) |
+| `MAILER_FROM` | The address they come from; empty for `noreply@<WORKSPACE_BASE_HOST>`. The name shown is the workspace's (`app.mail.sender_name` in the system console) |
+
+In production, set both in `.env.local` (or the vault), and give the sender's domain an SPF
+record and DKIM keys for the server or provider that sends: without them, most mailboxes put the
+application's emails in spam. Links in an email name the workspace's host, with the scheme and
+port of the request that sent it, or of `DEFAULT_URI` from a command or the worker.
 
 Create your account, as super admin (see [Users and permissions](access.md)):
 
