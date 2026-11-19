@@ -12,6 +12,7 @@ use Doctrine\DBAL\Connection;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\Mime\Email;
 
 /**
  * The system console, console.localhost in the tests: its system admins, its workspaces
@@ -97,10 +98,18 @@ final class SystemConsoleTest extends WebTestCase
 
         $this->client->submitForm('Create', ['new_workspace[slug]' => 'globex', 'new_workspace[name]' => 'Globex', 'new_workspace[admin_email]' => 'Dora@Example.com']);
         self::assertResponseRedirects('/console/workspaces/globex', 303);
+        // The invitation by email, from the workspace, its link on the workspace's host.
+        self::assertEmailCount(1);
+        $email = self::getMailerMessage();
+        self::assertInstanceOf(Email::class, $email);
+        self::assertSame('dora@example.com', $email->getTo()[0]->getAddress());
+        self::assertSame('Globex', $email->getFrom()[0]->getName());
         $crawler = $this->client->followRedirect();
 
         $globex = $this->workspace('globex');
-        self::assertStringStartsWith('http://globex.localhost/invitation/', (string) $crawler->filter('input[readonly]')->attr('value'));
+        $link = (string) $crawler->filter('input[readonly]')->attr('value');
+        self::assertStringStartsWith('http://globex.localhost/invitation/', $link);
+        self::assertEmailTextBodyContains($email, $link);
         $connection = self::getContainer()->get(Connection::class);
         self::assertNotFalse($connection->fetchOne(\sprintf("SELECT 1 FROM %s.auth_item WHERE name = 'admin.members'", $globex->rbacSchema)), 'Its permissions.');
         self::assertSame(['ROLE_SUPER_ADMIN'], $connection->fetchFirstColumn(\sprintf("SELECT item_name FROM %s.auth_assignment WHERE user_id = 'dora@example.com'", $globex->rbacSchema)));

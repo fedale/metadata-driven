@@ -1,0 +1,7 @@
+{% extends 'email/base.txt.twig' %}
+
+{% block content %}{{ 'invitation.body'|trans({'%inviter%': inviter, '%workspace%': workspace}, 'email') }}
+
+{{ 'invitation.accept'|trans({}, 'email') }}: {{ link }}
+
+{{ 'invitation.expires'|trans({'%date%': expires_at|format_datetime('long', 'short', locale: locale, timezone: 'UTC')}, 'email') }}{% endblock %}

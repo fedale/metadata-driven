@@ -235,10 +235,12 @@ admin:
         last_login: Last sign-in
         you: you
         add: Invite someone
-        add_intro: 'An invitation lasts 7 days. The application sends no email: pass its link on.'
+        add_intro: 'An invitation lasts 7 days. Its link goes by email, and is shown here once too, for an address that receives no mail.'
         add_submit: Invite
-        invited: 'Invitation for %email% created.'
-        invitation_link: 'Pass this link on: it is shown once.'
+        invited: 'Invitation for %email% created and sent by email.'
+        invitation_not_sent: 'The invitation for %email% is created, but its email could not be sent: pass its link on.'
+        invitation_limit: 'You sent many invitations in the last hour: try again later.'
+        invitation_link: 'The invitation''s link, shown once: pass it on if the email does not arrive.'
         invitations: Pending invitations
         invited_by: Invited by
         expires: Expires

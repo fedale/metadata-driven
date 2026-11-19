@@ -232,10 +232,12 @@ admin:
         last_login: Ultimo accesso
         you: tu
         add: Invita qualcuno
-        add_intro: 'Un invito dura 7 giorni. L''applicazione non invia email: comunica tu il link.'
+        add_intro: 'Un invito dura 7 giorni. Il suo link arriva per email, ed è mostrato anche qui una volta, per un indirizzo che non riceve posta.'
         add_submit: Invita
-        invited: 'Invito per %email% creato.'
-        invitation_link: 'Comunica questo link: viene mostrato una sola volta.'
+        invited: 'Invito per %email% creato e inviato per email.'
+        invitation_not_sent: 'L''invito per %email% è creato, ma la sua email non è partita: comunica tu il link.'
+        invitation_limit: 'Hai inviato molti inviti nell''ultima ora: riprova più tardi.'
+        invitation_link: 'Il link dell''invito, mostrato una sola volta: comunicalo se l''email non arriva.'
         invitations: Inviti in sospeso
         invited_by: Invitato da
         expires: Scade

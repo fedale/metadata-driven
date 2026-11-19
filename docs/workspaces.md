@@ -39,8 +39,9 @@ symfony console system:admin revoke olga@example.com  # their console session en
 ```
 
 - **Workspaces**: the list (members, objects, status, plan), a new one (its slug, its name, and its first
-  admin, invited: they accept the link on the workspace's host, with their account or a new one, and
-  hold its super admin role), suspend or resume, delete (typing the slug back; never the default
+  admin, invited: the link goes to them by email, from the workspace, and is shown once too; they
+  accept it on the workspace's host, with their account or a new one, and hold its super admin
+  role), suspend or resume, delete (typing the slug back; never the default
   workspace).
 - **A workspace's members**: give or take the super admin role, remove, invite another admin.
 - **A workspace's plan**, and its workflow steps this month (see [Plans](#plans)).

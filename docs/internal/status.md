@@ -326,8 +326,8 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   members page (`/admin/members`, `admin.members`) with invitations by link, the roles page
   (`/admin/roles`, `admin.roles`), the account page (`/account`), the system console on
   `console.<base host>` (`system:admin grant`). Migrations up to `Version20261113130000`.
-  Left, roughly in the order discussed: email sending and a password reset (put off by the
-  user); the console's finishing touches (renaming a tenant, its pending invitations,
+  Left, roughly in the order discussed: a password reset (now in notifications-plan.md, part C;
+  invitations go by email since 2026-11-19); the console's finishing touches (renaming a tenant, its pending invitations,
   deactivating an account everywhere); a domain of its own per tenant, if needed; a second factor
   and the system admins' log (with Monolog, the user's call).
 - **Workflows**: proposed in [workflow-plan.md](workflow-plan.md) (2026-11-13), after reading
@@ -439,8 +439,10 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   agreed on 2026-11-19: Symfony Mailer and Notifier, Mailpit in development; sending email,
   invitations by email, a password reset, notifications in the application (and by email by
   choice), the workflow steps `send_email` and `notify`. Part A (sending email: the shared
-  `Mailer` port, `WorkspaceUrls`, Mailpit, `mail:test`) done on branch `mail_sending`
-  (2026-11-19), waiting for the user's review. Run `make up` for Mailpit.
+  `Mailer` port, `WorkspaceUrls`, Mailpit, `mail:test`) done on branch `mail_sending`, merged
+  into `main` on 2026-11-19 (run `make up` for Mailpit). Part B (invitations by email, from the
+  members page and the console; `invitation_email`, 20 an hour per inviter) done on branch
+  `invitation_email` (2026-11-19), waiting for the user's review.
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`
