@@ -205,6 +205,36 @@ final class EditorModelTest extends TestCase
         self::assertEquals($parser->parse($source), $parser->parse($saved));
     }
 
+    public function testAnEmailAndANotificationKeepTheirRecipientsAndTexts(): void
+    {
+        $source = <<<'YAML'
+            trigger: { on: created, object: invoice, when: after }
+            steps:
+              - key: tell
+                type: send_email
+                to: [{ role: ROLE_CLERK }, { member: '{{ $user.email }}' }, { field: '{{ $trigger.record.email }}' }]
+                subject: 'Invoice {{ $trigger.record.number }}'
+                body: |
+                  Line one: {{ $trigger.record.number }}
+                  { not: yaml }
+              - { key: ping, type: notify, to: [{ role: ROLE_CLERK }], title: 'New invoice', text: 'See it', link: { object: invoice, id: '{{ $trigger.record.id }}' } }
+              - { key: bare, type: notify, to: [{ member: anna@example.com }], title: Hi }
+            YAML;
+        $model = EditorModel::fromSource($source);
+        self::assertNotNull($model);
+        self::assertSame([['kind' => 'role', 'value' => 'ROLE_CLERK'], ['kind' => 'member', 'value' => '{{ $user.email }}'], ['kind' => 'field', 'value' => '{{ $trigger.record.email }}']], self::at($model, 'steps.0.to'));
+        self::assertSame('invoice', self::at($model, 'steps.1.link_object'));
+
+        // An email's body stays text, even one that would read as YAML.
+        self::assertSame(self::at(self::yaml($source), 'steps'), self::at(self::yaml(EditorModel::toSource($model)), 'steps'));
+        $parser = new DefinitionParser();
+        self::assertEquals($parser->parse($source), $parser->parse(EditorModel::toSource($model)));
+
+        // A row left empty is no recipient.
+        $step = EditorModel::newStep(StepType::SendEmail, []);
+        self::assertSame([['kind' => 'member', 'value' => '']], $step['to']);
+    }
+
     public function testSelectOptionsWithACommaStayWhole(): void
     {
         $source = "trigger: { on: manual, object: person, label: Go, form: [{ name: who, label: Who, type: select, options: ['Rossi, Mario', 'Bianchi, Luca'] }] }\nsteps: [{ key: no, type: refuse, message: no }]";

@@ -38,11 +38,12 @@ final class ConfiguredPlans implements Plans
         $plans = [];
         foreach ($this->configured as $name => $plan) {
             $steps = \is_array($plan) ? ($plan['workflow_steps_per_month'] ?? null) : null;
+            $emails = \is_array($plan) ? ($plan['emails_per_month'] ?? null) : null;
             if (!\is_string($name) || 1 !== preg_match('/^[a-z][a-z0-9_-]{0,49}$/', $name) || !\is_array($plan) || !\is_string($plan['label'] ?? null)
-                || (null !== $steps && (!\is_int($steps) || $steps < 0))) {
-                throw new \LogicException(\sprintf('app.plans: "%s" is no plan: a name (lowercase, 50 characters at most), a label, and workflow_steps_per_month, a number or ~.', (string) $name));
+                || (null !== $steps && (!\is_int($steps) || $steps < 0)) || (null !== $emails && (!\is_int($emails) || $emails < 0))) {
+                throw new \LogicException(\sprintf('app.plans: "%s" is no plan: a name (lowercase, 50 characters at most), a label, workflow_steps_per_month and emails_per_month, each a number or ~.', (string) $name));
             }
-            $plans[$name] = new Plan($name, $plan['label'], $steps);
+            $plans[$name] = new Plan($name, $plan['label'], $steps, $emails);
         }
         if (!isset($plans[$this->default])) {
             throw new \LogicException(\sprintf('app.default_plan: "%s" is none of app.plans.', $this->default));

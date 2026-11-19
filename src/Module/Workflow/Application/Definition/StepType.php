@@ -25,6 +25,10 @@ enum StepType: string
     case RunWorkflow = 'run_workflow';
     /** A called workflow's end: the values its caller's run_workflow step outputs. */
     case Return = 'return';
+    /** An email to members and to the addresses of a record's email fields, once the run's writes are kept. */
+    case SendEmail = 'send_email';
+    /** A notification to members (the bell, and their email if they chose it), once the run's writes are kept. */
+    case Notify = 'notify';
 
     /**
      * Whether the step is the platform's: only a system workflow takes it, and takes no other
@@ -40,7 +44,7 @@ enum StepType: string
      */
     public function forPlatform(): bool
     {
-        return $this->isPlatform() || \in_array($this, [self::If, self::Filter, self::Refuse, self::HttpRequest], true);
+        return $this->isPlatform() || \in_array($this, [self::If, self::Filter, self::Refuse, self::HttpRequest, self::SendEmail], true);
     }
 
     /**
@@ -85,6 +89,8 @@ enum StepType: string
             self::Transition => ['object' => true, 'id' => true, 'field' => true, 'name' => true, ...$writing],
             self::RunWorkflow => ['workflow' => true, 'input' => false],
             self::Return => ['values' => false],
+            self::SendEmail => ['to' => true, 'subject' => true, 'body' => true],
+            self::Notify => ['to' => true, 'title' => true, 'text' => false, 'link' => false],
             self::HttpRequest => ['url' => true, 'method' => false, 'headers' => false, 'body' => false, 'timeout' => false, 'retries' => false, 'fail_on_error' => false],
         };
     }

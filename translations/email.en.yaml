@@ -22,3 +22,5 @@ notification:
     open: 'Open'
     why: 'You get your notifications by email too, as chosen on your account page:'
     account: 'change it there'
+workflow_email:
+    subject: '%subject%'

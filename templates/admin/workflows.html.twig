@@ -22,6 +22,9 @@
         {% elseif usage.limit is not null %}
             <p class="gv-muted md-workflow-usage">{{ 'admin.workflow.usage'|trans({'%steps%': usage.steps, '%limit%': usage.limit, '%plan%': usage.plan}) }}</p>
         {% endif %}
+        {% if usage.emailLimit is not null %}
+            <p class="gv-muted md-workflow-usage">{{ 'admin.workflow.usage_emails'|trans({'%emails%': usage.emails, '%limit%': usage.emailLimit}) }}</p>
+        {% endif %}
     {% endif %}
 
     {% if rows is empty %}

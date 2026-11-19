@@ -8,9 +8,14 @@ parameters:
             label: Starter
             # The workflow steps a workspace may run in a calendar month: past them, no run starts.
             workflow_steps_per_month: 5000
+            # The emails its workflows may send in a calendar month, one per recipient (send_email,
+            # and the emails of notify): past them, those steps fail, and notify reaches the bell only.
+            emails_per_month: 1000
         business:
             label: Business
             workflow_steps_per_month: 100000
+            emails_per_month: 20000
         unlimited:
             label: Unlimited
             workflow_steps_per_month: ~
+            emails_per_month: ~

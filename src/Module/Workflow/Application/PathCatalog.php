@@ -49,6 +49,7 @@ final class PathCatalog
                     StepType::InstallPackage => [$step->key.'.installed'],
                     StepType::AssignRole => [$step->key.'.given'],
                     StepType::HttpRequest => [$step->key.'.status', $step->key.'.body', $step->key.'.headers'],
+                    StepType::SendEmail => [$step->key.'.recipients', $step->key.'.left_out', $step->key.'.sent'],
                     default => [],
                 };
             }
@@ -92,6 +93,7 @@ final class PathCatalog
                 StepType::DeleteRecord => [$key.'.id'],
                 StepType::Wait => [$key.'.until'],
                 StepType::HttpRequest => [$key.'.status', $key.'.body', $key.'.headers'],
+                StepType::SendEmail, StepType::Notify => [$key.'.recipients', $key.'.left_out', $key.'.sent'],
                 StepType::SearchRecords => [
                     $key.'.records', $key.'.count', $key.'.total', $key.'.first.id',
                     ...array_map(static fn (string $field): string => $key.'.first.'.$field, $this->fields((string) $step->string('object'))),

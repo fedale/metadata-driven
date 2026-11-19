@@ -18,8 +18,10 @@ interface NotifierInterface
      * counted. An address given twice is notified once.
      *
      * @param list<string> $emails
+     * @param bool         $byEmail false: the bell only, whatever the members chose (a workflow
+     *                              past its plan's emails)
      *
      * @throws \LogicException no workspace is selected
      */
-    public function notify(array $emails, NotificationMessage $message): Notified;
+    public function notify(array $emails, NotificationMessage $message, bool $byEmail = true): Notified;
 }

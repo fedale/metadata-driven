@@ -74,6 +74,35 @@ final readonly class Step
         return \is_array($input) ? array_combine(array_map(strval(...), array_keys($input)), array_values($input)) : [];
     }
 
+    /**
+     * A send_email's or a notify's recipients, as written: each { role }, { member } or { field }.
+     *
+     * @return list<array{kind: string, value: string}>
+     */
+    public function recipients(): array
+    {
+        $recipients = [];
+        foreach (\is_array($this->options['to'] ?? null) ? $this->options['to'] : [] as $entry) {
+            if (\is_array($entry) && 1 === \count($entry) && \is_string($value = reset($entry))) {
+                $recipients[] = ['kind' => (string) array_key_first($entry), 'value' => $value];
+            }
+        }
+
+        return $recipients;
+    }
+
+    /**
+     * A notify's page, as written.
+     *
+     * @return array{object: string, id: string}|null
+     */
+    public function link(): ?array
+    {
+        $link = $this->options['link'] ?? null;
+
+        return \is_array($link) && \is_string($link['object'] ?? null) && \is_string($link['id'] ?? null) ? ['object' => $link['object'], 'id' => $link['id']] : null;
+    }
+
     public function actAs(): ?string
     {
         return $this->string('act_as');

@@ -14,7 +14,19 @@ final readonly class WorkflowUsage
         public int $steps,
         /** The steps its plan allows a month; null for no limit. */
         public ?int $limit,
+        /** The emails its workflows sent this month, one per recipient. */
+        public int $emails = 0,
+        /** The emails its plan allows a month; null for no limit. */
+        public ?int $emailLimit = null,
     ) {
+    }
+
+    /**
+     * The emails left this month; null with no limit.
+     */
+    public function emailsLeft(): ?int
+    {
+        return null === $this->emailLimit ? null : max(0, $this->emailLimit - $this->emails);
     }
 
     /**

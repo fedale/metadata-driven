@@ -25,6 +25,13 @@
                 {{ 'console.usage'|trans({'%plan%': plan.label, '%steps%': usage.steps, '%limit%': usage.limit, '%percent%': usage.percent}) }}
             {% endif %}
         </p>
+        <p class="md-workspace-usage">
+            {% if usage.emailLimit is null %}
+                {{ 'console.emails_unlimited'|trans({'%emails%': usage.emails}) }}
+            {% else %}
+                {{ 'console.emails'|trans({'%emails%': usage.emails, '%limit%': usage.emailLimit}) }}
+            {% endif %}
+        </p>
         {{ form_start(plan_form, {attr: {class: 'md-form'}}) }}
             {{ form_rest(plan_form) }}
             <button type="submit" class="gv-btn">{{ 'console.plan_change'|trans }}</button>

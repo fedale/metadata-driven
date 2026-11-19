@@ -201,6 +201,21 @@ link is a path of the workspace, checked by `NotificationMessage` (no address el
   format's `workflow.json` (v2) lists the trigger events, not the step types.
 - The visual editor: the two step types, `to` as rows of a kind (role, member, field) and a value.
 
+### Done (2026-11-19, branch `workflow_email_notify`)
+
+As planned. `StepType::SendEmail` and `Notify` (`send_email` also for the system admin's
+workflows, members only); the parser's `to` (up to 20 entries; `field` a single path, never an
+address), `subject` and `title` one line, `link` `{ object, id }`; `DefinitionValidator` checks
+the roles and the email fields. The engine hands both to `WorkflowMessages`, which works out the
+recipients (a role through the roles containing it, members only; 50 at most) and sends them
+with `TransactionRunner::whenDone()`, committed only. `NotifierInterface::notify()` takes
+`$byEmail` (false past the plan's emails) and reports `emailed`. `Plan::$emailsPerMonth`
+(`emails_per_month`), `WorkflowUsage::$emails`, `$emailLimit`, `emailsLeft()`;
+`core.workflow_usage.emails` (migration `Version20261119120000`); shown on the workflows page
+and in the console. The visual editor: `to` as rows (kind, value), the link as an object and an
+id. Tests: `EmailAndNotifyTest` (6), `PlatformWorkflowsTest` (the welcome), `EditorModelTest`
+(the round trip). The plan is complete with it.
+
 ## Docs
 
 A new guide, `docs/notifications.md` (the bell, the choice by email, the notifications' table and

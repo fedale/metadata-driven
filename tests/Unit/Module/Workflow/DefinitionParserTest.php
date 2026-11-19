@@ -120,7 +120,7 @@ final class DefinitionParserTest extends TestCase
             'trigger.fields' => ['Only for a trigger on updated or created_or_updated: the fields whose change runs it.'],
         ]];
         yield 'steps' => ["trigger: { on: created, object: invoice, when: after }\nsteps:\n  - { key: a, type: fly }\n  - { key: a, type: refuse, message: no, extra: 1 }\n  - { key: Bad, type: create_record, object: invoice }\n  - { key: c, type: set_values, values: { x: 1 } }", [
-            'steps.0.type' => ['One of if, filter, create_record, update_record, delete_record, upsert_record, set_values, refuse, search_records, iterator, install_package, assign_role, wait, http_request, transition, run_workflow, return.'],
+            'steps.0.type' => ['One of if, filter, create_record, update_record, delete_record, upsert_record, set_values, refuse, search_records, iterator, install_package, assign_role, wait, http_request, transition, run_workflow, return, send_email, notify.'],
             'steps.1.key' => ['"a" names another step already.'],
             'steps.1.extra' => ['Unknown: here, key, type, message.'],
             'steps.2.key' => ["Required: lowercase letters, digits and underscores, starting with a letter; it names the step's output."],
@@ -243,7 +243,7 @@ final class DefinitionParserTest extends TestCase
         } catch (InvalidWorkflowDefinition $e) {
             self::assertSame([
                 'trigger.object' => ['Unknown: here, on.'],
-                'steps.0.type' => ['A workflow on the platform\'s events takes if, filter, refuse, install_package and assign_role only.'],
+                'steps.0.type' => ['A workflow on the platform\'s events takes if, filter, refuse, http_request, send_email, install_package and assign_role only.'],
                 'steps.1.package' => ['A package of the indexes: vendor/name, or vendor/name@1.0.0.'],
             ], $e->errors);
         }

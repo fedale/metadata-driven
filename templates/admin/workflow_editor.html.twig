@@ -222,6 +222,46 @@
                     <label>{{ 'admin.workflow.http_retries'|trans }} <input type="number" min="0" max="3" data-model="model.{{ path }}.retries" value="{{ step.retries }}"></label>
                     <label><input type="checkbox" data-model="model.{{ path }}.fail_on_error" {{ step.fail_on_error ? 'checked' }}> {{ 'admin.workflow.http_fail_on_error'|trans }}</label>
                 </div>
+            {% elseif step.type in ['send_email', 'notify'] %}
+                {# Who it reaches: a role's members, a member, or (an email) an email field of a record. #}
+                <p class="gv-muted">{{ 'admin.workflow.to'|trans }}</p>
+                {% for r, recipient in step.to %}
+                    <div class="md-workflow-row">
+                        <select data-model="model.{{ path }}.to.{{ r }}.kind" aria-label="{{ 'admin.workflow.to_kind'|trans }}">
+                            {% for kind in (step.type == 'send_email' ? ['role', 'member', 'field'] : ['role', 'member']) %}
+                                <option value="{{ kind }}" {{ recipient.kind == kind ? 'selected' }}>{{ ('admin.workflow.to_' ~ kind)|trans }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if recipient.kind == 'role' %}
+                            <select data-model="model.{{ path }}.to.{{ r }}.value" aria-label="{{ 'admin.workflow.role'|trans }}">
+                                <option value="">—</option>
+                                {% for role in this.roles %}<option value="{{ role }}" {{ recipient.value == role ? 'selected' }}>{{ role }}</option>{% endfor %}
+                            </select>
+                        {% else %}
+                            <input type="text" data-model="model.{{ path }}.to.{{ r }}.value" value="{{ recipient.value }}" class="md-code-input"
+                                   placeholder="{{ recipient.kind == 'field' ? '{{ $trigger.record.email }}' : '{{ $user.email }}' }}" aria-label="{{ ('admin.workflow.to_' ~ recipient.kind)|trans }}">
+                        {% endif %}
+                        <button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="removeRecipient" data-live-at-param="{{ path }}" data-live-index-param="{{ r }}" aria-label="{{ 'admin.workflow.remove'|trans }}">✕</button>
+                    </div>
+                {% endfor %}
+                <button type="button" class="gv-btn gv-btn-sm" data-action="live#action" data-live-action-param="addRecipient" data-live-at-param="{{ path }}">{{ 'admin.workflow.add_recipient'|trans }}</button>
+                {% if step.type == 'send_email' %}
+                    <label>{{ 'admin.workflow.subject'|trans }} <input type="text" data-model="model.{{ path }}.subject" value="{{ step.subject }}" class="md-code-input"></label>
+                    <label>{{ 'admin.workflow.email_body'|trans }} <textarea data-model="model.{{ path }}.body" rows="5" class="md-code-input">{{ step.body }}</textarea></label>
+                {% else %}
+                    <label>{{ 'admin.workflow.title'|trans }} <input type="text" data-model="model.{{ path }}.title" value="{{ step.title }}" class="md-code-input"></label>
+                    <label>{{ 'admin.workflow.text'|trans }} <textarea data-model="model.{{ path }}.text" rows="3" class="md-code-input">{{ step.text }}</textarea></label>
+                    {# The record it leads to: none, or an object and an id. #}
+                    <div class="md-workflow-row">
+                        <label>{{ 'admin.workflow.link_object'|trans }}
+                            <select data-model="model.{{ path }}.link_object">
+                                <option value="">—</option>
+                                {% for object in this.objects %}<option value="{{ object.name }}" {{ step.link_object == object.name ? 'selected' }}>{{ object.name }}</option>{% endfor %}
+                            </select>
+                        </label>
+                        <label>{{ 'admin.workflow.link_id'|trans }} <input type="text" data-model="model.{{ path }}.link_id" value="{{ step.link_id }}" placeholder="{{ '{{ $trigger.record.id }}' }}" class="md-code-input"></label>
+                    </div>
+                {% endif %}
             {% elseif step.type == 'install_package' %}
                 <div class="md-workflow-row">
                     <label>{{ 'admin.workflow.package'|trans }} <input type="text" data-model="model.{{ path }}.package" value="{{ step.package }}" placeholder="vendor/name@1.0.0" class="md-code-input"></label>

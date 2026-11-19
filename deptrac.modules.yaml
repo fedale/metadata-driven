@@ -186,7 +186,7 @@ deptrac:
     Package: [PackageContract, MetadataContract, RecordContract, FieldTypeContract, FileContract, AccessContract, WorkflowContract, Shared]
     PackageContract: [Shared]
 
-    Workflow: [WorkflowContract, MetadataContract, RecordContract, AccessContract, PackageContract, UserContract, FieldTypeContract, Shared]
+    Workflow: [WorkflowContract, MetadataContract, RecordContract, AccessContract, PackageContract, UserContract, FieldTypeContract, NotificationContract, Shared]
     WorkflowContract: [Shared]
 
     Admin: [AdminContract, MetadataContract, FieldTypeContract, SchemaContract, ViewContract, SettingsContract, AccessContract, UserContract, WorkflowContract, Shared]

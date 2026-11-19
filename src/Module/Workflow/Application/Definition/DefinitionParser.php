@@ -20,6 +20,9 @@ final class DefinitionParser
 {
     public const int MAX_STEPS = 50;
 
+    /** The entries of a send_email's or a notify's to: a role, a member, a field each. */
+    public const int MAX_RECIPIENT_ENTRIES = 20;
+
     /** A path on the data chain: a root ($trigger, or a step's key), then names. */
     /** The methods of an HTTP request. */
     private const array METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
@@ -315,7 +318,7 @@ final class DefinitionParser
             }
         }
         if ($this->platform && !$type->forPlatform()) {
-            $this->error($path.'.type', 'A workflow on the platform\'s events takes if, filter, refuse, install_package and assign_role only.');
+            $this->error($path.'.type', 'A workflow on the platform\'s events takes if, filter, refuse, http_request, send_email, install_package and assign_role only.');
         } elseif (!$this->platform && $type->isPlatform()) {
             $this->error($path.'.type', \sprintf('%s is a step of the system admin\'s workflows, on the platform\'s events.', $type->value));
         }
@@ -365,7 +368,12 @@ final class DefinitionParser
                 'email', 'until', 'url' => $options[$option] = $this->text($value, $at),
                 'method' => $options[$option] = \is_string($value) && \in_array(strtoupper($value), self::METHODS, true) ? strtoupper($value) : $this->error($at, \sprintf('One of %s.', implode(', ', self::METHODS))),
                 'headers' => $options[$option] = $this->headers($value, $at),
-                'body' => $options[$option] = $this->body($value, $at),
+                // An email's body is a text; a request's, a text or YAML sent as JSON.
+                'body' => $options[$option] = StepType::SendEmail === $type ? $this->text($value, $at) : $this->body($value, $at),
+                'subject', 'title' => $options[$option] = $this->line($value, $at),
+                'text' => $options[$option] = $this->text($value, $at),
+                'to' => $options[$option] = $this->recipients($value, $at, $type),
+                'link' => $options[$option] = $this->link($value, $at),
                 'timeout' => $options[$option] = \is_int($value) && $value >= 1 && $value <= 30 ? $value : $this->error($at, 'Seconds, from 1 to 30.'),
                 'retries' => $options[$option] = \is_int($value) && $value >= 0 && $value <= 3 ? $value : $this->error($at, 'From 0 to 3.'),
                 'fail_on_error' => $options[$option] = $this->flag($value, $at),
@@ -656,6 +664,74 @@ final class DefinitionParser
         $this->templates($text, $path);
 
         return $text;
+    }
+
+    /**
+     * A subject, a title: one line.
+     */
+    private function line(mixed $text, string $path): ?string
+    {
+        $text = $this->text($text, $path);
+        if (null !== $text && 1 === preg_match('/[\r\n]/', $text)) {
+            return $this->error($path, 'One line.');
+        }
+
+        return $text;
+    }
+
+    /**
+     * Who a send_email or a notify is for: the workspace's members holding a role, a member by
+     * their email, or (an email only) the address an email field of a record holds. Never an
+     * address as written: a member is checked when it is sent, a field's type on activation.
+     *
+     * @return list<array<string, string>>|null
+     */
+    private function recipients(mixed $to, string $path, StepType $type): ?array
+    {
+        if (!\is_array($to) || !array_is_list($to) || [] === $to || \count($to) > self::MAX_RECIPIENT_ENTRIES) {
+            return $this->error($path, \sprintf('A list of 1 to %d recipients, each { role: ROLE_… }, { member: … }%s.', self::MAX_RECIPIENT_ENTRIES, StepType::SendEmail === $type ? ' or { field: \'{{ … }}\' }' : ''));
+        }
+        $kinds = match (true) {
+            // No workspace's roles nor records on the platform's events: its members only.
+            $this->platform => ['member'],
+            StepType::SendEmail === $type => ['role', 'member', 'field'],
+            default => ['role', 'member'],
+        };
+        $parsed = [];
+        foreach ($to as $i => $entry) {
+            $at = $path.'.'.$i;
+            if (!\is_array($entry) || 1 !== \count($entry) || !\in_array($kind = (string) array_key_first($entry), $kinds, true)) {
+                $this->error($at, \sprintf('One of %s, alone.', implode(', ', array_map(static fn (string $kind): string => '{ '.$kind.': … }', $kinds))));
+                continue;
+            }
+            $value = $entry[$kind];
+            $value = match ($kind) {
+                'role' => $this->role($value, $at.'.role'),
+                'field' => \is_string($value) && 1 === preg_match('/^\{\{\s*'.self::PATH.'\s*\}\}$/', $value) ? $value : $this->error($at.'.field', 'One {{ path }} to an email field of a record, e.g. {{ $trigger.record.email }}.'),
+                default => $this->text($value, $at.'.member'),
+            };
+            if (null !== $value) {
+                $parsed[] = [$kind => $value];
+            }
+        }
+
+        return $parsed;
+    }
+
+    /**
+     * A notification's page: a record of an object.
+     *
+     * @return array{object: string, id: string}|null
+     */
+    private function link(mixed $link, string $path): ?array
+    {
+        if (!\is_array($link) || [] !== array_diff(array_keys($link), ['object', 'id']) || !isset($link['object'], $link['id'])) {
+            return $this->error($path, 'The record it leads to: { object: invoice, id: \'{{ $trigger.record.id }}\' }.');
+        }
+        $object = $this->name($link['object'], $path.'.object');
+        $id = $this->text($link['id'], $path.'.id');
+
+        return null === $object || null === $id ? null : ['object' => $object, 'id' => $id];
     }
 
     private function role(mixed $role, string $path): ?string

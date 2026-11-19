@@ -194,6 +194,25 @@ final class WorkflowEditor extends AbstractController
         $this->setAt($at.'.where', $where);
     }
 
+    /**
+     * $at: a send_email or a notify, "steps.0".
+     */
+    #[LiveAction]
+    public function addRecipient(#[LiveArg] string $at): void
+    {
+        $to = $this->listAt($at.'.to');
+        $to[] = EditorModel::newRecipient();
+        $this->setAt($at.'.to', $to);
+    }
+
+    #[LiveAction]
+    public function removeRecipient(#[LiveArg] string $at, #[LiveArg] int $index): void
+    {
+        $to = $this->listAt($at.'.to');
+        array_splice($to, $index, 1);
+        $this->setAt($at.'.to', $to);
+    }
+
     #[LiveAction]
     public function addInput(): void
     {

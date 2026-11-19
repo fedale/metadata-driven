@@ -122,6 +122,7 @@ final class WorkflowEngine implements ResetInterface
         private readonly UserManagerInterface $users,
         #[Autowire('%app.workflow.max_run_seconds%')]
         private readonly int $maxRunSeconds,
+        private readonly WorkflowMessages $messages,
     ) {
     }
 
@@ -798,6 +799,8 @@ final class WorkflowEngine implements ResetInterface
                 StepType::RunWorkflow => $this->call($step, $chain, $run, $writing),
                 StepType::Return => $this->giveBack($step, $chain, $run),
                 StepType::Transition => $this->takeTransition($step, $chain, $run),
+                StepType::SendEmail => $this->messages->email($step, $chain, $this->dryRun, $this->platformWorkspace),
+                StepType::Notify => $this->messages->notify($step, $chain, $run, $this->dryRun),
                 default => $this->write($step, $chain, $run),
             };
         } catch (StepFailed|MetadataException $e) {

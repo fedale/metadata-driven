@@ -106,7 +106,7 @@ error step, its message shown to the user). They are kept small: no waiting, no 
 | Install package, assign role | the system admin's platform workflows | 3 |
 | HTTP request | to an external URL, in the background, with retries | 4 |
 | Wait | a duration, or until a date | 4 |
-| Send email, notification | when the application sends email (put off by the user) | 6 |
+| Send email, notification | done in [notifications-plan.md](notifications-plan.md), part E (2026-11-19) | 6 |
 
 **Conditions** reuse the grid's filter operators (equals, contains, greater than, is empty…), as
 Directus reuses its filter rules: one syntax for the user, in the grids and in the workflows.
