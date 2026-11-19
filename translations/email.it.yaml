@@ -11,3 +11,9 @@ invitation:
     accept: 'Accetta l''invito'
     link: 'Oppure apri questo indirizzo:'
     expires: 'L''invito vale fino al %date% (UTC). Se non te lo aspettavi, ignora questa email: non succede nulla.'
+password_reset:
+    subject: 'Scegli una nuova password'
+    body: 'Qualcuno ha chiesto di reimpostare la password del tuo account. Se sei stato tu, scegline una nuova: tutte le altre sessioni dell''account si chiudono.'
+    choose: 'Scegli una nuova password'
+    link: 'Oppure apri questo indirizzo:'
+    expires: 'Il link vale una volta, fino al %date% (UTC). Se non l''hai chiesto tu, ignora questa email: la tua password resta com''è.'

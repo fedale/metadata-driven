@@ -97,10 +97,25 @@ none; the limit), `SystemConsoleTest` (the admin's email).
   `symfonycasts/reset-password-bundle` (its own entity and conventions for what the User module
   already does).
 - **Limited**: `password_reset_request`, 3 a quarter of an hour per address and per IP, the try
-  taken before anything is looked up, so the answer's timing tells nothing either.
+  taken before anything is looked up.
 - **The reset**: the new password twice (12 characters at least, as `changePassword()`); it ends
   every other session and remember-me cookie, as a password change does; the token is used once.
 - Not for a disabled account; the system admins' log (Monolog, still to come) records it later.
+
+### Done (2026-11-19, branch `password_reset`)
+
+As planned, but for the timing: an address with an account costs a lookup more, an email
+rendered and queued, so the answer's timing is not made equal (a millisecond or so; the limits
+keep it from being measured over many tries). `UserManagerInterface::requestPasswordReset()`,
+`openPasswordReset()`, `resetPassword()` (the link used in one statement, before the password
+changes: of two requests with it, one only wins); `core.password_reset` (migration
+`Version20261119100000`, outside the ORM like the invitations); `PasswordResetController`
+(`/password/forgot`, `/password/reset/<token>`, `Referrer-Policy: no-referrer`), let through on
+the console's host (`HostWorkspaceListener`); `password_reset_request`, 3 a quarter of an hour per
+address and per IP, both counted. An inactive account gets no link. The link names the host as configured
+(`WorkspaceUrls::ofCurrent()`, `ofConsole()`), never the request's: any unknown host reaches the
+default workspace, so a forged `Host` would otherwise mail a victim a link to another site (found
+by a security review). Tests: `PasswordResetControllerTest` (10).
 
 ## Part D: notifications (branch `notifications`)
 

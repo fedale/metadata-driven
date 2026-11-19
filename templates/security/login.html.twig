@@ -27,5 +27,6 @@
             <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('authenticate') }}">
             <button type="submit" class="gv-btn gv-btn-primary">{{ 'login.submit'|trans }}</button>
         </form>
+        <p><a href="{{ path('password_forgot') }}">{{ 'login.forgot'|trans }}</a></p>
     </div>
 {% endblock %}

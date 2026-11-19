@@ -120,6 +120,23 @@ the top bar:
   it. Changing it ends every other session of the account, on other devices and in other workspaces,
   and its "keep me signed in" cookies; this one goes on.
 
+### A forgotten password — `/password/forgot`
+
+**Forgot your password?**, under the sign-in form, in every workspace and on the console
+(accounts are global): enter the email, and if an active account has it, a link to choose a new
+password goes to it, in the account's language. The page answers the same whether an account has
+the address or not.
+
+- The link works **once, for an hour**; asking again replaces it. Only its SHA-256 is stored
+  (`core.password_reset`).
+- The new password twice, 12 characters at least. Saving it ends every session of the account and
+  its "keep me signed in" cookies, everywhere; then you sign in with it.
+- Three requests a quarter of an hour per address, and per IP (`password_reset_request`): the page
+  is no way to mail an address over and over.
+- The emails go through the worker: without it, or without email set up (see
+  [Getting started](getting-started.md#email)), none arrives. An email that can't be sent is
+  written to the application's log, and the page says nothing of it.
+
 ## Permissions
 
 The application checks these RBAC items:

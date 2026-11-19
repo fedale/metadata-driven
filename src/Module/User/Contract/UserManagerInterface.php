@@ -6,6 +6,7 @@ namespace App\Module\User\Contract;
 
 use App\Module\User\Contract\Dto\Invitation;
 use App\Module\User\Contract\Dto\Member;
+use App\Module\User\Contract\Dto\PasswordReset;
 use App\Module\User\Contract\Dto\Profile;
 use App\Module\User\Contract\Exception\UserException;
 
@@ -86,6 +87,29 @@ interface UserManagerInterface
      *
      * @throws UserException unknown user
      */
+    /**
+     * A reset of the account's password, for its email to carry: the one it had pending replaced,
+     * its link working an hour. Null when no active account has the email: say the same to the
+     * person asking either way, and limit the requests before calling it.
+     */
+    public function requestPasswordReset(string $email): ?PasswordReset;
+
+    /**
+     * The email of the account a reset's link is for: pending, not expired, the account active.
+     * Null otherwise.
+     */
+    public function openPasswordReset(string $token): ?string;
+
+    /**
+     * Gives the account a new password, and uses the link: once. Every session and remember-me
+     * cookie of the account ends.
+     *
+     * @return string the account's email
+     *
+     * @throws UserException the link is no longer valid, the password is too short
+     */
+    public function resetPassword(string $token, string $newPassword): string;
+
     public function setSystemAdmin(string $email, bool $systemAdmin): void;
 
     /**

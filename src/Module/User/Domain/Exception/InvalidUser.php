@@ -56,6 +56,11 @@ final class InvalidUser extends UserException
         return new self('This invitation is no longer valid: ask for another one.');
     }
 
+    public static function passwordResetNotFound(): self
+    {
+        return new self('This link to reset the password is no longer valid: ask for another one.');
+    }
+
     public static function notFound(string $email): self
     {
         return new self(\sprintf('No user has the email "%s".', $email));
