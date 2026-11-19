@@ -5,3 +5,9 @@ mail_test:
     subject: 'A test email'
     body: 'This is a test email: the application sends email.'
     sent_at: 'Sent at %at% (UTC).'
+invitation:
+    subject: '%inviter% invites you to %workspace%'
+    body: '%inviter% invites you to %workspace%. Accept with the password of your account if you have one, or create one.'
+    accept: 'Accept the invitation'
+    link: 'Or open this address:'
+    expires: 'The invitation works until %date% (UTC). If you did not expect it, ignore this email: nothing happens.'

@@ -18,6 +18,7 @@ use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\DomCrawler\Field\ChoiceFormField;
+use Symfony\Component\Mime\Email;
 
 /**
  * /admin/members: who may sign in to the workspace, with which of its roles
@@ -90,6 +91,59 @@ final class AdminMemberControllerTest extends WebTestCase
         self::assertNotSame($carla, $dora);
         self::assertSame(['admin@example.com'], $this->members(), 'Nobody is a member before accepting.');
         self::assertSelectorTextContains('main', 'carla@example.com');
+    }
+
+    /**
+     * The link goes by email, in the inviter's language, the same email for an address with an
+     * account and one without; the page shows it once too.
+     */
+    public function testTheInvitationGoesByEmail(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        // An account, a member of another workspace.
+        self::useWorkspace(self::getContainer(), self::createWorkspace(self::getContainer(), 'globex', 'Globex'));
+        self::getContainer()->get(UserManagerInterface::class)->createUser('carla@example.com', self::PASSWORD, 'Carla', 'Bruni');
+        self::useWorkspace(self::getContainer(), $this->workspace('default'));
+
+        $emails = [];
+        foreach (['carla@example.com', 'dora@example.com'] as $address) {
+            $this->client->request('GET', '/admin/members');
+            $this->client->submitForm('Invite', ['add_member[email]' => $address]);
+            self::assertEmailCount(1);
+            $email = self::getMailerMessage();
+            self::assertInstanceOf(Email::class, $email);
+            $emails[$address] = $email;
+            $link = (string) $this->client->followRedirect()->filter('input[readonly]')->attr('value');
+            self::assertStringStartsWith('http://localhost/invitation/', $link);
+            self::assertEmailHtmlBodyContains($email, $link);
+            self::assertEmailTextBodyContains($email, $link);
+            self::assertSelectorTextContains('.md-flash--success', 'sent by email');
+        }
+
+        $carla = $emails['carla@example.com'];
+        self::assertSame('carla@example.com', $carla->getTo()[0]->getAddress());
+        self::assertSame('Default', $carla->getFrom()[0]->getName());
+        self::assertStringContainsString('invites you to Default', (string) $carla->getSubject());
+        self::assertSame($carla->getSubject(), $emails['dora@example.com']->getSubject());
+        // Nothing of the account: the texts differ by the link alone.
+        $text = static fn (Email $email): string => (string) preg_replace('~/invitation/[A-Za-z0-9_-]{43}~', '/invitation/…', (string) $email->getTextBody());
+        self::assertSame($text($carla), $text($emails['dora@example.com']));
+        self::assertStringNotContainsString('Carla', $text($carla));
+    }
+
+    public function testAnAdminSendsSoManyInvitationsAnHour(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        for ($i = 1; $i <= 20; ++$i) {
+            $this->invite(\sprintf('guest%d@example.com', $i));
+        }
+
+        $this->client->request('GET', '/admin/members');
+        $this->client->submitForm('Invite', ['add_member[email]' => 'one.more@example.com']);
+        self::assertEmailCount(0);
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.md-flash--error', 'try again later');
+        self::assertSelectorTextNotContains('main', 'one.more@example.com');
     }
 
     public function testANewAccountAcceptsWithAPasswordOfItsOwn(): void

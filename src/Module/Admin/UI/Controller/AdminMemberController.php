@@ -6,10 +6,13 @@ namespace App\Module\Admin\UI\Controller;
 
 use App\Module\Access\Contract\AccessCheckerInterface;
 use App\Module\Access\Contract\WorkspaceRolesInterface;
+use App\Module\Admin\UI\InvitationMail;
 use App\Module\User\Contract\Dto\Member;
 use App\Module\User\Contract\Exception\UserException;
 use App\Module\User\Contract\UserManagerInterface;
+use App\Shared\Mail\MailNotSent;
 use App\Shared\Workspace\CurrentWorkspace;
+use App\Shared\Workspace\Workspaces;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
@@ -19,7 +22,6 @@ use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -46,6 +48,8 @@ final class AdminMemberController extends AbstractController
         private readonly CurrentWorkspace $workspace,
         private readonly FormFactoryInterface $forms,
         private readonly TranslatorInterface $translator,
+        private readonly InvitationMail $invitationMail,
+        private readonly Workspaces $workspaces,
     ) {
     }
 
@@ -74,12 +78,26 @@ final class AdminMemberController extends AbstractController
         // account (the console invites a workspace's admin so) is weighed all the same.
         $existing = $this->users->canonicalEmail($email);
         $keepAssignments = $this->outranks($existing ?? mb_strtolower(trim($email)));
+        if (!$this->invitationMail->allow($this->yourEmail())) {
+            $this->addFlash('error', $this->translator->trans('admin.members.invitation_limit'));
+
+            return $this->redirectToRoute('admin_member_index', [], Response::HTTP_SEE_OTHER);
+        }
+        $workspace = $this->workspaces->byId($this->workspace->id()) ?? throw new \LogicException('The current workspace is gone.');
         try {
-            $token = $this->users->invite($email, $this->workspace->id(), $this->yourEmail(), $keepAssignments);
-            $this->addFlash('success', $this->translator->trans('admin.members.invited', ['%email%' => $email]));
-            $this->addFlash('invitation', $this->generateUrl('invitation_show', ['token' => $token], UrlGeneratorInterface::ABSOLUTE_URL));
+            $token = $this->users->invite($email, $workspace->id, $this->yourEmail(), $keepAssignments);
         } catch (UserException $e) {
             $this->addFlash('error', $e->getMessage());
+
+            return $this->redirectToRoute('admin_member_index', [], Response::HTTP_SEE_OTHER);
+        }
+        // The link is shown once whatever the email does: for an address that receives no mail.
+        $this->addFlash('invitation', $this->invitationMail->link($workspace, $token));
+        try {
+            $this->invitationMail->send($workspace, $email, $token, $this->yourEmail(), $request->getLocale());
+            $this->addFlash('success', $this->translator->trans('admin.members.invited', ['%email%' => $email]));
+        } catch (MailNotSent) {
+            $this->addFlash('error', $this->translator->trans('admin.members.invitation_not_sent', ['%email%' => $email]));
         }
 
         return $this->redirectToRoute('admin_member_index', [], Response::HTTP_SEE_OTHER);

@@ -67,8 +67,10 @@ workspace: linked from the top bar as **Members**.
 
 - **The members** of the workspace: name, email, roles, last sign-in. Members of other workspaces
   aren't listed.
-- **Invite someone** by email. You get a link, shown once, to pass on (the application sends no
-  email); it lasts 7 days, and pending invitations are listed, to revoke. Whoever opens it at
+- **Invite someone** by email. The invitation's link goes to them by email, in your language,
+  and is shown to you once too, to pass on if the email doesn't arrive (an address that receives
+  no mail, or email not set up: see [Getting started](getting-started.md#email)); it lasts 7
+  days, and pending invitations are listed, to revoke. You send at most 20 invitations an hour. Whoever opens it at
   `/invitation/…` joins the workspace and is signed in: with the password of their account if the
   email has one, or choosing a password (12 characters at least) and their name. Five wrong
   passwords burn the invitation, and an account gets five tries a quarter of an hour whatever the
@@ -87,7 +89,7 @@ workspace: linked from the top bar as **Members**.
   their roles here). Managing members never makes anyone more powerful than the admin doing it.
 
 Accounts are shared by every workspace, so the page tells you nothing about the email you invite:
-the answer is the same whether it has an account or not, and no name shows until the invitation
+the answer, and the email sent, are the same whether it has an account or not, and no name shows until the invitation
 is accepted. Only opening the link yourself would show whether it asks for an existing password,
 and each try costs an invitation. A former member invited back by an admin who doesn't hold all
 they had here comes back without it.

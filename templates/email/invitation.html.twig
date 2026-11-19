@@ -1,0 +1,10 @@
+{% extends 'email/base.html.twig' %}
+
+{% block content %}
+    <p style="margin: 0 0 16px;">{{ 'invitation.body'|trans({'%inviter%': inviter, '%workspace%': workspace}, 'email') }}</p>
+    <p style="margin: 0 0 20px;">
+        <a href="{{ link }}" style="display: inline-block; padding: 10px 18px; border-radius: 6px; background-color: #2563eb; color: #ffffff; text-decoration: none; font-weight: 600;">{{ 'invitation.accept'|trans({}, 'email') }}</a>
+    </p>
+    <p style="margin: 0 0 12px; font-size: 13px; color: #52606d;">{{ 'invitation.link'|trans({}, 'email') }}<br><a href="{{ link }}" style="color: #2563eb; word-break: break-all;">{{ link }}</a></p>
+    <p style="margin: 0; font-size: 13px; color: #52606d;">{{ 'invitation.expires'|trans({'%date%': expires_at|format_datetime('long', 'short', locale: locale, timezone: 'UTC')}, 'email') }}</p>
+{% endblock %}

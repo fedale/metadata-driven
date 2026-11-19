@@ -76,6 +76,16 @@ and `mail_test`, translations `email.{en,it}.yaml`. Tests: `MailerTest` (4),
 - Limited by a new rate limiter, `invitation_email` (20 an hour per inviter), on top of what
   `invite()` checks.
 
+### Done (2026-11-19, branch `invitation_email`)
+
+As planned. `InvitationMail` (Admin UI) checks the limiter, builds the link on the workspace's
+host (`WorkspaceUrls`, which replaced the console's own `workspaceUrl()`) and sends the email
+(`templates/email/invitation.{html,txt}.twig`: the inviter's name, the workspace, a button and the
+address, the expiry in UTC), from the workspace's name, in the inviter's language. An email that
+cannot be sent leaves the invitation, its link shown, and says so. Over the limit, no invitation
+is made. Tests: `AdminMemberControllerTest` (two more: the email, the same for an account and
+none; the limit), `SystemConsoleTest` (the admin's email).
+
 ## Part C: password reset (branch `password_reset`)
 
 - **"Forgot your password?"** under the sign-in form, on any host (users are global): an email

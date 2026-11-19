@@ -7,10 +7,12 @@ namespace App\Module\Admin\UI\Controller;
 use App\Module\Access\Contract\AccessSetupInterface;
 use App\Module\Access\Contract\Permissions;
 use App\Module\Access\Contract\WorkspaceRolesInterface;
+use App\Module\Admin\UI\InvitationMail;
 use App\Module\User\Contract\Dto\Member;
 use App\Module\User\Contract\Exception\UserException;
 use App\Module\User\Contract\UserManagerInterface;
 use App\Module\Workflow\Contract\WorkflowUsageInterface;
+use App\Shared\Mail\MailNotSent;
 use App\Shared\Workspace\Plan;
 use App\Shared\Workspace\Plans;
 use App\Shared\Workspace\Workspace;
@@ -18,6 +20,7 @@ use App\Shared\Workspace\WorkspaceAdministration;
 use App\Shared\Workspace\WorkspaceCreated;
 use App\Shared\Workspace\Workspaces;
 use App\Shared\Workspace\WorkspaceSessions;
+use App\Shared\Workspace\WorkspaceUrls;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -57,12 +60,12 @@ final class ConsoleController extends AbstractController
         private readonly TranslatorInterface $translator,
         private readonly LoggerInterface $logger,
         private readonly EventDispatcherInterface $events,
-        #[Autowire('%app.workspace.base_host%')]
-        private readonly string $baseHost,
         #[Autowire('%app.workspace.default%')]
         private readonly string $default,
         private readonly Plans $plans,
         private readonly WorkflowUsageInterface $usage,
+        private readonly InvitationMail $invitationMail,
+        private readonly WorkspaceUrls $urls,
     ) {
     }
 
@@ -107,7 +110,7 @@ final class ConsoleController extends AbstractController
     }
 
     #[Route('/workspaces/{slug}', name: 'workspace_show', methods: ['GET'])]
-    public function show(string $slug, Request $request): Response
+    public function show(string $slug): Response
     {
         $workspace = $this->workspaceOr404($slug);
         $members = $this->users->members($workspace->id);
@@ -128,7 +131,7 @@ final class ConsoleController extends AbstractController
 
         return $this->render('console/workspace_show.html.twig', [
             'workspace' => $workspace,
-            'url' => $this->workspaceUrl($workspace, '/', $request),
+            'url' => $this->urls->ofWorkspace($workspace),
             'is_default' => $workspace->slug === $this->default,
             'rows' => $rows,
             'status_form' => $this->actionForm('status', 'console_workspace_status', $workspace)->createView(),
@@ -247,6 +250,11 @@ final class ConsoleController extends AbstractController
     private function inviteAdmin(Workspace $workspace, string $email, Request $request): void
     {
         $email = $this->users->canonicalEmail($email) ?? mb_strtolower(trim($email));
+        if (!$this->invitationMail->allow($this->systemAdmin())) {
+            $this->addFlash('error', $this->translator->trans('admin.members.invitation_limit'));
+
+            return;
+        }
         try {
             // The system admin is above every admin: their invitation replaces a pending one.
             $token = $this->users->invite($email, $workspace->id, $this->systemAdmin(), true, true);
@@ -262,21 +270,14 @@ final class ConsoleController extends AbstractController
             $this->roles->setRoles($email, array_values(array_unique([...$this->roles->rolesOf($email), Permissions::SUPER_ADMIN_ROLE])));
         });
         $this->log('invited an admin', $workspace, $email);
-        $this->addFlash('success', $this->translator->trans('admin.members.invited', ['%email%' => $email]));
-        $this->addFlash('invitation', $this->workspaceUrl($workspace, '/invitation/'.$token, $request));
-    }
-
-    /**
-     * The workspace's own address: <slug>.<base host>, the default workspace's the base host itself,
-     * with the console's scheme and port.
-     */
-    private function workspaceUrl(Workspace $workspace, string $path, Request $request): string
-    {
-        $port = $request->getPort();
-        $port = null === $port || \in_array($port, [80, 443], true) ? '' : ':'.$port;
-        $host = $workspace->slug === $this->default ? $this->baseHost : $workspace->slug.'.'.$this->baseHost;
-
-        return \sprintf('%s://%s%s%s', $request->getScheme(), $host, $port, $path);
+        // The link is shown once whatever the email does: for an address that receives no mail.
+        $this->addFlash('invitation', $this->invitationMail->link($workspace, $token));
+        try {
+            $this->invitationMail->send($workspace, $email, $token, $this->systemAdmin(), $request->getLocale());
+            $this->addFlash('success', $this->translator->trans('admin.members.invited', ['%email%' => $email]));
+        } catch (MailNotSent) {
+            $this->addFlash('error', $this->translator->trans('admin.members.invitation_not_sent', ['%email%' => $email]));
+        }
     }
 
     /**
