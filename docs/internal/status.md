@@ -450,8 +450,10 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   `doctrine:migrations:migrate`) done on branch `notifications`, merged into `main` on
   2026-11-19. Part E (the workflow steps `send_email` and `notify`, the plan's
   `emails_per_month`; migration `Version20261119120000`, run `doctrine:migrations:migrate`) done
-  on branch `workflow_email_notify` (2026-11-19), waiting for the user's review: the plan is
-  complete with it. Open: `HostWorkspaceUrls` takes the scheme and port of a link from the request
+  on branch `workflow_email_notify`, merged into `main` on 2026-11-19: the plan is complete
+  with it. The emails' quota taken in the run's transaction (a security review's finding: the
+  steps of one run saw the same emails left) on branch `email_quota_reserve` (2026-11-19),
+  waiting for the user's review. Open: `HostWorkspaceUrls` takes the scheme and port of a link from the request
   (the host from the configuration); from `DEFAULT_URI` only, or `framework.trusted_hosts`, is
   the user's call (a security review's remark on part C).
 - Relation filters in grids keep `multiple: true` by choice.

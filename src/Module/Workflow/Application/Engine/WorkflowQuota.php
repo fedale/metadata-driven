@@ -48,6 +48,29 @@ final class WorkflowQuota implements WorkflowUsageInterface
     }
 
     /**
+     * Takes emails from this month's, ahead of sending them: counted at once, in the run's
+     * transaction, so that the steps after it (an iterator's, another send_email) and the runs
+     * at the same time see them spent; rolled back with a run that fails. Today's row of the
+     * usage stays locked until the transaction ends, so two runs take them one after the other.
+     *
+     * @return bool false past the plan's emails: nothing taken
+     */
+    public function reserveEmails(int $emails): bool
+    {
+        if ($emails < 1 || !$this->workspace->isSelected()) {
+            return true;
+        }
+        $this->runs->countEmails($emails);
+        $limit = $this->thisMonth()->emailLimit;
+        if (null === $limit || $this->runs->emailsThisMonth() <= $limit) {
+            return true;
+        }
+        $this->runs->countEmails(-$emails);
+
+        return false;
+    }
+
+    /**
      * Why no run may start, if none may: the month's steps spent. None outside a workspace (the
      * system admin's workflows).
      */

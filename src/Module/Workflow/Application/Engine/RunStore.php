@@ -32,8 +32,8 @@ interface RunStore
     public function stepsThisMonth(): int;
 
     /**
-     * Counts emails sent by the current workspace's workflows, in today's usage; nothing outside
-     * a workspace (the system's).
+     * Counts emails sent by the current workspace's workflows, in today's usage (a negative number
+     * gives back what was counted ahead); nothing outside a workspace (the system's).
      */
     public function countEmails(int $emails): void;
 

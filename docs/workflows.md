@@ -512,7 +512,9 @@ of the workflows shows the month's steps against the plan, warned from 80%.
 
 **The plan's emails**: a plan may limit the emails a workspace's workflows send in a calendar
 month, one per recipient (`emails_per_month`, see [Plans](workspaces.md#plans)): a `send_email`
-that would pass them fails, and a `notify` past them reaches the bells only. The workflows page
+that would pass them fails, and a `notify` past them reaches the bells only. A step takes its
+emails from the month's as it runs, inside the run: the steps after it, an iterator's included,
+and the runs at the same time see them spent; a run that fails gives them back. The workflows page
 shows the month's emails against the plan.
 
 A run is **completed**, **failed** (an after-run or a manual run that could not finish: nothing
@@ -602,7 +604,7 @@ these triggers or steps, and the console defines no workflow on a record's.
 | The events | `RecordManager` raises `RecordWriting` before a write, in its transaction, and `RecordWritten` once the outermost transaction committed (`TransactionRunner::whenDone()`); `RecordEventScopeInterface` silences them (a package's seeds) or stamps them with the run they come from (Record contract) |
 | The definition | `DefinitionParser` (structure, every problem by its path), `DefinitionValidator` (objects, fields, paths, roles, on activation), stored compiled as JSON (`core.workflow_version.definition`) next to the YAML as written (`source`), read by `WorkflowYaml` (unquoted dates kept as text); `DefinitionNames` finds and renames the objects and fields it names, for the metadata's archive and rename (`MetadataInWorkflows`, the Metadata contract's `MetadataDependentInterface`) |
 | Secrets | `core.workflow_secret` (DBAL, row-level security; migration `Version20261116140000`), `WorkflowSecrets` (`DbalWorkflowSecrets`), sealed by `SecretBox` (libsodium's secret box, `WORKFLOW_SECRETS_KEY`, `workflow:secrets:key`); read on a copy of the run's data for the request only, masked in its log |
-| Email and notifications | `WorkflowMessages` (who a `send_email` or a `notify` reaches, sent once the run's transaction committed with `TransactionRunner::whenDone()`): the shared `Mailer` (`templates/email/workflow_email.*`), the Notification contract's `NotifierInterface`; the emails counted in `core.workflow_usage.emails` (migration `Version20261119120000`) against `WorkflowQuota::emailsLeft()` |
+| Email and notifications | `WorkflowMessages` (who a `send_email` or a `notify` reaches, sent once the run's transaction committed with `TransactionRunner::whenDone()`): the shared `Mailer` (`templates/email/workflow_email.*`), the Notification contract's `NotifierInterface`; the emails taken in the run's transaction (`WorkflowQuota::reserveEmails()`, today's row of `core.workflow_usage.emails` locked until it ends; migration `Version20261119120000`), those that could not be sent given back |
 | HTTP | `WorkflowHttp`: Symfony's `HttpClient` through `NoPrivateNetworkHttpClient` (`app.workflow.allow_private_networks`, true in the tests only), the retries and the 1 MB cap |
 | Packages | The Workflow contract's `PackagedWorkflowsInterface` (`PackagedWorkflows`: every workflow with its current definition, a definition as the app writes it, a new workflow or a draft, never activated); the Package module's `WorkflowReferences` turns objects and called workflows into ids and back; items of kind `workflow` in `core.package_item` |
 | Plans | `WorkflowQuota` (the Workflow contract's `WorkflowUsageInterface`): the month's steps from `core.workflow_usage` (`RunStore::stepsThisMonth()`), the plan from Shared's `Plans` (`ConfiguredPlans`, `config/packages/plans.yaml`); checked where each run starts |

@@ -121,7 +121,7 @@ final class DbalRunStore implements RunStore
 
     public function countEmails(int $emails): void
     {
-        if ($emails < 1) {
+        if (0 === $emails) {
             return;
         }
         $this->connection->executeStatement(
