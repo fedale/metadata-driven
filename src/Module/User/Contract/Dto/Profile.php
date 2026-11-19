@@ -13,6 +13,8 @@ final readonly class Profile
         public string $email,
         public ?string $firstName,
         public ?string $lastName,
+        /** Whether the notifications come by email too. */
+        public bool $notifyByEmail = false,
     ) {
     }
 }

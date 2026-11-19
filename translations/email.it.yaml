@@ -17,3 +17,8 @@ password_reset:
     choose: 'Scegli una nuova password'
     link: 'Oppure apri questo indirizzo:'
     expires: 'Il link vale una volta, fino al %date% (UTC). Se non l''hai chiesto tu, ignora questa email: la tua password resta com''è.'
+notification:
+    subject: '%title%'
+    open: 'Apri'
+    why: 'Ricevi le notifiche anche per email, come scelto nella pagina del tuo account:'
+    account: 'cambialo lì'

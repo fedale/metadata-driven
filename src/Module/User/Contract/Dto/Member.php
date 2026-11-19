@@ -16,6 +16,12 @@ final readonly class Member
         public string $email,
         public string $displayName,
         public ?\DateTimeImmutable $lastLoginAt,
+        /** The language chosen in the profile; null: none chosen. */
+        public ?string $locale = null,
+        /** Whether the notifications come by email too. */
+        public bool $notifyByEmail = false,
+        /** False for an account disabled: it signs in nowhere. */
+        public bool $active = true,
     ) {
     }
 }

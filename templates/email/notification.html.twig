@@ -1,0 +1,14 @@
+{% extends 'email/base.html.twig' %}
+
+{% block content %}
+    <p style="margin: 0 0 12px; font-size: 17px; font-weight: 600;">{{ title }}</p>
+    {% if text %}<p style="margin: 0 0 16px; white-space: pre-line;">{{ text }}</p>{% endif %}
+    {% if origin %}<p style="margin: 0 0 16px; font-size: 13px; color: #52606d;">{{ origin }}</p>{% endif %}
+    {% if link %}
+        <p style="margin: 0 0 8px;">
+            <a href="{{ link }}" style="display: inline-block; padding: 10px 18px; border-radius: 6px; background-color: #2563eb; color: #ffffff; text-decoration: none; font-weight: 600;">{{ 'notification.open'|trans({}, 'email') }}</a>
+        </p>
+    {% endif %}
+{% endblock %}
+
+{% block footer %}{{ 'notification.why'|trans({}, 'email') }} <a href="{{ account }}" style="color: #7b8794;">{{ 'notification.account'|trans({}, 'email') }}</a>{% endblock %}

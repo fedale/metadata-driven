@@ -138,6 +138,15 @@ deptrac:
       collectors:
         - { type: directory, value: src/Module/Admin/Contract/.* }
 
+    - name: Notification
+      collectors:
+        - type: bool
+          must: [{ type: directory, value: src/Module/Notification/.* }]
+          must_not: [{ type: directory, value: src/Module/Notification/Contract/.* }]
+    - name: NotificationContract
+      collectors:
+        - { type: directory, value: src/Module/Notification/Contract/.* }
+
   ruleset:
     Shared: ~
 
@@ -182,3 +191,6 @@ deptrac:
 
     Admin: [AdminContract, MetadataContract, FieldTypeContract, SchemaContract, ViewContract, SettingsContract, AccessContract, UserContract, WorkflowContract, Shared]
     AdminContract: [Shared]
+
+    Notification: [NotificationContract, UserContract, Shared]
+    NotificationContract: [Shared]

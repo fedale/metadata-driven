@@ -45,6 +45,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:package:upgrade`](#metadatapackageupgrade) | Upgrade an installed package to a new version: only what it changed, what this instance changed kept |
 | [`schema:sync`](#schemasync) | Align the record tables with the metadata |
 | [`mail:test`](#mailtest) | Send a test email, to check `MAILER_DSN` and `MAILER_FROM` |
+| [`notifications:gc`](#notificationsgc) | Delete the notifications older than the days they are kept |
 | [`workspace:create`](#workspacecreate), [`workspace:list`](#workspacelist), [`workspace:suspend`, `workspace:resume`](#workspacesuspend-workspaceresume), [`workspace:delete`](#workspacedelete), [`workspace:plan`](#workspaceplan), [`workspace:run`](#workspacerun) | Create, list, suspend, resume and delete workspaces, put one on a plan; run a command for several of them |
 | [`workspace:files:move`](#workspacefilesmove) | Move the files stored before workspaces had directories into their workspace's directory, once |
 | `system:admin` | List, grant or revoke the system admins who may enter the system console — see [Workspaces](workspaces.md#the-system-console) |
@@ -812,6 +813,25 @@ Run it on a schedule, for every workspace:
 45 3 * * * cd /srv/app && php bin/console workspace:run --all -- workflow:runs:gc --no-interaction
 ```
 
+
+## `notifications:gc`
+
+Delete the [notifications](notifications.md) older than `app.notification.keep_days` (90 by
+default), read or not. For the command's workspace.
+
+```
+notifications:gc [--days=DAYS]
+```
+
+| Option | Meaning |
+|---|---|
+| `--days` | Keep the notifications of the last days instead, one at least |
+
+Run it on a schedule, for every workspace:
+
+```
+50 3 * * * cd /srv/app && php bin/console workspace:run --all -- notifications:gc --no-interaction
+```
 
 ## `mail:test`
 

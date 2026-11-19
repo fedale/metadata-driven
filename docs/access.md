@@ -115,6 +115,8 @@ the top bar:
 
 - **Name**: first and last name, the name shown everywhere (accounts are global: every workspace
   sees the change).
+- **Notifications**: **Also by email** sends every [notification](notifications.md) of every
+  workspace to your email too, not only to the bell (off by default).
 - **Password**: the current one, then the new one twice (12 characters at least). Five wrong
   current passwords a quarter of an hour, then it waits: a session left open is no way to guess
   it. Changing it ends every other session of the account, on other devices and in other workspaces,

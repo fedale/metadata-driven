@@ -55,6 +55,11 @@ account:
     last_name: Cognome
     save_name: Salva
     renamed: Nome salvato.
+    notifications: Notifiche
+    by_email: 'Anche per email'
+    by_email_help: 'Ogni notifica di ogni workspace di cui sei membro arriva anche alla tua email, non solo alla campanella.'
+    save_notifications: Salva
+    notifications_saved: 'Scelta sulle notifiche salvata.'
     password: Password
     password_intro: 'Quando cambia, le tue sessioni altrove, su altri dispositivi e altri spazi di lavoro, si chiudono.'
     current_password: Password attuale
@@ -85,6 +90,18 @@ password_reset:
     repeat: Ripetila
     save: Salva la password
     done: 'La password è cambiata: accedi con quella nuova.'
+notifications:
+    title: Notifiche
+    intro: 'Quello che il workspace ti segnala: per ora dai suoi workflow. Restano 90 giorni.'
+    choose: 'Ricevile anche per email'
+    empty: 'Nessuna notifica.'
+    see_all: 'Vedile tutte'
+    mark_all_read: 'Segna tutte come lette'
+    all_read: 'Tutte le tue notifiche sono lette.'
+    pages: Pagine
+    page: 'Pagina %page% di %pages%'
+    newer: Più recenti
+    older: Meno recenti
 login:
     title: Accedi
     email: Email

@@ -67,6 +67,19 @@
                             {% endfor %}
                         </nav>
                     {% endif %}
+                    {# The bell: the count of the unread, the latest in a menu loaded when it opens
+                       (a lazy Turbo Frame), the count asked again every minute. #}
+                    {% set unread = unread_notifications() %}
+                    <details class="md-bell" data-controller="notification-bell"
+                             data-notification-bell-url-value="{{ path('notification_count') }}">
+                        <summary class="md-bell__toggle" aria-label="{{ 'notifications.title'|trans }}" title="{{ 'notifications.title'|trans }}">
+                            <svg class="md-bell__icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg>
+                            <span class="md-bell__count" data-notification-bell-target="count"{% if unread == 0 %} hidden{% endif %}>{{ unread }}</span>
+                        </summary>
+                        <div class="md-bell__menu">
+                            <turbo-frame id="notification-menu" src="{{ path('notification_menu') }}" loading="lazy"></turbo-frame>
+                        </div>
+                    </details>
                     <a href="{{ path('app_account') }}" title="{{ 'nav.account'|trans }}">{{ app.user.displayName }}</a>
                     <a href="{{ path('app_logout') }}">{{ 'nav.sign_out'|trans }}</a>
                 </div>

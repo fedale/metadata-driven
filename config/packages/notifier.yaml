@@ -1,0 +1,11 @@
+# The notifications (docs/notifications.md): Symfony Notifier with two channels of the Notification
+# module's own, "inbox" (the bell, core.notification) and "mail" (through the application's Mailer,
+# for those who chose it). Each notification names its channels per recipient
+# (WorkspaceNotification::getChannels()); the policy below is only the fallback.
+framework:
+    notifier:
+        channel_policy:
+            urgent: ['inbox']
+            high: ['inbox']
+            medium: ['inbox']
+            low: ['inbox']

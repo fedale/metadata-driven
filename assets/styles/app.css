@@ -130,6 +130,37 @@ a:hover { color: var(--gv-color-link-hover); }
 .md-workspaces__option + .md-workspaces__option { border-left: 1px solid var(--gv-color-border); }
 .md-workspaces__option--current { background: var(--gv-color-primary); color: var(--gv-color-bg); }
 
+/* The bell: the count of the unread on the icon, the latest in a menu under it. */
+.md-bell { position: relative; }
+.md-bell__toggle { display: inline-flex; align-items: center; gap: .25rem; list-style: none; cursor: pointer; color: var(--gv-color-text-muted); }
+.md-bell__toggle::-webkit-details-marker { display: none; }
+.md-bell__toggle:hover { color: var(--gv-color-text); }
+.md-bell__count { min-width: 1.2rem; padding: 0 .3rem; border-radius: 999px; background: var(--gv-color-primary); color: var(--gv-color-bg); font-size: .7rem; line-height: 1.2rem; text-align: center; }
+.md-bell__menu {
+    position: absolute;
+    inset-inline-end: 0;
+    z-index: 20;
+    width: min(24rem, 90vw);
+    margin-block-start: .5rem;
+    background: var(--gv-color-bg);
+    border: 1px solid var(--gv-color-border);
+    border-radius: var(--gv-radius);
+    box-shadow: 0 6px 18px rgb(0 0 0 / .12);
+}
+.md-bell__empty, .md-bell__all { margin: 0; padding: .6rem .8rem; font-size: .85rem; }
+.md-bell__all { border-top: 1px solid var(--gv-color-border); text-align: center; }
+
+.md-notifications { margin: 0; padding: 0; list-style: none; max-height: 60vh; overflow-y: auto; }
+.md-notifications--page { max-height: none; border: 1px solid var(--gv-color-border); border-radius: var(--gv-radius); }
+.md-notification + .md-notification { border-top: 1px solid var(--gv-color-border); }
+.md-notification__link { display: flex; flex-direction: column; gap: .15rem; padding: .6rem .8rem; color: var(--gv-color-text); text-decoration: none; }
+.md-notification__link:hover { background: var(--gv-color-bg-hover); color: var(--gv-color-text); }
+.md-notification--unread .md-notification__link { background: var(--gv-color-bg-subtle); border-inline-start: 3px solid var(--gv-color-primary); }
+.md-notification--unread .md-notification__title { font-weight: 600; }
+.md-notification__text { font-size: .9rem; white-space: pre-line; }
+.md-notification__meta { font-size: .75rem; color: var(--gv-color-text-muted); }
+.md-pager { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-block-start: 1rem; }
+
 .md-page { max-width: 72rem; margin: 0 auto; padding: 1.5rem 1rem; }
 .md-page__header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .md-page__actions { display: flex; gap: .5rem; margin-left: auto; }

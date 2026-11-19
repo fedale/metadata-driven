@@ -9,6 +9,7 @@ use App\Module\User\Contract\UserManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\Extension\Core\Type\RepeatedType;
@@ -63,6 +64,17 @@ final class AccountController extends AbstractController
             return $this->signedInAgain($email);
         }
 
+        $notifications = $this->forms->createNamedBuilder('notifications', FormType::class, ['by_email' => $profile->notifyByEmail])
+            ->add('by_email', CheckboxType::class, ['label' => 'account.by_email', 'help' => 'account.by_email_help', 'required' => false])
+            ->getForm()
+            ->handleRequest($request);
+        if ($notifications->isSubmitted() && $notifications->isValid()) {
+            $this->users->chooseNotificationsByEmail($email, true === $notifications->get('by_email')->getData());
+            $this->addFlash('success', $this->translator->trans('account.notifications_saved'));
+
+            return $this->redirectToRoute('app_account', [], Response::HTTP_SEE_OTHER);
+        }
+
         $password = $this->forms->createNamedBuilder('password', FormType::class)
             ->add('current', PasswordType::class, ['label' => 'account.current_password'])
             ->add('new', RepeatedType::class, [
@@ -87,8 +99,9 @@ final class AccountController extends AbstractController
         return $this->render('account/show.html.twig', [
             'email' => $profile->email,
             'name_form' => $name->createView(),
+            'notifications_form' => $notifications->createView(),
             'password_form' => $password->createView(),
-        ], new Response(status: ($name->isSubmitted() || $password->isSubmitted()) ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
+        ], new Response(status: ($name->isSubmitted() || $notifications->isSubmitted() || $password->isSubmitted()) ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     /**

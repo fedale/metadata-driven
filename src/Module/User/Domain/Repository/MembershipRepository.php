@@ -35,7 +35,7 @@ interface MembershipRepository
     public function membersOf(string $workspaceId): array;
 
     /**
-     * @return list<array{email: string, first_name: string|null, last_name: string|null, last_login_at: string|null}> by name, then email
+     * @return list<array{email: string, first_name: string|null, last_name: string|null, last_login_at: string|null, locale: string|null, notify_by_email: bool|null, is_active: bool}> by name, then email
      */
     public function membersWithProfiles(string $workspaceId): array;
 }

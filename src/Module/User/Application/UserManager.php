@@ -103,6 +103,14 @@ final class UserManager implements UserManagerInterface
         $this->users->save($user);
     }
 
+    public function chooseNotificationsByEmail(string $email, bool $byEmail): void
+    {
+        $user = $this->user($email);
+        $profile = $user->getProfile() ?? new UserProfile(Uuid::v7(), $user);
+        $profile->chooseNotificationsByEmail($byEmail);
+        $this->users->save($user);
+    }
+
     public function addToWorkspace(string $email, string $workspaceId): bool
     {
         return $this->join($workspaceId, $this->user($email));
@@ -127,6 +135,9 @@ final class UserManager implements UserManagerInterface
                 $row['email'],
                 '' !== $name ? $name : $row['email'],
                 null === $row['last_login_at'] ? null : new \DateTimeImmutable($row['last_login_at']),
+                $row['locale'],
+                true === $row['notify_by_email'],
+                $row['is_active'],
             );
         }, $this->memberships->membersWithProfiles($workspaceId));
     }
@@ -135,7 +146,7 @@ final class UserManager implements UserManagerInterface
     {
         $user = $this->user($email);
 
-        return new Profile($user->getEmail(), $user->getProfile()?->getFirstName(), $user->getProfile()?->getLastName());
+        return new Profile($user->getEmail(), $user->getProfile()?->getFirstName(), $user->getProfile()?->getLastName(), $user->getProfile()?->notifiesByEmail() ?? false);
     }
 
     public function rename(string $email, ?string $firstName, ?string $lastName): void

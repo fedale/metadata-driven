@@ -9,6 +9,11 @@
         <field name="firstName" length="100" nullable="true"/>
         <field name="lastName" length="100" nullable="true"/>
         <field name="locale" length="10" nullable="true"/>
+        <field name="notifyByEmail" type="boolean">
+            <options>
+                <option name="default">0</option>
+            </options>
+        </field>
         <field name="updatedAt" type="datetime_immutable"/>
 
         <one-to-one field="user" target-entity="App\Module\User\Domain\Model\User" inversed-by="profile">
