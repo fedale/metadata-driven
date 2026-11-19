@@ -1,0 +1,6 @@
+{% extends 'email/base.html.twig' %}
+
+{% block content %}
+    <p style="margin: 0 0 12px;">{{ 'mail_test.body'|trans({}, 'email') }}</p>
+    <p style="margin: 0; color: #7b8794;">{{ 'mail_test.sent_at'|trans({'%at%': sent_at}, 'email') }}</p>
+{% endblock %}

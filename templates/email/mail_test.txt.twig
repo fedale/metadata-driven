@@ -1,0 +1,5 @@
+{% extends 'email/base.txt.twig' %}
+
+{% block content %}{{ 'mail_test.body'|trans({}, 'email') }}
+
+{{ 'mail_test.sent_at'|trans({'%at%': sent_at}, 'email') }}{% endblock %}

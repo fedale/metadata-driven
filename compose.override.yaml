@@ -8,3 +8,15 @@ services:
   redis:
     ports:
       - "6379:6379"
+
+###> symfony/mailer ###
+  # Mailpit catches every email sent in development: its pages on http://localhost:8025.
+  mailer:
+    image: axllent/mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+###< symfony/mailer ###

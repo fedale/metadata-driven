@@ -1,0 +1,38 @@
+{#
+ # The layout of the application's emails. Mail clients ignore stylesheets and most of CSS: one
+ # table, inline styles, no framework, no image. Each email extends it and fills "content";
+ # its text twin extends base.txt.twig.
+ #}
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ email.subject }}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f5f7; font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2933;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f5f7;">
+        <tr>
+            <td align="center" style="padding: 24px 12px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 560px; background-color: #ffffff; border-radius: 8px;">
+                    <tr>
+                        <td style="padding: 20px 28px; border-bottom: 1px solid #e4e7eb; font-size: 15px; font-weight: 600;">
+                            {{ sender_name }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 28px; font-size: 15px; line-height: 1.6;">
+                            {% block content %}{% endblock %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 16px 28px; border-top: 1px solid #e4e7eb; font-size: 12px; line-height: 1.5; color: #7b8794;">
+                            {% block footer %}{{ 'footer.automatic'|trans({}, 'email') }}{% endblock %}
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

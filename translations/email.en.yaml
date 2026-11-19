@@ -1,0 +1,7 @@
+# The texts of the application's emails (templates/email/), in English.
+footer:
+    automatic: 'This email was sent automatically: replies are not read.'
+mail_test:
+    subject: 'A test email'
+    body: 'This is a test email: the application sends email.'
+    sent_at: 'Sent at %at% (UTC).'
