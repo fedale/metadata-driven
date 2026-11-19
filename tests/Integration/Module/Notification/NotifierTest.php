@@ -9,6 +9,7 @@ use App\Module\Notification\Contract\Dto\NotificationMessage;
 use App\Module\Notification\Contract\NotifierInterface;
 use App\Module\User\Contract\UserManagerInterface;
 use App\Shared\Infrastructure\Workspace\WorkspaceRegistry;
+use App\Shared\Workspace\WorkspaceUrls;
 use App\Tests\Support\CreatesWorkspaces;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -75,8 +76,10 @@ final class NotifierTest extends KernelTestCase
         self::assertInstanceOf(Email::class, $email);
         self::assertSame('anna@example.com', $email->getTo()[0]->getAddress());
         self::assertSame('Fattura 42 scaduta', $email->getSubject());
-        self::assertEmailHtmlBodyContains($email, 'http://localhost/o/invoice/42');
-        self::assertEmailHtmlBodyContains($email, 'http://localhost/account');
+        // On the workspace's host, with the scheme and port of DEFAULT_URI (no request here).
+        $urls = self::getContainer()->get(WorkspaceUrls::class);
+        self::assertEmailHtmlBodyContains($email, $urls->ofCurrent('/o/invoice/42'));
+        self::assertEmailHtmlBodyContains($email, $urls->ofCurrent('/account'));
         self::assertEmailTextBodyContains($email, 'Ricevi le notifiche anche per email');
         // The bell has it too.
         self::assertSame(1, self::getContainer()->get(NotificationStore::class)->unreadCount('anna@example.com'));

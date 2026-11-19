@@ -216,6 +216,13 @@ and in the console. The visual editor: `to` as rows (kind, value), the link as a
 id. Tests: `EmailAndNotifyTest` (6), `PlatformWorkflowsTest` (the welcome), `EditorModelTest`
 (the round trip). The plan is complete with it.
 
+A security review of the commit (2026-11-19) found the emails checked in the step but counted
+once sent: the steps of one run (an iterator's) all saw the same emails left. Fixed on branch
+`email_quota_reserve`: `WorkflowQuota::reserveEmails()` counts them in the run's transaction
+(rolled back with it; today's usage row locked until it ends, so concurrent runs queue), and
+the sends give back what failed; a `notify` reserves the emails of the members who chose them.
+Test: `EmailAndNotifyTest::testTheStepsOfOneRunShareThePlansEmails`.
+
 ## Docs
 
 A new guide, `docs/notifications.md` (the bell, the choice by email, the notifications' table and

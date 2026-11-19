@@ -126,6 +126,31 @@ final class EmailAndNotifyTest extends KernelTestCase
         self::assertEmailCount(0);
     }
 
+    /**
+     * The emails are taken from the month's as each step runs: a second step sees the first one's
+     * spent, and a run that fails gives them all back.
+     */
+    public function testTheStepsOfOneRunShareThePlansEmails(): void
+    {
+        $connection = self::getContainer()->get(Connection::class);
+        $connection->executeStatement("UPDATE core.workspace SET plan = 'starter' WHERE id = ?", [self::getContainer()->get(CurrentWorkspace::class)->id()]);
+        $connection->executeStatement('INSERT INTO core.workflow_usage (day, steps, emails) VALUES (CURRENT_DATE, 0, 994)');
+        // Four each (the role's three members and whoever writes): 6 left, 8 wanted.
+        $this->activate(<<<'YAML'
+            trigger: { on: created, object: person, when: after }
+            steps:
+              - { key: first, type: send_email, to: [{ role: ROLE_CLERK }, { member: '{{ $user.email }}' }], subject: First, body: First }
+              - { key: again, type: send_email, to: [{ role: ROLE_CLERK }, { member: '{{ $user.email }}' }], subject: Again, body: Again }
+            YAML);
+
+        self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('person', ['full_name' => 'Ada']));
+
+        self::assertSame('failed', $this->lastRun('status'));
+        self::assertSame('The plan of this workspace allows 2 more emails this month: this step sends 4.', $this->lastRun('error'));
+        self::assertEmailCount(0);
+        self::assertEquals(994, $connection->fetchOne('SELECT emails FROM core.workflow_usage'));
+    }
+
     public function testNotifiesTheMembersBellsAndTheEmailOfThoseWhoChoseIt(): void
     {
         self::getContainer()->get(UserManagerInterface::class)->chooseNotificationsByEmail('clara@example.com', true);

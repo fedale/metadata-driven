@@ -75,12 +75,14 @@ final class WorkflowMessages
         if ($dryRun || [] === $recipients) {
             return [$input, $output, true];
         }
-        $left = null === $platform ? $this->quota->emailsLeft() : null;
-        if (null !== $left && \count($recipients) > $left) {
-            throw new StepFailed(\sprintf('The plan of this workspace allows %d more emails this month: this step sends %d.', $left, \count($recipients)));
+        // Taken now, in the run's transaction, not counted once sent: the steps after this one
+        // and the runs at the same time would all see the same emails left.
+        if (null === $platform && !$this->quota->reserveEmails(\count($recipients))) {
+            throw new StepFailed(\sprintf('The plan of this workspace allows %d more emails this month: this step sends %d.', $this->quota->emailsLeft() ?? 0, \count($recipients)));
         }
-        $this->transactions->whenDone(function (bool $committed) use ($recipients, $subject, $body, $workspace): void {
+        $this->transactions->whenDone(function (bool $committed) use ($recipients, $subject, $body, $workspace, $platform): void {
             if (!$committed) {
+                // The reservation went with the rolled back transaction.
                 return;
             }
             $sent = 0;
@@ -92,7 +94,11 @@ final class WorkflowMessages
                     $this->logger->error('A workflow\'s email could not be sent: {message}', ['message' => $e->getMessage()]);
                 }
             }
-            $this->runs->countEmails($sent);
+            // Taken ahead: those that could not be sent are given back. The system's are counted
+            // nowhere (no workspace).
+            if (null === $platform) {
+                $this->runs->countEmails($sent - \count($recipients));
+            }
         });
         $output['sent'] = true;
 
@@ -120,19 +126,21 @@ final class WorkflowMessages
             $link = \sprintf('/o/%s/%s/edit', $target['object'], strtolower($id));
         }
         $message = new NotificationMessage($title, $text, $link, \sprintf('Workflow %s', $run->workflow->name));
-        [$recipients, $leftOut] = $this->recipients($step, $chain, $this->current(), false);
+        [$recipients, $leftOut, $byEmail] = $this->recipients($step, $chain, $this->current(), false);
         $input = ['to' => $step->options['to'] ?? [], 'title' => $message->title, 'text' => $message->text, 'link' => $link];
         $output = ['recipients' => \count($recipients), 'left_out' => $leftOut, 'sent' => false];
         if ($dryRun || [] === $recipients) {
             return [$input, $output, true];
         }
-        $this->transactions->whenDone(function (bool $committed) use ($recipients, $message): void {
+        // The emails of those who chose them, taken now as a send_email's are. Past the plan's,
+        // the bell only: a notification is never lost for its email.
+        $emails = $this->quota->reserveEmails($byEmail) ? $byEmail : 0;
+        $this->transactions->whenDone(function (bool $committed) use ($recipients, $message, $emails): void {
             if (!$committed) {
                 return;
             }
-            // Past the plan's emails, the bell only: a notification is never lost for its email.
-            $notified = $this->notifier->notify(array_keys($recipients), $message, 0 !== $this->quota->emailsLeft());
-            $this->runs->countEmails($notified->emailed);
+            $notified = $this->notifier->notify(array_keys($recipients), $message, $emails > 0);
+            $this->runs->countEmails($notified->emailed - $emails);
         });
         $output['sent'] = true;
 
@@ -143,7 +151,9 @@ final class WorkflowMessages
      * The addresses a step reaches, each with its language (a member's), and how many of what it
      * names were left out: an address that is no active member, a field holding no address.
      *
-     * @return array{array<string, string|null>, int}
+     * @return array{array<string, string|null>, int, int} the addresses, those left out, and the
+     *                                                     members among them who get their
+     *                                                     notifications by email
      *
      * @throws StepFailed more than MAX_RECIPIENTS
      */
@@ -185,7 +195,9 @@ final class WorkflowMessages
             throw new StepFailed(\sprintf('%d recipients: one step reaches %d at most.', \count($recipients), self::MAX_RECIPIENTS));
         }
 
-        return [$recipients, $leftOut];
+        $byEmail = \count(array_filter(array_keys($recipients), static fn (string $email): bool => true === ($members[$email] ?? null)?->notifyByEmail));
+
+        return [$recipients, $leftOut, $byEmail];
     }
 
     private function current(): Workspace
