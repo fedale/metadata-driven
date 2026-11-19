@@ -74,12 +74,25 @@ invitation:
     last_name: Last name
     submit: Join
     welcome: Welcome.
+password_reset:
+    title: Reset your password
+    intro: 'Enter the email of your account: if an account has it, you get a link to choose a new password.'
+    submit: Send the link
+    sent: 'If an account has this email, a link to choose a new password is on its way. It works for an hour.'
+    too_many: 'Too many requests: try again in a quarter of an hour.'
+    choose: 'Choose a new password for %email%. Every other session of the account ends.'
+    new_password: New password
+    password_help: '12 characters at least.'
+    repeat: Repeat it
+    save: Save the password
+    done: 'Your password is changed: sign in with it.'
 login:
     title: Sign in
     email: Email
     password: Password
     remember_me: Keep me signed in
     submit: Sign in
+    forgot: 'Forgot your password?'
 home:
     title: Objects
     forms: Forms

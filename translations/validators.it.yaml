@@ -1,0 +1,3 @@
+# I messaggi di validazione dell'applicazione, in italiano (quelli di Symfony sono nel suo catalogo).
+password_reset:
+    mismatch: 'Le due password sono diverse.'

@@ -56,10 +56,11 @@ final class HostWorkspaceListener
 
                 return;
             }
-            // The system admin's own account (global, as every account) answers there too, and so
-            // do the pages' styles and scripts: in development AssetMapper serves them through
-            // the application, under /assets/ (in production the web server does, from public/).
-            if (!$console && !\in_array($path, ['/login', '/logout', '/account'], true) && !str_starts_with($path, '/_') && !str_starts_with($path, '/assets/')) {
+            // The system admin's own account (global, as every account) answers there too, its
+            // password reset included, and so do the pages' styles and scripts: in development
+            // AssetMapper serves them through the application, under /assets/ (in production the
+            // web server does, from public/).
+            if (!$console && !\in_array($path, ['/login', '/logout', '/account'], true) && !str_starts_with($path, '/password/') && !str_starts_with($path, '/_') && !str_starts_with($path, '/assets/')) {
                 throw new NotFoundHttpException(\sprintf('No page "%s" on the console.', $path));
             }
             $request->attributes->set(SystemConsole::REQUEST_ATTRIBUTE, true);

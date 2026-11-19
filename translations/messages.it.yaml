@@ -73,12 +73,25 @@ invitation:
     last_name: Cognome
     submit: Entra
     welcome: Benvenuto.
+password_reset:
+    title: Reimposta la password
+    intro: 'Inserisci l''email del tuo account: se un account ce l''ha, ricevi un link per scegliere una nuova password.'
+    submit: Invia il link
+    sent: 'Se un account ha questa email, sta arrivando un link per scegliere una nuova password. Vale un''ora.'
+    too_many: 'Troppe richieste: riprova fra un quarto d''ora.'
+    choose: 'Scegli una nuova password per %email%. Tutte le altre sessioni dell''account si chiudono.'
+    new_password: Nuova password
+    password_help: 'Almeno 12 caratteri.'
+    repeat: Ripetila
+    save: Salva la password
+    done: 'La password è cambiata: accedi con quella nuova.'
 login:
     title: Accedi
     email: Email
     password: Password
     remember_me: Resta connesso
     submit: Accedi
+    forgot: 'Password dimenticata?'
 home:
     title: Oggetti
     forms: Moduli

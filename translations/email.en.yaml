@@ -11,3 +11,9 @@ invitation:
     accept: 'Accept the invitation'
     link: 'Or open this address:'
     expires: 'The invitation works until %date% (UTC). If you did not expect it, ignore this email: nothing happens.'
+password_reset:
+    subject: 'Choose a new password'
+    body: 'Someone asked to reset the password of your account. If it was you, choose a new one: every other session of the account ends.'
+    choose: 'Choose a new password'
+    link: 'Or open this address:'
+    expires: 'The link works once, until %date% (UTC). If you did not ask, ignore this email: your password stays as it is.'

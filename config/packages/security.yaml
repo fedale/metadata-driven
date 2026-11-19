@@ -51,6 +51,9 @@ security:
         - { path: ^/login$, roles: PUBLIC_ACCESS }
         # An invitation's link: its token is the credential (InvitationController).
         - { path: ^/invitation/, roles: PUBLIC_ACCESS }
+        # "Forgot your password?", and the link it sends: its token is the credential
+        # (PasswordResetController).
+        - { path: ^/password/, roles: PUBLIC_ACCESS }
         # The system console, on its own host (HostWorkspaceListener): its system admins.
         - { path: ^/console, roles: ROLE_SYSTEM_ADMIN }
         # The grid UI settings (fedale/gridview-bundle) apply to every user: administrators only.

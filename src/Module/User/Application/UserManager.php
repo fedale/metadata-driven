@@ -6,6 +6,7 @@ namespace App\Module\User\Application;
 
 use App\Module\User\Contract\Dto\Invitation;
 use App\Module\User\Contract\Dto\Member;
+use App\Module\User\Contract\Dto\PasswordReset;
 use App\Module\User\Contract\Dto\Profile;
 use App\Module\User\Contract\Event\MemberAdded;
 use App\Module\User\Contract\UserManagerInterface;
@@ -14,6 +15,7 @@ use App\Module\User\Domain\Model\User;
 use App\Module\User\Domain\Model\UserProfile;
 use App\Module\User\Domain\Repository\InvitationRepository;
 use App\Module\User\Domain\Repository\MembershipRepository;
+use App\Module\User\Domain\Repository\PasswordResetRepository;
 use App\Module\User\Domain\Repository\UserRepository;
 use App\Shared\Workspace\CurrentWorkspace;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -33,6 +35,9 @@ final class UserManager implements UserManagerInterface
     /** Wrong passwords that burn an invitation: guessing, or probing for an account, is costly. */
     public const int INVITATION_MAX_FAILURES = 5;
 
+    /** How long a password reset's link works. */
+    private const string PASSWORD_RESET_LIFETIME = '+1 hour';
+
     /**
      * @param list<string> $enabledLocales
      */
@@ -48,6 +53,7 @@ final class UserManager implements UserManagerInterface
         #[Autowire('%kernel.enabled_locales%')]
         private readonly array $enabledLocales,
         private readonly EventDispatcherInterface $events,
+        private readonly PasswordResetRepository $passwordResets,
     ) {
     }
 
@@ -155,6 +161,47 @@ final class UserManager implements UserManagerInterface
         }
         $user->changePasswordHash($hasher->hash($newPassword));
         $this->users->save($user);
+    }
+
+    public function requestPasswordReset(string $email): ?PasswordReset
+    {
+        $user = $this->users->findByEmail(User::normalizeEmail($email));
+        if (null === $user || !$user->isActive()) {
+            return null;
+        }
+        $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+        $now = new \DateTimeImmutable();
+        $expiresAt = $now->modify(self::PASSWORD_RESET_LIFETIME);
+        $this->passwordResets->replace($user->getId(), hash('sha256', $token), $now, $expiresAt);
+
+        return new PasswordReset($user->getEmail(), $token, $expiresAt, $user->getLocale());
+    }
+
+    public function openPasswordReset(string $token): ?string
+    {
+        $email = $this->passwordResets->pendingEmail(hash('sha256', $token), new \DateTimeImmutable());
+        $user = null === $email ? null : $this->users->findByEmail($email);
+
+        return null !== $user && $user->isActive() ? $user->getEmail() : null;
+    }
+
+    public function resetPassword(string $token, string $newPassword): string
+    {
+        $email = $this->openPasswordReset($token) ?? throw InvalidUser::passwordResetNotFound();
+        if (mb_strlen($newPassword) < self::MIN_PASSWORD_LENGTH) {
+            throw InvalidUser::passwordTooShort(self::MIN_PASSWORD_LENGTH);
+        }
+        // Used first, then the password: of two requests with the same link, one only changes it.
+        if (!$this->passwordResets->use(hash('sha256', $token), new \DateTimeImmutable())) {
+            throw InvalidUser::passwordResetNotFound();
+        }
+        $user = $this->user($email);
+        // A new hash: every session and remember-me cookie of the account ends
+        // (SecurityUser::isEqualTo(), the cookie's signature).
+        $user->changePasswordHash($this->hashers->getPasswordHasher(PasswordAuthenticatedUserInterface::class)->hash($newPassword));
+        $this->users->save($user);
+
+        return $user->getEmail();
     }
 
     public function setSystemAdmin(string $email, bool $systemAdmin): void
