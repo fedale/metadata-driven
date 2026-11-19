@@ -11,17 +11,20 @@ use App\Module\Metadata\Contract\Dto\TranslationKey;
 use App\Module\Metadata\Contract\Event\MetadataChanged;
 use App\Module\Metadata\Contract\Event\ObjectDefinitionRenamed;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
+use App\Module\Metadata\Contract\MetadataDependentInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
 use App\Module\Metadata\Domain\Repository\TranslationRepository;
 use App\Shared\Transaction\TransactionRunner;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**
  * Renames an object and everything named after it, in one transaction: the relations pointing
- * at it, the forms naming it, its translations; the listeners of
- * ObjectDefinitionRenamed rename its table and its permissions.
+ * at it, the forms naming it, its translations, the other modules' definitions naming it (the
+ * workflows, through MetadataDependentInterface); the listeners of ObjectDefinitionRenamed rename
+ * its table and its permissions.
  */
 final class RenameObjectHandler
 {
@@ -33,6 +36,9 @@ final class RenameObjectHandler
         private readonly FormRewrites $forms,
         private readonly EventDispatcherInterface $events,
         private readonly TransactionRunner $transactions,
+        /** @var iterable<MetadataDependentInterface> */
+        #[AutowireIterator('app.metadata_dependent')]
+        private readonly iterable $dependents = [],
     ) {
     }
 
@@ -68,6 +74,9 @@ final class RenameObjectHandler
             }
             $this->translations->moveKeysUnder(array_combine(TranslationKey::objectPrefixes($old), TranslationKey::objectPrefixes($new)));
             $rewritten = $this->forms->apply(fn (string $source): string => $this->rewriter->formObject($source, $old, $new));
+            foreach ($this->dependents as $dependent) {
+                $rewritten = [...$rewritten, ...$dependent->objectRenamed($old, $new)];
+            }
 
             $this->events->dispatch(new ObjectDefinitionRenamed($before, $new));
 

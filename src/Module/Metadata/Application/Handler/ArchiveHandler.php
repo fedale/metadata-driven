@@ -22,7 +22,8 @@ use Psr\EventDispatcher\EventDispatcherInterface;
  * permissions, ready for a restore.
  *
  * Archiving is refused while the rest of the metadata uses the object or the field (a
- * relation, a form, a view, a condition, a cascade): every use is listed, to be removed first.
+ * relation, a form, a view, a condition, a cascade, an active workflow): every use is listed, to
+ * be removed first.
  */
 final class ArchiveHandler
 {

@@ -37,7 +37,8 @@ steps:
     A value's text is read as YAML reads it: `null`, `true`, `false`, a number written as one
     (`100`, `1.5`; `00100` stays a text, as a postcode must), a list (`[a, b]`) or a map
     (`{ a: 1 }`); in quotes (`'100'`, `'true'`) it is a text, and a text that would read as
-    something else shows in quotes. A select's options are separated by commas, or written as a
+    something else shows in quotes. A date written without quotes (`2026-12-31`) is the text it
+    shows, saved in quotes. A select's options are separated by commas, or written as a
     list when one holds a comma (`['Rossi, Mario', 'Bianchi, Luca']`). A step whose type the
     editor does not know (mistyped) is saved as it was written.
   - **YAML**: the definition as text, comments kept.
@@ -119,6 +120,10 @@ lets them, in a chain at most three runs deep (`app.workflow.max_depth`). A work
 write file fields.
 
 At most 50 steps, those of the branches included.
+
+A date written without quotes (`due_on: 2026-12-31`) is the text it shows. A date-time without
+quotes (`2026-12-31 10:30:00`) is read in UTC and kept as `2026-12-31T10:30:00+00:00`: quote it
+to keep it as written.
 
 ### Conditions
 
@@ -458,9 +463,11 @@ of it stays, since its last wait), **refused** (a before-run that refused its wr
 refused run is kept, though its write was rolled back. The steps run are counted per workspace and
 day.
 
-A definition is checked when it is activated, and the metadata may change after: a step naming an
-object or a field that is no more (archived, renamed) **fails**, with that reason, as any step
-that fails. Before a write, that refuses the write: deactivate the workflow, or correct it.
+A definition is checked when it is activated, and the metadata follows it after: archiving an
+object or a field an active workflow names is refused, with the places it is named, and renaming
+one rewrites the workflows that name it (see [Renaming and archiving](lifecycle.md)). Should a step
+still name an object or a field that is no more, it **fails**, with that reason, as any step that
+fails. Before a write, that refuses the write: deactivate the workflow, or correct it.
 
 A run is stored once its steps are done, whatever it holds: in an answer from outside that is not
 UTF-8, the invalid bytes are replaced in the log (and a NUL character dropped). A run that still
@@ -523,7 +530,7 @@ these triggers or steps, and the console defines no workflow on a record's.
 | Part | Where |
 |---|---|
 | The events | `RecordManager` raises `RecordWriting` before a write, in its transaction, and `RecordWritten` once the outermost transaction committed (`TransactionRunner::whenDone()`); `RecordEventScopeInterface` silences them (a package's seeds) or stamps them with the run they come from (Record contract) |
-| The definition | `DefinitionParser` (structure, every problem by its path), `DefinitionValidator` (objects, fields, paths, roles, on activation), stored compiled as JSON (`core.workflow_version.definition`) next to the YAML as written (`source`) |
+| The definition | `DefinitionParser` (structure, every problem by its path), `DefinitionValidator` (objects, fields, paths, roles, on activation), stored compiled as JSON (`core.workflow_version.definition`) next to the YAML as written (`source`), read by `WorkflowYaml` (unquoted dates kept as text); `DefinitionNames` finds and renames the objects and fields it names, for the metadata's archive and rename (`MetadataInWorkflows`, the Metadata contract's `MetadataDependentInterface`) |
 | Secrets | `core.workflow_secret` (DBAL, row-level security; migration `Version20261116140000`), `WorkflowSecrets` (`DbalWorkflowSecrets`), sealed by `SecretBox` (libsodium's secret box, `WORKFLOW_SECRETS_KEY`, `workflow:secrets:key`); read on a copy of the run's data for the request only, masked in its log |
 | HTTP | `WorkflowHttp`: Symfony's `HttpClient` through `NoPrivateNetworkHttpClient` (`app.workflow.allow_private_networks`, true in the tests only), the retries and the 1 MB cap |
 | Packages | The Workflow contract's `PackagedWorkflowsInterface` (`PackagedWorkflows`: every workflow with its current definition, a definition as the app writes it, a new workflow or a draft, never activated); the Package module's `WorkflowReferences` turns objects and called workflows into ids and back; items of kind `workflow` in `core.package_item` |

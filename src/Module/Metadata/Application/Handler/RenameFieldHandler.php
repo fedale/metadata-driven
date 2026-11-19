@@ -13,17 +13,20 @@ use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\Event\FieldDefinitionRenamed;
 use App\Module\Metadata\Contract\Event\MetadataChanged;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
+use App\Module\Metadata\Contract\MetadataDependentInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
 use App\Module\Metadata\Domain\Repository\TranslationRepository;
 use App\Shared\Transaction\TransactionRunner;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**
  * Renames a field and everything naming it, in one transaction: what its object says about it
  * (label field, searched fields, conditions, cascades), the cascades of other objects through
- * it, the views of its object, the forms, its translations; the listener of
- * FieldDefinitionRenamed renames its column.
+ * it, the views of its object, the forms, its translations, the other modules' definitions naming
+ * it (the workflows, through MetadataDependentInterface); the listener of FieldDefinitionRenamed
+ * renames its column.
  */
 final class RenameFieldHandler
 {
@@ -36,6 +39,9 @@ final class RenameFieldHandler
         private readonly GridViewCompiler $grids,
         private readonly EventDispatcherInterface $events,
         private readonly TransactionRunner $transactions,
+        /** @var iterable<MetadataDependentInterface> */
+        #[AutowireIterator('app.metadata_dependent')]
+        private readonly iterable $dependents = [],
     ) {
     }
 
@@ -83,6 +89,9 @@ final class RenameFieldHandler
             $this->objects->save($object);
             $this->translations->moveKeysUnder(array_combine(TranslationKey::fieldPrefixes($objectName, $old), TranslationKey::fieldPrefixes($objectName, $new)));
             $rewritten = [...$rewritten, ...$this->forms->apply(fn (string $source): string => $this->rewriter->formField($source, $objectName, $old, $new))];
+            foreach ($this->dependents as $dependent) {
+                $rewritten = [...$rewritten, ...$dependent->fieldRenamed($objectName, $old, $new)];
+            }
 
             $this->events->dispatch(new FieldDefinitionRenamed($before, $old, $new));
 
