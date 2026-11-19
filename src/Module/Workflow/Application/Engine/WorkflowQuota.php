@@ -29,7 +29,22 @@ final class WorkflowQuota implements WorkflowUsageInterface
         $workspace = $this->workspaces->byId($this->workspace->id()) ?? throw new \LogicException('The current workspace is not in the registry.');
         $plan = $this->plans->of($workspace);
 
-        return new WorkflowUsage($plan->label, null === $plan->workflowStepsPerMonth ? 0 : $this->runs->stepsThisMonth(), $plan->workflowStepsPerMonth);
+        return new WorkflowUsage(
+            $plan->label,
+            null === $plan->workflowStepsPerMonth ? 0 : $this->runs->stepsThisMonth(),
+            $plan->workflowStepsPerMonth,
+            $this->runs->emailsThisMonth(),
+            $plan->emailsPerMonth,
+        );
+    }
+
+    /**
+     * The emails the current workspace's workflows may still send this month; null for no limit,
+     * as outside a workspace (the system admin's workflows).
+     */
+    public function emailsLeft(): ?int
+    {
+        return $this->workspace->isSelected() ? $this->thisMonth()->emailsLeft() : null;
     }
 
     /**

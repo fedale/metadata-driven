@@ -32,6 +32,17 @@ interface RunStore
     public function stepsThisMonth(): int;
 
     /**
+     * Counts emails sent by the current workspace's workflows, in today's usage; nothing outside
+     * a workspace (the system's).
+     */
+    public function countEmails(int $emails): void;
+
+    /**
+     * The emails the current workspace's workflows sent this calendar month.
+     */
+    public function emailsThisMonth(): int;
+
+    /**
      * Deletes the runs started before then, with their steps, in the current workspace.
      *
      * @return int the runs deleted

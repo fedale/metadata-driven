@@ -13,6 +13,8 @@ final readonly class Notified
     public function __construct(
         public int $notified,
         public int $leftOut,
+        /** The members notified by email too, as they chose. */
+        public int $emailed = 0,
     ) {
     }
 }

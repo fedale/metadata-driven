@@ -113,6 +113,8 @@ the step's output), a `type`, and its options.
 | `http_request` | `url`, `method`, `headers`, `body`, `timeout`, `retries`, `fail_on_error` | Calls an address outside (see [HTTP requests](#http-requests)) |
 | `run_workflow` | `workflow` (the name of a workflow on `called`), `input` | Runs it inside this run; its output is what it returns (see [Sub-workflows](#sub-workflows)) |
 | `return` | `values` (optional) | A called workflow's end: gives the values back to its caller |
+| `send_email` | `to` (roles, members, email fields of a record), `subject`, `body` | Emails them once the run's writes are kept (see [Email and notifications](#email-and-notifications)) |
+| `notify` | `to` (roles, members), `title`, `text`, `link` (a record) | Notifies them: the bell, and their email if they chose it (see [Email and notifications](#email-and-notifications)) |
 
 The four steps that write records also take `act_as` (see [Permissions](#permissions)) and
 `emit_events`: `false` by default, so that the records a workflow writes start no workflow; `true`
@@ -411,6 +413,57 @@ In the options, `{{ path }}` is replaced by the value: alone, it keeps the value
 number, a list, null); inside a text, it is written as text (a list as JSON). Nothing else: no
 expression, no function.
 
+### Email and notifications
+
+```yaml
+# An overdue invoice: the accountants are told, and the customer gets an email.
+trigger: { on: updated, object: invoice, when: after, fields: [status] }
+steps:
+  - { key: overdue, type: filter, when: { field: $trigger.record.status, op: eq, value: overdue } }
+  - key: ping
+    type: notify
+    to: [{ role: ROLE_ACCOUNTANT }]
+    title: 'Invoice {{ $trigger.record.number }} is overdue'
+    text: 'Due on {{ $trigger.record.due_on }}, {{ $trigger.record.amount }} EUR'
+    link: { object: invoice, id: '{{ $trigger.record.id }}' }
+  - key: remind
+    type: send_email
+    to: [{ field: '{{ $trigger.record.customer_email }}' }]
+    subject: 'Invoice {{ $trigger.record.number }}'
+    body: |
+      Dear customer,
+      the invoice {{ $trigger.record.number }} was due on {{ $trigger.record.due_on }}.
+```
+
+**Who** a step reaches is its `to`, a list of up to 20 entries, each one of:
+
+| Entry | Reaches |
+|---|---|
+| `{ role: ROLE_… }` | The workspace's members holding the role, directly or through a role containing it |
+| `{ member: … }` | A member, by their email (with `{{ … }}`: `{{ $user.email }}`); an email that is no active member is left out |
+| `{ field: '{{ … }}' }` | `send_email` only: the address an **email field** of a record holds (`$trigger.record.<field>`, `$trigger.before.<field>`, an iterator's `<key>.item.<field>` over records), anyone's, checked on activation against the field's type; a value that is no address is left out |
+
+There is no way to write an address as it is, nor to take one from a webhook's body: a workflow
+mails the workspace's members and the addresses its records hold, never a list from outside.
+A step reaches 50 people at most once its roles are expanded (more fails the step); one reached
+twice gets one email.
+
+- **`send_email`**: `subject` (one line) and `body` (text, several lines), with `{{ … }}`. The
+  body goes into the application's email layout **as text**: a record's value can't add markup
+  or a link. The email comes from the workspace's name (`MAILER_FROM`), in each member's
+  language for the layout's words (an address of a field gets the application's).
+- **`notify`**: `title`, `text` (optional), `link` (optional: `{ object, id }`, the record's page).
+  It goes to each member's bell, and to their email when they chose it on their account page
+  (see [Notifications](notifications.md)); `Workflow <its name>` shows where it came from.
+
+Both **leave once the run's writes are kept**: a run that fails afterwards, or a write refused,
+sends nothing. They output `recipients` (how many), `left_out` and `sent`; the run's log keeps
+the subject or the title and these counts, never the addresses (a role's members aren't the
+author's to read). The test on a record shows them as they would go, `sent: false`, and sends
+nothing. Emails need email set up and the worker running (see
+[Getting started](getting-started.md#email)); one that can't be sent is written to the
+application's log.
+
 ## Permissions
 
 No way to more power, as the members and roles pages hold to:
@@ -456,6 +509,11 @@ month: as past `runs_per_minute`, a write a before-workflow guards is refused an
 fails; a queued, scheduled or webhook run, and a waiting one resuming, fail too (no delay brings
 the steps back). A run that started finishes; a sub-workflow is part of its caller's run. The page
 of the workflows shows the month's steps against the plan, warned from 80%.
+
+**The plan's emails**: a plan may limit the emails a workspace's workflows send in a calendar
+month, one per recipient (`emails_per_month`, see [Plans](workspaces.md#plans)): a `send_email`
+that would pass them fails, and a `notify` past them reaches the bells only. The workflows page
+shows the month's emails against the plan.
 
 A run is **completed**, **failed** (an after-run or a manual run that could not finish: nothing
 of it stays, since its last wait), **refused** (a before-run that refused its write), **waiting**
@@ -516,7 +574,19 @@ steps:
 | `install_package` | `package` (`vendor/name`, `vendor/name@1.0.0`), `repo` (an index, by name) | Installs it in the workspace from the indexes, with the packages it requires, all or nothing; outputs `installed` |
 | `assign_role` | `email` (with `{{ … }}`), `role` | Gives a role of the workspace (it must be there when the step runs) to the email, a member of the workspace (else the step fails); outputs `given` (false when held already) |
 
-`if`, `filter` and `refuse` work as anywhere; no other step. They act **as the system**, as the
+```yaml
+# Every new member gets a welcome, from their workspace.
+trigger: { on: member_added }
+steps:
+  - key: welcome
+    type: send_email
+    to: [{ member: '{{ $trigger.member.email }}' }]
+    subject: 'Welcome to {{ $trigger.workspace.name }}'
+    body: 'You can sign in now.'
+```
+
+`if`, `filter`, `refuse`, `http_request` and `send_email` work as anywhere (`send_email` to
+members only: `{ member: '{{ $trigger.member.email }}' }` welcomes a new one); no other step. They act **as the system**, as the
 console's commands do: no `act_as`, no permission checked; only system admins define them, and
 no workspace sees them or their runs (`$user` is null, `$workspace` the workspace concerned).
 They run **in the background**, once the response is sent (or the command done): one after another, each step
@@ -532,6 +602,7 @@ these triggers or steps, and the console defines no workflow on a record's.
 | The events | `RecordManager` raises `RecordWriting` before a write, in its transaction, and `RecordWritten` once the outermost transaction committed (`TransactionRunner::whenDone()`); `RecordEventScopeInterface` silences them (a package's seeds) or stamps them with the run they come from (Record contract) |
 | The definition | `DefinitionParser` (structure, every problem by its path), `DefinitionValidator` (objects, fields, paths, roles, on activation), stored compiled as JSON (`core.workflow_version.definition`) next to the YAML as written (`source`), read by `WorkflowYaml` (unquoted dates kept as text); `DefinitionNames` finds and renames the objects and fields it names, for the metadata's archive and rename (`MetadataInWorkflows`, the Metadata contract's `MetadataDependentInterface`) |
 | Secrets | `core.workflow_secret` (DBAL, row-level security; migration `Version20261116140000`), `WorkflowSecrets` (`DbalWorkflowSecrets`), sealed by `SecretBox` (libsodium's secret box, `WORKFLOW_SECRETS_KEY`, `workflow:secrets:key`); read on a copy of the run's data for the request only, masked in its log |
+| Email and notifications | `WorkflowMessages` (who a `send_email` or a `notify` reaches, sent once the run's transaction committed with `TransactionRunner::whenDone()`): the shared `Mailer` (`templates/email/workflow_email.*`), the Notification contract's `NotifierInterface`; the emails counted in `core.workflow_usage.emails` (migration `Version20261119120000`) against `WorkflowQuota::emailsLeft()` |
 | HTTP | `WorkflowHttp`: Symfony's `HttpClient` through `NoPrivateNetworkHttpClient` (`app.workflow.allow_private_networks`, true in the tests only), the retries and the 1 MB cap |
 | Packages | The Workflow contract's `PackagedWorkflowsInterface` (`PackagedWorkflows`: every workflow with its current definition, a definition as the app writes it, a new workflow or a draft, never activated); the Package module's `WorkflowReferences` turns objects and called workflows into ids and back; items of kind `workflow` in `core.package_item` |
 | Plans | `WorkflowQuota` (the Workflow contract's `WorkflowUsageInterface`): the month's steps from `core.workflow_usage` (`RunStore::stepsThisMonth()`), the plan from Shared's `Plans` (`ConfiguredPlans`, `config/packages/plans.yaml`); checked where each run starts |
@@ -549,4 +620,4 @@ these triggers or steps, and the console defines no workflow on a record's.
 ## Not yet
 
 Other platform events (a workspace suspended or deleted), record steps in the system admin's
-workflows; a sub-workflow's input of lists or maps; email and notifications, once the application sends email. See [the plan](internal/workflow-plan.md).
+workflows; a sub-workflow's input of lists or maps; a daily digest of the notifications. See [the plan](internal/workflow-plan.md).

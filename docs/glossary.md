@@ -72,7 +72,7 @@ code, the commands, the admin UI and the documentation.
 | Term | Meaning |
 |---|---|
 | **Instance** | One installation of the application, serving many workspaces |
-| **Plan** | What a workspace may use (its workflow steps a month), from `config/packages/plans.yaml`; chosen by the system admin (see [Plans](workspaces.md#plans)) |
+| **Plan** | What a workspace may use (its workflow steps and emails a month), from `config/packages/plans.yaml`; chosen by the system admin (see [Plans](workspaces.md#plans)) |
 | **Workspace** | One customer of an instance, with its own model, records, roles and files, reached on its own host (`acme.<base host>`) (see [Workspaces](workspaces.md)) |
 | **System** | The context with no workspace, working across all of them: the console commands run without `--workspace`, and the system console on `console.<base host>` |
 | **System admin** | A user allowed into the system console. A system admin has no power inside a workspace unless they are a member there, with a role |

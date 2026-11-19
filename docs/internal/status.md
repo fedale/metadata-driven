@@ -447,8 +447,11 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   `doctrine:migrations:migrate`) done on branch `password_reset`, merged into `main` on
   2026-11-19. Part D (notifications: the Notification module, the bell, `/notifications`, the
   choice by email on `/account`, `notifications:gc`; migration `Version20261119110000`, run
-  `doctrine:migrations:migrate`) done on branch `notifications` (2026-11-19), waiting for the
-  user's review. Open: `HostWorkspaceUrls` takes the scheme and port of a link from the request
+  `doctrine:migrations:migrate`) done on branch `notifications`, merged into `main` on
+  2026-11-19. Part E (the workflow steps `send_email` and `notify`, the plan's
+  `emails_per_month`; migration `Version20261119120000`, run `doctrine:migrations:migrate`) done
+  on branch `workflow_email_notify` (2026-11-19), waiting for the user's review: the plan is
+  complete with it. Open: `HostWorkspaceUrls` takes the scheme and port of a link from the request
   (the host from the configuration); from `DEFAULT_URI` only, or `framework.trusted_hosts`, is
   the user's call (a security review's remark on part C).
 - Relation filters in grids keep `multiple: true` by choice.

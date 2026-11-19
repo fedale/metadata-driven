@@ -138,7 +138,3 @@ when@test:
         App\Shared\Infrastructure\Workspace\WorkspaceRegistry:
             autowire: true
             public: true
-        # Used by no service yet (the workflows' notify step will be): kept for the tests.
-        App\Module\Notification\Contract\NotifierInterface:
-            alias: App\Module\Notification\Application\Notifier
-            public: true

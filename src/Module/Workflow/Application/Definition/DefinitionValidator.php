@@ -189,6 +189,18 @@ final class DefinitionValidator
         if (StepType::RunWorkflow === $step->type) {
             $this->call($step, $path, $definition, $trigger, $before);
         }
+        if (StepType::SendEmail === $step->type || StepType::Notify === $step->type) {
+            $this->recipients($step, $path, $definition, $trigger, $before);
+            foreach (['subject', 'body', 'title', 'text'] as $option) {
+                if (null !== $step->string($option)) {
+                    $this->paths($step->string($option), $path.'.'.$option, $definition, $trigger, $before);
+                }
+            }
+            if (null !== $link = $step->link()) {
+                $this->object($link['object'], $path.'.link.object');
+                $this->paths($link['id'], $path.'.link.id', $definition, $trigger, $before);
+            }
+        }
         if (StepType::UpsertRecord === $step->type && null !== $target && null !== $match = $step->string('match')) {
             if (true !== ($target->fields[$match] ?? null)?->isUnique) {
                 $this->error($path.'.match', \sprintf('A unique field of "%s": the one that tells the record to update.', $target->name));
@@ -377,6 +389,40 @@ final class DefinitionValidator
         }
         if (!$this->access->holds(Permissions::workflowRun($called->workflowId))) {
             $this->error($path.'.workflow', \sprintf('You may not run "%s": a role of yours must give it, on the roles page.', $name));
+        }
+    }
+
+    /**
+     * A send_email's or a notify's recipients: roles of the workspace, members' paths, and email
+     * fields of a record (the trigger's, its values before, an iterator's item): an address is
+     * read from the data only where the metadata says it is one.
+     *
+     * @param list<string> $before
+     */
+    private function recipients(Step $step, string $path, Definition $definition, ?ObjectDefinitionDto $trigger, array $before): void
+    {
+        foreach ($step->recipients() as $i => ['kind' => $kind, 'value' => $value]) {
+            $at = $path.'.to.'.$i.'.'.$kind;
+            if ('role' === $kind) {
+                if (!\array_key_exists($value, $this->roles->roles())) {
+                    $this->error($at, \sprintf('"%s" is no role of this workspace.', $value));
+                }
+                continue;
+            }
+            $this->paths($value, $at, $definition, $trigger, $before);
+            if ('field' !== $kind || 1 !== preg_match(DefinitionParser::TEMPLATE, $value, $match)) {
+                continue;
+            }
+            $segments = explode('.', $match[1]);
+            $object = match (true) {
+                '$trigger' === $segments[0] && \in_array($segments[1] ?? null, ['record', 'before'], true) => $trigger,
+                isset($this->itemObjects[$segments[0]]) && 'item' === ($segments[1] ?? null) => $this->metadata->hasObject($this->itemObjects[$segments[0]]) ? $this->metadata->getObject($this->itemObjects[$segments[0]]) : null,
+                default => null,
+            };
+            $field = null === $object || !isset($segments[2]) || isset($segments[3]) ? null : ($object->fields[$segments[2]] ?? null);
+            if (null === $field || 'email' !== $field->type) {
+                $this->error($at, 'An email field of a record: $trigger.record.<field>, $trigger.before.<field>, or the item of an iterator over records, <key>.item.<field>.');
+            }
         }
     }
 

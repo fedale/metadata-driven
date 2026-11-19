@@ -26,7 +26,7 @@ final class Notifier implements NotifierInterface
     ) {
     }
 
-    public function notify(array $emails, NotificationMessage $message): Notified
+    public function notify(array $emails, NotificationMessage $message, bool $byEmail = true): Notified
     {
         /** @var array<string, Member> $members */
         $members = [];
@@ -37,16 +37,19 @@ final class Notifier implements NotifierInterface
         }
         $notified = 0;
         $leftOut = 0;
+        $emailed = 0;
         foreach (array_unique(array_map(static fn (string $email): string => mb_strtolower(trim($email)), $emails)) as $email) {
             $member = $members[$email] ?? null;
             if (null === $member) {
                 ++$leftOut;
                 continue;
             }
-            $this->notifier->send(new WorkspaceNotification($message, $member->notifyByEmail, $member->locale), new Recipient($member->email));
+            $email = $byEmail && $member->notifyByEmail;
+            $this->notifier->send(new WorkspaceNotification($message, $email, $member->locale), new Recipient($member->email));
             ++$notified;
+            $emailed += (int) $email;
         }
 
-        return new Notified($notified, $leftOut);
+        return new Notified($notified, $leftOut, $emailed);
     }
 }

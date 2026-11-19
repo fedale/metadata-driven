@@ -82,8 +82,9 @@ parameters:
         starter:
             label: Starter
             workflow_steps_per_month: 5000   # ~ for no limit
-        business: { label: Business, workflow_steps_per_month: 100000 }
-        unlimited: { label: Unlimited, workflow_steps_per_month: ~ }
+            emails_per_month: 1000
+        business: { label: Business, workflow_steps_per_month: 100000, emails_per_month: 20000 }
+        unlimited: { label: Unlimited, workflow_steps_per_month: ~, emails_per_month: ~ }
 ```
 
 - **Workflow steps a month**: the steps its workflows run in a calendar month (the database's
@@ -91,6 +92,9 @@ parameters:
   one, a webhook's, a waiting one resuming fail, telling why; a write a workflow guards before it
   is refused. A run that started finishes, whatever it spends. Its admins see the month's steps
   on the workflows page, warned from 80%. See [Workflows](workflows.md#runs-and-limits).
+- **Emails a month**: the emails its workflows send in a calendar month, one per recipient
+  (`send_email`, and the emails of `notify`). Once spent, a `send_email` fails and a `notify`
+  reaches the bells only. The console shows the month's emails next to the steps.
 - **Choosing one**: in the console, on the workspace's page; `workspace:create --plan=…`;
   `workspace:plan <slug> <plan>`. A workspace whose plan is no longer configured is on the
   default one.

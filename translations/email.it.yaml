@@ -22,3 +22,5 @@ notification:
     open: 'Apri'
     why: 'Ricevi le notifiche anche per email, come scelto nella pagina del tuo account:'
     account: 'cambialo lì'
+workflow_email:
+    subject: '%subject%'

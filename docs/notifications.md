@@ -2,8 +2,9 @@
 
 A **notification** tells a member of a workspace that something happened: an invoice is overdue,
 a lead came in. It goes to the **bell** in the top bar, and by email too to those who chose it.
-For now the workspace's [workflows](workflows.md) send them; other parts of the application may
-later.
+For now the workspace's [workflows](workflows.md) send them, with their `notify` step (see
+[Email and notifications](workflows.md#email-and-notifications)); other parts of the application
+may later.
 
 ## The bell
 

@@ -1,0 +1,7 @@
+{% extends 'email/base.html.twig' %}
+
+{# A workflow's email: its body is text written by the workflow's author, with values of the
+   records in it, so it is escaped, never HTML: no value can bring markup or a link of its own. #}
+{% block content %}
+    <p style="margin: 0; white-space: pre-line;">{{ body }}</p>
+{% endblock %}

@@ -22,7 +22,10 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class EditorModel
 {
-    private const array STEP_OPTIONS = ['object' => '', 'id' => '', 'match' => '', 'message' => '', 'act_as' => '', 'emit_events' => false, 'items' => '', 'sort' => '', 'direction' => '', 'limit' => '', 'package' => '', 'repo' => '', 'email' => '', 'role' => '', 'for' => '', 'until' => '', 'url' => '', 'method' => '', 'timeout' => '', 'retries' => '', 'headers' => '', 'body' => '', 'fail_on_error' => true, 'field' => '', 'name' => '', 'workflow' => ''];
+    private const array STEP_OPTIONS = ['object' => '', 'id' => '', 'match' => '', 'message' => '', 'act_as' => '', 'emit_events' => false, 'items' => '', 'sort' => '', 'direction' => '', 'limit' => '', 'package' => '', 'repo' => '', 'email' => '', 'role' => '', 'for' => '', 'until' => '', 'url' => '', 'method' => '', 'timeout' => '', 'retries' => '', 'headers' => '', 'body' => '', 'fail_on_error' => true, 'field' => '', 'name' => '', 'workflow' => '', 'subject' => '', 'title' => '', 'text' => '', 'link_object' => '', 'link_id' => ''];
+
+    /** Who a send_email or a notify may name. */
+    public const array RECIPIENT_KINDS = ['role', 'member', 'field'];
 
     /**
      * @return array<string, mixed>|null null when the YAML cannot be read
@@ -116,10 +119,21 @@ final class EditorModel
             'values' => [],
             'input' => [],
             'where' => [],
+            'to' => \in_array($type, [StepType::SendEmail, StepType::Notify], true) ? [self::newRecipient()] : [],
             'when' => StepType::Filter === $type ? self::newCondition() : null,
             'branches' => StepType::If === $type ? [['when' => self::newCondition(), 'steps' => []], ['when' => null, 'steps' => []]] : [],
             'steps' => [],
         ];
+    }
+
+    /**
+     * A new recipient of a send_email or a notify: a member, by a path or an email.
+     *
+     * @return array{kind: string, value: string}
+     */
+    public static function newRecipient(): array
+    {
+        return ['kind' => 'member', 'value' => ''];
     }
 
     /**
@@ -254,6 +268,15 @@ final class EditorModel
             foreach (\is_array($step['where'] ?? null) ? $step['where'] : [] as $test) {
                 $where[] = \is_array($test) ? self::testFrom($test) : self::newWhere();
             }
+            $to = [];
+            foreach (\is_array($step['to'] ?? null) ? $step['to'] : [] as $entry) {
+                $kind = \is_array($entry) ? (string) array_key_first($entry) : '';
+                $to[] = \in_array($kind, self::RECIPIENT_KINDS, true) ? ['kind' => $kind, 'value' => self::text($entry[$kind] ?? '')] : self::newRecipient();
+            }
+            // A notification's record: its object and id, two fields of the page.
+            $link = \is_array($step['link'] ?? null) ? $step['link'] : [];
+            $options['link_object'] = self::text($link['object'] ?? '');
+            $options['link_id'] = self::text($link['id'] ?? '');
             $model[] = [
                 'key' => self::text($step['key'] ?? ''),
                 'type' => self::text($step['type'] ?? ''),
@@ -264,6 +287,7 @@ final class EditorModel
                 'values' => $values,
                 'input' => $input,
                 'where' => $where,
+                'to' => $to,
                 'steps' => self::stepsFrom($step['steps'] ?? []),
                 'when' => \array_key_exists('when', $step) ? self::conditionFrom($step['when']) : null,
                 'branches' => array_values(array_map(
@@ -317,7 +341,13 @@ final class EditorModel
                     'where' => [] === ($where = self::whereTo($step['where'] ?? [])) ? $out : $out + ['where' => $where],
                     'steps' => $out + ['steps' => self::stepsTo(\is_array($step['steps'] ?? null) ? $step['steps'] : [])],
                     'limit', 'timeout', 'retries' => '' === self::text($step[$option] ?? '') ? $out : $out + [$option => self::typed(self::text($step[$option] ?? ''))],
-                    'headers', 'body' => '' === trim(self::text($step[$option] ?? '')) ? $out : $out + [$option => self::yamlOrText(self::text($step[$option] ?? ''))],
+                    // An email's body is a text, kept as typed; a request's, a text or YAML.
+                    'body' => StepType::SendEmail === $type
+                        ? ('' === self::text($step['body'] ?? '') ? $out : $out + ['body' => self::text($step['body'] ?? '')])
+                        : ('' === trim(self::text($step['body'] ?? '')) ? $out : $out + ['body' => self::yamlOrText(self::text($step['body'] ?? ''))]),
+                    'headers' => '' === trim(self::text($step['headers'] ?? '')) ? $out : $out + ['headers' => self::yamlOrText(self::text($step['headers'] ?? ''))],
+                    'to' => $out + ['to' => self::recipientsTo($step['to'] ?? [])],
+                    'link' => '' === self::text($step['link_object'] ?? '') ? $out : $out + ['link' => ['object' => self::text($step['link_object'] ?? ''), 'id' => self::text($step['link_id'] ?? '')]],
                     'fail_on_error' => false === ($step['fail_on_error'] ?? true) ? $out + ['fail_on_error' => false] : $out,
                     default => '' === self::text($step[$option] ?? '') ? $out : $out + [$option => self::text($step[$option] ?? '')],
                 };
@@ -326,6 +356,25 @@ final class EditorModel
         }
 
         return $data;
+    }
+
+    /**
+     * The rows of a send_email's or a notify's to, those with a value.
+     *
+     * @return list<array<string, string>>
+     */
+    private static function recipientsTo(mixed $rows): array
+    {
+        $to = [];
+        foreach (\is_array($rows) ? $rows : [] as $row) {
+            $kind = \is_array($row) ? self::text($row['kind'] ?? '') : '';
+            $value = \is_array($row) ? trim(self::text($row['value'] ?? '')) : '';
+            if (\in_array($kind, self::RECIPIENT_KINDS, true) && '' !== $value) {
+                $to[] = [$kind => $value];
+            }
+        }
+
+        return $to;
     }
 
     /**

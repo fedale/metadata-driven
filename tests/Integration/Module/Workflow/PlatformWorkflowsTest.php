@@ -25,6 +25,7 @@ use App\Tests\Support\PublishesPackages;
 use App\Tests\Support\RemovesDirectories;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\Mime\Email;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
@@ -111,6 +112,33 @@ final class PlatformWorkflowsTest extends KernelTestCase
         // A member already: no event, no run.
         $users->addToWorkspace('nina@example.com', $this->beta->id);
         self::assertSame([], self::getContainer()->get(PlatformWorkflows::class)->runPending());
+    }
+
+    public function testANewMemberGetsAWelcomeEmailFromTheWorkspace(): void
+    {
+        $this->activate('Welcome', <<<'YAML'
+            trigger: { on: member_added }
+            steps:
+              - key: welcome
+                type: send_email
+                to: [{ member: '{{ $trigger.member.email }}' }]
+                subject: 'Welcome to {{ $trigger.workspace.name }}'
+                body: 'Sign in at {{ $trigger.workspace.slug }}.'
+            YAML);
+        $users = self::getContainer()->get(UserManagerInterface::class);
+        $users->createUser('nina@example.com', 'correct horse battery staple');
+        self::getContainer()->get(PlatformWorkflows::class)->reset();
+
+        $users->addToWorkspace('nina@example.com', $this->beta->id);
+        $runs = self::getContainer()->get(PlatformWorkflows::class)->runPending();
+
+        self::assertSame(RunLog::COMPLETED, $runs[0]->status, (string) $runs[0]->error);
+        self::assertSame(['recipients' => 1, 'left_out' => 0, 'sent' => true], $runs[0]->steps[0]['output']);
+        $email = self::getMailerMessage();
+        self::assertInstanceOf(Email::class, $email);
+        self::assertSame('nina@example.com', $email->getTo()[0]->getAddress());
+        self::assertSame($this->beta->name, $email->getFrom()[0]->getName());
+        self::assertSame('Welcome to '.$this->beta->name, $email->getSubject());
     }
 
     public function testAStepThatFailsFailsTheRun(): void

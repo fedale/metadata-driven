@@ -119,6 +119,27 @@ final class DbalRunStore implements RunStore
         return is_numeric($steps) ? (int) $steps : 0;
     }
 
+    public function countEmails(int $emails): void
+    {
+        if ($emails < 1) {
+            return;
+        }
+        $this->connection->executeStatement(
+            \sprintf('INSERT INTO core.workflow_usage (day, steps, emails) SELECT CURRENT_DATE, 0, ? WHERE %s IS NOT NULL
+             ON CONFLICT (workspace_id, day) DO UPDATE SET emails = core.workflow_usage.emails + EXCLUDED.emails', WorkspaceScope::CURRENT),
+            [$emails],
+        );
+    }
+
+    public function emailsThisMonth(): int
+    {
+        $emails = $this->connection->fetchOne(
+            \sprintf("SELECT COALESCE(SUM(emails), 0) FROM core.workflow_usage WHERE workspace_id = %s AND day >= date_trunc('month', CURRENT_DATE)", WorkspaceScope::CURRENT),
+        );
+
+        return is_numeric($emails) ? (int) $emails : 0;
+    }
+
     public function countSince(\DateTimeImmutable $since): int
     {
         $count = $this->connection->fetchOne(
