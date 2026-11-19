@@ -4,7 +4,7 @@ Internal notes for whoever (human or agent) picks the work up, on any machine. R
 starting a task; update it in the same branch whenever a decision is taken, a feature lands or the
 work queue changes. The user-facing documentation is in [../README.md](../README.md).
 
-Last updated: 2026-11-17.
+Last updated: 2026-11-19.
 
 ## Setting up on a new machine
 
@@ -426,10 +426,15 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   branch `workflow_missing_object`, merged into `main` on 2026-11-17: a step naming an object
   archived since the activation fails with its reason (it broke the write a before-workflow
   guards, and left a queued run without its log), and `assign_role` gives a role to a member of
-  the workspace only. Not done, to decide: archiving or renaming an object does not tell the
-  workflows that name it (`MetadataUsages` knows nothing of them), so the first sign is the
-  failed run; an unquoted YAML date (`due_on: 2026-12-31`) is read as a timestamp by the
-  parser and the visual editor.
+  the workspace only. The two points left to decide, done on branch `workflow_metadata_names`
+  (2026-11-19), waiting for the user's review: by the user's choice, archiving an object or a
+  field an active workflow names is refused, the places listed, and a rename rewrites the
+  workflows (the active version, the draft and a deactivated one; source and compiled
+  definition; an archived version stays as it ran), as for forms and views. Through the Metadata
+  contract's `MetadataDependentInterface` (tagged `app.metadata_dependent`), implemented by
+  `MetadataInWorkflows`, the places found by `DefinitionNames`; see lifecycle.md. An unquoted
+  YAML date is now the text it shows, in the parser and the visual editor (`WorkflowYaml`:
+  `Yaml::PARSE_DATETIME`, the date turned back into Y-m-d, a date-time into ISO 8601 in UTC).
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

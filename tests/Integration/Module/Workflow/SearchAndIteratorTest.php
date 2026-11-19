@@ -7,6 +7,9 @@ namespace App\Tests\Integration\Module\Workflow;
 use App\Module\Access\Application\PermissionSynchronizer;
 use App\Module\Access\Contract\Permissions;
 use App\Module\Metadata\Application\Handler\ArchiveHandler;
+use App\Module\Metadata\Application\Lifecycle\MetadataUsages;
+use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
@@ -17,9 +20,11 @@ use App\Module\User\Infrastructure\Security\UserProvider;
 use App\Module\Workflow\Application\Engine\RunLog;
 use App\Module\Workflow\Application\ManualRuns;
 use App\Module\Workflow\Application\WorkflowManager;
+use App\Shared\Transaction\TransactionRunner;
 use App\Tests\Support\CreatesRelatedObjects;
 use Doctrine\DBAL\Connection;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
@@ -125,8 +130,16 @@ final class SearchAndIteratorTest extends KernelTestCase
         $manager->activate($guard);
         $manual = $manager->create('Count', null, "trigger: { on: manual, object: person, label: Count }\nsteps: [{ key: visits, type: search_records, object: visit }]");
         $manager->activate($manual);
-        // Checked when they were activated; archived since.
-        self::getContainer()->get(ArchiveHandler::class)->archiveObject('visit');
+        // Checked when they were activated; archived since. Archiving refuses what an active
+        // workflow names: without the workflows' uses, as an archive racing the activation would.
+        $container = self::getContainer();
+        (new ArchiveHandler(
+            $container->get(ObjectDefinitionRepository::class),
+            $container->get(MetadataRegistryInterface::class),
+            new MetadataUsages($container->get(MetadataRegistryInterface::class)),
+            $container->get(EventDispatcherInterface::class),
+            $container->get(TransactionRunner::class),
+        ))->archiveObject('visit');
 
         // Before a write: refused with a reason, as any step that fails, not an error of the page.
         try {

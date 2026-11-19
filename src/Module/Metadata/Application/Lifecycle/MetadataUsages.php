@@ -10,7 +10,9 @@ use App\Module\Metadata\Contract\Dto\ManyToManySettings;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewKind;
+use App\Module\Metadata\Contract\MetadataDependentInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**
  * Where an object or a field is used by the rest of the metadata: what keeps it from being
@@ -19,11 +21,17 @@ use App\Module\Metadata\Contract\MetadataRegistryInterface;
  * What only describes the object itself (its label field, its searched fields, its own views
  * and translations) is no use: it follows the object, or is cleaned up with it. A field set
  * unique together is: archiving one of its fields would silently drop a rule on the data.
+ *
+ * The other modules' definitions naming objects and fields (the workflows) tell their own uses,
+ * through the Metadata contract's MetadataDependentInterface.
  */
 final class MetadataUsages
 {
     public function __construct(
         private readonly MetadataRegistryInterface $metadata,
+        /** @var iterable<MetadataDependentInterface> */
+        #[AutowireIterator('app.metadata_dependent')]
+        private readonly iterable $dependents = [],
     ) {
     }
 
@@ -56,6 +64,9 @@ final class MetadataUsages
             if ([] !== $paths) {
                 $usages[] = \sprintf('form "%s" (%s)', $form->name, implode(', ', $paths));
             }
+        }
+        foreach ($this->dependents as $dependent) {
+            $usages = [...$usages, ...$dependent->usesOfObject($objectName)];
         }
 
         return $usages;
@@ -114,6 +125,9 @@ final class MetadataUsages
                     $usages[] = \sprintf('form "%s", %s: %s', $form->name, $path, implode(', ', $how));
                 }
             }
+        }
+        foreach ($this->dependents as $dependent) {
+            $usages = [...$usages, ...$dependent->usesOfField($objectName, $fieldName)];
         }
 
         return $usages;

@@ -183,6 +183,28 @@ final class EditorModelTest extends TestCase
         );
     }
 
+    public function testADateWithoutQuotesStaysTheDateItShows(): void
+    {
+        $source = <<<'YAML'
+            trigger: { on: manual, object: invoice, label: Go }
+            steps:
+              - { key: due, type: update_record, object: invoice, id: '{{ $trigger.record.id }}', values: { due_on: 2026-12-31, sent_at: 2026-12-31 10:30:00, quoted: '2026-12-31' } }
+              - { key: late, type: filter, when: { field: $trigger.record.due_on, op: lt, value: 2026-12-31 } }
+            YAML;
+        $model = EditorModel::fromSource($source);
+        self::assertNotNull($model);
+        // Shown as written, not as the Unix time the parser reads a YAML timestamp as.
+        self::assertSame(['field' => 'due_on', 'value' => '2026-12-31'], self::at($model, 'steps.0.values.0'));
+        self::assertSame(['field' => 'sent_at', 'value' => '2026-12-31T10:30:00+00:00'], self::at($model, 'steps.0.values.1'));
+        self::assertSame('2026-12-31', self::at($model, 'steps.1.when.tests.0.value'));
+
+        // Saved quoted: it reads back as the same text.
+        $saved = EditorModel::toSource($model);
+        self::assertStringContainsString("due_on: '2026-12-31'", $saved);
+        $parser = new DefinitionParser();
+        self::assertEquals($parser->parse($source), $parser->parse($saved));
+    }
+
     public function testSelectOptionsWithACommaStayWhole(): void
     {
         $source = "trigger: { on: manual, object: person, label: Go, form: [{ name: who, label: Who, type: select, options: ['Rossi, Mario', 'Bianchi, Luca'] }] }\nsteps: [{ key: no, type: refuse, message: no }]";

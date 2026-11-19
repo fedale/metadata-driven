@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Workflow\Application;
 
 use App\Module\Workflow\Application\Definition\DefinitionParser;
+use App\Module\Workflow\Application\Definition\WorkflowYaml;
 use App\Module\Workflow\Contract\Dto\WorkflowSource;
 use App\Module\Workflow\Contract\Exception\InvalidWorkflowSource;
 use App\Module\Workflow\Contract\PackagedWorkflowsInterface;
@@ -95,7 +96,7 @@ final class PackagedWorkflows implements PackagedWorkflowsInterface
         } catch (InvalidWorkflowDefinition) {
             // A draft being written: as it is, which no package's definition equals.
             try {
-                $raw = Yaml::parse($version->getSource());
+                $raw = WorkflowYaml::parse($version->getSource());
             } catch (ParseException) {
                 return ['source' => $version->getSource()];
             }

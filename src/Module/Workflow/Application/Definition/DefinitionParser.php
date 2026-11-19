@@ -58,7 +58,7 @@ final class DefinitionParser
     public function parse(string $yaml): Definition
     {
         try {
-            $data = Yaml::parse($yaml, Yaml::PARSE_EXCEPTION_ON_INVALID_TYPE);
+            $data = WorkflowYaml::parse($yaml, Yaml::PARSE_EXCEPTION_ON_INVALID_TYPE);
         } catch (ParseException $e) {
             throw new InvalidWorkflowDefinition(['' => [\sprintf('Not valid YAML: %s', $e->getMessage())]]);
         }

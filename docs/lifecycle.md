@@ -26,6 +26,7 @@ Renaming an **object** renames everything named after it:
 - the relation and `many_to_many` fields pointing at it, in every object (`target`), and the
   `many_to_many` fields going through it (`through`);
 - the forms naming it (`object:`);
+- the [workflows](workflows.md) naming it (see [below](#the-definitions-written-by-hand));
 - its translations (`object.<name>.*`, `field.<name>.*`, `option.<name>.*`, ...);
 - its permissions `record.<name>.*`: the roles and users holding them keep them.
 
@@ -40,6 +41,7 @@ Renaming a **field** renames everything naming it:
 - the views of its object: the `{field}` tokens of a form view, the columns, `{field}` tokens and
   sort of a grid view;
 - the forms: `fields`, `required`, the `{field}` tokens of a `layout`, and `via`;
+- the [workflows](workflows.md) naming it (see [below](#the-definitions-written-by-hand));
 - its translations (`field.<object>.<field>`, its options, its inverse title, its pattern message).
 
 The search indexes and the unique-together indexes are built again under the new names. The table then matches the metadata: the
@@ -57,6 +59,22 @@ rewrote ("Rewritten to name the new one: grid view "list", form "registration"")
 
 If a rewritten definition no longer compiles (a virtual column of a grid view named like the new
 field name, for instance), the rename is refused with the error and nothing changes.
+
+**Workflows** are written by hand too, and follow the same way ("workflow "Reminders" (draft,
+active)"). The active version, the draft and a deactivated version are rewritten, their YAML and
+their compiled definition alike; an archived version stays as it ran. Like a form, a YAML that
+names the old name is written again without its comments; one that doesn't is not touched, and a
+draft that is not valid YAML yet is left as it is. What follows the name:
+
+- the trigger's `object`, `fields` and status `field`;
+- a step's `object`, the fields of its `values`, its `match`, `sort`, `field` and the fields of its
+  `where` (a `set_values` step writes the trigger's object);
+- the paths reading a record's field: `$trigger.record.<field>`, `$trigger.before.<field>`, and an
+  iterator's `<key>.item.<field>` when its items are a search's records or a selection's, in
+  `{{ … }}` or as a condition's `field`;
+- the values of a condition on `$trigger.changed` (field names) or `$trigger.object` (an object's).
+
+The activator stays the same: a rename gives no step more power.
 
 ### What does not follow
 
@@ -81,7 +99,8 @@ index is dropped: it holds no data).
 first. Archiving an object is refused while:
 
 - a relation or `many_to_many` field of another object points at it, or goes through it;
-- a form has a node on it.
+- a form has a node on it;
+- an active [workflow](workflows.md) names it: its trigger, a step's `object`.
 
 Archiving a field is refused while:
 
@@ -92,7 +111,14 @@ Archiving a field is refused while:
   `fields` shows every field: the archived one simply leaves it;
 - a `many_to_many` field goes through it (`throughSource`, `throughTarget`);
 - it is part of a set unique together: archiving it would silently drop a rule on the data
-  (`metadata:object:unique <object> <fields> --remove` first).
+  (`metadata:object:unique <object> <fields> --remove` first);
+- an active [workflow](workflows.md) names it, in any of the places a rename follows (see
+  [above](#the-definitions-written-by-hand)).
+
+A workflow's use is listed with the places in its definition (`workflow "Reminders"
+(trigger.fields.0, steps.2.values.due_on)`). Only the active version counts: a draft, or a version
+that doesn't run, is checked again when it is activated, and refused there if it names what is
+archived.
 
 > Refused: Field "account.active" cannot be archived, it is still used: field "lastname" is shown
 > depending on it; form "registration", (root): fields. Remove these uses first.
@@ -135,6 +161,7 @@ it needs `--force`. The admin has no purge button.
 |---|---|
 | Rename | `RenameObjectHandler`, `RenameFieldHandler` (Metadata); the rewriting of the hand-written definitions in `DefinitionRewriter` and `FormRewrites` |
 | Archive, restore | `ArchiveHandler`, with the uses found by `MetadataUsages`; `FieldDefinition::isArchived`, `ObjectDefinition::isActive` |
+| Other modules | The Metadata contract's `MetadataDependentInterface` (tagged `app.metadata_dependent`): their uses, added to `MetadataUsages`'s, and their rewrite, called by the rename handlers in the transaction. The workflows' is `MetadataInWorkflows`, the places found by `DefinitionNames` |
 | Purge | `PurgeHandler` |
 | Events (in the transaction) | `ObjectDefinitionRenamed`, `FieldDefinitionRenamed` → `SchemaSynchronizerInterface::rename()` and the permissions (`RbacManagerInterface::renameItem()`); `FieldArchiveChanged` → schema sync; `ObjectDefinitionPurged`, `FieldDefinitionPurged` → `dropTable()`, `dropColumn()` and the permissions |
 | Registry | the archived objects are left out of `allObjects()`, listed by `archivedObjects()`; the archived fields are left out of `fields`, listed in `archivedFields` (the schema keeps their columns) |

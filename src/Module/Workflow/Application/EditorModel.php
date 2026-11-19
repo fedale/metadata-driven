@@ -6,6 +6,7 @@ namespace App\Module\Workflow\Application;
 
 use App\Module\Workflow\Application\Definition\StepType;
 use App\Module\Workflow\Application\Definition\TriggerEvent;
+use App\Module\Workflow\Application\Definition\WorkflowYaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
@@ -29,7 +30,7 @@ final class EditorModel
     public static function fromSource(string $source): ?array
     {
         try {
-            $data = Yaml::parse($source);
+            $data = WorkflowYaml::parse($source);
         } catch (ParseException) {
             return null;
         }
@@ -372,7 +373,7 @@ final class EditorModel
             return null;
         }
         if (\is_string($condition['raw'] ?? null) && '' !== $condition['raw']) {
-            $raw = Yaml::parse($condition['raw']);
+            $raw = WorkflowYaml::parse($condition['raw']);
 
             return \is_array($raw) ? array_combine(array_map(strval(...), array_keys($raw)), array_values($raw)) : null;
         }
@@ -477,7 +478,7 @@ final class EditorModel
             return $text;
         }
         try {
-            $parsed = Yaml::parse($text);
+            $parsed = WorkflowYaml::parse($text);
         } catch (ParseException) {
             return $text;
         }
@@ -523,7 +524,7 @@ final class EditorModel
         $line = trim($line);
         if (str_starts_with($line, '[') && str_ends_with($line, ']')) {
             try {
-                $list = Yaml::parse($line);
+                $list = WorkflowYaml::parse($line);
                 if (\is_array($list)) {
                     return array_values(array_filter(array_map(self::text(...), $list), static fn (string $option): bool => '' !== $option));
                 }
@@ -542,7 +543,7 @@ final class EditorModel
     {
         if (str_starts_with(trim($text), '{') || str_starts_with(trim($text), '[')) {
             try {
-                return Yaml::parse($text);
+                return WorkflowYaml::parse($text);
             } catch (ParseException) {
                 return $text;
             }

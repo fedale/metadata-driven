@@ -94,6 +94,22 @@ class WorkflowVersion
     }
 
     /**
+     * Follows the rename of an object or a field it names: its source and its compiled definition
+     * rewritten together, whatever its status but archived (a version that ran no more stays as
+     * it ran). Its activator stays: a rename gives no step more power.
+     *
+     * @param array<string, mixed>|null $definition the compiled definition, renamed; null when it had none
+     */
+    public function followRename(string $source, ?array $definition): void
+    {
+        if (VersionStatus::Archived === $this->status) {
+            throw new \LogicException('An archived version stays as it ran.');
+        }
+        $this->source = $source;
+        $this->definition = $definition;
+    }
+
+    /**
      * @param array<string, mixed> $definition the compiled definition
      */
     public function activate(array $definition, string $by, \DateTimeImmutable $at): void

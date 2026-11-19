@@ -49,6 +49,19 @@ final class DefinitionParserTest extends TestCase
         self::assertEquals($definition, $parser->fromArray($definition->toArray()));
     }
 
+    public function testReadsADateWithoutQuotesAsTheDateItShows(): void
+    {
+        $definition = (new DefinitionParser())->parse(<<<'YAML'
+            trigger: { on: created, object: invoice, when: after }
+            steps:
+              - { key: late, type: filter, when: { field: $trigger.record.due_on, op: lt, value: 2026-12-31 } }
+              - { key: due, type: update_record, object: invoice, id: '{{ $trigger.record.id }}', values: { due_on: 2026-12-31, sent_at: 2026-12-31T10:30:00Z, dates: [2026-01-01, 2026-06-30] } }
+            YAML);
+
+        self::assertSame('2026-12-31', $definition->steps[0]->when?->value);
+        self::assertSame(['due_on' => '2026-12-31', 'sent_at' => '2026-12-31T10:30:00+00:00', 'dates' => ['2026-01-01', '2026-06-30']], $definition->steps[1]->values());
+    }
+
     public function testReadsAManualTriggerItsLabelAndItsForm(): void
     {
         $parser = new DefinitionParser();
