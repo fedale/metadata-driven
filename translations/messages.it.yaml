@@ -169,9 +169,9 @@ import:
         upload: File
         columns: Colonne
         check: Verifica
-    intro: 'Un file CSV, come lo salva un foglio di calcolo: un''intestazione con i nomi delle colonne, poi un record per riga. Non si scrive niente fino all''ultimo passo, e allora tutte le righe o nessuna.'
+    intro: 'Un file CSV, come lo salva un foglio di calcolo: un''intestazione con i nomi delle colonne, poi un record per riga. Non si scrive niente fino all''ultimo passo, e allora tutte le righe o nessuna; un file di più di %small% righe si importa in background, a blocchi.'
     file: File CSV
-    file_help: 'UTF-8 (in Excel: "CSV UTF-8"), fino a %rows% righe. Un file più grande si importa dalla console, con record:import.'
+    file_help: 'UTF-8 (in Excel: "CSV UTF-8"), fino a %rows% righe; oltre %small%, in background. Un file più grande si importa dalla console, con record:import.'
     separator: Separatore
     separator_detect: Riconoscilo
     separator_comma: Virgola (,)
@@ -206,6 +206,54 @@ import:
     run: Importa
     back_to_columns: Torna alle colonne
     done: 'Importazione completata. Record creati: %created%, aggiornati: %updated%.'
+    imports: Le tue importazioni
+    job:
+        list: Le tue importazioni
+        list_title: 'Le tue importazioni di %objects%'
+        list_intro: 'I file troppo grandi per importarli subito, verificati e importati in background. Ricevi una notifica alla fine di ogni passo.'
+        none: Ancora nessuna importazione.
+        new: Nuova importazione
+        started: Avviata
+        state: Stato
+        progress: Avanzamento
+        file: '%file%, %rows%.'
+        processed: '%processed% righe su %rows%'
+        waiting_help: 'Questa pagina segue l''importazione da sola; puoi lasciarla, una notifica ti avvisa quando finisce.'
+        stopping: Si ferma prima del prossimo blocco…
+        stop: Ferma
+        status:
+            checking: In verifica
+            checked: Verificata
+            refused: Rifiutata
+            importing: In importazione
+            imported: Importata
+            stopped: Interrotta
+            cancelled: Fermata da te
+            failed: Fallita
+        partly: 'Record creati prima dell''interruzione: %created%, aggiornati: %updated%. Restano scritti.'
+        stopped_at: 'Dalla riga %line% in poi non si è scritto niente. Correggi le righe, poi importa di nuovo il file: con una chiave, le righe già importate aggiornano i loro record.'
+        problems: '{1}1 problema.|]1,Inf[%count% problemi.'
+        more_reasons: 'E altri %count%.'
+        not_importable: Questa importazione non può più proseguire; carica di nuovo il file.
+        file_gone: Il file di questa importazione è stato eliminato dopo una settimana; caricalo di nuovo.
+    notify:
+        origin: Importazione CSV
+        checked:
+            title: '%file% è verificato'
+            text: 'Record che verranno creati: %created%, aggiornati: %updated%. Apri l''importazione per avviarla.'
+        refused:
+            title: '%file% non si può importare'
+            text: '{1}Trovato 1 problema; non si è scritto niente.|]1,Inf[Trovati %count% problemi; non si è scritto niente.'
+        imported:
+            title: '%file% è importato'
+            text: 'Record creati: %created%, aggiornati: %updated%.'
+        stopped:
+            title: 'L''importazione di %file% si è interrotta'
+            text: 'Record creati prima della riga %line%: %created%, aggiornati: %updated%; il resto non è stato scritto.'
+            text_unlined: 'Record creati prima dell''interruzione: %created%, aggiornati: %updated%; il resto non è stato scritto.'
+        failed:
+            title: 'L''importazione di %file% è fallita'
+            text: 'Un errore l''ha fermata. Record creati prima: %created%, aggiornati: %updated%; restano scritti.'
 admin:
     title: Amministrazione
     actions: Azioni

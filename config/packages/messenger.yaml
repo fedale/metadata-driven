@@ -1,4 +1,4 @@
-# The workflows' runs in the background (docs/workflows.md): the worker is
+# The workflows' runs and the large CSV imports in the background (docs/workflows.md): the worker is
 # "messenger:consume async scheduler_workflows" (the second, the schedules', by one worker), the queue Redis (MESSENGER_TRANSPORT_DSN, e.g.
 # redis://localhost:6379/messages; the PHP redis extension where it runs).
 framework:
@@ -28,6 +28,9 @@ framework:
             App\Module\Workflow\Application\Engine\Message\ResumeRun: async
             App\Module\Workflow\Application\Engine\Message\RunScheduled: async
             App\Module\Workflow\Application\Engine\Message\RunWebhook: async
+            # The CSV imports too large for a request (docs/import.md).
+            App\Module\Record\Application\Import\Message\CheckImport: async
+            App\Module\Record\Application\Import\Message\RunImport: async
 
 # The tests run the background in the request, as it comes; the runs that wait are kept, for
 # the tests to resume them when they say (messenger.transport.delayed).

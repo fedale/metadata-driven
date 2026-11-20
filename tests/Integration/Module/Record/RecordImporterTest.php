@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Module\Record;
 
 use App\Module\Metadata\Contract\MetadataManagerInterface;
+use App\Module\Record\Application\Import\ImportBatch;
 use App\Module\Record\Application\Import\RecordImporter;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\RecordFinderInterface;
@@ -137,6 +138,56 @@ final class RecordImporterTest extends KernelTestCase
         self::assertSame(['TO'], array_keys($this->byCode('province')));
     }
 
+    public function testImportsInBatchesEachCommittedOnItsOwn(): void
+    {
+        $importer = self::getContainer()->get(RecordImporter::class);
+        $plan = $importer->prepare('province', ['code', 'name', 'region'], 'code', ['region' => 'code']);
+        self::assertSame([], $plan->problems);
+        $rows = [
+            ['line' => 2, 'values' => ['code' => 'TO', 'name' => 'Torino', 'region' => '01']],
+            ['line' => 3, 'values' => ['code' => 'MI', 'name' => 'Milano', 'region' => '03']],
+            ['line' => 4, 'values' => ['code' => 'RM', 'name' => 'Roma', 'region' => '12']],
+        ];
+        // The keys of the whole file, before any batch; a generator is enough.
+        self::assertSame([], $importer->keyProblems($plan, (static fn () => yield from $rows)()));
+
+        // A dry run writes nothing, and neither does what runs before its commit.
+        $committed = [];
+        $dry = $importer->importBatch($plan, [$rows[0]], true, static function (ImportBatch $batch) use (&$committed): void {
+            $committed[] = $batch;
+        });
+        self::assertSame([1, 0, []], [$dry->created, $dry->updated, $dry->reasons]);
+        self::assertSame([], $committed);
+        self::assertSame([], $this->byCode('province'));
+
+        $first = $importer->importBatch($plan, [$rows[0], $rows[1]], false, static function (ImportBatch $batch) use (&$committed): void {
+            $committed[] = $batch;
+        });
+        self::assertSame([2, 0], [$first->created, $first->updated]);
+        self::assertSame([$first], $committed);
+
+        // A refused batch rolls back alone: the batch before it stays.
+        $second = $importer->importBatch($plan, [$rows[2]]);
+        self::assertSame(['Line 4: region: no record matches "12".'], $second->reasons);
+        self::assertSame(['MI', 'TO'], $this->sortedCodes());
+    }
+
+    public function testFindsRepeatedKeysAcrossTheWholeFile(): void
+    {
+        $importer = self::getContainer()->get(RecordImporter::class);
+        $plan = $importer->prepare('province', ['code', 'name'], 'code');
+
+        self::assertSame(
+            ['Line 3: code: the key is missing.', 'Line 9: code: line 2 has the same key.'],
+            $importer->keyProblems($plan, [
+                ['line' => 2, 'values' => ['code' => 'TO', 'name' => 'Torino']],
+                ['line' => 3, 'values' => ['code' => ' ', 'name' => 'Milano']],
+                ['line' => 9, 'values' => ['code' => 'TO', 'name' => 'Turin']],
+            ]),
+        );
+        self::assertSame(['Column "coat": a file field is imported from the console only (record:import), with its files next to the CSV file.'], $importer->prepare('province', ['code', 'coat'])->problems);
+    }
+
     public function testImportsFromTheConsole(): void
     {
         file_put_contents($this->directory.'/provinces.csv', "code,name,region\nTO,Torino,01\n");
@@ -157,6 +208,17 @@ final class RecordImporterTest extends KernelTestCase
         file_put_contents($file, $csv);
 
         return self::getContainer()->get(RecordImporter::class)->import($object, $file, $key, $matches, $dryRun);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function sortedCodes(): array
+    {
+        $codes = array_map(strval(...), array_keys($this->byCode('province')));
+        sort($codes);
+
+        return $codes;
     }
 
     /**

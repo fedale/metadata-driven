@@ -1,0 +1,75 @@
+{% extends 'base.html.twig' %}
+
+{% set heading = 'import.title'|trans({'%objects%': object.labelPlural|lower}) %}
+{% set status = job.status.value %}
+
+{% block title %}{{ heading }}{% endblock %}
+
+{# The worker has it: the page follows it, with no JavaScript. #}
+{% block meta %}{% if job.status.running %}<meta http-equiv="refresh" content="3">{% endif %}{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('record_import_jobs', {object: object.name}) }}">&larr; {{ 'import.job.list'|trans }}</a></p>
+    <h1>{{ heading }}</h1>
+    {{ include('record/import/_steps.html.twig', {current: 'check'}) }}
+
+    <p>
+        {{ 'import.job.file'|trans({'%file%': job.originalName, '%rows%': 'import.rows'|trans({'%count%': job.totalRows})}) }}
+        <span class="md-import-job__status">{{ ('import.job.status.' ~ status)|trans }}</span>
+    </p>
+
+    {% if job.status.running %}
+        <p>
+            <progress class="md-import-job__progress" max="{{ job.totalRows }}" value="{{ job.processed }}" aria-label="{{ 'import.job.progress'|trans }}">{{ job.percent }}%</progress>
+            {{ 'import.job.processed'|trans({'%processed%': job.processed, '%rows%': job.totalRows}) }}
+        </p>
+        <p class="gv-muted">{{ (job.stopRequested ? 'import.job.stopping' : 'import.job.waiting_help')|trans }}</p>
+    {% endif %}
+
+    {% if status == 'checked' %}
+        <p class="md-flash md-flash--success">{{ 'import.would'|trans({'%created%': job.created, '%updated%': job.updated}) }}</p>
+    {% elseif status == 'imported' %}
+        <p class="md-flash md-flash--success">{{ 'import.done'|trans({'%created%': job.created, '%updated%': job.updated}) }}</p>
+    {% elseif status in ['stopped', 'cancelled'] and job.created + job.updated > 0 %}
+        <p class="md-flash md-flash--error" role="alert">{{ 'import.job.partly'|trans({'%created%': job.created, '%updated%': job.updated}) }}</p>
+    {% endif %}
+    {% if status == 'stopped' and job.stoppedAtLine %}
+        <p>{{ 'import.job.stopped_at'|trans({'%line%': job.stoppedAtLine}) }}</p>
+    {% endif %}
+
+    {% if job.reasonCount > 0 %}
+        <div class="md-flash md-flash--error" role="alert">
+            <p>{{ (status == 'refused' ? 'import.refused' : 'import.job.problems')|trans({'%count%': job.reasonCount}) }}</p>
+            <ul class="md-import__reasons">{% for reason in job.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>
+            {% if job.reasonCount > job.reasons|length %}
+                <p>{{ 'import.job.more_reasons'|trans({'%count%': job.reasonCount - job.reasons|length}) }}</p>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {% if job.key %}
+        <p class="gv-muted">{{ 'import.with_key'|trans({'%field%': object.fields[job.key].label ?? job.key}) }}</p>
+    {% endif %}
+
+    <div class="md-page__actions">
+        {% if status == 'checked' and has_file %}
+            {{ form_start(run_form) }}
+                <button type="submit" class="gv-btn gv-btn-primary">{{ 'import.run'|trans }}</button>
+            {{ form_end(run_form) }}
+        {% endif %}
+        {% if status in ['checked', 'refused'] and has_file %}
+            {{ form_start(columns_form) }}
+                <button type="submit" class="gv-btn">{{ 'import.back_to_columns'|trans }}</button>
+            {{ form_end(columns_form) }}
+        {% endif %}
+        {% if job.status.running and not job.stopRequested %}
+            {{ form_start(stop_form) }}
+                <button type="submit" class="gv-btn">{{ 'import.job.stop'|trans }}</button>
+            {{ form_end(stop_form) }}
+        {% endif %}
+        <a class="gv-btn" href="{{ path('record_index', {object: object.name}) }}">{{ object.labelPlural }}</a>
+    </div>
+    {% if status in ['checked', 'refused'] and not has_file %}
+        <p class="gv-muted">{{ 'import.job.file_gone'|trans }}</p>
+    {% endif %}
+{% endblock %}

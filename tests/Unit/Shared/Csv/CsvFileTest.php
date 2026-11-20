@@ -68,6 +68,26 @@ final class CsvFileTest extends TestCase
         CsvFile::read($this->file("code,name\nTO;Torino\n"));
     }
 
+    public function testReadsTheHeaderAlone(): void
+    {
+        self::assertSame(['code', 'name'], CsvFile::header($this->file("\xEF\xBB\xBFcode;name\nTO;Torino\n"), CsvFile::SEMICOLON));
+    }
+
+    public function testStreamsTheRowsUpToALineThatDoesNotFit(): void
+    {
+        $read = [];
+        try {
+            foreach (CsvFile::rows($this->file("code,name\nTO,Torino\nMI,Milano\nRM\n")) as $row) {
+                $read[] = $row['values']['code'];
+            }
+            self::fail('A line that does not fit the header must be refused.');
+        } catch (\UnexpectedValueException $e) {
+            self::assertSame('Line 4 has 1 values, the header 2.', $e->getMessage());
+        }
+        // The rows before it came first: a background job counts them as it goes.
+        self::assertSame(['TO', 'MI'], $read);
+    }
+
     private function file(string $content): string
     {
         $path = $this->directory.'/'.bin2hex(random_bytes(4)).'.csv';

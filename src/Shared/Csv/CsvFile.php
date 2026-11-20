@@ -25,25 +25,25 @@ final class CsvFile
      */
     public static function read(string $path, string $separator = self::COMMA): array
     {
-        if (!\in_array($separator, [self::COMMA, self::SEMICOLON], true)) {
-            throw new \InvalidArgumentException(\sprintf('"%s" is no CSV separator: use a comma or a semicolon.', $separator));
-        }
+        return iterator_to_array(self::rows($path, $separator), false);
+    }
+
+    /**
+     * The rows one at a time, for files too large to hold: the file stays open until the last
+     * row is read or the generator is dropped. A line that does not fit throws when it is reached,
+     * after the rows before it.
+     *
+     * @return \Generator<int, array{line: int, values: array<string, string|null>}>
+     *
+     * @throws \UnexpectedValueException as read()
+     */
+    public static function rows(string $path, string $separator = self::COMMA): \Generator
+    {
+        self::checkSeparator($separator);
         $handle = self::open($path);
         try {
+            $header = self::readHeader($handle, $separator);
             // No escape character: RFC 4180 doubles quotes, it does not escape them.
-            $header = fgetcsv($handle, null, $separator, '"', '');
-            if (!\is_array($header) || [null] === $header) {
-                throw new \UnexpectedValueException('The file has no header: its first line names the columns.');
-            }
-            self::checkEncoding($header, 1);
-            $header = array_map(static fn (?string $name): string => trim((string) $name), $header);
-            $header[0] = self::withoutBom($header[0]);
-            // The rows are keyed by header: two columns of one name would overwrite each other.
-            foreach (array_diff_key($header, array_unique($header)) as $i => $name) {
-                throw new \UnexpectedValueException(\sprintf('Column %d repeats the header "%s": give every column a name of its own, or remove it.', $i + 1, $name));
-            }
-
-            $rows = [];
             for ($line = 2; false !== ($row = fgetcsv($handle, null, $separator, '"', '')); ++$line) {
                 if ([null] === $row) {
                     continue;
@@ -56,10 +56,27 @@ final class CsvFile
                 foreach ($header as $i => $name) {
                     $values[$name] = '' === $row[$i] ? null : $row[$i];
                 }
-                $rows[] = ['line' => $line, 'values' => $values];
+                yield ['line' => $line, 'values' => $values];
             }
+        } finally {
+            fclose($handle);
+        }
+    }
 
-            return $rows;
+    /**
+     * The names of the columns, the first line of the file.
+     *
+     * @return list<string>
+     *
+     * @throws \UnexpectedValueException the file cannot be read, has no header, repeats a header or
+     *                                   is not UTF-8
+     */
+    public static function header(string $path, string $separator = self::COMMA): array
+    {
+        self::checkSeparator($separator);
+        $handle = self::open($path);
+        try {
+            return self::readHeader($handle, $separator);
         } finally {
             fclose($handle);
         }
@@ -83,6 +100,35 @@ final class CsvFile
         $outside = (string) preg_replace('/"(?:[^"]|"")*"/', '', self::withoutBom(false === $line ? '' : $line));
 
         return substr_count($outside, self::SEMICOLON) > substr_count($outside, self::COMMA) ? self::SEMICOLON : self::COMMA;
+    }
+
+    private static function checkSeparator(string $separator): void
+    {
+        if (!\in_array($separator, [self::COMMA, self::SEMICOLON], true)) {
+            throw new \InvalidArgumentException(\sprintf('"%s" is no CSV separator: use a comma or a semicolon.', $separator));
+        }
+    }
+
+    /**
+     * @param resource $handle at the start of the file
+     *
+     * @return list<string>
+     */
+    private static function readHeader($handle, string $separator): array
+    {
+        $header = fgetcsv($handle, null, $separator, '"', '');
+        if (!\is_array($header) || [null] === $header) {
+            throw new \UnexpectedValueException('The file has no header: its first line names the columns.');
+        }
+        self::checkEncoding($header, 1);
+        $header = array_map(static fn (?string $name): string => trim((string) $name), $header);
+        $header[0] = self::withoutBom($header[0]);
+        // The rows are keyed by header: two columns of one name would overwrite each other.
+        foreach (array_diff_key($header, array_unique($header)) as $i => $name) {
+            throw new \UnexpectedValueException(\sprintf('Column %d repeats the header "%s": give every column a name of its own, or remove it.', $i + 1, $name));
+        }
+
+        return $header;
     }
 
     /**

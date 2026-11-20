@@ -15,6 +15,7 @@ final class ImportDraft
      * @param array<string, string>      $matches relation field => the unique field of its target its cells hold
      *                                            (a field left out holds record ids)
      * @param string|null                $checked the fingerprint of the settings the last check passed with
+     * @param int                        $rows    how many rows the file has, counted at upload
      */
     public function __construct(
         public readonly string $id,
@@ -25,6 +26,7 @@ final class ImportDraft
         public ?string $key = null,
         public array $matches = [],
         public ?string $checked = null,
+        public int $rows = 0,
     ) {
     }
 
@@ -55,6 +57,7 @@ final class ImportDraft
             'key' => $this->key,
             'matches' => $this->matches,
             'checked' => $this->checked,
+            'rows' => $this->rows,
         ];
     }
 
@@ -76,6 +79,7 @@ final class ImportDraft
             \is_string($data['key'] ?? null) ? $data['key'] : null,
             array_filter(array_combine(array_map(strval(...), array_keys($matches)), $matches), is_string(...)),
             \is_string($data['checked'] ?? null) ? $data['checked'] : null,
+            \is_int($data['rows'] ?? null) ? $data['rows'] : 0,
         );
     }
 }

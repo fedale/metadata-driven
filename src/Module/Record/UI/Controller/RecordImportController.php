@@ -9,6 +9,7 @@ use App\Module\Access\Contract\RecordAction;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Record\Application\Import\BackgroundImports;
 use App\Module\Record\Application\Import\ImportReport;
 use App\Module\Record\Application\Import\RecordImporter;
 use App\Module\Record\Domain\Exception\ImportRefused;
@@ -40,6 +41,10 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  *
  * Whoever may create the records may import them; with a key, which may update records, the
  * update permission is needed too.
+ *
+ * A file above app.import.max_rows is not checked here: at the check step it becomes a background
+ * import (BackgroundImports), checked and imported by the worker, its page
+ * RecordImportJobController's.
  */
 #[Route('/o/{object}/import', name: 'record_import', requirements: ['object' => '[a-z][a-z0-9_]*'])]
 final class RecordImportController extends AbstractController
@@ -56,8 +61,11 @@ final class RecordImportController extends AbstractController
         private readonly RecordImporter $importer,
         private readonly FormFactoryInterface $forms,
         private readonly TranslatorInterface $translator,
+        private readonly BackgroundImports $background,
         #[Autowire('%app.import.max_rows%')]
         private readonly int $maxRows,
+        #[Autowire('%app.import.max_background_rows%')]
+        private readonly int $maxBackgroundRows,
     ) {
     }
 
@@ -74,9 +82,9 @@ final class RecordImportController extends AbstractController
                 $draft = $this->drafts->create($definition->name, $file, self::DETECT === $separator || !\is_string($separator)
                     ? CsvFile::detectSeparator($file->getPathname())
                     : $separator);
-                $rows = $this->readOrRefuse($draft, $form->get('file'));
-                if (null !== $rows) {
-                    $draft->mapping = $this->columns->propose($definition, self::headers($rows));
+                $headers = $this->readOrRefuse($draft, $form->get('file'));
+                if (null !== $headers) {
+                    $draft->mapping = $this->columns->propose($definition, $headers);
                     $this->drafts->save($draft);
 
                     return $this->redirectToRoute('record_import_columns', ['object' => $definition->name, 'draft' => $draft->id], Response::HTTP_SEE_OTHER);
@@ -87,7 +95,7 @@ final class RecordImportController extends AbstractController
         return $this->render('record/import/upload.html.twig', [
             'object' => $definition,
             'form' => $form,
-            'max_rows' => $this->maxRows,
+            'small_rows' => $this->maxRows,
         ]);
     }
 
@@ -96,8 +104,7 @@ final class RecordImportController extends AbstractController
     {
         $definition = $this->objectFor($object, RecordAction::Create);
         $importDraft = $this->draftOr404($definition, $draft);
-        $rows = $this->read($importDraft);
-        $headers = self::headers($rows);
+        $headers = CsvFile::header($this->drafts->path($importDraft), $importDraft->separator);
         $form = $this->columnsForm($definition, $importDraft, $headers)->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid() && $this->applyColumns($definition, $importDraft, $headers, $form)) {
@@ -119,8 +126,8 @@ final class RecordImportController extends AbstractController
             'form' => $form,
             'headers' => $headers,
             // The first values of each column, to tell what it holds.
-            'samples' => array_slice($rows, 0, 3),
-            'rows' => \count($rows),
+            'samples' => $this->first($importDraft, 3),
+            'rows' => $importDraft->rows,
             'relations' => $relations,
             'cancel_form' => $this->buttonForm('cancel', $definition, $importDraft)->createView(),
         ]);
@@ -130,12 +137,15 @@ final class RecordImportController extends AbstractController
      * The import as a dry run: what it would create and update, or the rows it refuses.
      */
     #[Route('/{draft}/check', name: '_check', requirements: ['draft' => Requirement::UUID_V4], methods: ['GET'])]
-    public function check(string $object, string $draft): Response
+    public function check(string $object, string $draft, Request $request): Response
     {
         $definition = $this->objectFor($object, RecordAction::Create);
         $importDraft = $this->draftOr404($definition, $draft);
         if ([] === array_filter($importDraft->mapping)) {
             return $this->redirectToRoute('record_import_columns', ['object' => $definition->name, 'draft' => $importDraft->id], Response::HTTP_SEE_OTHER);
+        }
+        if ($importDraft->rows > $this->maxRows) {
+            return $this->toBackground($definition, $importDraft, $request);
         }
 
         $report = null;
@@ -279,7 +289,7 @@ final class RecordImportController extends AbstractController
             'report' => $report,
             'reasons' => $reasons,
             'mapped' => $mapped,
-            'preview' => array_slice(ImportColumns::rename($this->read($draft), $draft->mapping), 0, 5),
+            'preview' => ImportColumns::rename($this->first($draft, 5), $draft->mapping),
             'run_form' => $this->buttonForm('run', $object, $draft)->createView(),
             'cancel_form' => $this->buttonForm('cancel', $object, $draft)->createView(),
         ], new Response(status: [] === $reasons ? Response::HTTP_OK : Response::HTTP_UNPROCESSABLE_ENTITY));
@@ -294,7 +304,7 @@ final class RecordImportController extends AbstractController
             ->add('file', FileType::class, [
                 'label' => 'import.file',
                 'help' => 'import.file_help',
-                'help_translation_parameters' => ['%rows%' => $this->maxRows],
+                'help_translation_parameters' => ['%rows%' => $this->maxBackgroundRows, '%small%' => $this->maxRows],
                 'attr' => ['accept' => '.csv,text/csv'],
             ])
             ->add('separator', ChoiceType::class, [
@@ -386,17 +396,23 @@ final class RecordImportController extends AbstractController
     }
 
     /**
-     * Reads the draft's file at upload; a file it cannot take is refused on the input, and its
-     * draft deleted.
+     * Reads the draft's file at upload, to the end, counting its rows; a file it cannot take is
+     * refused on the input, and its draft deleted.
      *
      * @param FormInterface<mixed> $input
      *
-     * @return list<array{line: int, values: array<string, string|null>}>|null
+     * @return list<string>|null its header
      */
     private function readOrRefuse(ImportDraft $draft, FormInterface $input): ?array
     {
+        $path = $this->drafts->path($draft);
         try {
-            $rows = CsvFile::read($this->drafts->path($draft), $draft->separator);
+            $headers = CsvFile::header($path, $draft->separator);
+            // One row at a time: a file for the background may not fit in memory.
+            $rows = 0;
+            foreach (CsvFile::rows($path, $draft->separator) as $ignored) {
+                ++$rows;
+            }
         } catch (\UnexpectedValueException $e) {
             $this->drafts->delete($draft);
             $input->addError(new FormError($e->getMessage()));
@@ -404,8 +420,8 @@ final class RecordImportController extends AbstractController
             return null;
         }
         $error = match (true) {
-            [] === $rows => $this->translator->trans('import.no_rows'),
-            \count($rows) > $this->maxRows => $this->translator->trans('import.too_many_rows', ['%rows%' => \count($rows), '%max%' => $this->maxRows]),
+            0 === $rows => $this->translator->trans('import.no_rows'),
+            $rows > $this->maxBackgroundRows => $this->translator->trans('import.too_many_rows', ['%rows%' => $rows, '%max%' => $this->maxBackgroundRows]),
             default => null,
         };
         if (null !== $error) {
@@ -414,8 +430,9 @@ final class RecordImportController extends AbstractController
 
             return null;
         }
+        $draft->rows = $rows;
 
-        return $rows;
+        return $headers;
     }
 
     /**
@@ -428,13 +445,50 @@ final class RecordImportController extends AbstractController
     }
 
     /**
-     * @param list<array{line: int, values: array<string, string|null>}> $rows
+     * The first rows of the draft's file, the rest left unread.
      *
-     * @return list<string>
+     * @return list<array{line: int, values: array<string, string|null>}>
      */
-    private static function headers(array $rows): array
+    private function first(ImportDraft $draft, int $count): array
     {
-        return array_map(strval(...), array_keys($rows[0]['values'] ?? []));
+        $rows = [];
+        foreach (CsvFile::rows($this->drafts->path($draft), $draft->separator) as $row) {
+            $rows[] = $row;
+            if (\count($rows) >= $count) {
+                break;
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * A file too large for the request: a background import of it, its check queued, its
+     * page next. The draft is the job's now.
+     */
+    private function toBackground(ObjectDefinitionDto $object, ImportDraft $draft, Request $request): Response
+    {
+        $this->denyUpdatesWithoutPermission($object, $draft);
+        // As run() checks them: the fields offered may have changed since the columns step.
+        $refused = array_diff(array_filter($draft->mapping), array_keys($this->columns->fields($object)));
+        if ([] !== $refused) {
+            throw $this->createAccessDeniedException(\sprintf('No permission to import the fields %s of "%s".', implode(', ', $refused), $object->name));
+        }
+        $job = $this->background->queueCheck(
+            $object->name,
+            $this->drafts->path($draft),
+            $draft->originalName,
+            $draft->separator,
+            $draft->mapping,
+            $draft->key,
+            $draft->matches,
+            $draft->rows,
+            $this->getUser()?->getUserIdentifier() ?? throw $this->createAccessDeniedException(),
+            $request->getLocale(),
+        );
+        $this->drafts->forget($draft);
+
+        return $this->redirectToRoute('record_import_job', ['object' => $object->name, 'job' => $job->id], Response::HTTP_SEE_OTHER);
     }
 
     private function denyUpdatesWithoutPermission(ObjectDefinitionDto $object, ImportDraft $draft): void

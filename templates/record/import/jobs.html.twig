@@ -1,0 +1,40 @@
+{% extends 'base.html.twig' %}
+
+{% set heading = 'import.job.list_title'|trans({'%objects%': object.labelPlural|lower}) %}
+
+{% block title %}{{ heading }}{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('record_index', {object: object.name}) }}">&larr; {{ object.labelPlural }}</a></p>
+    <h1>{{ heading }}</h1>
+    <p class="gv-muted">{{ 'import.job.list_intro'|trans }}</p>
+
+    {% if jobs is empty %}
+        <p>{{ 'import.job.none'|trans }}</p>
+    {% else %}
+        <table class="md-table">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'import.job.started'|trans }}</th>
+                    <th scope="col">{{ 'import.file'|trans }}</th>
+                    <th scope="col">{{ 'import.job.state'|trans }}</th>
+                    <th scope="col">{{ 'import.job.progress'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in jobs %}
+                    <tr>
+                        <td><a href="{{ path('record_import_job', {object: object.name, job: job.id}) }}">{{ job.createdAt|date('Y-m-d H:i') }}</a></td>
+                        <td>{{ job.originalName }}</td>
+                        <td class="md-import-job__status">{{ ('import.job.status.' ~ job.status.value)|trans }}</td>
+                        <td>{{ 'import.job.processed'|trans({'%processed%': job.processed, '%rows%': job.totalRows}) }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    <div class="md-page__actions">
+        <a class="gv-btn gv-btn-primary" href="{{ path('record_import', {object: object.name}) }}">{{ 'import.job.new'|trans }}</a>
+    </div>
+{% endblock %}

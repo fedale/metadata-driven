@@ -698,8 +698,9 @@ metadata:package:list
 Import the rows of a CSV file into an object, all or nothing: every row goes through the same
 rules as the form (required, unique, types, patterns, conditions); when one row is refused,
 nothing is written, and every refused row is listed with its line. The page of the records has a
-wizard doing the same without the console, up to 5,000 rows and without file fields (see
-[Importing records](import.md)).
+wizard doing the same without the console, without file fields: up to 5,000 rows at once, up to
+1,000,000 in the background, in batches (see [Importing records](import.md)). The command runs in
+one transaction, whatever the size of the file.
 
 ```
 record:import <object> <file> [--key=FIELD] [--match=FIELD:TARGET_FIELD]... [--dry-run]

@@ -9,7 +9,8 @@
     <h1>{{ heading }}</h1>
     {{ include('record/import/_steps.html.twig', {current: 'upload'}) }}
 
-    <p class="gv-muted">{{ 'import.intro'|trans }}</p>
+    <p class="gv-muted">{{ 'import.intro'|trans({'%small%': small_rows}) }}</p>
+    <p><a href="{{ path('record_import_jobs', {object: object.name}) }}">{{ 'import.imports'|trans }}</a></p>
 
     {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
         {{ form_errors(form) }}
