@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Contract;
 
+use App\Shared\Message\Message;
+
 /**
  * Port implemented by a module whose own definitions name objects and fields (the workflows),
  * so that Metadata treats them as it treats its forms and views: archiving refused while they
@@ -14,12 +16,12 @@ namespace App\Module\Metadata\Contract;
 interface MetadataDependentInterface
 {
     /**
-     * @return list<string> one line per definition using it, naming the place for the admin to fix
+     * @return list<string|Message> one line per definition using it, naming the place for the admin to fix
      */
     public function usesOfObject(string $objectName): array;
 
     /**
-     * @return list<string> one line per definition using it, naming the place for the admin to fix
+     * @return list<string|Message> one line per definition using it, naming the place for the admin to fix
      */
     public function usesOfField(string $objectName, string $fieldName): array;
 

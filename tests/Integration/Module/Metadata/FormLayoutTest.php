@@ -66,7 +66,7 @@ final class FormLayoutTest extends KernelTestCase
                 YAML);
             self::fail('The layouts are invalid.');
         } catch (MetadataInputInvalid $e) {
-            $errors = $e->errors['definition'];
+            $errors = array_map(strval(...), $e->errors['definition']);
         }
 
         // The root's layout places no section (they are cards): a section named like a field is
@@ -114,7 +114,7 @@ final class FormLayoutTest extends KernelTestCase
                 YAML);
             self::fail('The columns are invalid.');
         } catch (MetadataInputInvalid $e) {
-            $errors = $e->errors['definition'];
+            $errors = array_map(strval(...), $e->errors['definition']);
         }
 
         self::assertContains('(root): "description" must be a text of 1 to 300 characters.', $errors);

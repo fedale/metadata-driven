@@ -7,6 +7,7 @@ namespace App\Module\Metadata\Application\Translation;
 use App\Module\Metadata\Contract\Dto\TranslationKey;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Metadata\Domain\Repository\TranslationRepository;
+use App\Shared\Message\Message;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
@@ -39,17 +40,21 @@ final class DefinedTexts
     /**
      * The error for the tokens without a text, prefixed by where they are; null when there is none.
      */
-    public function errorFor(string $where, string $text): ?string
+    public function errorFor(string|Message $where, string $text): ?Message
     {
         $undefined = $this->undefinedIn($text);
+        if ([] === $undefined) {
+            return null;
+        }
+        $parameters = [
+            'where' => $where,
+            'tokens' => implode(', ', array_map(static fn (string $name): string => '{t:'.$name.'}', $undefined)),
+            'keys' => implode(', ', array_map(static fn (string $name): string => '"'.TranslationKey::text($name).'"', $undefined)),
+            'locale' => $this->defaultLocale,
+        ];
 
-        return [] === $undefined ? null : \sprintf(
-            '%s: %s %s no text: define %s in %s first (Admin > Translations > Texts).',
-            $where,
-            implode(', ', array_map(static fn (string $name): string => '{t:'.$name.'}', $undefined)),
-            1 === \count($undefined) ? 'is' : 'are',
-            implode(', ', array_map(static fn (string $name): string => '"'.TranslationKey::text($name).'"', $undefined)),
-            $this->defaultLocale,
-        );
+        return 1 === \count($undefined)
+            ? new Message('metadata.undefined_text', '%where%: %tokens% is no text: define %keys% in %locale% first (Admin > Translations > Texts).', $parameters)
+            : new Message('metadata.undefined_texts', '%where%: %tokens% are no text: define %keys% in %locale% first (Admin > Translations > Texts).', $parameters);
     }
 }

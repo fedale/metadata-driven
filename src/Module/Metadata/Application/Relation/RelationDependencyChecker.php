@@ -8,6 +8,7 @@ use App\Module\Metadata\Contract\Dto\RelationSettings;
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
 use App\Module\Metadata\Domain\Model\ObjectDefinition;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
+use App\Shared\Message\Message;
 
 /**
  * Checks a cascade (dependsOn / dependsVia of a relation field), when the field is created and
@@ -36,7 +37,7 @@ final class RelationDependencyChecker
             ? RelationSettings::fromSettings($parent->getSettings())->target
             : null;
         if (null === $parentTarget) {
-            throw InvalidMetadataDefinition::invalidDependency($fieldName, \sprintf('"%s" is not a relation field of "%s" (create it first)', $relation->dependsOn, $object->getName()));
+            throw InvalidMetadataDefinition::invalidDependency($fieldName, new Message('metadata.dependency.not_a_relation', '"%field%" is not a relation field of "%object%" (create it first)', ['field' => (string) $relation->dependsOn, 'object' => $object->getName()]));
         }
 
         $target = $this->objects->findByName($relation->target);
@@ -45,7 +46,7 @@ final class RelationDependencyChecker
             ? RelationSettings::fromSettings($via->getSettings())->target
             : null;
         if ($viaTarget !== $parentTarget) {
-            throw InvalidMetadataDefinition::invalidDependency($fieldName, \sprintf('"%s" is not a relation field of "%s" pointing at "%s"', $relation->dependsVia, $relation->target, $parentTarget));
+            throw InvalidMetadataDefinition::invalidDependency($fieldName, new Message('metadata.dependency.not_pointing_at', '"%field%" is not a relation field of "%object%" pointing at "%target%"', ['field' => (string) $relation->dependsVia, 'object' => $relation->target, 'target' => (string) $parentTarget]));
         }
     }
 }

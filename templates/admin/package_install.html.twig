@@ -9,7 +9,7 @@
     {% if reasons is not empty %}
         <div class="md-flash md-flash--error" role="alert">
             <p>{{ 'admin.package_admin.cannot_install'|trans }}</p>
-            <ul>{% for reason in reasons %}<li>{{ reason }}</li>{% endfor %}</ul>
+            <ul>{% for reason in reasons %}<li>{{ reason|message }}</li>{% endfor %}</ul>
         </div>
     {% elseif reports is not empty %}
         {% set last = reports|last %}

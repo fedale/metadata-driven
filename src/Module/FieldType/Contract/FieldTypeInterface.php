@@ -8,6 +8,7 @@ use App\Module\FieldType\Contract\Dto\ColumnSpec;
 use App\Module\FieldType\Contract\Dto\SettingDefinition;
 use App\Module\FieldType\Contract\Dto\Widget;
 use App\Module\FieldType\Contract\Exception\InvalidFieldValue;
+use App\Shared\Message\Message;
 use Symfony\Component\Validator\Constraint;
 
 /**
@@ -45,7 +46,7 @@ interface FieldTypeInterface
     /**
      * @param array<string, mixed> $settings settings as provided by the user, without defaults
      *
-     * @return list<string> human readable errors, empty when the settings are valid
+     * @return list<Message> the errors, to show in the editor's language; empty when the settings are valid
      */
     public function validateSettings(array $settings): array;
 

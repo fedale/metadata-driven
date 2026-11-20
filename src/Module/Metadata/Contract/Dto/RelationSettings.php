@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Contract\Dto;
 
+use App\Shared\Message\Message;
+use App\Shared\Message\MessageList;
+
 /**
  * The settings of a "relation" field (many-to-one), read the same way by every module.
  *
@@ -42,26 +45,26 @@ final readonly class RelationSettings
      *
      * @param array<string, mixed> $settings settings merged with defaults()
      *
-     * @return list<string> errors
+     * @return list<Message> errors
      */
     public static function validate(array $settings): array
     {
         $errors = [];
         if (!\is_string($settings['target'] ?? null) || '' === $settings['target']) {
-            $errors[] = 'Setting "target" must be the name of the related object.';
+            $errors[] = new Message('field_type.target_invalid', 'Setting "target" must be the name of the related object.');
         }
         if (!\is_string($settings['onDelete'] ?? null) || null === OnDelete::tryFrom($settings['onDelete'])) {
-            $errors[] = \sprintf('Setting "onDelete" must be one of: %s.', implode(', ', array_column(OnDelete::cases(), 'value')));
+            $errors[] = new Message('field_type.on_delete_invalid', 'Setting "onDelete" must be one of: %values%.', ['values' => implode(', ', array_column(OnDelete::cases(), 'value'))]);
         }
         foreach (['inverseName', 'inverseLabel', 'dependsOn', 'dependsVia'] as $key) {
             $value = $settings[$key] ?? null;
             if (null !== $value && (!\is_string($value) || '' === trim($value))) {
-                $errors[] = \sprintf('Setting "%s" must be a non-empty string or null.', $key);
+                $errors[] = new Message('field_type.setting_not_string_or_null', 'Setting "%setting%" must be a non-empty string or null.', ['setting' => $key]);
             }
         }
 
         if ((null === ($settings['dependsOn'] ?? null)) !== (null === ($settings['dependsVia'] ?? null))) {
-            $errors[] = 'Settings "dependsOn" and "dependsVia" go together: give both or neither.';
+            $errors[] = new Message('field_type.relation.depends_on_without_via', 'Settings "dependsOn" and "dependsVia" go together: give both or neither.');
         }
 
         return $errors;
@@ -85,7 +88,7 @@ final readonly class RelationSettings
             || (null !== $inverseLabel && !\is_string($inverseLabel))
             || (null !== $dependsOn && !\is_string($dependsOn))
             || (null !== $dependsVia && !\is_string($dependsVia))) {
-            throw new \InvalidArgumentException(implode(' ', self::validate($settings)));
+            throw new \InvalidArgumentException((string) new MessageList(self::validate($settings), ' '));
         }
 
         return new self($target, $onDelete, $inverseName, $inverseLabel, $dependsOn, $dependsVia);

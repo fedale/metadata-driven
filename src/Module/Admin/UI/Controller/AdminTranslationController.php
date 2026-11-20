@@ -12,6 +12,7 @@ use App\Module\Metadata\Contract\Exception\MetadataException;
 use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Contract\MetadataTranslationsInterface;
+use App\Shared\Message\MessageTranslator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -40,6 +41,7 @@ final class AdminTranslationController extends AbstractController
         private readonly FormFactoryInterface $forms,
         private readonly AccessCheckerInterface $access,
         private readonly TranslatorInterface $translator,
+        private readonly MessageTranslator $messageTranslator,
     ) {
     }
 
@@ -202,8 +204,8 @@ final class AdminTranslationController extends AbstractController
                 $this->manager->translate($locale, $key, $text);
                 ++$saved;
             } catch (MetadataException $e) {
-                foreach (self::messages($e) as $message) {
-                    $form->get($child)->addError(new FormError($message));
+                foreach ($this->messages($e) as $message) {
+                    $form->get($child)->addError(new FormError($this->messageTranslator->trans($message)));
                 }
                 $refused = true;
             }
@@ -262,8 +264,8 @@ final class AdminTranslationController extends AbstractController
 
             return true;
         } catch (MetadataException $e) {
-            foreach (self::messages($e) as $message) {
-                $form->get('name')->addError(new FormError($message));
+            foreach ($this->messages($e) as $message) {
+                $form->get('name')->addError(new FormError($this->messageTranslator->trans($message)));
             }
 
             return false;
@@ -324,9 +326,9 @@ final class AdminTranslationController extends AbstractController
     /**
      * @return list<string>
      */
-    private static function messages(MetadataException $e): array
+    private function messages(MetadataException $e): array
     {
-        return $e instanceof MetadataInputInvalid ? array_merge(...array_values($e->errors)) : [$e->getMessage()];
+        return $this->messageTranslator->transAll($e instanceof MetadataInputInvalid ? array_merge(...array_values($e->errors)) : [$e->text()]);
     }
 
     private function denyUnlessAdministrator(): void

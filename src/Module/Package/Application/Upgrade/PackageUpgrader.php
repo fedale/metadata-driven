@@ -32,6 +32,7 @@ use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
 use App\Module\Workflow\Contract\Exception\InvalidWorkflowSource;
 use App\Module\Workflow\Contract\PackagedWorkflowsInterface;
+use App\Shared\Message\Message;
 use App\Shared\Transaction\TransactionRunner;
 use Fedale\PackageFormat\Document;
 use Fedale\PackageFormat\DocumentKind;
@@ -106,8 +107,8 @@ final class PackageUpgrader
         [$installation, , $mine, $plan, $seeds, $steps, $required, $theirs] = $prepared;
 
         $unresolved = [
-            ...array_map(static fn (Change $change): string => $change->describe().', changed here too', array_values(array_filter($plan->conflicts(), static fn (Change $change): bool => null === $resolution->for($change->key())))),
-            ...array_map(static fn (array $conflict): string => $conflict['description'], array_values(array_filter($seeds->conflicts, static fn (array $conflict): bool => null === $resolution->for($conflict['key'])))),
+            ...array_map(static fn (Change $change): Message => new Message('package.upgrade.changed_here_too', '%change%, changed here too', ['change' => $change->describe()]), array_values(array_filter($plan->conflicts(), static fn (Change $change): bool => null === $resolution->for($change->key())))),
+            ...array_map(static fn (array $conflict): Message => $conflict['description'], array_values(array_filter($seeds->conflicts, static fn (array $conflict): bool => null === $resolution->for($conflict['key'])))),
         ];
         if ([] !== $unresolved) {
             throw UpgradeRefused::conflicts($unresolved);
@@ -124,13 +125,13 @@ final class PackageUpgrader
             $theirs->version(),
             $dryRun,
             [
-                ...array_map(static fn (Change $change): string => $change->describe(), $changes),
+                ...array_map(static fn (Change $change): Message => $change->describe(), $changes),
                 ...self::stepDescriptions($steps),
                 ...$seeds->applied,
             ],
             [
-                ...array_map(static fn (Change $change): string => $change->describe(), array_values(array_filter($plan->conflicts(), static fn (Change $change): bool => Strategy::Keep === $resolution->for($change->key())))),
-                ...array_map(static fn (array $conflict): string => $conflict['description'], array_values(array_filter($seeds->conflicts, static fn (array $conflict): bool => Strategy::Keep === $resolution->for($conflict['key'])))),
+                ...array_map(static fn (Change $change): Message => $change->describe(), array_values(array_filter($plan->conflicts(), static fn (Change $change): bool => Strategy::Keep === $resolution->for($change->key())))),
+                ...array_map(static fn (array $conflict): Message => $conflict['description'], array_values(array_filter($seeds->conflicts, static fn (array $conflict): bool => Strategy::Keep === $resolution->for($conflict['key'])))),
             ],
         );
         try {
@@ -180,7 +181,7 @@ final class PackageUpgrader
             $theirs->name(),
             $installation->getVersion(),
             $theirs->version(),
-            [...array_map(static fn (Change $change): string => $change->describe(), $undisputed), ...self::stepDescriptions($steps), ...$seeds->applied],
+            [...array_map(static fn (Change $change): Message => $change->describe(), $undisputed), ...self::stepDescriptions($steps), ...$seeds->applied],
             [
                 ...array_map(static fn (Change $change): ConflictView => new ConflictView(
                     $change->key(),
@@ -264,6 +265,7 @@ final class PackageUpgrader
                 try {
                     $definition = $back($this->workflows->canonical($named));
                 } catch (InvalidWorkflowSource $e) {
+                    // The workflow module's message is English only.
                     throw UpgradeRefused::at($document->path, 'spec.definition', $e->getMessage());
                 }
                 $document = new Document($document->kind, $document->id, ['definition' => $definition] + $document->spec, $document->path);
@@ -280,7 +282,7 @@ final class PackageUpgrader
      * new version in place of the installed one. Only what the new version breaks is reported:
      * a problem the check finds with the installed version too is not this upgrade's.
      *
-     * @return list<string>
+     * @return list<Message>
      */
     private function dependentProblems(Package $theirs): array
     {
@@ -293,7 +295,8 @@ final class PackageUpgrader
             $then = array_map(static fn (Package $requirement): Package => $requirement->name() === $theirs->name() ? $theirs : $requirement, $now);
             $before = array_map(strval(...), $this->checker->check($current, $now));
             foreach (array_diff(array_map(strval(...), $this->checker->check($current, $then)), $before) as $problem) {
-                $problems[] = \sprintf('%s %s, which requires %s: %s', $installation->getName(), $installation->getVersion(), $theirs->name(), $problem);
+                // The checker's problem is English only.
+                $problems[] = new Message('package.upgrade.breaks_dependent', '%package% %version%, which requires %required%: %problem%', ['package' => $installation->getName(), 'version' => $installation->getVersion(), 'required' => $theirs->name(), 'problem' => $problem]);
             }
         }
 
@@ -303,11 +306,11 @@ final class PackageUpgrader
     /**
      * @param list<array{version: string, from: string, to: string}> $steps
      *
-     * @return list<string>
+     * @return list<Message>
      */
     private static function stepDescriptions(array $steps): array
     {
-        return array_map(static fn (array $step): string => \sprintf('%s: migration %s: copy_values %s to %s', Format::MANIFEST, $step['version'], $step['from'], $step['to']), $steps);
+        return array_map(static fn (array $step): Message => new Message('package.upgrade.migration_step', '%manifest%: migration %version%: copy_values %from% to %to%', ['manifest' => Format::MANIFEST, 'version' => $step['version'], 'from' => $step['from'], 'to' => $step['to']]), $steps);
     }
 
     /**
@@ -472,7 +475,8 @@ final class PackageUpgrader
                 // A package's records are installed, not written by anyone: no workflow runs on them.
                 $this->recordEvents->withoutEvents(fn () => $this->records->delete($names->object($object), $id));
             } catch (RecordDeleteRestricted $e) {
-                throw UpgradeRefused::at('seeds', \sprintf('record %s of "%s"', $id, $names->object($object)), $e->getMessage());
+                // The record module's message is English only.
+                throw UpgradeRefused::at('seeds', self::record($id, $names->object($object)), $e->getMessage());
             }
         }
     }
@@ -506,7 +510,7 @@ final class PackageUpgrader
      * @param array<string, ItemState>                               $base
      * @param array<string, ItemState>                               $theirs
      *
-     * @return list<string>
+     * @return list<Message>
      */
     private function stepProblems(array $steps, array $base, array $theirs): array
     {
@@ -514,13 +518,14 @@ final class PackageUpgrader
         foreach ($steps as $step) {
             $from = $theirs['field:'.$step['from']] ?? $base['field:'.$step['from']] ?? null;
             $to = $theirs['field:'.$step['to']] ?? null;
-            $where = \sprintf('%s: spec.migrations.%s: copy_values %s to %s: ', Format::MANIFEST, $step['version'], $step['from'], $step['to']);
-            if (null === $from || null === $to) {
-                $problems[] = $where.'both fields must be fields of the package.';
-            } elseif (self::value($from)['object'] !== self::value($to)['object']) {
-                $problems[] = $where.'both fields must be of one object.';
-            } elseif ('file' === self::value($from)['type'] || 'file' === self::value($to)['type']) {
-                $problems[] = $where.'files cannot be copied.';
+            $problem = match (true) {
+                null === $from || null === $to => new Message('package.upgrade.copy_values.not_in_package', 'both fields must be fields of the package.'),
+                self::value($from)['object'] !== self::value($to)['object'] => new Message('package.upgrade.copy_values.other_objects', 'both fields must be of one object.'),
+                'file' === self::value($from)['type'] || 'file' === self::value($to)['type'] => new Message('package.upgrade.copy_values.files', 'files cannot be copied.'),
+                default => null,
+            };
+            if (null !== $problem) {
+                $problems[] = new Message('package.upgrade.copy_values.refused', '%manifest%: spec.migrations.%version%: copy_values %from% to %to%: %problem%', ['manifest' => Format::MANIFEST, 'version' => $step['version'], 'from' => $step['from'], 'to' => $step['to'], 'problem' => $problem]);
             }
         }
 
@@ -539,7 +544,8 @@ final class PackageUpgrader
             try {
                 $this->recordEvents->withoutEvents(fn () => $this->records->update($record->id, new RecordInput($object, [$to => $record->values[$from] ?? null])));
             } catch (RecordValidationFailed $e) {
-                throw UpgradeRefused::at(Format::MANIFEST, \sprintf('migration %s', $step['version']), \sprintf('record %s of "%s": %s', $record->id, $object, $e->getMessage()));
+                // The record module's message is English only.
+                throw UpgradeRefused::at(Format::MANIFEST, new Message('package.upgrade.migration', 'migration %version%', ['version' => $step['version']]), new Message('package.upgrade.record_refused', '%record%: %message%', ['record' => self::record($record->id, $object), 'message' => $e->getMessage()]));
             }
         }
     }
@@ -676,7 +682,8 @@ final class PackageUpgrader
             }
             $created = $this->workflows->create($name, $description, $definition);
         } catch (InvalidWorkflowSource $e) {
-            throw UpgradeRefused::at($change->state()->document->path, 'workflow '.$change->state()->id, $e->getMessage());
+            // The workflow module's message is English only.
+            throw UpgradeRefused::at($change->state()->document->path, $change->item(), $e->getMessage());
         }
         // One the user deleted, back: its old record goes.
         $this->forget($theirs->name(), $this->localId(ItemKind::Workflow, $change->state()->id, $theirs->name()));
@@ -707,7 +714,7 @@ final class PackageUpgrader
      *
      * @param list<Change> $changes
      *
-     * @return list<string>
+     * @return list<Message>
      */
     private function unsupported(array $changes): array
     {
@@ -720,15 +727,15 @@ final class PackageUpgrader
             $old = self::value($change->mine);
             $kind = $change->state()->kind;
             $what = match (true) {
-                'field' === $kind && $new['object'] !== $old['object'] => 'moved to another object',
-                'field' === $kind && $new['type'] !== $old['type'] => \sprintf('its type changed from %s to %s', self::string($old['type']), self::string($new['type'])),
-                'field' === $kind && $new['required'] !== $old['required'] => 'whether it is required changed',
-                'field' === $kind && $new['unique'] !== $old['unique'] => 'whether it is unique changed',
-                'object' === $kind && $new['icon'] !== $old['icon'] => 'its icon changed',
+                'field' === $kind && $new['object'] !== $old['object'] => new Message('package.upgrade.unsupported.moved', 'moved to another object'),
+                'field' === $kind && $new['type'] !== $old['type'] => new Message('package.upgrade.unsupported.type', 'its type changed from %from% to %to%', ['from' => self::string($old['type']), 'to' => self::string($new['type'])]),
+                'field' === $kind && $new['required'] !== $old['required'] => new Message('package.upgrade.unsupported.required', 'whether it is required changed'),
+                'field' === $kind && $new['unique'] !== $old['unique'] => new Message('package.upgrade.unsupported.unique', 'whether it is unique changed'),
+                'object' === $kind && $new['icon'] !== $old['icon'] => new Message('package.upgrade.unsupported.icon', 'its icon changed'),
                 default => null,
             };
             if (null !== $what) {
-                $reasons[] = \sprintf('%s: %s %s: %s, which an upgrade cannot do yet: change it by hand first.', $change->state()->document->path, $kind, $change->state()->id, $what);
+                $reasons[] = InstallRefused::located($change->state()->document->path, $change->item(), new Message('package.upgrade.unsupported.refused', '%what%, which an upgrade cannot do yet: change it by hand first.', ['what' => $what]));
             }
         }
 
@@ -743,7 +750,7 @@ final class PackageUpgrader
      * @param list<Change> $changes
      * @param Package      $mine    what the instance holds of the package now
      *
-     * @return list<string>
+     * @return list<Message>
      */
     private function collisions(array $changes, Package $mine): array
     {
@@ -759,19 +766,19 @@ final class PackageUpgrader
             }
             $renamed = ChangeAction::Change === $change->action && null !== $change->mine && self::value($change->mine)['name'] !== $name;
             if ('object' === $state->kind && (ChangeAction::Add === $change->action || $renamed) && ($this->registry->hasObject($name) || isset($this->registry->archivedObjects()[$name]))) {
-                $reasons[] = \sprintf('%s: object %s: this instance already has an object "%s".', $state->document->path, $state->id, $name);
+                $reasons[] = InstallRefused::located($state->document->path, $change->item(), new Message('package.upgrade.object_taken', 'this instance already has an object "%name%".', ['name' => $name]));
             }
             if ('form' === $state->kind && (ChangeAction::Add === $change->action || $renamed) && $this->registry->hasForm($name)) {
-                $reasons[] = \sprintf('%s: form %s: this instance already has a form "%s".', $state->document->path, $state->id, $name);
+                $reasons[] = InstallRefused::located($state->document->path, $change->item(), new Message('package.upgrade.form_taken', 'this instance already has a form "%name%".', ['name' => $name]));
             }
             if ('workflow' === $state->kind && (ChangeAction::Add === $change->action || $renamed) && isset(($localWorkflows ??= $this->localWorkflows($mine))[$name])) {
-                $reasons[] = \sprintf('%s: workflow %s: this instance already has a workflow "%s".', $state->document->path, $state->id, $name);
+                $reasons[] = InstallRefused::located($state->document->path, $change->item(), new Message('package.upgrade.workflow_taken', 'this instance already has a workflow "%name%".', ['name' => $name]));
             }
             $object = 'field' === $state->kind && (ChangeAction::Add === $change->action || $renamed) ? $names->ownedObject(self::string($state->value['object'] ?? null)) : null;
             if (null !== $object && !$names->ownsField(self::string($state->value['object'] ?? null), $name) && $this->registry->hasObject($object)) {
                 $definition = $this->registry->getObject($object);
                 if ($definition->hasField($name) || isset($definition->archivedFields[$name])) {
-                    $reasons[] = \sprintf('%s: field %s: object "%s" already has a field "%s" of this instance: rename it first.', $state->document->path, $state->id, $object, $name);
+                    $reasons[] = InstallRefused::located($state->document->path, $change->item(), new Message('package.upgrade.field_taken', 'object "%object%" already has a field "%name%" of this instance: rename it first.', ['object' => $object, 'name' => $name]));
                 }
             }
         }
@@ -822,7 +829,7 @@ final class PackageUpgrader
             $ready = array_filter($pending, static fn (array $entry): bool => [] === array_intersect($entry[1], array_keys($pending)));
             if ([] === $ready) {
                 [$change] = reset($pending);
-                throw UpgradeRefused::at($change->state()->document->path, 'field '.$change->state()->id, 'Its settings and those of other new fields name each other in a cycle.');
+                throw UpgradeRefused::at($change->state()->document->path, $change->item(), new Message('package.upgrade.field_cycle', 'Its settings and those of other new fields name each other in a cycle.'));
             }
             foreach ($ready as $id => [$change]) {
                 $ordered[] = $change;
@@ -847,8 +854,13 @@ final class PackageUpgrader
         try {
             return $step();
         } catch (MetadataException $e) {
-            throw UpgradeRefused::at($change->state()->document->path, $change->state()->kind.' '.$change->state()->id, $e->getMessage());
+            throw UpgradeRefused::at($change->state()->document->path, $change->item(), $e->text());
         }
+    }
+
+    private static function record(string $id, string $object): Message
+    {
+        return new Message('package.upgrade.record', 'record %id% of "%object%"', ['id' => $id, 'object' => $object]);
     }
 
     private function item(Package $package, ItemKind $kind, string $itemId, string $localId): PackageItem

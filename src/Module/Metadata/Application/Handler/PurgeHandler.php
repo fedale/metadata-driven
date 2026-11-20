@@ -13,6 +13,7 @@ use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
 use App\Module\Metadata\Domain\Repository\TranslationRepository;
+use App\Shared\Message\Message;
 use App\Shared\Transaction\TransactionRunner;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
@@ -50,16 +51,25 @@ final class PurgeHandler
                     continue;
                 }
                 foreach ([...$other->getFields(), ...$other->getArchivedFields()] as $field) {
+                    $where = ['object' => $other->getName(), 'field' => $field->getName()];
+                    $isArchived = $field->isArchived() || !$other->isActive();
                     if ($field->getTarget() === $objectName) {
-                        $usages[] = \sprintf('%s field "%s.%s"%s points at it', $field->isManyToMany() ? 'many-to-many' : 'relation', $other->getName(), $field->getName(), $field->isArchived() || !$other->isActive() ? ' (archived)' : '');
+                        $usages[] = match (true) {
+                            $field->isManyToMany() && $isArchived => new Message('metadata.usage.archived_many_to_many_points_at', 'many-to-many field "%object%.%field%" (archived) points at it', $where),
+                            $field->isManyToMany() => new Message('metadata.usage.many_to_many_points_at', 'many-to-many field "%object%.%field%" points at it', $where),
+                            $isArchived => new Message('metadata.usage.archived_relation_points_at', 'relation field "%object%.%field%" (archived) points at it', $where),
+                            default => new Message('metadata.usage.relation_points_at', 'relation field "%object%.%field%" points at it', $where),
+                        };
                     }
                     if ($field->getThrough() === $objectName) {
-                        $usages[] = \sprintf('many-to-many field "%s.%s"%s goes through it', $other->getName(), $field->getName(), $field->isArchived() || !$other->isActive() ? ' (archived)' : '');
+                        $usages[] = $isArchived
+                            ? new Message('metadata.usage.archived_many_to_many_through', 'many-to-many field "%object%.%field%" (archived) goes through it', $where)
+                            : new Message('metadata.usage.many_to_many_through', 'many-to-many field "%object%.%field%" goes through it', $where);
                     }
                 }
             }
             if ([] !== $usages) {
-                throw InvalidMetadataDefinition::stillUsed(\sprintf('Object "%s"', $objectName), 'purged', $usages);
+                throw InvalidMetadataDefinition::objectInUseForPurge($objectName, $usages);
             }
 
             $this->translations->removeKeysUnder(TranslationKey::objectPrefixes($objectName));

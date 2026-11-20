@@ -88,12 +88,12 @@ final class PackageUpgraderTest extends KernelTestCase
             self::fail('A conflict must stop the upgrade.');
         } catch (UpgradeRefused $e) {
             self::assertTrue($e->conflicts);
-            self::assertSame(['objects/product.yaml: change object acme.product, changed here too'], $e->reasons);
+            self::assertSame(['objects/product.yaml: change object acme.product, changed here too'], array_map(strval(...), $e->reasons));
         }
 
         self::assertTrue($this->upgrade($newVersion, Strategy::Overwrite, dryRun: true)->dryRun);
         self::assertSame('Article', $this->label('product'));
-        self::assertSame(['objects/product.yaml: change object acme.product'], $this->upgrade($newVersion, Strategy::Keep)->kept);
+        self::assertSame(['objects/product.yaml: change object acme.product'], array_map(strval(...), $this->upgrade($newVersion, Strategy::Keep)->kept));
         self::assertSame('Article', $this->label('product'));
     }
 
@@ -150,7 +150,7 @@ final class PackageUpgraderTest extends KernelTestCase
         ]);
 
         $reason = 'objects/product.yaml: field acme.product.weight: object "product" already has a field "weight" of this instance: rename it first.';
-        self::assertContains($reason, self::getContainer()->get(PackageUpgrader::class)->preview($newVersion)->refusals, 'The admin\'s preview shows it.');
+        self::assertContains($reason, array_map(strval(...), self::getContainer()->get(PackageUpgrader::class)->preview($newVersion)->refusals), 'The admin\'s preview shows it.');
         $this->assertRefused($newVersion, $reason);
         self::assertSame('Weight (ours)', self::getContainer()->get(MetadataRegistryInterface::class)->getObject('product')->field('weight')->label);
 
@@ -189,7 +189,7 @@ final class PackageUpgraderTest extends KernelTestCase
 
         $report = $this->upgrade(new Package($manifest, $package->documents, $package->directory));
 
-        self::assertContains('package.yaml: migration 2.0.0: copy_values acme.product.sku to acme.product.reference', $report->applied);
+        self::assertContains('package.yaml: migration 2.0.0: copy_values acme.product.sku to acme.product.reference', array_map(strval(...), $report->applied));
         foreach (self::getContainer()->get(RecordFinderInterface::class)->each('product') as $record) {
             self::assertSame($record->values['sku'], $record->values['reference']);
         }
@@ -239,7 +239,7 @@ final class PackageUpgraderTest extends KernelTestCase
             $this->upgrade($package);
             self::fail(\sprintf('Refused: %s', $reason));
         } catch (UpgradeRefused $e) {
-            self::assertContains($reason, $e->reasons, implode("\n", $e->reasons));
+            self::assertContains($reason, array_map(strval(...), $e->reasons), implode("\n", $e->reasons));
         }
     }
 

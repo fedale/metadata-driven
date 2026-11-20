@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Contract\Dto;
 
+use App\Shared\Message\Message;
+use App\Shared\Message\MessageList;
+
 /**
  * The settings of a "many_to_many" field, read the same way by every module.
  *
@@ -58,39 +61,39 @@ final readonly class ManyToManySettings
      *
      * @param array<string, mixed> $settings settings merged with defaults()
      *
-     * @return list<string> errors
+     * @return list<Message> errors
      */
     public static function validate(array $settings): array
     {
         $errors = [];
         if (!\is_string($settings['target'] ?? null) || '' === $settings['target']) {
-            $errors[] = 'Setting "target" must be the name of the related object.';
+            $errors[] = new Message('field_type.target_invalid', 'Setting "target" must be the name of the related object.');
         }
         if (!\is_string($settings['onDelete'] ?? null) || null === ManyToManyOnDelete::tryFrom($settings['onDelete'])) {
-            $errors[] = \sprintf('Setting "onDelete" must be one of: %s.', implode(', ', array_column(ManyToManyOnDelete::cases(), 'value')));
+            $errors[] = new Message('field_type.on_delete_invalid', 'Setting "onDelete" must be one of: %values%.', ['values' => implode(', ', array_column(ManyToManyOnDelete::cases(), 'value'))]);
         }
         foreach (['inverseName', 'inverseLabel'] as $key) {
             $value = $settings[$key] ?? null;
             if (null !== $value && (!\is_string($value) || '' === trim($value))) {
-                $errors[] = \sprintf('Setting "%s" must be a non-empty string or null.', $key);
+                $errors[] = new Message('field_type.setting_not_string_or_null', 'Setting "%setting%" must be a non-empty string or null.', ['setting' => $key]);
             }
         }
         $max = $settings['max'] ?? null;
         if (null !== $max && (!\is_int($max) || $max < 1)) {
-            $errors[] = 'Setting "max" must be an integer of at least 1, or null for no limit.';
+            $errors[] = new Message('field_type.many_to_many.max_invalid', 'Setting "max" must be an integer of at least 1, or null for no limit.');
         }
         $through = [];
         foreach (['through', 'throughSource', 'throughTarget'] as $key) {
             $value = $settings[$key] ?? null;
             if (null !== $value && (!\is_string($value) || '' === trim($value))) {
-                $errors[] = \sprintf('Setting "%s" must be a non-empty string or null.', $key);
+                $errors[] = new Message('field_type.setting_not_string_or_null', 'Setting "%setting%" must be a non-empty string or null.', ['setting' => $key]);
             }
             $through[$key] = null !== $value;
         }
         if (1 !== \count(array_unique($through))) {
-            $errors[] = 'Settings "through", "throughSource" and "throughTarget" go together: give all three, or none.';
+            $errors[] = new Message('field_type.many_to_many.through_incomplete', 'Settings "through", "throughSource" and "throughTarget" go together: give all three, or none.');
         } elseif ($through['through'] && ManyToManyOnDelete::Unlink->value !== ($settings['onDelete'] ?? null)) {
-            $errors[] = 'Setting "onDelete" does not apply with "through": the relation fields of the junction object carry the delete rules.';
+            $errors[] = new Message('field_type.many_to_many.on_delete_with_through', 'Setting "onDelete" does not apply with "through": the relation fields of the junction object carry the delete rules.');
         }
 
         return $errors;
@@ -118,7 +121,7 @@ final readonly class ManyToManySettings
             || (null !== $through && !\is_string($through))
             || (null !== $throughSource && !\is_string($throughSource))
             || (null !== $throughTarget && !\is_string($throughTarget))) {
-            throw new \InvalidArgumentException(implode(' ', self::validate($settings)));
+            throw new \InvalidArgumentException((string) new MessageList(self::validate($settings), ' '));
         }
 
         return new self($target, $onDelete, $inverseName, $inverseLabel, $max, $through, $throughSource, $throughTarget);

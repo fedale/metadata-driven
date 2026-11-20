@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Package\Application\Upgrade;
 
+use App\Shared\Message\Message;
 use Fedale\PackageFormat\Document;
 use Fedale\PackageFormat\DocumentKind;
 use Fedale\PackageFormat\Package;
@@ -67,9 +68,9 @@ final class SeedPlanner
                     $value = self::key($row, $key);
                     $record = $current[$value] ?? null;
                     if (null === $record) {
-                        $changes->write($seed, $i, null, \sprintf('create record %s', $value));
+                        $changes->write($seed, $i, null, self::create($value));
                     } else {
-                        $this->conflict($changes, $resolution, $seed, $value, \sprintf('record %s, new in this version, already exists here', $value), fn () => $changes->write($seed, $i, $record->id, \sprintf('update record %s', $value)));
+                        $this->conflict($changes, $resolution, $seed, $value, self::addedAndHere($value), fn () => $changes->write($seed, $i, $record->id, self::update($value)));
                     }
                 }
                 continue;
@@ -89,12 +90,12 @@ final class SeedPlanner
                 if (null !== $old && self::normalized($old, $fields) === self::normalized($row, $fields)) {
                     continue;
                 }
-                $write = fn () => $changes->write($seed, $i, $record?->id, \sprintf('%s record %s', null === $record ? 'create' : 'update', $value));
+                $write = fn () => $changes->write($seed, $i, $record?->id, null === $record ? self::create($value) : self::update($value));
                 match (true) {
                     null === $old && null === $record, null !== $old && null !== $record && !$changedHere($value) => $write(),
-                    null === $old => $this->conflict($changes, $resolution, $seed, $value, \sprintf('record %s, new in this version, already exists here', $value), $write),
-                    null === $record => $this->conflict($changes, $resolution, $seed, $value, \sprintf('record %s, changed in this version, was deleted here', $value), $write),
-                    default => $this->conflict($changes, $resolution, $seed, $value, \sprintf('record %s, changed in this version, was changed here too', $value), $write),
+                    null === $old => $this->conflict($changes, $resolution, $seed, $value, self::addedAndHere($value), $write),
+                    null === $record => $this->conflict($changes, $resolution, $seed, $value, new Message('package.upgrade.seed.changed_deleted_here', 'record %key%, changed in this version, was deleted here', ['key' => $value]), $write),
+                    default => $this->conflict($changes, $resolution, $seed, $value, new Message('package.upgrade.seed.changed_changed_here', 'record %key%, changed in this version, was changed here too', ['key' => $value]), $write),
                 };
             }
             // What is left of the version installed: the records this version removed.
@@ -103,9 +104,9 @@ final class SeedPlanner
                 if (null === $record) {
                     continue;
                 }
-                $delete = fn () => $changes->delete($seed, $objectId, $record->id, \sprintf('delete record %s', $value));
+                $delete = fn () => $changes->delete($seed, $objectId, $record->id, new Message('package.upgrade.seed.delete', 'delete record %key%', ['key' => (string) $value]));
                 $changedHere((string) $value)
-                    ? $this->conflict($changes, $resolution, $seed, (string) $value, \sprintf('record %s, removed in this version, was changed here', $value), $delete)
+                    ? $this->conflict($changes, $resolution, $seed, (string) $value, new Message('package.upgrade.seed.removed_changed_here', 'record %key%, removed in this version, was changed here', ['key' => (string) $value]), $delete)
                     : $delete();
             }
         }
@@ -113,12 +114,27 @@ final class SeedPlanner
         return $changes;
     }
 
-    private function conflict(SeedChanges $changes, Resolution $resolution, Document $seed, string $key, string $what, \Closure $overwrite): void
+    private function conflict(SeedChanges $changes, Resolution $resolution, Document $seed, string $key, Message $what, \Closure $overwrite): void
     {
         $changes->conflict($seed, $key, $what);
         if (Strategy::Overwrite === $resolution->for(\sprintf('record:%s:%s', $seed->path, $key))) {
             $overwrite();
         }
+    }
+
+    private static function create(string $key): Message
+    {
+        return new Message('package.upgrade.seed.create', 'create record %key%', ['key' => $key]);
+    }
+
+    private static function update(string $key): Message
+    {
+        return new Message('package.upgrade.seed.update', 'update record %key%', ['key' => $key]);
+    }
+
+    private static function addedAndHere(string $key): Message
+    {
+        return new Message('package.upgrade.seed.added_exists_here', 'record %key%, new in this version, already exists here', ['key' => $key]);
     }
 
     /**

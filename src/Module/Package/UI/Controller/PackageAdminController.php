@@ -17,6 +17,7 @@ use App\Module\Package\Domain\Exception\InstallRefused;
 use App\Module\Package\Domain\Exception\PackageSourceFailed;
 use App\Module\Package\Domain\Exception\UpgradeRefused;
 use App\Module\Package\Domain\Repository\PackageInstallationRepository;
+use App\Shared\Message\MessageTranslator;
 use Fedale\PackageFormat\InvalidPackage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -56,6 +57,7 @@ final class PackageAdminController extends AbstractController
         private readonly FormFactoryInterface $forms,
         private readonly AccessCheckerInterface $access,
         private readonly TranslatorInterface $translator,
+        private readonly MessageTranslator $messageTranslator,
     ) {
     }
 
@@ -72,7 +74,7 @@ final class PackageAdminController extends AbstractController
 
                 return $this->redirectToRoute('admin_package_index', [], Response::HTTP_SEE_OTHER);
             } catch (PackageSourceFailed $e) {
-                $add->addError(new FormError($e->getMessage()));
+                $add->addError(new FormError($this->messageTranslator->trans($e->text())));
             }
         }
 
@@ -81,7 +83,7 @@ final class PackageAdminController extends AbstractController
         try {
             $available = $this->sources->search();
         } catch (PackageSourceFailed $e) {
-            $unreachable = $e->getMessage();
+            $unreachable = $this->messageTranslator->trans($e->text());
         }
         $installed = [];
         foreach ($this->installations->all() as $installation) {
@@ -91,7 +93,7 @@ final class PackageAdminController extends AbstractController
         try {
             $indexes = $this->sources->indexes();
         } catch (PackageSourceFailed $e) {
-            $unreachable ??= $e->getMessage();
+            $unreachable ??= $this->messageTranslator->trans($e->text());
         }
 
         // What each one offers: install, upgrade, or nothing newer than what is here.
@@ -134,7 +136,7 @@ final class PackageAdminController extends AbstractController
                 $this->sources->remove($name);
                 $this->addFlash('success', $this->translator->trans('admin.package_admin.index_removed', ['%name%' => $name]));
             } catch (PackageSourceFailed $e) {
-                $this->addFlash('error', $e->getMessage());
+                $this->addFlash('error', $this->messageTranslator->trans($e->text()));
             }
         }
 
@@ -162,7 +164,7 @@ final class PackageAdminController extends AbstractController
                 }
             }
         } catch (PackageSourceFailed $e) {
-            $reasons = [$e->getMessage()];
+            $reasons = [$e->text()];
         } catch (InvalidPackage $e) {
             $reasons = array_map(strval(...), $e->problems);
         } catch (InstallRefused $e) {
@@ -208,7 +210,7 @@ final class PackageAdminController extends AbstractController
                 $this->locator->close($opened);
             }
         } catch (PackageSourceFailed $e) {
-            $reasons = [$e->getMessage()];
+            $reasons = [$e->text()];
         } catch (InvalidPackage $e) {
             $reasons = array_map(strval(...), $e->problems);
         } catch (UpgradeRefused $e) {
@@ -255,7 +257,7 @@ final class PackageAdminController extends AbstractController
             ->add('repo', HiddenType::class);
         foreach ($conflicts as $i => $conflict) {
             $builder->add('c'.$i, ChoiceType::class, [
-                'label' => $conflict->description,
+                'label' => $this->messageTranslator->trans($conflict->description),
                 'choices' => ['admin.package_admin.keep' => Strategy::Keep->value, 'admin.package_admin.take' => Strategy::Overwrite->value],
                 'expanded' => true,
                 'data' => Strategy::Keep->value,

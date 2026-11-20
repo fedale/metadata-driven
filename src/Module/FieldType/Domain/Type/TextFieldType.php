@@ -10,6 +10,7 @@ use App\Module\FieldType\Contract\Dto\SettingDefinition;
 use App\Module\FieldType\Contract\Dto\SettingKind;
 use App\Module\FieldType\Contract\Dto\Widget;
 use App\Module\FieldType\Contract\Dto\WidgetKind;
+use App\Shared\Message\Message;
 use Symfony\Component\Validator\Constraints as Assert;
 
 final class TextFieldType extends AbstractFieldType
@@ -53,20 +54,20 @@ final class TextFieldType extends AbstractFieldType
     {
         $errors = [];
         if (!self::isIntBetween($settings['maxLength'], 1, self::MAX_LENGTH)) {
-            $errors[] = \sprintf('Setting "maxLength" must be an integer between 1 and %d.', self::MAX_LENGTH);
+            $errors[] = new Message('field_type.setting_not_integer_between', 'Setting "%setting%" must be an integer between %min% and %max%.', ['setting' => 'maxLength', 'min' => 1, 'max' => self::MAX_LENGTH]);
         }
         if (!\is_bool($settings['multiline'])) {
-            $errors[] = 'Setting "multiline" must be a boolean.';
+            $errors[] = new Message('field_type.setting_not_boolean', 'Setting "%setting%" must be a boolean.', ['setting' => 'multiline']);
         }
         $pattern = $settings['pattern'];
         if (null !== $pattern && (!\is_string($pattern) || '' === $pattern || \strlen($pattern) > self::MAX_PATTERN_LENGTH)) {
-            $errors[] = \sprintf('Setting "pattern" must be a regular expression of at most %d characters.', self::MAX_PATTERN_LENGTH);
+            $errors[] = new Message('field_type.text.pattern_invalid', 'Setting "pattern" must be a regular expression of at most %max% characters.', ['max' => self::MAX_PATTERN_LENGTH]);
         } elseif (\is_string($pattern) && false === @preg_match(self::regex($pattern), '')) {
-            $errors[] = \sprintf('Setting "pattern" is not a valid regular expression: %s.', preg_last_error_msg());
+            $errors[] = new Message('field_type.text.pattern_not_regex', 'Setting "pattern" is not a valid regular expression: %error%.', ['error' => preg_last_error_msg()]);
         }
         $message = $settings['patternMessage'];
         if (null !== $message && (!\is_string($message) || '' === trim($message))) {
-            $errors[] = 'Setting "patternMessage" must be a non-empty string.';
+            $errors[] = new Message('field_type.text.pattern_message_invalid', 'Setting "patternMessage" must be a non-empty string.');
         }
 
         return $errors;

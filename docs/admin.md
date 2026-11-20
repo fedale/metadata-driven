@@ -46,6 +46,7 @@ them (see [Languages](i18n.md#the-texts-of-the-application)).
 
 Errors appear next to the input they concern: an invalid or taken name, a missing label, a
 setting the field type refuses (duplicated option, decimals out of range, unknown related object).
+They're in the administrator's language (see [Languages](i18n.md#error-messages)).
 
 ## Views
 

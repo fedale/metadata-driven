@@ -191,7 +191,7 @@ final class FormRecordManagerTest extends KernelTestCase
             self::getContainer()->get(MetadataManagerInterface::class)->saveForm('registration', str_replace('required: true }', 'required: true, ask: sometimes }', self::REGISTRATION_FORM));
             self::fail('The definition must be refused.');
         } catch (MetadataInputInvalid $e) {
-            self::assertContains('(root) > terms: "ask" must be one of always, create.', $e->errors['definition']);
+            self::assertContains('(root) > terms: "ask" must be one of always, create.', array_map(strval(...), $e->errors['definition']));
         }
     }
 

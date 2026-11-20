@@ -96,7 +96,7 @@ final class FieldSettingsChangeTest extends KernelTestCase
         self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('phone', ['prefix' => '+41', 'number' => '044']));
 
         $this->expectException(MetadataException::class);
-        $this->expectExceptionMessage('Option "+41" of field "prefix" cannot be removed: 1 record(s) hold it.');
+        $this->expectExceptionMessage('Option "+41" of field "prefix" cannot be removed: records still hold it (1).');
         $this->metadata->configureFieldSettings('phone', 'prefix', ['options' => [['value' => '+39', 'label' => '+39 IT']]]);
     }
 }

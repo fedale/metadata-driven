@@ -13,6 +13,7 @@ use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
+use App\Shared\Message\Message;
 use App\Shared\Transaction\TransactionRunner;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
@@ -52,7 +53,7 @@ final class SaveViewHandler
             $definition = $this->grids->compile($this->metadata->getObject($command->objectName), $source);
         } else {
             $source = $this->sanitizer->sanitize($source);
-            if (null !== $error = $this->texts->errorFor(\sprintf('View "%s"', $command->name), $source)) {
+            if (null !== $error = $this->texts->errorFor(new Message('metadata.view_named', 'View "%view%"', ['view' => $command->name]), $source)) {
                 throw new MetadataInputInvalid([GridViewCompiler::INPUT => [$error]]);
             }
         }

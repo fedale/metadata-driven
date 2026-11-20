@@ -11,6 +11,7 @@ use App\Module\FieldType\Contract\Dto\SettingKind;
 use App\Module\FieldType\Contract\Dto\StatusMachine;
 use App\Module\FieldType\Contract\Dto\Widget;
 use App\Module\FieldType\Contract\Dto\WidgetKind;
+use App\Shared\Message\Message;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -54,7 +55,7 @@ final class StatusFieldType extends AbstractFieldType
     {
         $states = $settings['states'];
         if (!\is_array($states) || !array_is_list($states) || [] === $states) {
-            return ['Setting "states" must be a non-empty list of {value, label} items.'];
+            return [new Message('field_type.status.states_invalid', 'Setting "states" must be a non-empty list of {value, label} items.')];
         }
         $errors = [];
         $values = [];
@@ -62,54 +63,54 @@ final class StatusFieldType extends AbstractFieldType
             $value = \is_array($state) ? ($state['value'] ?? null) : null;
             $label = \is_array($state) ? ($state['label'] ?? null) : null;
             if (!\is_string($value) || '' === $value || \strlen($value) > self::MAX_VALUE_LENGTH) {
-                $errors[] = \sprintf('State #%d: "value" must be a non-empty string of at most %d characters.', $index, self::MAX_VALUE_LENGTH);
+                $errors[] = new Message('field_type.status.state_value_invalid', 'State #%position%: "value" must be a non-empty string of at most %max% characters.', ['position' => $index, 'max' => self::MAX_VALUE_LENGTH]);
                 continue;
             }
             if (!\is_string($label) || '' === trim($label)) {
-                $errors[] = \sprintf('State #%d: "label" must be a non-empty string.', $index);
+                $errors[] = new Message('field_type.status.state_label_invalid', 'State #%position%: "label" must be a non-empty string.', ['position' => $index]);
             }
             if (isset($values[$value])) {
-                $errors[] = \sprintf('State #%d: value "%s" is duplicated.', $index, $value);
+                $errors[] = new Message('field_type.status.state_value_twice', 'State #%position%: value "%value%" is duplicated.', ['position' => $index, 'value' => $value]);
             }
             $values[$value] = true;
         }
         $initial = $settings['initial'];
         if (null !== $initial && (!\is_string($initial) || !isset($values[$initial]))) {
-            $errors[] = 'Setting "initial" must be the value of one of the states.';
+            $errors[] = new Message('field_type.status.initial_invalid', 'Setting "initial" must be the value of one of the states.');
         }
 
         $transitions = $settings['transitions'];
         if (!\is_array($transitions) || !array_is_list($transitions)) {
-            return [...$errors, 'Setting "transitions" must be a list of {name, label, from, to, roles} items.'];
+            return [...$errors, new Message('field_type.status.transitions_invalid', 'Setting "transitions" must be a list of {name, label, from, to, roles} items.')];
         }
         $names = [];
         foreach ($transitions as $index => $transition) {
             if (!\is_array($transition)) {
-                $errors[] = \sprintf('Transition #%d: a map of name, label, from, to and roles.', $index);
+                $errors[] = new Message('field_type.status.transition_invalid', 'Transition #%position%: a map of name, label, from, to and roles.', ['position' => $index]);
                 continue;
             }
             $name = $transition['name'] ?? null;
             if (!\is_string($name) || 1 !== preg_match('/^[a-z][a-z0-9_]{0,49}$/', $name)) {
-                $errors[] = \sprintf('Transition #%d: "name" must be lowercase letters, digits and underscores, starting with a letter.', $index);
+                $errors[] = new Message('field_type.status.transition_name_invalid', 'Transition #%position%: "name" must be lowercase letters, digits and underscores, starting with a letter.', ['position' => $index]);
             } elseif (isset($names[$name])) {
-                $errors[] = \sprintf('Transition #%d: name "%s" is duplicated.', $index, $name);
+                $errors[] = new Message('field_type.status.transition_name_twice', 'Transition #%position%: name "%name%" is duplicated.', ['position' => $index, 'name' => $name]);
             } else {
                 $names[$name] = true;
             }
             if (!\is_string($transition['label'] ?? null) || '' === trim($transition['label'])) {
-                $errors[] = \sprintf('Transition #%d: "label" must be a non-empty string.', $index);
+                $errors[] = new Message('field_type.status.transition_label_invalid', 'Transition #%position%: "label" must be a non-empty string.', ['position' => $index]);
             }
             $from = $transition['from'] ?? null;
             if (!\is_array($from) || [] === $from || [] !== array_filter($from, static fn (mixed $state): bool => !\is_string($state) || !isset($values[$state]))) {
-                $errors[] = \sprintf('Transition #%d: "from" must list states of the field, one at least.', $index);
+                $errors[] = new Message('field_type.status.transition_from_invalid', 'Transition #%position%: "from" must list states of the field, one at least.', ['position' => $index]);
             }
             $to = $transition['to'] ?? null;
             if (!\is_string($to) || !isset($values[$to])) {
-                $errors[] = \sprintf('Transition #%d: "to" must be a state of the field.', $index);
+                $errors[] = new Message('field_type.status.transition_to_invalid', 'Transition #%position%: "to" must be a state of the field.', ['position' => $index]);
             }
             $roles = $transition['roles'] ?? [];
             if (!\is_array($roles) || [] !== array_filter($roles, static fn (mixed $role): bool => !\is_string($role) || 1 !== preg_match('/^ROLE_[A-Z0-9_]+$/', $role))) {
-                $errors[] = \sprintf('Transition #%d: "roles" must be role names, e.g. ROLE_CLERK.', $index);
+                $errors[] = new Message('field_type.status.transition_roles_invalid', 'Transition #%position%: "roles" must be role names, e.g. ROLE_CLERK.', ['position' => $index]);
             }
         }
 

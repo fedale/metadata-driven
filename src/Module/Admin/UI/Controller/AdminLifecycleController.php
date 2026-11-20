@@ -9,6 +9,7 @@ use App\Module\Admin\UI\Form\LifecycleForms;
 use App\Module\Metadata\Contract\Exception\MetadataException;
 use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
+use App\Shared\Message\MessageTranslator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -30,6 +31,7 @@ final class AdminLifecycleController extends AbstractController
         private readonly LifecycleForms $forms,
         private readonly AccessCheckerInterface $access,
         private readonly TranslatorInterface $translator,
+        private readonly MessageTranslator $messageTranslator,
     ) {
     }
 
@@ -140,11 +142,11 @@ final class AdminLifecycleController extends AbstractController
         try {
             $rewritten = $change();
         } catch (MetadataInputInvalid $e) {
-            $this->addFlash('error', implode(' ', array_merge(...array_values($e->errors))));
+            $this->addFlash('error', implode(' ', $this->messageTranslator->transAll(array_merge(...array_values($e->errors)))));
 
             return false;
         } catch (MetadataException $e) {
-            $this->addFlash('error', $e->getMessage());
+            $this->addFlash('error', $this->messageTranslator->trans($e->text()));
 
             return false;
         }

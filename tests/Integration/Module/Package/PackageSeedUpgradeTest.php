@@ -43,7 +43,7 @@ final class PackageSeedUpgradeTest extends KernelTestCase
             'seeds/product.yaml: update record OSL-01',
             'seeds/product.yaml: create record KAR-03',
             'seeds/product.yaml: delete record BRG-02',
-        ], $report->applied);
+        ], array_map(strval(...), $report->applied));
         $products = $this->products();
         self::assertSame(['KAR-03', 'OSL-01'], array_keys($products));
         self::assertSame('Oslo armchair', $products['OSL-01']->values['name']);
@@ -59,10 +59,10 @@ final class PackageSeedUpgradeTest extends KernelTestCase
             $this->upgrade($newVersion);
             self::fail('A record both changed must stop the upgrade.');
         } catch (UpgradeRefused $e) {
-            self::assertSame(['seeds/product.yaml: record OSL-01, changed in this version, was changed here too'], $e->reasons);
+            self::assertSame(['seeds/product.yaml: record OSL-01, changed in this version, was changed here too'], array_map(strval(...), $e->reasons));
         }
 
-        self::assertSame(['seeds/product.yaml: record OSL-01, changed in this version, was changed here too'], $this->upgrade($newVersion, Strategy::Keep)->kept);
+        self::assertSame(['seeds/product.yaml: record OSL-01, changed in this version, was changed here too'], array_map(strval(...), $this->upgrade($newVersion, Strategy::Keep)->kept));
         self::assertSame('Oslo deluxe', $this->products()['OSL-01']->values['name']);
     }
 
@@ -126,7 +126,7 @@ final class PackageSeedUpgradeTest extends KernelTestCase
             self::fail(\sprintf('Conflict: %s', $conflict));
         } catch (UpgradeRefused $e) {
             self::assertTrue($e->conflicts);
-            self::assertContains($conflict, $e->reasons, implode("\n", $e->reasons));
+            self::assertContains($conflict, array_map(strval(...), $e->reasons), implode("\n", $e->reasons));
         }
     }
 

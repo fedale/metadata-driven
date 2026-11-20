@@ -11,6 +11,7 @@ use App\Module\FieldType\Contract\Dto\SettingKind;
 use App\Module\FieldType\Contract\Dto\Widget;
 use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\Exception\InvalidFieldValue;
+use App\Shared\Message\Message;
 
 final class BooleanFieldType extends AbstractFieldType
 {
@@ -50,10 +51,10 @@ final class BooleanFieldType extends AbstractFieldType
     {
         $errors = [];
         if (!\is_bool($settings['default'])) {
-            $errors[] = 'Setting "default" must be a boolean.';
+            $errors[] = new Message('field_type.setting_not_boolean', 'Setting "%setting%" must be a boolean.', ['setting' => 'default']);
         }
         if (!\is_string($settings['display']) || !isset(self::DISPLAYS[$settings['display']])) {
-            $errors[] = \sprintf('Setting "display" must be one of: %s.', implode(', ', array_keys(self::DISPLAYS)));
+            $errors[] = new Message('field_type.display_invalid', 'Setting "display" must be one of: %values%.', ['values' => implode(', ', array_keys(self::DISPLAYS))]);
         }
 
         return $errors;

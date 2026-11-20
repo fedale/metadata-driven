@@ -8,6 +8,7 @@ use App\Module\Metadata\Contract\Dto\RelationSettings;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
+use App\Shared\Message\Message;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Symfony\Component\Uid\Uuid;
@@ -270,10 +271,10 @@ class ObjectDefinition
             }
         }
         if (\count($fields) < 2 || \count(array_unique($fields)) !== \count($fields)) {
-            throw InvalidMetadataDefinition::invalidUniqueTogether($this->name, $fields, 'name at least two different fields (a single field is made unique when it is created)');
+            throw InvalidMetadataDefinition::invalidUniqueTogether($this->name, $fields, new Message('metadata.unique_together.too_few', 'name at least two different fields (a single field is made unique when it is created)'));
         }
         if (null !== $this->findUniqueTogether($fields)) {
-            throw InvalidMetadataDefinition::invalidUniqueTogether($this->name, $fields, 'these fields are already unique together');
+            throw InvalidMetadataDefinition::invalidUniqueTogether($this->name, $fields, new Message('metadata.unique_together.already', 'these fields are already unique together'));
         }
 
         $this->uniqueTogether = [...$this->uniqueTogether ?? [], $fields];
@@ -349,7 +350,7 @@ class ObjectDefinition
      */
     public function removeView(ViewKind $kind, string $name): void
     {
-        $view = $this->findView($kind, $name) ?? throw InvalidMetadataDefinition::unknownView($this->name, $kind->value, $name);
+        $view = $this->findView($kind, $name) ?? throw InvalidMetadataDefinition::unknownView($this->name, $kind, $name);
         $this->views->removeElement($view);
         $this->updatedAt = new \DateTimeImmutable();
     }
@@ -375,19 +376,19 @@ class ObjectDefinition
 
         $deciding = $this->getField($decidingField);
         if ($deciding === $field) {
-            throw InvalidMetadataDefinition::invalidCondition($fieldName, 'a field cannot decide for itself');
+            throw InvalidMetadataDefinition::invalidCondition($fieldName, new Message('metadata.condition.itself', 'a field cannot decide for itself'));
         }
         if (null !== $deciding->getCondition()) {
-            throw InvalidMetadataDefinition::invalidCondition($fieldName, \sprintf('"%s" has a condition of its own: conditions do not chain', $decidingField));
+            throw InvalidMetadataDefinition::invalidCondition($fieldName, new Message('metadata.condition.deciding_has_condition', '"%field%" has a condition of its own: conditions do not chain', ['field' => $decidingField]));
         }
         foreach ($this->fields as $other) {
             if (($other->getCondition()['field'] ?? null) === $fieldName) {
-                throw InvalidMetadataDefinition::invalidCondition($fieldName, \sprintf('it decides for "%s": conditions do not chain', $other->getName()));
+                throw InvalidMetadataDefinition::invalidCondition($fieldName, new Message('metadata.condition.decides_for_another', 'it decides for "%field%": conditions do not chain', ['field' => $other->getName()]));
             }
         }
         $values = array_values(array_unique(array_filter($values, static fn (string $value): bool => '' !== trim($value))));
         if ([] === $values) {
-            throw InvalidMetadataDefinition::invalidCondition($fieldName, 'give at least one value');
+            throw InvalidMetadataDefinition::invalidCondition($fieldName, new Message('metadata.condition.no_value', 'give at least one value'));
         }
 
         $field->applyWhen(['field' => $decidingField, 'values' => $values]);

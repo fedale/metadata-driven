@@ -110,14 +110,14 @@ final class GridViewTest extends KernelTestCase
     }
 
     /**
-     * @return list<string>
+     * @return list<string> the errors in English
      */
     private function errorsOf(string $object, string $source): array
     {
         try {
             $this->manager()->saveView($object, ViewKind::Grid, 'main', $source);
         } catch (MetadataInputInvalid $e) {
-            return $e->errors['source'];
+            return array_map(strval(...), $e->errors['source']);
         }
         self::fail('The definition is invalid.');
     }

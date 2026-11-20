@@ -6,6 +6,7 @@ namespace App\Module\FieldType\Domain\Type;
 
 use App\Module\FieldType\Contract\Exception\InvalidFieldValue;
 use App\Module\FieldType\Contract\FieldTypeInterface;
+use App\Shared\Message\Message;
 
 /**
  * Rejects unknown setting keys and gives subclasses typed access to resolved settings.
@@ -21,7 +22,7 @@ abstract class AbstractFieldType implements FieldTypeInterface
     {
         $errors = [];
         foreach (array_keys(array_diff_key($settings, $this->defaultSettings())) as $key) {
-            $errors[] = \sprintf('Unknown setting "%s".', $key);
+            $errors[] = new Message('field_type.unknown_setting', 'Unknown setting "%setting%".', ['setting' => (string) $key]);
         }
 
         return [...$errors, ...$this->validateKnownSettings($settings + $this->defaultSettings())];
@@ -65,7 +66,7 @@ abstract class AbstractFieldType implements FieldTypeInterface
     /**
      * @param array<string, mixed> $settings settings merged with defaults
      *
-     * @return list<string>
+     * @return list<Message>
      */
     protected function validateKnownSettings(array $settings): array
     {

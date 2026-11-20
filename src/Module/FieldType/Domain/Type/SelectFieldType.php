@@ -10,6 +10,7 @@ use App\Module\FieldType\Contract\Dto\SettingDefinition;
 use App\Module\FieldType\Contract\Dto\SettingKind;
 use App\Module\FieldType\Contract\Dto\Widget;
 use App\Module\FieldType\Contract\Dto\WidgetKind;
+use App\Shared\Message\Message;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -53,7 +54,7 @@ final class SelectFieldType extends AbstractFieldType
     {
         $options = $settings['options'];
         if (!\is_array($options) || !array_is_list($options) || [] === $options) {
-            return ['Setting "options" must be a non-empty list of {value, label} items.'];
+            return [new Message('field_type.select.options_invalid', 'Setting "options" must be a non-empty list of {value, label} items.')];
         }
 
         $errors = [];
@@ -62,24 +63,24 @@ final class SelectFieldType extends AbstractFieldType
             $value = \is_array($option) ? ($option['value'] ?? null) : null;
             $label = \is_array($option) ? ($option['label'] ?? null) : null;
             if (!\is_string($value) || '' === $value || \strlen($value) > self::MAX_VALUE_LENGTH) {
-                $errors[] = \sprintf('Option #%d: "value" must be a non-empty string of at most %d characters.', $index, self::MAX_VALUE_LENGTH);
+                $errors[] = new Message('field_type.select.option_value_invalid', 'Option #%position%: "value" must be a non-empty string of at most %max% characters.', ['position' => $index, 'max' => self::MAX_VALUE_LENGTH]);
                 continue;
             }
             if (!\is_string($label) || '' === trim($label)) {
-                $errors[] = \sprintf('Option #%d: "label" must be a non-empty string.', $index);
+                $errors[] = new Message('field_type.select.option_label_invalid', 'Option #%position%: "label" must be a non-empty string.', ['position' => $index]);
             }
             if (isset($seen[$value])) {
-                $errors[] = \sprintf('Option #%d: value "%s" is duplicated.', $index, $value);
+                $errors[] = new Message('field_type.select.option_value_twice', 'Option #%position%: value "%value%" is duplicated.', ['position' => $index, 'value' => $value]);
             }
             $seen[$value] = true;
         }
 
         $default = $settings['default'];
         if (null !== $default && (!\is_string($default) || !isset($seen[$default]))) {
-            $errors[] = 'Setting "default" must be the value of one of the options.';
+            $errors[] = new Message('field_type.select.default_invalid', 'Setting "default" must be the value of one of the options.');
         }
         if (!\is_string($settings['display']) || !isset(self::DISPLAYS[$settings['display']])) {
-            $errors[] = \sprintf('Setting "display" must be one of: %s.', implode(', ', array_keys(self::DISPLAYS)));
+            $errors[] = new Message('field_type.display_invalid', 'Setting "display" must be one of: %values%.', ['values' => implode(', ', array_keys(self::DISPLAYS))]);
         }
 
         return $errors;

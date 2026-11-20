@@ -23,6 +23,7 @@ use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Contract\SearchHandlerCatalogInterface;
 use App\Module\Schema\Contract\SchemaSynchronizerInterface;
+use App\Shared\Message\MessageTranslator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -73,6 +74,7 @@ final class AdminController extends AbstractController
         private readonly AccessCheckerInterface $access,
         private readonly LifecycleForms $lifecycle,
         private readonly TranslatorInterface $translator,
+        private readonly MessageTranslator $messageTranslator,
     ) {
     }
 
@@ -485,16 +487,16 @@ final class AdminController extends AbstractController
             foreach ($e->errors as $input => $messages) {
                 $target = $form->has($input) ? $form->get($input) : $form;
                 foreach ($messages as $message) {
-                    $target->addError(new FormError($message));
+                    $target->addError(new FormError($this->messageTranslator->trans($message)));
                 }
             }
         } catch (InvalidFieldSettings $e) {
             $target = $form->has('settings') ? $form->get('settings') : $form;
             foreach ($e->errors as $message) {
-                $target->addError(new FormError($message));
+                $target->addError(new FormError($this->messageTranslator->trans($message)));
             }
         } catch (MetadataException $e) {
-            $form->addError(new FormError($e->getMessage()));
+            $form->addError(new FormError($this->messageTranslator->trans($e->text())));
         }
 
         return false;
@@ -509,7 +511,7 @@ final class AdminController extends AbstractController
             $change();
             $this->addFlash('success', $success);
         } catch (MetadataException $e) {
-            $this->addFlash('error', $e->getMessage());
+            $this->addFlash('error', $this->messageTranslator->trans($e->text()));
         }
     }
 

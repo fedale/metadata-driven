@@ -14,6 +14,7 @@ use App\Module\Metadata\Contract\FieldValueUsageInterface;
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
 use App\Module\Metadata\Domain\Model\ObjectDefinition;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
+use App\Shared\Message\Message;
 use App\Shared\Transaction\TransactionRunner;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
@@ -76,12 +77,12 @@ final class ConfigureFieldSettingsHandler
             foreach ($object->getFields() as $other) {
                 $condition = $other->getCondition();
                 if (null !== $condition && $condition['field'] === $fieldName && \in_array($value, $condition['values'], true)) {
-                    throw InvalidMetadataDefinition::optionStillUsed($fieldName, $value, \sprintf('the condition of "%s" names it', $other->getName()));
+                    throw InvalidMetadataDefinition::optionStillUsed($fieldName, $value, new Message('metadata.option.named_by_condition', 'the condition of "%field%" names it', ['field' => $other->getName()]));
                 }
             }
             $count = $this->usage->countRecordsHolding($object->getName(), $fieldName, $value);
             if ($count > 0) {
-                throw InvalidMetadataDefinition::optionStillUsed($fieldName, $value, \sprintf('%d record(s) hold it', $count));
+                throw InvalidMetadataDefinition::optionStillUsed($fieldName, $value, new Message('metadata.option.held_by_records', 'records still hold it (%count%)', ['count' => $count]));
             }
         }
     }

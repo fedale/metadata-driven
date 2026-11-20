@@ -52,8 +52,8 @@ Some fields are not offered, by the same rules as the record form:
 - relation and many-to-many fields whose related records you may not read: the form would not
   let you pick them either.
 
-The reasons of a refused row are in English, as the other error messages of the application
-(see [Languages](i18n.md#not-yet)).
+The reasons of a refused row are in English, in every language (see
+[Languages](i18n.md#not-yet)).
 
 ### Configuration
 
