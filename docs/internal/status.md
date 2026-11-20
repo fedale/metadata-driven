@@ -246,7 +246,7 @@ revision bumped by triggers, see `architecture.md`).
   translated (`admin.*` keys in `translations/messages.*.yaml`), and so are the field types'
   names, descriptions and settings (`translations/field_types.it.yaml`, read by
   `Admin\UI\FieldTypeTexts` with the declared English text as fallback).
-- **Error messages in Italian** (branch `translated_errors`, 2026-11-20): the errors of the
+- **Error messages in Italian** (merged 2026-11-20): the errors of the
   metadata (`MetadataException` and its reasons, the field types' settings, the form and grid
   view compilers) and of the packages (`InstallRefused`, `UpgradeRefused`, the index and source
   errors, the changes and conflicts of an upgrade) are `Message`s, translated in
