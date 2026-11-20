@@ -9,6 +9,7 @@ use App\Module\Access\Contract\RecordAction;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Record\Application\Import\ImportMapping;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 
 /**
@@ -105,16 +106,7 @@ final class ImportColumns
      */
     public static function rename(array $rows, array $mapping): array
     {
-        return array_map(static function (array $row) use ($mapping): array {
-            $values = [];
-            foreach ($mapping as $header => $field) {
-                if (null !== $field) {
-                    $values[$field] = $row['values'][$header] ?? null;
-                }
-            }
-
-            return ['line' => $row['line'], 'values' => $values];
-        }, $rows);
+        return iterator_to_array(ImportMapping::rename($rows, $mapping), false);
     }
 
     private static function normalize(string $text): string

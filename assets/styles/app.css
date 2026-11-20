@@ -307,6 +307,9 @@ a:hover { color: var(--gv-color-link-hover); }
 .md-steps__item--current { color: var(--gv-color-text); font-weight: 600; }
 .md-import-columns__sample { max-width: 20rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .md-import__cancel { margin-top: .75rem; }
+/* A background import's progress, and its state in the list of imports. */
+.md-import-job__progress { inline-size: min(100%, 32rem); block-size: .75rem; accent-color: var(--gv-color-primary); }
+.md-import-job__status { font-weight: 600; }
 
 /* The machine names next to the labels, for an administrator: shown by the header's toggle. */
 .md-sheet__machine-names[aria-pressed="true"] { background: var(--gv-color-bg-hover); }

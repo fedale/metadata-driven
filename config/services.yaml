@@ -13,11 +13,16 @@ parameters:
     # true lets indexes and archives be on a private network (an intranet index); false refuses
     # private, loopback and link-local addresses, redirects included.
     app.package.allow_private_networks: false
-    # The CSV import wizard: where the uploaded files wait between its steps (a day at most), and
-    # the most rows it imports at once; a larger file goes through record:import.
+    # The CSV import wizard (docs/import.md): where the uploaded files wait between its steps (a day
+    # at most; the background imports' in its jobs/ directory, seen by the worker too), the most
+    # rows it imports in the request (a larger file goes to the worker), the most it sends to the
+    # worker (a larger one goes through record:import), and the rows of one batch there, written
+    # in one transaction.
     env(IMPORT_DRAFTS_DIR): '%kernel.project_dir%/var/imports'
     app.import.drafts_dir: '%env(resolve:IMPORT_DRAFTS_DIR)%'
     app.import.max_rows: 5000
+    app.import.max_background_rows: 1000000
+    app.import.batch_size: 1000
     # The workflows (docs/workflows.md): the longest chain of runs started by one another's writes,
     # the runs a workspace may start a minute (beyond, a write a workflow guards is refused, other
     # runs fail), and how long the runs are kept (workflow:runs:gc).
@@ -120,6 +125,10 @@ when@test:
         app.workflow.secrets_key: 'dGVzdC10ZXN0LXRlc3QtdGVzdC10ZXN0LXRlc3QtMzI='
         app.workflow.http_retry_delay_ms: 0
         app.import.drafts_dir: '%kernel.cache_dir%/imports'
+        # Small enough for a test file to go to the background, in batches.
+        app.import.max_rows: 3
+        app.import.batch_size: 2
+        app.import.max_background_rows: 8
         # Tests have no request or command to name a workspace: every connection starts in the
         # installation's first one.
         app.workspace.fallback: 'default'

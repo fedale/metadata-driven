@@ -61,7 +61,7 @@ final class RecordImporter
     }
 
     /**
-     * Imports rows already read, their values named by field.
+     * Imports rows already read, their values named by field, in one transaction.
      *
      * @param list<array{line: int, values: array<string, string|null>}> $rows           each with its line in the file, for the reasons
      * @param array<string, string>                                      $matches        relation field => the unique field of its target its cells hold
@@ -72,32 +72,101 @@ final class RecordImporter
      */
     public function importRows(string $objectName, array $rows, ?string $key = null, array $matches = [], bool $dryRun = false, ?string $filesDirectory = null): ImportReport
     {
+        $plan = $this->prepare($objectName, array_map(strval(...), array_keys($rows[0]['values'] ?? [])), $key, $matches, $filesDirectory);
+        $reasons = [...$plan->problems, ...$this->keyProblems($plan, $rows)];
+        if ([] !== $reasons) {
+            throw new ImportRefused($reasons);
+        }
+
+        $batch = $this->importBatch($plan, $rows, $dryRun);
+        if ([] !== $batch->reasons) {
+            throw new ImportRefused($batch->reasons);
+        }
+
+        return new ImportReport($batch->created, $batch->updated, $dryRun);
+    }
+
+    /**
+     * What an import of these columns needs, checked once: the fields of the header, the key, the
+     * matches. Its problems are the header's and the matches'; a key or a match naming no unique
+     * field is refused at once.
+     *
+     * @param list<string>          $header         the fields the columns fill
+     * @param array<string, string> $matches        relation field => the unique field of its target its cells hold
+     * @param string|null           $filesDirectory where the paths of file cells lead; null: no file column
+     *
+     * @throws ImportRefused     the key or a match names no unique field
+     * @throws MetadataException the object does not exist
+     */
+    public function prepare(string $objectName, array $header, ?string $key = null, array $matches = [], ?string $filesDirectory = null): ImportPlan
+    {
         $object = $this->metadata->getObject($objectName);
-        $header = array_map(strval(...), array_keys($rows[0]['values'] ?? []));
         $keyField = null === $key ? null : $this->uniqueField($object, $key, '--key');
-        $reasons = [...$this->headerProblems($object, $header, null !== $filesDirectory), ...$this->duplicateKeys($rows, $keyField)];
+        $problems = $this->headerProblems($object, $header, null !== $filesDirectory);
         $targets = [];
         foreach ($matches as $fieldName => $targetFieldName) {
             $field = $object->fields[$fieldName] ?? null;
             $target = $field?->target();
             if (null === $field || null === $target) {
-                $reasons[] = \sprintf('--match: "%s" is no relation or many-to-many field of "%s".', $fieldName, $object->name);
+                $problems[] = \sprintf('--match: "%s" is no relation or many-to-many field of "%s".', $fieldName, $object->name);
                 continue;
             }
             $targets[$fieldName] = [$this->metadata->getObject($target), $this->uniqueField($this->metadata->getObject($target), $targetFieldName, '--match')];
         }
-        if ([] !== $reasons) {
-            throw new ImportRefused($reasons);
+
+        return new ImportPlan($object, $keyField, $targets, $filesDirectory, $problems);
+    }
+
+    /**
+     * The missing and repeated keys of all the rows: a pass of its own, before any batch, which
+     * keeps only the keys in memory.
+     *
+     * @param iterable<array{line: int, values: array<string, string|null>}> $rows
+     *
+     * @return list<string>
+     */
+    public function keyProblems(ImportPlan $plan, iterable $rows): array
+    {
+        if (null === $plan->keyField) {
+            return [];
+        }
+        $key = $plan->keyField->name;
+        $problems = [];
+        $seen = [];
+        foreach ($rows as ['line' => $line, 'values' => $values]) {
+            $value = trim((string) ($values[$key] ?? ''));
+            if ('' === $value) {
+                $problems[] = \sprintf('Line %d: %s: the key is missing.', $line, $key);
+            } elseif (isset($seen[$value])) {
+                $problems[] = \sprintf('Line %d: %s: line %d has the same key.', $line, $key, $seen[$value]);
+            }
+            $seen[$value] ??= $line;
         }
 
+        return $problems;
+    }
+
+    /**
+     * Writes rows in one transaction, rolled back on a dry run or when a row is refused (its
+     * reasons in the result, nothing written). $beforeCommit runs inside the transaction, only
+     * when it commits: what it writes is kept with the rows, or not at all.
+     *
+     * @param list<array{line: int, values: array<string, string|null>}> $rows
+     * @param (callable(ImportBatch): void)|null                         $beforeCommit
+     */
+    public function importBatch(ImportPlan $plan, array $rows, bool $dryRun = false, ?callable $beforeCommit = null): ImportBatch
+    {
+        $object = $plan->object;
+        $keyField = $plan->keyField;
         $existing = null === $keyField ? [] : $this->store->idsByValues($object, $keyField, array_values(array_filter(array_map(
             static fn (array $row): ?string => null === $row['values'][$keyField->name] ? null : trim($row['values'][$keyField->name]),
             $rows,
         ), is_string(...))));
-        $references = $this->references($object, $rows, $targets);
+        $references = $this->references($object, $rows, $plan->targets);
+        $filesDirectory = $plan->filesDirectory;
 
         try {
-            return $this->transactions->run(function () use ($object, $rows, $keyField, $existing, $references, $filesDirectory, $dryRun): ImportReport {
+            return $this->transactions->run(function () use ($object, $rows, $keyField, $existing, $references, $filesDirectory, $dryRun, $beforeCommit): ImportBatch {
                 $created = 0;
                 $updated = 0;
                 $reasons = [];
@@ -122,19 +191,18 @@ final class RecordImporter
                         }
                     }
                 }
-                $report = new ImportReport($created, $updated, $dryRun);
+                $batch = new ImportBatch($created, $updated, $reasons);
                 if ([] !== $reasons || $dryRun) {
-                    throw new ImportRolledBack($report, $reasons);
+                    throw new ImportRolledBack($batch);
+                }
+                if (null !== $beforeCommit) {
+                    $beforeCommit($batch);
                 }
 
-                return $report;
+                return $batch;
             });
         } catch (ImportRolledBack $rolledBack) {
-            if ([] !== $rolledBack->reasons) {
-                throw new ImportRefused($rolledBack->reasons);
-            }
-
-            return $rolledBack->report;
+            return $rolledBack->batch;
         }
     }
 
@@ -239,31 +307,6 @@ final class RecordImporter
             } elseif (!$files && 'file' === $object->fields[$name]->type) {
                 $problems[] = \sprintf('Column "%s": a file field is imported from the console only (record:import), with its files next to the CSV file.', $name);
             }
-        }
-
-        return $problems;
-    }
-
-    /**
-     * @param list<array{line: int, values: array<string, string|null>}> $rows
-     *
-     * @return list<string>
-     */
-    private function duplicateKeys(array $rows, ?FieldDefinitionDto $key): array
-    {
-        if (null === $key) {
-            return [];
-        }
-        $problems = [];
-        $seen = [];
-        foreach ($rows as ['line' => $line, 'values' => $values]) {
-            $value = trim((string) ($values[$key->name] ?? ''));
-            if ('' === $value) {
-                $problems[] = \sprintf('Line %d: %s: the key is missing.', $line, $key->name);
-            } elseif (isset($seen[$value])) {
-                $problems[] = \sprintf('Line %d: %s: line %d has the same key.', $line, $key->name, $seen[$value]);
-            }
-            $seen[$value] ??= $line;
         }
 
         return $problems;

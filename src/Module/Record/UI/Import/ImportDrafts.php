@@ -39,6 +39,21 @@ final class ImportDrafts
         return $draft;
     }
 
+    /**
+     * A draft for a file the wizard did not upload (a background import's, given back for its
+     * columns): the caller puts the file at path().
+     *
+     * @param array<string, string|null> $mapping
+     * @param array<string, string>      $matches
+     */
+    public function adopt(string $object, string $originalName, string $separator, int $rows, array $mapping, ?string $key, array $matches): ImportDraft
+    {
+        $draft = new ImportDraft(Uuid::v4()->toRfc4122(), $object, $originalName, $separator, $mapping, $key, $matches, rows: $rows);
+        $this->save($draft);
+
+        return $draft;
+    }
+
     public function get(string $object, string $id): ?ImportDraft
     {
         $data = $this->all()[$id] ?? null;
@@ -57,12 +72,20 @@ final class ImportDrafts
 
     public function delete(ImportDraft $draft): void
     {
-        $drafts = $this->all();
-        unset($drafts[$draft->id]);
-        $this->requests->getSession()->set(self::SESSION_KEY, $drafts);
+        $this->forget($draft);
         if (is_file($this->path($draft))) {
             unlink($this->path($draft));
         }
+    }
+
+    /**
+     * Removes the draft from the session, its file left where it is (moved by the caller).
+     */
+    public function forget(ImportDraft $draft): void
+    {
+        $drafts = $this->all();
+        unset($drafts[$draft->id]);
+        $this->requests->getSession()->set(self::SESSION_KEY, $drafts);
     }
 
     public function path(ImportDraft $draft): string

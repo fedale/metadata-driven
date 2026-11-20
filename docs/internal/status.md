@@ -317,8 +317,13 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   two v1 versions with their checksums and signatures unchanged), the app's branch merged. The
   rename is complete. After it: no "row" in the guides means a record (checked), and a virtual
   column's `template` keeps its name, by the user's choice.
-- **CSV import**, (C) only: imports of very large files in the background, with Messenger. (A)
-  and (B) are done (see "Done").
+- **CSV import**, (C): imports of very large files in the background, with Messenger. Plan in
+  [csv-import-background-plan.md](csv-import-background-plan.md), decided with the user on
+  2026-11-20 (batches committed, above `app.import.max_rows`, the check in the background too,
+  the job's page and the bell). Done on branch `csv_import_background` (2026-11-20), waiting for
+  the user's review: `core.record_import` (migration `Version20261120100000`; run `make db`),
+  `BackgroundImports`, `CheckImport` / `RunImport` on `async`, the pages at
+  `/o/<object>/imports`, guide import.md. (A) and (B) are done (see "Done").
 - Still English in every language (see i18n.md, "Not yet"): the problems the package format
   finds (`Fedale\PackageFormat\Problem`, from the format library: a key and parameters there
   first, then their translation here), the errors of a workflow definition, the reasons of a

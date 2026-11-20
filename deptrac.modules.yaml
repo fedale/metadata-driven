@@ -165,7 +165,7 @@ deptrac:
     Search: [SearchContract, MetadataContract, FieldTypeContract, Shared]
     SearchContract: [MetadataContract, Shared]
 
-    Record: [RecordContract, MetadataContract, FieldTypeContract, ValidationContract, SearchContract, AccessContract, FileContract, Shared]
+    Record: [RecordContract, MetadataContract, FieldTypeContract, ValidationContract, SearchContract, AccessContract, FileContract, UserContract, NotificationContract, Shared]
     RecordContract: [MetadataContract, Shared]
 
     View: [ViewContract, MetadataContract, FieldTypeContract, RecordContract, SearchContract, AccessContract, Shared]
