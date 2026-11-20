@@ -320,8 +320,7 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
 - **CSV import**, (C): imports of very large files in the background, with Messenger. Plan in
   [csv-import-background-plan.md](csv-import-background-plan.md), decided with the user on
   2026-11-20 (batches committed, above `app.import.max_rows`, the check in the background too,
-  the job's page and the bell). Done on branch `csv_import_background` (2026-11-20), waiting for
-  the user's review: `core.record_import` (migration `Version20261120100000`; run `make db`),
+  the job's page and the bell). Merged into `main` on 2026-11-20: `core.record_import` (migration `Version20261120100000`; run `make db`),
   `BackgroundImports`, `CheckImport` / `RunImport` on `async`, the pages at
   `/o/<object>/imports`, guide import.md. (A) and (B) are done (see "Done").
 - Still English in every language (see i18n.md, "Not yet"): the problems the package format

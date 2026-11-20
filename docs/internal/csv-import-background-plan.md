@@ -1,7 +1,6 @@
 # Plan: CSV imports in the background
 
-Status: **done** (2026-11-20), all four phases, on branch `csv_import_background`, waiting for the
-user's review.
+Status: **done** (2026-11-20), all four phases, merged into `main` on 2026-11-20.
 
 Item (C) of "CSV import" in [status.md](status.md): the import wizard (item B,
 [csv-import-wizard-plan.md](csv-import-wizard-plan.md)) takes files of any size, the large
