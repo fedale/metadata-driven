@@ -55,7 +55,7 @@ final class RenameObjectHandler
                 throw ObjectDefinitionNotFound::named($old);
             }
             if ($object->isSystem()) {
-                throw InvalidMetadataDefinition::systemObject($old, 'renamed');
+                throw InvalidMetadataDefinition::systemObjectRenamed($old);
             }
             if ($old === $new) {
                 return [];

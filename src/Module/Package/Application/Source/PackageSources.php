@@ -7,6 +7,7 @@ namespace App\Module\Package\Application\Source;
 use App\Module\Package\Domain\Exception\PackageSourceFailed;
 use App\Module\Package\Domain\Model\PackageSource;
 use App\Module\Package\Domain\Repository\PackageSourceRepository;
+use App\Shared\Message\Message;
 use App\Shared\Workspace\CurrentWorkspace;
 use Fedale\PackageFormat\Archive;
 use Fedale\PackageFormat\Constraint;
@@ -78,7 +79,7 @@ final class PackageSources
         if (null !== $this->catalogUrl && '' !== $this->catalogUrl) {
             // The catalog is signed, always: an unsigned catalog would be anybody's.
             if (null === $this->catalogKey || !Signature::isPublicKey($this->catalogKey)) {
-                throw new PackageSourceFailed('PACKAGE_CATALOG_URL is set without PACKAGE_CATALOG_KEY, the public key the catalog signs with.');
+                throw new PackageSourceFailed(new Message('package.source.catalog_key_missing', 'PACKAGE_CATALOG_URL is set without PACKAGE_CATALOG_KEY, the public key the catalog signs with.'));
             }
             $indexes[] = ['name' => self::CATALOG, 'url' => $this->catalogUrl, 'key' => $this->catalogKey, 'shared' => true];
         }
@@ -101,23 +102,23 @@ final class PackageSources
     public function add(string $name, string $url, ?string $publicKey = null, bool $unsigned = false): void
     {
         if (1 !== preg_match(self::NAME_PATTERN, $name) || self::CATALOG === $name) {
-            throw new PackageSourceFailed(\sprintf('"%s" cannot name an index: lowercase letters, digits and hyphens, and not "%s".', $name, self::CATALOG));
+            throw new PackageSourceFailed(new Message('package.source.invalid_index_name', '"%name%" cannot name an index: lowercase letters, digits and hyphens, and not "%catalog%".', ['name' => $name, 'catalog' => self::CATALOG]));
         }
         if ($this->sources->isNameTaken($name)) {
-            throw new PackageSourceFailed(\sprintf('An index is already named "%s".', $name));
+            throw new PackageSourceFailed(new Message('package.source.index_name_taken', 'An index is already named "%name%".', ['name' => $name]));
         }
         if (null === $publicKey && !$unsigned) {
-            throw new PackageSourceFailed('Give the public key its entries are signed with (--key), or accept it unsigned (--unsigned), trusting its checksums only.');
+            throw new PackageSourceFailed(new Message('package.source.key_or_unsigned', 'Give the public key its entries are signed with (--key), or accept it unsigned (--unsigned), trusting its checksums only.'));
         }
         if (null !== $publicKey && !Signature::isPublicKey($publicKey)) {
-            throw new PackageSourceFailed('This is not an Ed25519 public key in base64.');
+            throw new PackageSourceFailed(new Message('package.source.not_a_key', 'This is not an Ed25519 public key in base64.'));
         }
         $index = $this->index($url);
         if (null !== $publicKey) {
             foreach ($index->names() as $package) {
                 foreach ($index->versions($package) as $entry) {
                     if (!Signature::verify($entry, $publicKey)) {
-                        throw new PackageSourceFailed(\sprintf('%s %s in this index is not signed with this key.', $entry->name, $entry->version));
+                        throw new PackageSourceFailed(new Message('package.source.entry_not_signed', '%name% %version% in this index is not signed with this key.', ['name' => $entry->name, 'version' => $entry->version]));
                     }
                 }
             }
@@ -130,9 +131,9 @@ final class PackageSources
      */
     public function remove(string $name): void
     {
-        $source = $this->sources->findByName($name) ?? throw new PackageSourceFailed(\sprintf('No index is named "%s".', $name));
+        $source = $this->sources->findByName($name) ?? throw new PackageSourceFailed(new Message('package.source.no_index_named', 'No index is named "%name%".', ['name' => $name]));
         if ($this->workspace->isSelected() && $this->sources->isShared($source)) {
-            throw new PackageSourceFailed(\sprintf('"%s" is offered to every workspace: only the system admin removes it (system:package:repo remove %s).', $name, $name));
+            throw new PackageSourceFailed(new Message('package.source.shared_index', '"%name%" is offered to every workspace: only the system admin removes it (system:package:repo remove %name%).', ['name' => $name]));
         }
         $this->sources->remove($source);
     }
@@ -145,6 +146,7 @@ final class PackageSources
         try {
             return RepositoryIndex::fromJson($this->fetch($url, self::MAX_INDEX_BYTES), $url);
         } catch (InvalidIndex $e) {
+            // The format's problems are English only.
             throw new PackageSourceFailed($e->getMessage(), 0, $e);
         }
     }
@@ -187,7 +189,7 @@ final class PackageSources
         if (null !== $source) {
             $indexes = array_values(array_filter($indexes, static fn (array $index): bool => $index['name'] === $source));
             if ([] === $indexes) {
-                throw new PackageSourceFailed(\sprintf('No index is named "%s" (metadata:package:repo list).', $source));
+                throw new PackageSourceFailed(new Message('package.source.no_index_named_list', 'No index is named "%name%" (metadata:package:repo list).', ['name' => $source]));
             }
         } else {
             $preferred = array_values(array_filter($indexes, static fn (array $index): bool => $index['url'] === $prefer));
@@ -202,16 +204,16 @@ final class PackageSources
             }
         }
         if ([] === $found) {
-            throw new PackageSourceFailed(\sprintf('No index offers %s.', $name));
+            throw new PackageSourceFailed(new Message('package.source.not_offered', 'No index offers %name%.', ['name' => $name]));
         }
         if (\count($found) > 1) {
-            throw new PackageSourceFailed(\sprintf('%s is offered by %s: choose one with --repo.', $name, implode(' and ', array_map(static fn (array $pair): string => $pair[0]['name'], $found))));
+            throw new PackageSourceFailed(new Message('package.source.offered_by_many', '%name% is offered by %indexes%: choose one with --repo.', ['name' => $name, 'indexes' => self::indexNames($found)]));
         }
 
         [$index, $read] = $found[0];
         $entry = null === $version ? $read->latest($name) : $read->find($name, $version);
         if (null === $entry) {
-            throw new PackageSourceFailed(null === $version ? \sprintf('%s offers no version of %s for format %s that is not yanked.', $index['name'], $name, implode(' or ', Format::READS)) : \sprintf('%s offers no version %s of %s.', $index['name'], $version, $name));
+            throw new PackageSourceFailed(null === $version ? new Message('package.source.no_version', '%index% offers no version of %name% for format %formats% that is not yanked.', ['index' => $index['name'], 'name' => $name, 'formats' => self::formats()]) : new Message('package.source.no_such_version', '%index% offers no version %version% of %name%.', ['index' => $index['name'], 'version' => $version, 'name' => $name]));
         }
 
         return new LocatedPackage($index['name'], $index['url'], $entry, $index['key']);
@@ -250,10 +252,10 @@ final class PackageSources
             }
         }
         if ([] === $found) {
-            throw new PackageSourceFailed(\sprintf('No index offers %s, which is required in version %s.', $name, $constraint));
+            throw new PackageSourceFailed(new Message('package.source.required_not_offered', 'No index offers %name%, which is required in version %constraint%.', ['name' => $name, 'constraint' => (string) $constraint]));
         }
         if (\count($found) > 1) {
-            throw new PackageSourceFailed(\sprintf('%s, which is required, is offered by %s: install it first, choosing one with --repo.', $name, implode(' and ', array_map(static fn (array $pair): string => $pair[0]['name'], $found))));
+            throw new PackageSourceFailed(new Message('package.source.required_offered_by_many', '%name%, which is required, is offered by %indexes%: install it first, choosing one with --repo.', ['name' => $name, 'indexes' => self::indexNames($found)]));
         }
 
         [$index, $read] = $found[0];
@@ -262,7 +264,7 @@ final class PackageSources
             static fn (IndexEntry $entry): bool => !$entry->yanked && \in_array($entry->requires['format'] ?? null, Format::READS, true) && $constraint->allows($entry->version),
         ));
         if ([] === $fitting) {
-            throw new PackageSourceFailed(\sprintf('%s offers no version of %s that fits %s and is not yanked.', $index['name'], $name, $constraint));
+            throw new PackageSourceFailed(new Message('package.source.no_fitting_version', '%index% offers no version of %name% that fits %constraint% and is not yanked.', ['index' => $index['name'], 'name' => $name, 'constraint' => (string) $constraint]));
         }
         usort($fitting, static fn (IndexEntry $a, IndexEntry $b): int => version_compare($b->version, $a->version));
 
@@ -279,14 +281,14 @@ final class PackageSources
     {
         $entry = $located->entry;
         if (null !== $located->publicKey && !Signature::verify($entry, $located->publicKey)) {
-            throw new PackageSourceFailed(\sprintf('%s %s is not signed with the key of %s: it was not downloaded.', $entry->name, $entry->version, $located->source));
+            throw new PackageSourceFailed(new Message('package.source.not_signed', '%name% %version% is not signed with the key of %index%: it was not downloaded.', ['name' => $entry->name, 'version' => $entry->version, 'index' => $located->source]));
         }
         if (!\in_array($entry->requires['format'] ?? null, Format::READS, true)) {
-            throw new PackageSourceFailed(\sprintf('%s %s is of format %s; this instance reads %s.', $entry->name, $entry->version, $entry->requires['format'] ?? '?', implode(' or ', Format::READS)));
+            throw new PackageSourceFailed(new Message('package.source.wrong_format', '%name% %version% is of format %format%; this instance reads %formats%.', ['name' => $entry->name, 'version' => $entry->version, 'format' => $entry->requires['format'] ?? '?', 'formats' => self::formats()]));
         }
         $content = $this->fetch($entry->url, $this->maxDownloadMb * 1_000_000);
         if (!hash_equals($entry->sha256, hash('sha256', $content))) {
-            throw new PackageSourceFailed(\sprintf('The archive of %s %s is not the one its index lists: its checksum differs. Nothing was unpacked.', $entry->name, $entry->version));
+            throw new PackageSourceFailed(new Message('package.source.checksum_differs', 'The archive of %name% %version% is not the one its index lists: its checksum differs. Nothing was unpacked.', ['name' => $entry->name, 'version' => $entry->version]));
         }
 
         $directory = sys_get_temp_dir().'/md-package-'.bin2hex(random_bytes(8));
@@ -297,7 +299,8 @@ final class PackageSources
         } catch (InvalidPackage $e) {
             $this->discard($directory);
 
-            throw new PackageSourceFailed(\sprintf('%s %s: %s', $entry->name, $entry->version, $e->getMessage()), 0, $e);
+            // The format's problem is English only.
+            throw new PackageSourceFailed(new Message('package.source.invalid_archive', '%name% %version%: %problem%', ['name' => $entry->name, 'version' => $entry->version, 'problem' => $e->getMessage()]), 0, $e);
         } finally {
             (new Filesystem())->remove($archive);
         }
@@ -316,12 +319,12 @@ final class PackageSources
     private function fetch(string $url, int $maxBytes): string
     {
         if (!str_starts_with($url, 'https://')) {
-            throw new PackageSourceFailed(\sprintf('%s is not an https address: packages are fetched over https only.', $url));
+            throw new PackageSourceFailed(new Message('package.source.not_https', '%url% is not an https address: packages are fetched over https only.', ['url' => $url]));
         }
         try {
             $response = $this->http->request('GET', $url, ['max_redirects' => 5, 'timeout' => 30]);
             if (200 !== $response->getStatusCode()) {
-                throw new PackageSourceFailed(\sprintf('%s answered %d.', $url, $response->getStatusCode()));
+                throw new PackageSourceFailed(new Message('package.source.http_status', '%url% answered %status%.', ['url' => $url, 'status' => $response->getStatusCode()]));
             }
             $content = '';
             foreach ($this->http->stream($response) as $chunk) {
@@ -329,18 +332,49 @@ final class PackageSources
                 if (\strlen($content) > $maxBytes) {
                     $response->cancel();
 
-                    throw new PackageSourceFailed(\sprintf('%s is larger than %d MB.', $url, max(1, intdiv($maxBytes, 1_000_000))));
+                    throw new PackageSourceFailed(new Message('package.source.too_large', '%url% is larger than %max% MB.', ['url' => $url, 'max' => max(1, intdiv($maxBytes, 1_000_000))]));
                 }
             }
             // A redirect may not leave https.
             $final = $response->getInfo('url');
             if (!\is_string($final) || !str_starts_with($final, 'https://')) {
-                throw new PackageSourceFailed(\sprintf('%s redirected out of https.', $url));
+                throw new PackageSourceFailed(new Message('package.source.redirected', '%url% redirected out of https.', ['url' => $url]));
             }
 
             return $content;
         } catch (HttpException $e) {
-            throw new PackageSourceFailed(\sprintf('%s cannot be fetched: %s', $url, $e->getMessage()), 0, $e);
+            // The HTTP client's error is technical, and English only.
+            throw new PackageSourceFailed(new Message('package.source.unreachable', '%url% cannot be fetched: %error%', ['url' => $url, 'error' => $e->getMessage()]), 0, $e);
         }
+    }
+
+    /**
+     * "catalog and acme": the indexes offering a package, the words translatable.
+     *
+     * @param list<array{array{name: string}, RepositoryIndex}> $found
+     */
+    private static function indexNames(array $found): string|Message
+    {
+        $names = array_map(static fn (array $pair): string => $pair[0]['name'], $found);
+        $joined = array_shift($names) ?? '';
+        foreach ($names as $name) {
+            $joined = new Message('package.source.and', '%first% and %second%', ['first' => $joined, 'second' => $name]);
+        }
+
+        return $joined;
+    }
+
+    /**
+     * The formats this instance reads, "metadata-driven/v1 or metadata-driven/v2".
+     */
+    private static function formats(): Message
+    {
+        $formats = Format::READS;
+        $joined = array_shift($formats);
+        foreach ($formats as $format) {
+            $joined = new Message('package.source.or', '%first% or %second%', ['first' => $joined, 'second' => $format]);
+        }
+
+        return $joined;
     }
 }

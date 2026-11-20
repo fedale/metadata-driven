@@ -151,7 +151,7 @@ final class PackageWorkflowsTest extends KernelTestCase
             $this->upgrade($changed);
             self::fail('A conflict.');
         } catch (UpgradeRefused $e) {
-            self::assertSame(['workflows/restock.yaml: change workflow acme.workflow.restock, changed here too'], $e->reasons);
+            self::assertSame(['workflows/restock.yaml: change workflow acme.workflow.restock, changed here too'], array_map(strval(...), $e->reasons));
         }
         $this->upgrade($changed, Strategy::Overwrite);
 
@@ -236,7 +236,7 @@ final class PackageWorkflowsTest extends KernelTestCase
             self::getContainer()->get(PackageInstaller::class)->install($package, ExamplePackage::DIRECTORY);
             self::fail(\sprintf('Refused: %s', $reason));
         } catch (InstallRefused $e) {
-            self::assertContains($reason, $e->reasons, implode("\n", $e->reasons));
+            self::assertContains($reason, array_map(strval(...), $e->reasons), implode("\n", $e->reasons));
         }
     }
 
@@ -246,7 +246,7 @@ final class PackageWorkflowsTest extends KernelTestCase
             $this->upgrade($package);
             self::fail(\sprintf('Refused: %s', $reason));
         } catch (UpgradeRefused $e) {
-            self::assertContains($reason, $e->reasons, implode("\n", $e->reasons));
+            self::assertContains($reason, array_map(strval(...), $e->reasons), implode("\n", $e->reasons));
         }
     }
 

@@ -8,6 +8,7 @@ use App\Module\Metadata\Application\Command\ConfigureObjectLabelCommand;
 use App\Module\Metadata\Contract\Event\MetadataChanged;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
 use App\Module\Metadata\Contract\FieldTypeCatalogInterface;
+use App\Module\Metadata\Domain\Exception\FieldUse;
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
 use App\Shared\Transaction\TransactionRunner;
@@ -34,13 +35,13 @@ final class ConfigureObjectLabelHandler
 
             $field = $command->field;
             if (null !== $field && $object->hasField($field) && $this->fieldTypes->isWriteOnly($object->getField($field)->getType())) {
-                throw InvalidMetadataDefinition::writeOnlyField($field, 'the label of the records');
+                throw InvalidMetadataDefinition::writeOnlyField($field, FieldUse::Label);
             }
             if (null !== $field && $object->hasField($field) && $object->getField($field)->isManyToMany()) {
-                throw InvalidMetadataDefinition::manyToManyField($field, 'the label of the records');
+                throw InvalidMetadataDefinition::manyToManyField($field, FieldUse::Label);
             }
             if (null !== $field && $object->hasField($field) && !$this->fieldTypes->isSortable($type = $object->getField($field)->getType())) {
-                throw InvalidMetadataDefinition::noTextValue($field, $type, 'the label of the records');
+                throw InvalidMetadataDefinition::noTextValue($field, $type, FieldUse::Label);
             }
             $object->useAsLabel($field);
             $this->objects->save($object);

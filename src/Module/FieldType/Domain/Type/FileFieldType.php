@@ -15,6 +15,7 @@ use App\Module\FieldType\Contract\Exception\InvalidFieldValue;
 use App\Module\FieldType\Domain\Constraint\NewFile;
 use App\Module\File\Contract\FileStorageInterface;
 use App\Module\Metadata\Contract\Dto\FileListSettings;
+use App\Shared\Message\Message;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -77,32 +78,32 @@ final class FileFieldType extends AbstractFieldType
         $errors = [];
         $accept = $settings['accept'];
         if (null !== $accept && !\is_string($accept)) {
-            $errors[] = 'Setting "accept" must be a string.';
+            $errors[] = new Message('field_type.file.accept_not_string', 'Setting "accept" must be a string.');
         } elseif (\is_string($accept)) {
             foreach (self::types($accept) as $type) {
                 if (1 !== preg_match(self::MIME_PATTERN, $type)) {
-                    $errors[] = \sprintf('Setting "accept": "%s" is not a MIME type (e.g. application/pdf, image/*).', $type);
+                    $errors[] = new Message('field_type.file.accept_not_mime_type', 'Setting "accept": "%type%" is not a MIME type (e.g. application/pdf, image/*).', ['type' => $type]);
                 }
             }
         }
         if (!self::isIntBetween($settings['maxSize'], 1, self::MAX_SIZE_MB)) {
-            $errors[] = \sprintf('Setting "maxSize" must be an integer between 1 and %d (MB).', self::MAX_SIZE_MB);
+            $errors[] = new Message('field_type.file.max_size_invalid', 'Setting "maxSize" must be an integer between 1 and %max% (MB).', ['max' => self::MAX_SIZE_MB]);
         }
         if (!\is_bool($settings['multiple'])) {
-            $errors[] = 'Setting "multiple" must be a boolean.';
+            $errors[] = new Message('field_type.setting_not_boolean', 'Setting "%setting%" must be a boolean.', ['setting' => 'multiple']);
         }
         $max = $settings['max'];
         if (null !== $max && !self::isIntBetween($max, 1, self::MAX_FILES)) {
-            $errors[] = \sprintf('Setting "max" must be an integer between 1 and %d, or empty for no limit.', self::MAX_FILES);
+            $errors[] = new Message('field_type.file.max_invalid', 'Setting "max" must be an integer between 1 and %max%, or empty for no limit.', ['max' => self::MAX_FILES]);
         } elseif (null !== $max && true !== $settings['multiple']) {
-            $errors[] = 'Setting "max" applies to a field holding several files ("multiple") only.';
+            $errors[] = new Message('field_type.file.max_without_multiple', 'Setting "max" applies to a field holding several files ("multiple") only.');
         }
         if (!\is_bool($settings['image'])) {
-            $errors[] = 'Setting "image" must be a boolean.';
+            $errors[] = new Message('field_type.setting_not_boolean', 'Setting "%setting%" must be a boolean.', ['setting' => 'image']);
         } elseif ($settings['image'] && \is_string($accept)) {
             foreach (self::types($accept) as $type) {
                 if (!str_starts_with($type, 'image/')) {
-                    $errors[] = \sprintf('Setting "accept": "%s" is not an image type, and the field accepts images only.', $type);
+                    $errors[] = new Message('field_type.file.accept_not_image_type', 'Setting "accept": "%type%" is not an image type, and the field accepts images only.', ['type' => $type]);
                 }
             }
         }

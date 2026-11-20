@@ -11,8 +11,10 @@ use App\Module\Metadata\Contract\Event\MetadataChanged;
 use App\Module\Metadata\Contract\Event\ObjectUniqueTogetherConfigured;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
 use App\Module\Metadata\Contract\FieldTypeCatalogInterface;
+use App\Module\Metadata\Domain\Exception\FieldUse;
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
+use App\Shared\Message\Message;
 use App\Shared\Transaction\TransactionRunner;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
@@ -48,7 +50,7 @@ final class ConfigureUniqueTogetherHandler
                         $covered = $covered || (\in_array($settings->throughSource, $set, true) && \in_array($settings->throughTarget, $set, true));
                     }
                     if (!$covered) {
-                        throw InvalidMetadataDefinition::stillUsed(\sprintf('The unique set (%s) of "%s"', implode(', ', $fields), $object->getName()), 'removed', [\sprintf('many-to-many field "%s.%s" goes through it', $source->name, $field->name)]);
+                        throw InvalidMetadataDefinition::uniqueTogetherInUse($object->getName(), $fields, [new Message('metadata.usage.many_to_many_through', 'many-to-many field "%object%.%field%" goes through it', ['object' => $source->name, 'field' => $field->name])]);
                     }
                 }
             } else {
@@ -58,10 +60,10 @@ final class ConfigureUniqueTogetherHandler
                     }
                     $field = $object->getField($name);
                     if ($field->isManyToMany()) {
-                        throw InvalidMetadataDefinition::manyToManyField($name, 'unique');
+                        throw InvalidMetadataDefinition::manyToManyField($name, FieldUse::Unique);
                     }
                     if ($this->fieldTypes->isWriteOnly($field->getType())) {
-                        throw InvalidMetadataDefinition::writeOnlyField($name, 'unique');
+                        throw InvalidMetadataDefinition::writeOnlyField($name, FieldUse::Unique);
                     }
                     if (!$this->fieldTypes->supportsUnique($field->getType())) {
                         throw InvalidMetadataDefinition::notUniqueType($name, $field->getType());
@@ -71,7 +73,7 @@ final class ConfigureUniqueTogetherHandler
                 // The records must already follow the rule: the index would refuse them.
                 $duplicates = $this->duplicates->count($object->getName(), $fields);
                 if ($duplicates > 0) {
-                    throw InvalidMetadataDefinition::invalidUniqueTogether($object->getName(), $fields, \sprintf('%d records share their values with another one; change or delete them first', $duplicates));
+                    throw InvalidMetadataDefinition::invalidUniqueTogether($object->getName(), $fields, new Message('metadata.unique_together.duplicates', '%count% records share their values with another one; change or delete them first', ['count' => $duplicates]));
                 }
             }
             $this->objects->save($object);

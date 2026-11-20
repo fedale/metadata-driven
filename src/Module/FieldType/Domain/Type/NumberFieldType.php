@@ -11,6 +11,7 @@ use App\Module\FieldType\Contract\Dto\SettingKind;
 use App\Module\FieldType\Contract\Dto\Widget;
 use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\Exception\InvalidFieldValue;
+use App\Shared\Message\Message;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -56,15 +57,15 @@ final class NumberFieldType extends AbstractFieldType
     {
         $errors = [];
         if (!self::isIntBetween($settings['decimals'], 0, self::MAX_DECIMALS)) {
-            $errors[] = \sprintf('Setting "decimals" must be an integer between 0 and %d.', self::MAX_DECIMALS);
+            $errors[] = new Message('field_type.setting_not_integer_between', 'Setting "%setting%" must be an integer between %min% and %max%.', ['setting' => 'decimals', 'min' => 0, 'max' => self::MAX_DECIMALS]);
         }
         foreach (['min', 'max'] as $bound) {
             if (null !== $settings[$bound] && !self::isIntBetween($settings[$bound], self::INTEGER_MIN, self::INTEGER_MAX)) {
-                $errors[] = \sprintf('Setting "%s" must be an integer.', $bound);
+                $errors[] = new Message('field_type.setting_not_integer', 'Setting "%setting%" must be an integer.', ['setting' => $bound]);
             }
         }
         if (\is_int($settings['min']) && \is_int($settings['max']) && $settings['min'] > $settings['max']) {
-            $errors[] = 'Setting "min" must not be greater than "max".';
+            $errors[] = new Message('field_type.number.min_above_max', 'Setting "min" must not be greater than "max".');
         }
 
         return $errors;

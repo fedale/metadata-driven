@@ -148,7 +148,7 @@ final class PackageRequiresTest extends KernelTestCase
             $this->install($package);
             self::fail(\sprintf('Refused: %s', $reason));
         } catch (InstallRefused $e) {
-            self::assertNotEmpty(array_filter($e->reasons, static fn (string $given): bool => str_starts_with($given, $reason)), implode("\n", $e->reasons));
+            self::assertNotEmpty(array_filter(array_map(strval(...), $e->reasons), static fn (string $given): bool => str_starts_with($given, $reason)), implode("\n", $e->reasons));
         }
     }
 

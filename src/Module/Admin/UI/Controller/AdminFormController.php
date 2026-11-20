@@ -11,6 +11,7 @@ use App\Module\Metadata\Contract\Exception\MetadataException;
 use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Shared\Message\MessageTranslator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
@@ -54,6 +55,7 @@ final class AdminFormController extends AbstractController
         private readonly FormFactoryInterface $forms,
         private readonly AccessCheckerInterface $access,
         private readonly TranslatorInterface $translator,
+        private readonly MessageTranslator $messageTranslator,
     ) {
     }
 
@@ -117,7 +119,7 @@ final class AdminFormController extends AbstractController
                 $this->manager->deleteForm($definition->name);
                 $this->addFlash('success', $this->translator->trans('admin.form.deleted', ['%name%' => $definition->name]));
             } catch (MetadataException $e) {
-                $this->addFlash('error', $e->getMessage());
+                $this->addFlash('error', $this->messageTranslator->trans($e->text()));
             }
         }
 
@@ -137,11 +139,11 @@ final class AdminFormController extends AbstractController
             foreach ($e->errors as $input => $messages) {
                 $target = $form->has($input) ? $form->get($input) : $form;
                 foreach ($messages as $message) {
-                    $target->addError(new FormError($message));
+                    $target->addError(new FormError($this->messageTranslator->trans($message)));
                 }
             }
         } catch (MetadataException $e) {
-            $form->addError(new FormError($e->getMessage()));
+            $form->addError(new FormError($this->messageTranslator->trans($e->text())));
         }
 
         return false;

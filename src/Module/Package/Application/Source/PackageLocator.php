@@ -7,6 +7,7 @@ namespace App\Module\Package\Application\Source;
 use App\Module\Package\Application\Upgrade\Snapshot;
 use App\Module\Package\Domain\Exception\PackageSourceFailed;
 use App\Module\Package\Domain\Repository\PackageInstallationRepository;
+use App\Shared\Message\Message;
 use Fedale\PackageFormat\Constraint;
 use Fedale\PackageFormat\InvalidPackage;
 use Fedale\PackageFormat\PackageDirectory;
@@ -50,7 +51,7 @@ final class PackageLocator
             return new OpenedPackage($this->directories->read($package), realpath($package) ?: $package, null);
         }
         if (1 !== preg_match(self::NAMED, $package, $match)) {
-            throw new PackageSourceFailed(\sprintf('"%s" is neither a directory nor a package name (%s, or %s@%s).', $package, 'vendor/name', 'vendor/name', '1.0.0'));
+            throw new PackageSourceFailed(new Message('package.source.not_a_package', '"%package%" is neither a directory nor a package name (vendor/name, or vendor/name@1.0.0).', ['package' => $package]));
         }
         $installed = $this->installations->findByName($match['name']);
 
@@ -116,7 +117,7 @@ final class PackageLocator
         $requires = $requiring->package->manifest->spec['requires'] ?? null;
         foreach (Snapshot::requirementsOf(\is_array($requires) ? $requires : []) as $name => $text) {
             if (\in_array($name, $path, true)) {
-                throw new PackageSourceFailed(\sprintf('These packages require each other: %s. None of them can be installed.', implode(' requires ', [...$path, $name])));
+                throw new PackageSourceFailed(new Message('package.source.require_cycle', 'These packages require each other: %cycle%. None of them can be installed.', ['cycle' => self::cycle([...$path, $name])]));
             }
             try {
                 $constraint = Constraint::parse($text);
@@ -129,13 +130,13 @@ final class PackageLocator
             }
             if (isset($chain[$name])) {
                 if (!$constraint->allows($chain[$name]->package->version())) {
-                    throw new PackageSourceFailed(\sprintf('%s requires %s %s, and %s %s comes with another package it requires: install the one that fits both first.', $requiring->package->name(), $name, $constraint, $name, $chain[$name]->package->version()));
+                    throw new PackageSourceFailed(new Message('package.source.requirement_mismatch', '%package% requires %required% %constraint%, and %required% %version% comes with another package it requires: install the one that fits both first.', ['package' => $requiring->package->name(), 'required' => $name, 'constraint' => (string) $constraint, 'version' => $chain[$name]->package->version()]));
                 }
                 continue;
             }
             // Those opened, and those on the path whose requirements are being opened.
             if (\count($chain) + \count($path) - 1 >= self::MAX_REQUIREMENTS) {
-                throw new PackageSourceFailed(\sprintf('%s requires more than %d packages this instance does not have: install some of them first.', $path[0], self::MAX_REQUIREMENTS));
+                throw new PackageSourceFailed(new Message('package.source.too_many_requirements', '%package% requires more than %max% packages this instance does not have: install some of them first.', ['package' => $path[0], 'max' => self::MAX_REQUIREMENTS]));
             }
             $opened = $this->download($this->sources->locateFitting($name, $constraint, $requiring->source));
             try {
@@ -169,9 +170,24 @@ final class PackageLocator
         if ($package->name() !== $located->entry->name || $package->version() !== $located->entry->version) {
             $this->sources->discard($directory);
 
-            throw new PackageSourceFailed(\sprintf('The archive listed as %s %s holds %s %s.', $located->entry->name, $located->entry->version, $package->name(), $package->version()));
+            throw new PackageSourceFailed(new Message('package.source.archive_mismatch', 'The archive listed as %name% %version% holds %held_name% %held_version%.', ['name' => $located->entry->name, 'version' => $located->entry->version, 'held_name' => $package->name(), 'held_version' => $package->version()]));
         }
 
         return new OpenedPackage($package, $located->index, $directory);
+    }
+
+    /**
+     * "a requires b requires a", each link a message of its own so that the words translate.
+     *
+     * @param non-empty-list<string> $names
+     */
+    private static function cycle(array $names): string|Message
+    {
+        $cycle = array_shift($names);
+        foreach ($names as $name) {
+            $cycle = new Message('package.source.requires', '%package% requires %required%', ['package' => $cycle, 'required' => $name]);
+        }
+
+        return $cycle;
     }
 }

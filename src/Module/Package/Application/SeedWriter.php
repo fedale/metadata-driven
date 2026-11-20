@@ -10,6 +10,7 @@ use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordEventScopeInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
+use App\Shared\Message\Message;
 use Fedale\PackageFormat\Document;
 use Fedale\PackageFormat\DocumentKind;
 use Fedale\PackageFormat\Package;
@@ -125,7 +126,7 @@ final class SeedWriter
                 foreach ($references as $reference) {
                     // At install the checker has made sure of it; at an upgrade, the user may have
                     // deleted the record since.
-                    $ids[] = $keys[$target][$reference] ?? throw InstallRefused::at($seed->path, self::at($seed, $i).'.'.$name, \sprintf('No record of "%s" has the key "%s".', $target, $reference));
+                    $ids[] = $keys[$target][$reference] ?? throw InstallRefused::at($seed->path, self::at($seed, $i).'.'.$name, new Message('package.install.seed_key_missing', 'No record of "%object%" has the key "%key%".', ['object' => $target, 'key' => $reference]));
                 }
                 $values[$name] = 'many_to_many' === $type ? $ids : $ids[0];
                 continue;
@@ -168,7 +169,7 @@ final class SeedWriter
             $ready = array_filter($pending, static fn (array $entry): bool => [] === array_intersect($entry[1], array_keys($pending)));
             if ([] === $ready) {
                 [$seed] = reset($pending);
-                throw InstallRefused::at($seed->path, 'spec.object', 'Its records and those of another seed point at each other: one of the two references must be left empty.');
+                throw InstallRefused::at($seed->path, 'spec.object', new Message('package.install.seed_cycle', 'Its records and those of another seed point at each other: one of the two references must be left empty.'));
             }
             foreach ($ready as $object => [$seed]) {
                 $ordered[] = $seed;
@@ -190,6 +191,7 @@ final class SeedWriter
                 ? $this->records->create(new RecordInput($objectName, $values))->id
                 : $this->records->update($id, new RecordInput($objectName, $values))->id);
         } catch (RecordValidationFailed $e) {
+            // The validators' messages come translated already: they stay as they are.
             throw InstallRefused::at($seed->path, self::at($seed, $i), implode(' ', array_map(static fn (string $field, array $messages): string => \sprintf('%s: %s', '' === $field ? 'record' : $field, implode(' ', $messages)), array_keys($e->errors), $e->errors)));
         }
     }

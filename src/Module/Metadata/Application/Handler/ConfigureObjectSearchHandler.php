@@ -10,6 +10,7 @@ use App\Module\Metadata\Contract\Event\ObjectSearchConfigured;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
 use App\Module\Metadata\Contract\FieldTypeCatalogInterface;
 use App\Module\Metadata\Contract\SearchHandlerCatalogInterface;
+use App\Module\Metadata\Domain\Exception\FieldUse;
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
 use App\Shared\Transaction\TransactionRunner;
@@ -38,12 +39,12 @@ final class ConfigureObjectSearchHandler
 
             foreach ($command->fields ?? [] as $field) {
                 if ($object->hasField($field) && $this->fieldTypes->isWriteOnly($object->getField($field)->getType())) {
-                    throw InvalidMetadataDefinition::writeOnlyField($field, 'searched');
+                    throw InvalidMetadataDefinition::writeOnlyField($field, FieldUse::Searched);
                 }
                 // A relation or a many-to-many field is searched on the labels of its records.
                 if ($object->hasField($field) && null === $object->getField($field)->getTarget()
                     && !$this->fieldTypes->isSortable($type = $object->getField($field)->getType())) {
-                    throw InvalidMetadataDefinition::noTextValue($field, $type, 'searched');
+                    throw InvalidMetadataDefinition::noTextValue($field, $type, FieldUse::Searched);
                 }
             }
             $object->configureSearch($command->handler, $command->fields);

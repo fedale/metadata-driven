@@ -10,6 +10,7 @@ use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
 use App\Module\Metadata\Contract\FieldTypeCatalogInterface;
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
+use App\Shared\Message\Message;
 use App\Shared\Transaction\TransactionRunner;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
@@ -37,11 +38,11 @@ final class ConfigureFieldConditionHandler
                 $deciding = $object->getField($command->when);
                 $allowed = $this->fieldTypes->conditionValues($deciding->getType(), $deciding->getSettings());
                 if (null === $allowed) {
-                    throw InvalidMetadataDefinition::invalidCondition($command->fieldName, \sprintf('"%s" cannot decide: only a choice or a yes/no field can', $command->when));
+                    throw InvalidMetadataDefinition::invalidCondition($command->fieldName, new Message('metadata.condition.cannot_decide', '"%field%" cannot decide: only a choice or a yes/no field can', ['field' => $command->when]));
                 }
                 $unknown = array_diff($command->values, $allowed);
                 if ([] !== $unknown) {
-                    throw InvalidMetadataDefinition::invalidCondition($command->fieldName, \sprintf('"%s" never holds %s (it holds: %s)', $command->when, implode(', ', $unknown), implode(', ', $allowed)));
+                    throw InvalidMetadataDefinition::invalidCondition($command->fieldName, new Message('metadata.condition.unknown_values', '"%field%" never holds %values% (it holds: %allowed%)', ['field' => $command->when, 'values' => implode(', ', $unknown), 'allowed' => implode(', ', $allowed)]));
                 }
             }
 

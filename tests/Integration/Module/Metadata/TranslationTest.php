@@ -108,19 +108,19 @@ final class TranslationTest extends KernelTestCase
             $this->manager()->saveView('pet', ViewKind::Form, 'main', '<h2>{t:sign_in}</h2>{name}');
             self::fail('The text is not defined.');
         } catch (MetadataInputInvalid $e) {
-            self::assertSame(['source' => ['View "main": '.$missing]], $e->errors);
+            self::assertSame(['source' => ['View "main": '.$missing]], self::english($e));
         }
         try {
             $this->manager()->saveView('pet', ViewKind::Grid, 'main', "columns:\n  - { field: name, label: '{t:sign_in}' }");
             self::fail('The text is not defined.');
         } catch (MetadataInputInvalid $e) {
-            self::assertSame(['source' => ['Column #1: '.$missing]], $e->errors);
+            self::assertSame(['source' => ['Column #1: '.$missing]], self::english($e));
         }
         try {
             $this->manager()->saveForm('registration', self::REGISTRATION_FORM."\nlayout: '<h2>{t:sign_in}</h2>'");
             self::fail('The text is not defined.');
         } catch (MetadataInputInvalid $e) {
-            self::assertSame(['definition' => ['(root): '.$missing]], $e->errors);
+            self::assertSame(['definition' => ['(root): '.$missing]], self::english($e));
         }
 
         $this->manager()->translate('en', 'text.sign_in', 'Sign in');
@@ -185,16 +185,24 @@ final class TranslationTest extends KernelTestCase
     }
 
     /**
-     * @return array<string, list<string>>
+     * @return array<string, list<string>> the errors in English
      */
     private function errorsOf(string $locale, string $key, ?string $text): array
     {
         try {
             $this->manager()->translate($locale, $key, $text);
         } catch (MetadataInputInvalid $e) {
-            return $e->errors;
+            return self::english($e);
         }
         self::fail('The translation is invalid.');
+    }
+
+    /**
+     * @return array<string, list<string>> the errors in English
+     */
+    private static function english(MetadataInputInvalid $e): array
+    {
+        return array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors);
     }
 
     private function manager(): MetadataManagerInterface

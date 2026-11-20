@@ -23,6 +23,7 @@ use App\Module\Package\Domain\Repository\PackageItemRepository;
 use App\Module\Package\Domain\Repository\PersistenceReset;
 use App\Module\Workflow\Contract\Exception\InvalidWorkflowSource;
 use App\Module\Workflow\Contract\PackagedWorkflowsInterface;
+use App\Shared\Message\Message;
 use App\Shared\Transaction\TransactionRunner;
 use Fedale\PackageFormat\Document;
 use Fedale\PackageFormat\DocumentKind;
@@ -157,7 +158,7 @@ final class PackageInstaller
      * Local objects and forms named like the package's: the package does not own them, and
      * an install never touches what it does not own.
      *
-     * @return list<string>
+     * @return list<Message>
      */
     private function collisions(Package $package, PackageNames $names): array
     {
@@ -166,7 +167,9 @@ final class PackageInstaller
         foreach ($package->documentsOf(DocumentKind::Object) as $object) {
             $name = $names->object($object->id);
             if ($this->registry->hasObject($name) || isset($archived[$name])) {
-                $collisions[] = \sprintf('%s: spec.name: This instance already has an object "%s"%s.', $object->path, $name, isset($archived[$name]) ? ' (archived)' : '');
+                $collisions[] = InstallRefused::located($object->path, 'spec.name', isset($archived[$name])
+                    ? new Message('package.install.archived_object_taken', 'This instance already has an object "%name%" (archived).', ['name' => $name])
+                    : new Message('package.install.object_taken', 'This instance already has an object "%name%".', ['name' => $name]));
             }
         }
         $forms = [];
@@ -174,7 +177,7 @@ final class PackageInstaller
             $name = self::string($form->spec['name'] ?? null);
             $forms[] = $name;
             if ($this->registry->hasForm($name)) {
-                $collisions[] = \sprintf('%s: spec.name: This instance already has a form "%s".', $form->path, $name);
+                $collisions[] = InstallRefused::located($form->path, 'spec.name', new Message('package.install.form_taken', 'This instance already has a form "%name%".', ['name' => $name]));
             }
         }
 
@@ -192,7 +195,7 @@ final class PackageInstaller
         foreach ($package->documentsOf(DocumentKind::Workflow) as $workflow) {
             $name = self::string($workflow->spec['name'] ?? null);
             if (isset($localWorkflows[$name])) {
-                $collisions[] = \sprintf('%s: spec.name: This instance already has a workflow "%s".', $workflow->path, $name);
+                $collisions[] = InstallRefused::located($workflow->path, 'spec.name', new Message('package.install.workflow_taken', 'This instance already has a workflow "%name%".', ['name' => $name]));
             }
         }
 
@@ -202,10 +205,10 @@ final class PackageInstaller
                 $key = (string) $key;
                 if (TranslationKey::isText($key)) {
                     if (isset($localTexts[$key])) {
-                        $collisions[] = \sprintf('%s: spec.entries.%s: This instance already has the text "%s".', $document->path, $key, substr($key, \strlen(TranslationKey::TEXT)));
+                        $collisions[] = InstallRefused::located($document->path, 'spec.entries.'.$key, new Message('package.install.text_taken', 'This instance already has the text "%name%".', ['name' => substr($key, \strlen(TranslationKey::TEXT))]));
                     }
                 } elseif ([] === array_filter($prefixes, static fn (string $prefix): bool => $key === $prefix || str_starts_with($key, $prefix.'.'))) {
-                    $collisions[] = \sprintf('%s: spec.entries.%s: Names no object or form of the package.', $document->path, $key);
+                    $collisions[] = InstallRefused::located($document->path, 'spec.entries.'.$key, new Message('package.install.foreign_translation', 'Names no object or form of the package.'));
                 }
             }
         }
@@ -295,6 +298,7 @@ final class PackageInstaller
             try {
                 $localId = $this->workflows->create($name, \is_string($workflow->spec['description'] ?? null) ? $workflow->spec['description'] : null, $definition);
             } catch (InvalidWorkflowSource $e) {
+                // The workflow module's message is English only.
                 throw InstallRefused::at($workflow->path, 'spec.definition', $e->getMessage());
             }
             $items[] = $this->item($package, ItemKind::Workflow, $workflow->id, $localId);
@@ -357,7 +361,7 @@ final class PackageInstaller
             $ready = array_filter($pending, static fn (array $entry): bool => [] === array_diff($entry[3], array_keys($done)));
             if ([] === $ready) {
                 [$object, $position] = reset($pending);
-                throw InstallRefused::at($object->path, \sprintf('spec.fields.%d', $position), 'Its settings and those of other fields name each other in a cycle.');
+                throw InstallRefused::at($object->path, \sprintf('spec.fields.%d', $position), new Message('package.install.field_cycle', 'Its settings and those of other fields name each other in a cycle.'));
             }
             foreach ($ready as $id => [$object, $position, $field]) {
                 $ordered[] = [$object, $position, $field];
@@ -478,7 +482,7 @@ final class PackageInstaller
         try {
             return $step();
         } catch (MetadataException $e) {
-            throw InstallRefused::at($path, $at, $e->getMessage());
+            throw InstallRefused::at($path, $at, $e->text());
         }
     }
 

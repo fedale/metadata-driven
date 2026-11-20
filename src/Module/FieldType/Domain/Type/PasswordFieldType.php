@@ -11,6 +11,7 @@ use App\Module\FieldType\Contract\Dto\SettingKind;
 use App\Module\FieldType\Contract\Dto\Widget;
 use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\SecretHasherInterface;
+use App\Shared\Message\Message;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -65,11 +66,11 @@ final class PasswordFieldType extends AbstractFieldType
     {
         $errors = [];
         if (!self::isIntBetween($settings['minLength'], 1, self::MAX_MIN_LENGTH)) {
-            $errors[] = \sprintf('Setting "minLength" must be an integer between 1 and %d.', self::MAX_MIN_LENGTH);
+            $errors[] = new Message('field_type.setting_not_integer_between', 'Setting "%setting%" must be an integer between %min% and %max%.', ['setting' => 'minLength', 'min' => 1, 'max' => self::MAX_MIN_LENGTH]);
         }
         foreach (['requireMixedCase', 'requireDigit', 'requireSymbol', 'confirm', 'strengthMeter', 'revealToggle'] as $flag) {
             if (!\is_bool($settings[$flag])) {
-                $errors[] = \sprintf('Setting "%s" must be a boolean.', $flag);
+                $errors[] = new Message('field_type.setting_not_boolean', 'Setting "%setting%" must be a boolean.', ['setting' => $flag]);
             }
         }
 

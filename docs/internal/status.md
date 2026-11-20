@@ -4,7 +4,7 @@ Internal notes for whoever (human or agent) picks the work up, on any machine. R
 starting a task; update it in the same branch whenever a decision is taken, a feature lands or the
 work queue changes. The user-facing documentation is in [../README.md](../README.md).
 
-Last updated: 2026-11-19.
+Last updated: 2026-11-20.
 
 ## Setting up on a new machine
 
@@ -180,6 +180,13 @@ Things that are not obvious from a single file, and that are easy to break.
   them as ids, never `local:<name>`); what a template requires is read from the manifest in its
   snapshot (`Snapshot::requires()`), not stored apart. After a rolled-back install or upgrade the entity manager is cleared
   (`PersistenceReset`): the ORM would otherwise keep the rolled-back state of changed entities.
+- **Error messages** (`Shared/Message`): an error a user may read is raised with a `Message`
+  (key, English text, parameters), never a composed English string, so the whole sentence
+  translates; a reason built elsewhere travels as a Message (or `MessageList`) parameter. The
+  key and the English text are literal strings at every `new Message(...)`, because
+  `ErrorCatalogsTest` reads them from the sources to check `errors.<locale>.yaml`. No plurals
+  ("record(s)"): the fallback is the bare English text, so phrase it without them. Pages call
+  `MessageTranslator` (`|message` in Twig) on `text()`, the console keeps `getMessage()`.
 - **Security forms**: the stateless CSRF token input needs `data-controller="csrf-protection"` to
   work in a real browser.
 
@@ -239,6 +246,11 @@ revision bumped by triggers, see `architecture.md`).
   translated (`admin.*` keys in `translations/messages.*.yaml`), and so are the field types'
   names, descriptions and settings (`translations/field_types.it.yaml`, read by
   `Admin\UI\FieldTypeTexts` with the declared English text as fallback).
+- **Error messages in Italian** (branch `translated_errors`, 2026-11-20): the errors of the
+  metadata (`MetadataException` and its reasons, the field types' settings, the form and grid
+  view compilers) and of the packages (`InstallRefused`, `UpgradeRefused`, the index and source
+  errors, the changes and conflicts of an upgrade) are `Message`s, translated in
+  `translations/errors.it.yaml`; the format library's problems stay English (user's choice).
 - **From the form mock** (merged 2026-11-12): the "+" of a section of rows names the row's object
   in the singular (`object_singular()`, Record UI Twig), and an administrator can show the
   machine names next to the labels (the header's toggle, the `machine-names` Stimulus
@@ -307,8 +319,10 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   column's `template` keeps its name, by the user's choice.
 - **CSV import**, (C) only: imports of very large files in the background, with Messenger. (A)
   and (B) are done (see "Done").
-- Admin UI in Italian: still English are the error messages of the metadata and the templates
-  (`MetadataException`, `InstallRefused`, upgrade changes and conflicts); see i18n.md, "Not yet".
+- Still English in every language (see i18n.md, "Not yet"): the problems the package format
+  finds (`Fedale\PackageFormat\Problem`, from the format library: a key and parameters there
+  first, then their translation here), the errors of a workflow definition, the reasons of a
+  refused CSV import.
 - Remaining roadmap ideas (phase 9+): audit/timeline, REST API, YAML export/import of metadata
   (now part of the template plan), roles/users admin UI, field-level permissions.
 - **Multi-tenancy**: done, see [multi-tenancy-plan.md](multi-tenancy-plan.md) and the guide

@@ -12,11 +12,13 @@ use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\MetadataDependentInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Shared\Message\Message;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**
  * Where an object or a field is used by the rest of the metadata: what keeps it from being
- * archived. Each use is one line naming the place, for the admin to fix it.
+ * archived. Each use is one line naming the place, for the admin to fix it: a Message, or the
+ * line of another module as it gives it.
  *
  * What only describes the object itself (its label field, its searched fields, its own views
  * and translations) is no use: it follows the object, or is cleaned up with it. A field set
@@ -36,23 +38,23 @@ final class MetadataUsages
     }
 
     /**
-     * @return list<string>
+     * @return list<string|Message>
      */
     public function ofObject(string $objectName): array
     {
         $usages = [];
         foreach ($this->metadata->incomingRelations($objectName) as $reference) {
             if ($reference->object->name !== $objectName) {
-                $usages[] = \sprintf('relation field "%s.%s" points at it', $reference->object->name, $reference->field->name);
+                $usages[] = new Message('metadata.usage.relation_points_at', 'relation field "%object%.%field%" points at it', ['object' => $reference->object->name, 'field' => $reference->field->name]);
             }
         }
         foreach ($this->metadata->incomingManyToMany($objectName) as $reference) {
             if ($reference->object->name !== $objectName) {
-                $usages[] = \sprintf('many-to-many field "%s.%s" points at it', $reference->object->name, $reference->field->name);
+                $usages[] = new Message('metadata.usage.many_to_many_points_at', 'many-to-many field "%object%.%field%" points at it', ['object' => $reference->object->name, 'field' => $reference->field->name]);
             }
         }
         foreach ($this->throughFields($objectName) as [$object, $field]) {
-            $usages[] = \sprintf('many-to-many field "%s.%s" goes through it', $object->name, $field->name);
+            $usages[] = new Message('metadata.usage.many_to_many_through', 'many-to-many field "%object%.%field%" goes through it', ['object' => $object->name, 'field' => $field->name]);
         }
         foreach ($this->metadata->allForms() as $form) {
             $paths = [];
@@ -62,7 +64,7 @@ final class MetadataUsages
                 }
             }
             if ([] !== $paths) {
-                $usages[] = \sprintf('form "%s" (%s)', $form->name, implode(', ', $paths));
+                $usages[] = new Message('metadata.usage.form_places_object', 'form "%form%" (%paths%)', ['form' => $form->name, 'paths' => implode(', ', $paths)]);
             }
         }
         foreach ($this->dependents as $dependent) {
@@ -73,7 +75,7 @@ final class MetadataUsages
     }
 
     /**
-     * @return list<string>
+     * @return list<string|Message>
      */
     public function ofField(string $objectName, string $fieldName): array
     {
@@ -84,30 +86,32 @@ final class MetadataUsages
                 continue;
             }
             if ($other->condition?->field === $fieldName) {
-                $usages[] = \sprintf('field "%s" is shown depending on it', $other->name);
+                $usages[] = new Message('metadata.usage.condition', 'field "%field%" is shown depending on it', ['field' => $other->name]);
             }
             if ($other->relation()?->dependsOn === $fieldName) {
-                $usages[] = \sprintf('relation field "%s" depends on it (cascade)', $other->name);
+                $usages[] = new Message('metadata.usage.cascade_parent', 'relation field "%field%" depends on it (cascade)', ['field' => $other->name]);
             }
         }
         foreach ($object->uniqueTogether as $set) {
             if (\in_array($fieldName, $set, true)) {
-                $usages[] = \sprintf('it is unique together with %s', implode(', ', array_map(static fn (string $name): string => '"'.$name.'"', array_values(array_diff($set, [$fieldName])))));
+                $usages[] = new Message('metadata.usage.unique_together', 'it is unique together with %fields%', ['fields' => implode(', ', array_map(static fn (string $name): string => '"'.$name.'"', array_values(array_diff($set, [$fieldName]))))]);
             }
         }
         foreach ($this->throughFields($objectName) as [$through, $field, $settings]) {
             if (\in_array($fieldName, [$settings->throughSource, $settings->throughTarget], true)) {
-                $usages[] = \sprintf('many-to-many field "%s.%s" goes through it', $through->name, $field->name);
+                $usages[] = new Message('metadata.usage.many_to_many_through', 'many-to-many field "%object%.%field%" goes through it', ['object' => $through->name, 'field' => $field->name]);
             }
         }
         foreach ($this->metadata->incomingRelations($objectName) as $reference) {
             if ($reference->settings->dependsVia === $fieldName) {
-                $usages[] = \sprintf('relation field "%s.%s" filters through it (cascade)', $reference->object->name, $reference->field->name);
+                $usages[] = new Message('metadata.usage.cascade_via', 'relation field "%object%.%field%" filters through it (cascade)', ['object' => $reference->object->name, 'field' => $reference->field->name]);
             }
         }
         foreach ($object->views as $view) {
             if (self::viewUses($view, $fieldName)) {
-                $usages[] = \sprintf('%s view "%s"', $view->kind->value, $view->name);
+                $usages[] = ViewKind::Grid === $view->kind
+                    ? new Message('metadata.usage.grid_view', 'grid view "%view%"', ['view' => $view->name])
+                    : new Message('metadata.usage.form_view', 'form view "%view%"', ['view' => $view->name]);
             }
         }
         foreach ($this->metadata->allForms() as $form) {
@@ -122,7 +126,7 @@ final class MetadataUsages
                     'via' => $node->via === $fieldName,
                 ]));
                 if ([] !== $how) {
-                    $usages[] = \sprintf('form "%s", %s: %s', $form->name, $path, implode(', ', $how));
+                    $usages[] = new Message('metadata.usage.form_places_field', 'form "%form%", %path%: %how%', ['form' => $form->name, 'path' => $path, 'how' => implode(', ', $how)]);
                 }
             }
         }

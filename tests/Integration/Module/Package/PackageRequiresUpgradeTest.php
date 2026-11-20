@@ -107,7 +107,7 @@ final class PackageRequiresUpgradeTest extends KernelTestCase
         self::assertNotEmpty(array_filter($reasons, static fn (string $reason): bool => str_starts_with($reason, 'acme/people 1.0.0, which requires acme/places: objects/person.yaml') && str_contains($reason, 'acme.province.region')), implode("\n", $reasons));
         self::assertTrue(self::getContainer()->get(MetadataRegistryInterface::class)->getObject('province')->hasField('region'));
         // The admin's preview lists the same refusals.
-        self::assertSame($reasons, self::getContainer()->get(PackageUpgrader::class)->preview($places)->refusals);
+        self::assertSame($reasons, array_map(strval(...), self::getContainer()->get(PackageUpgrader::class)->preview($places)->refusals));
     }
 
     private function install(Package $package): void
@@ -129,9 +129,10 @@ final class PackageRequiresUpgradeTest extends KernelTestCase
             $this->upgrade($package);
             self::fail(\sprintf('Refused: %s', $reason));
         } catch (UpgradeRefused $e) {
-            self::assertContains($reason, $e->reasons, implode("\n", $e->reasons));
+            $reasons = array_map(strval(...), $e->reasons);
+            self::assertContains($reason, $reasons, implode("\n", $reasons));
 
-            return $e->reasons;
+            return $reasons;
         }
     }
 

@@ -13,6 +13,7 @@ use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
 use App\Module\Metadata\Domain\Model\ObjectDefinition;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
+use App\Shared\Message\Message;
 use App\Shared\Transaction\TransactionRunner;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
@@ -41,11 +42,11 @@ final class ArchiveHandler
         $this->transactions->run(function () use ($objectName): void {
             $object = $this->active($objectName);
             if ($object->isSystem()) {
-                throw InvalidMetadataDefinition::systemObject($objectName, 'archived');
+                throw InvalidMetadataDefinition::systemObjectArchived($objectName);
             }
             $usages = $this->usages->ofObject($objectName);
             if ([] !== $usages) {
-                throw InvalidMetadataDefinition::stillUsed(\sprintf('Object "%s"', $objectName), 'archived', $usages);
+                throw InvalidMetadataDefinition::objectInUse($objectName, $usages);
             }
             $object->archive();
             $this->objects->save($object);
@@ -68,15 +69,17 @@ final class ArchiveHandler
             foreach ($archived->fields as $field) {
                 $target = $field->target();
                 if (null !== $target && $target !== $objectName && !$this->metadata->hasObject($target)) {
-                    $problems[] = \sprintf('%s field "%s" points at object "%s", archived too: restore it first', $field->storesColumn() ? 'relation' : 'many-to-many', $field->name, $target);
+                    $problems[] = $field->storesColumn()
+                        ? new Message('metadata.restore.relation_target_archived', 'relation field "%field%" points at object "%object%", archived too: restore it first', ['field' => $field->name, 'object' => $target])
+                        : new Message('metadata.restore.many_to_many_target_archived', 'many-to-many field "%field%" points at object "%object%", archived too: restore it first', ['field' => $field->name, 'object' => $target]);
                 }
                 $through = $field->manyToMany()?->through;
                 if (null !== $through && !$this->metadata->hasObject($through)) {
-                    $problems[] = \sprintf('many-to-many field "%s" goes through object "%s", archived too: restore it first', $field->name, $through);
+                    $problems[] = new Message('metadata.restore.junction_archived', 'many-to-many field "%field%" goes through object "%object%", archived too: restore it first', ['field' => $field->name, 'object' => $through]);
                 }
             }
             if ([] !== $problems) {
-                throw InvalidMetadataDefinition::cannotRestore(\sprintf('Object "%s"', $objectName), $problems);
+                throw InvalidMetadataDefinition::cannotRestoreObject($objectName, $problems);
             }
             $object->restore();
             $this->objects->save($object);
@@ -91,7 +94,7 @@ final class ArchiveHandler
             $object->getField($fieldName);
             $usages = $this->usages->ofField($objectName, $fieldName);
             if ([] !== $usages) {
-                throw InvalidMetadataDefinition::stillUsed(\sprintf('Field "%s.%s"', $objectName, $fieldName), 'archived', $usages);
+                throw InvalidMetadataDefinition::fieldInUse($objectName, $fieldName, $usages);
             }
             $object->archiveField($fieldName);
             $this->objects->save($object);
@@ -113,7 +116,7 @@ final class ArchiveHandler
             $field = $definition->archivedFields[$fieldName] ?? throw InvalidMetadataDefinition::unknownArchivedField($objectName, $fieldName);
             $problems = $this->restoreProblems($definition->fields, $field);
             if ([] !== $problems) {
-                throw InvalidMetadataDefinition::cannotRestore(\sprintf('Field "%s.%s"', $objectName, $fieldName), $problems);
+                throw InvalidMetadataDefinition::cannotRestoreField($objectName, $fieldName, $problems);
             }
             $object->restoreField($fieldName);
             $this->objects->save($object);
@@ -125,28 +128,28 @@ final class ArchiveHandler
     /**
      * @param array<string, FieldDefinitionDto> $active the active fields of its object
      *
-     * @return list<string>
+     * @return list<Message>
      */
     private function restoreProblems(array $active, FieldDefinitionDto $field): array
     {
         $problems = [];
         $deciding = $field->condition?->field;
         if (null !== $deciding && !isset($active[$deciding])) {
-            $problems[] = \sprintf('it is shown depending on "%s", which is archived or gone: restore it, or restore the field after removing its condition', $deciding);
+            $problems[] = new Message('metadata.restore.deciding_field_gone', 'it is shown depending on "%field%", which is archived or gone: restore it, or restore the field after removing its condition', ['field' => $deciding]);
         }
         $target = $field->target();
         if (null !== $target && !$this->metadata->hasObject($target)) {
-            $problems[] = \sprintf('it points at object "%s", which is archived: restore it first', $target);
+            $problems[] = new Message('metadata.restore.target_archived', 'it points at object "%object%", which is archived: restore it first', ['object' => $target]);
         }
         $manyToMany = $field->manyToMany();
         if (null !== $manyToMany?->through) {
             $junction = $this->metadata->hasObject($manyToMany->through) ? $this->metadata->getObject($manyToMany->through) : null;
             if (null === $junction) {
-                $problems[] = \sprintf('it goes through object "%s", which is archived: restore it first', $manyToMany->through);
+                $problems[] = new Message('metadata.restore.through_archived', 'it goes through object "%object%", which is archived: restore it first', ['object' => $manyToMany->through]);
             } else {
                 foreach ([(string) $manyToMany->throughSource, (string) $manyToMany->throughTarget] as $junctionField) {
                     if (!$junction->hasField($junctionField)) {
-                        $problems[] = \sprintf('it goes through "%s.%s", which is archived', $manyToMany->through, $junctionField);
+                        $problems[] = new Message('metadata.restore.through_field_archived', 'it goes through "%object%.%field%", which is archived', ['object' => $manyToMany->through, 'field' => $junctionField]);
                     }
                 }
             }
@@ -154,10 +157,10 @@ final class ArchiveHandler
         $relation = $field->relation();
         if (null !== $relation?->dependsVia && $this->metadata->hasObject($relation->target)
             && !$this->metadata->getObject($relation->target)->hasField($relation->dependsVia)) {
-            $problems[] = \sprintf('its cascade filters through "%s.%s", which is archived', $relation->target, $relation->dependsVia);
+            $problems[] = new Message('metadata.restore.cascade_via_archived', 'its cascade filters through "%object%.%field%", which is archived', ['object' => $relation->target, 'field' => $relation->dependsVia]);
         }
         if (null !== $relation?->dependsOn && !isset($active[$relation->dependsOn])) {
-            $problems[] = \sprintf('its cascade depends on "%s", which is archived', $relation->dependsOn);
+            $problems[] = new Message('metadata.restore.cascade_parent_archived', 'its cascade depends on "%field%", which is archived', ['field' => $relation->dependsOn]);
         }
 
         return $problems;

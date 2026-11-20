@@ -15,7 +15,7 @@
     {% if reasons is not empty %}
         <div class="md-flash md-flash--error" role="alert">
             <p>{{ 'admin.package_admin.cannot_upgrade'|trans }}</p>
-            <ul>{% for reason in reasons %}<li>{{ reason }}</li>{% endfor %}</ul>
+            <ul>{% for reason in reasons %}<li>{{ reason|message }}</li>{% endfor %}</ul>
         </div>
     {% endif %}
 
@@ -24,7 +24,7 @@
         {% if preview.changes is empty %}
             <p class="gv-muted">{{ 'admin.package_admin.only_conflicts'|trans }}</p>
         {% else %}
-            <ul class="md-link-list">{% for change in preview.changes %}<li>{{ change }}</li>{% endfor %}</ul>
+            <ul class="md-link-list">{% for change in preview.changes %}<li>{{ change|message }}</li>{% endfor %}</ul>
         {% endif %}
 
         {{ form_start(choices, {attr: {class: 'md-form md-form--wide'}}) }}
@@ -33,7 +33,7 @@
                 <p class="gv-muted">{{ 'admin.package_admin.conflicts_help'|trans }}</p>
                 {% for conflict in preview.conflicts %}
                     <fieldset>
-                        <legend>{{ conflict.description }}</legend>
+                        <legend>{{ conflict.description|message }}</legend>
                         {% if conflict.here is not null or conflict.there is not null %}
                             <div class="md-columns">
                                 <div><strong>{{ 'admin.package_admin.here'|trans }}</strong><pre>{{ conflict.here ?? 'admin.package_admin.removed_here'|trans }}</pre></div>

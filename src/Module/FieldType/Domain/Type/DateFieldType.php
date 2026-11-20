@@ -11,6 +11,7 @@ use App\Module\FieldType\Contract\Dto\SettingKind;
 use App\Module\FieldType\Contract\Dto\Widget;
 use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\Exception\InvalidFieldValue;
+use App\Shared\Message\Message;
 
 final class DateFieldType extends AbstractFieldType
 {
@@ -47,7 +48,7 @@ final class DateFieldType extends AbstractFieldType
     protected function validateKnownSettings(array $settings): array
     {
         if (!\is_bool($settings['includeTime'])) {
-            return ['Setting "includeTime" must be a boolean.'];
+            return [new Message('field_type.setting_not_boolean', 'Setting "%setting%" must be a boolean.', ['setting' => 'includeTime'])];
         }
 
         return [];

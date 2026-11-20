@@ -13,9 +13,11 @@ use App\Module\Metadata\Contract\Event\MetadataChanged;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
 use App\Module\Metadata\Contract\FieldTypeCatalogInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Metadata\Domain\Exception\FieldUse;
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
 use App\Module\Metadata\Domain\Model\MachineName;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
+use App\Shared\Message\Message;
 use App\Shared\Transaction\TransactionRunner;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Uid\Uuid;
@@ -42,10 +44,10 @@ final class CreateFieldHandler
         }
         $settings = $this->fieldTypes->resolveSettings($command->type, $command->settings);
         if ($command->isUnique && $this->fieldTypes->isWriteOnly($command->type)) {
-            throw InvalidMetadataDefinition::writeOnlyField($command->name, 'unique');
+            throw InvalidMetadataDefinition::writeOnlyField($command->name, FieldUse::Unique);
         }
         if ($command->isUnique && ManyToManySettings::FIELD_TYPE === $command->type) {
-            throw InvalidMetadataDefinition::manyToManyField($command->name, 'unique');
+            throw InvalidMetadataDefinition::manyToManyField($command->name, FieldUse::Unique);
         }
         if ($command->isUnique && !$this->fieldTypes->supportsUnique($command->type)) {
             throw InvalidMetadataDefinition::notUniqueType($command->name, $command->type);
@@ -103,27 +105,27 @@ final class CreateFieldHandler
         }
         $through = (string) $settings->through;
         if (\in_array($through, [$objectName, $settings->target], true)) {
-            throw InvalidMetadataDefinition::invalidJunction($fieldName, \sprintf('"%s" is the object or the target: a junction object is one of its own', $through));
+            throw InvalidMetadataDefinition::invalidJunction($fieldName, new Message('metadata.junction.not_its_own', '"%object%" is the object or the target: a junction object is one of its own', ['object' => $through]));
         }
         $junction = $this->objects->findByName($through);
         if (null === $junction || !$junction->isActive()) {
-            throw InvalidMetadataDefinition::invalidJunction($fieldName, \sprintf('the junction object "%s" does not exist', $through));
+            throw InvalidMetadataDefinition::invalidJunction($fieldName, new Message('metadata.junction.not_found', 'the junction object "%object%" does not exist', ['object' => $through]));
         }
         foreach ([(string) $settings->throughSource => $objectName, (string) $settings->throughTarget => $settings->target] as $junctionField => $pointsAt) {
             $field = $junction->hasField($junctionField) ? $junction->getField($junctionField) : null;
             if (null === $field || RelationSettings::FIELD_TYPE !== $field->getType() || $field->getTarget() !== $pointsAt) {
-                throw InvalidMetadataDefinition::invalidJunction($fieldName, \sprintf('"%s" must be a relation field of "%s" pointing at "%s"', $junctionField, $through, $pointsAt));
+                throw InvalidMetadataDefinition::invalidJunction($fieldName, new Message('metadata.junction.not_a_relation', '"%field%" must be a relation field of "%object%" pointing at "%target%"', ['field' => $junctionField, 'object' => $through, 'target' => $pointsAt]));
             }
         }
         if ($settings->throughSource === $settings->throughTarget) {
-            throw InvalidMetadataDefinition::invalidJunction($fieldName, '"throughSource" and "throughTarget" must be two different fields');
+            throw InvalidMetadataDefinition::invalidJunction($fieldName, new Message('metadata.junction.same_fields', '"throughSource" and "throughTarget" must be two different fields'));
         }
         foreach ($junction->getUniqueTogether() as $set) {
             if (\in_array($settings->throughSource, $set, true) && \in_array($settings->throughTarget, $set, true)) {
                 return;
             }
         }
-        throw InvalidMetadataDefinition::invalidJunction($fieldName, \sprintf('make "%s" and "%s" of "%s" unique together first (metadata:object:unique %s %s,%s)', $settings->throughSource, $settings->throughTarget, $through, $through, $settings->throughSource, $settings->throughTarget));
+        throw InvalidMetadataDefinition::invalidJunction($fieldName, new Message('metadata.junction.not_unique_together', 'make "%source%" and "%target%" of "%object%" unique together first (metadata:object:unique %object% %source%,%target%)', ['source' => (string) $settings->throughSource, 'target' => (string) $settings->throughTarget, 'object' => $through]));
     }
 
     /**

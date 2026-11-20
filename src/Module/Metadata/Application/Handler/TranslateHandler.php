@@ -11,6 +11,7 @@ use App\Module\Metadata\Contract\Event\MetadataChanged;
 use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
 use App\Module\Metadata\Domain\Model\Translation;
 use App\Module\Metadata\Domain\Repository\TranslationRepository;
+use App\Shared\Message\Message;
 use App\Shared\Transaction\TransactionRunner;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -50,9 +51,9 @@ final class TranslateHandler
         if (TranslationKey::isText($command->key)) {
             $this->assertText($command->key, $isDefault, $text);
         } elseif (!isset($this->keys->derived()[$command->key])) {
-            throw new MetadataInputInvalid(['key' => [\sprintf('"%s" is no key of the metadata (see Admin > Translations for the keys).', $command->key)]]);
+            throw new MetadataInputInvalid(['key' => [new Message('metadata.translation.unknown_key', '"%key%" is no key of the metadata (see Admin > Translations for the keys).', ['key' => $command->key])]]);
         } elseif ($isDefault) {
-            throw new MetadataInputInvalid(['locale' => [\sprintf('In %s, the text of "%s" is the one of the metadata: change the label itself.', $this->defaultLocale, $command->key)]]);
+            throw new MetadataInputInvalid(['locale' => [new Message('metadata.translation.default_locale', 'In %locale%, the text of "%key%" is the one of the metadata: change the label itself.', ['locale' => $this->defaultLocale, 'key' => $command->key])]]);
         }
 
         $this->transactions->run(function () use ($command, $text, $isDefault): void {
@@ -80,7 +81,7 @@ final class TranslateHandler
     private function assertLocale(string $locale): void
     {
         if (!\in_array($locale, $this->enabledLocales, true) && $locale !== $this->defaultLocale) {
-            throw new MetadataInputInvalid(['locale' => [\sprintf('"%s" is no enabled language (%s).', $locale, implode(', ', array_unique([$this->defaultLocale, ...$this->enabledLocales])))]]);
+            throw new MetadataInputInvalid(['locale' => [new Message('metadata.translation.unknown_locale', '"%locale%" is no enabled language (%locales%).', ['locale' => $locale, 'locales' => implode(', ', array_unique([$this->defaultLocale, ...$this->enabledLocales]))])]]);
         }
     }
 
@@ -88,14 +89,14 @@ final class TranslateHandler
     {
         $name = substr($key, \strlen(TranslationKey::TEXT));
         if (1 !== preg_match(TranslationKey::TEXT_NAME_PATTERN, $name) || \strlen($name) > 50) {
-            throw new MetadataInputInvalid(['key' => [\sprintf('Invalid text "%s": after "text.", 1 to 50 lowercase letters, digits and single underscores, starting with a letter.', $key)]]);
+            throw new MetadataInputInvalid(['key' => [new Message('metadata.translation.invalid_text_name', 'Invalid text "%key%": after "text.", 1 to 50 lowercase letters, digits and single underscores, starting with a letter.', ['key' => $key])]]);
         }
         $defined = null !== $this->translations->find($this->defaultLocale, $key);
         if (!$isDefault && !$defined) {
-            throw new MetadataInputInvalid(['key' => [\sprintf('The text "%s" is not defined: give it a text in %s first.', $key, $this->defaultLocale)]]);
+            throw new MetadataInputInvalid(['key' => [new Message('metadata.translation.text_not_defined', 'The text "%key%" is not defined: give it a text in %locale% first.', ['key' => $key, 'locale' => $this->defaultLocale])]]);
         }
         if ($isDefault && null === $text && [] !== ($usages = $this->keys->textUsages()[$name] ?? [])) {
-            throw new MetadataInputInvalid(['text' => [\sprintf('{t:%s} is still placed by %s: remove the tokens first.', $name, implode(', ', $usages))]]);
+            throw new MetadataInputInvalid(['text' => [new Message('metadata.translation.text_still_placed', '{t:%name%} is still placed by %usages%: remove the tokens first.', ['name' => $name, 'usages' => implode(', ', $usages)])]]);
         }
     }
 }

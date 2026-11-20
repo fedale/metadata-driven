@@ -79,4 +79,25 @@ final class LocalizedAdminPagesTest extends WebTestCase
         self::assertSelectorTextContains('label[for="new_text_it"]', 'Italiano (facoltativo)');
         self::assertSelectorTextContains('label[for="new_text_en"]', 'Inglese');
     }
+
+    public function testTheErrorsOfTheMetadataAreTranslated(): void
+    {
+        // translations/errors.it.yaml, from the Message the domain raises.
+        $this->client->request('GET', '/admin/objects/new');
+        $this->client->submitForm('Crea', ['object[name]' => 'pet', 'object[labelSingular]' => 'Pet', 'object[labelPlural]' => 'Pets']);
+        self::assertResponseStatusCodeSame(422);
+        self::assertAnySelectorTextContains('.gv-form-error', 'Esiste già un oggetto chiamato "pet".');
+
+        // A field type's settings error, inside the sentence of InvalidFieldSettings.
+        $crawler = $this->client->request('GET', '/admin/objects/pet/fields/new/select');
+        $form = $crawler->selectButton('Crea')->form();
+        $data = $form->getPhpValues();
+        self::assertIsArray($data['field']);
+        $data['field']['name'] = 'size';
+        $data['field']['label'] = 'Size';
+        $data['field']['settings'] = ['options' => "small\nsmall"] + (\is_array($data['field']['settings'] ?? null) ? $data['field']['settings'] : []);
+        $this->client->request('POST', $form->getUri(), $data);
+        self::assertResponseStatusCodeSame(422);
+        self::assertAnySelectorTextContains('.gv-form-error', 'il valore "small" è ripetuto');
+    }
 }
