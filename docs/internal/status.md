@@ -259,8 +259,7 @@ revision bumped by triggers, see `architecture.md`).
   no top bar (the base layout's `header` block, emptied by `security/login.html.twig`), the form
   in a card centred in the viewport (`.md-page:has(> .md-login)`), "Forgot your password?" to
   the right of the "Sign in" button (`.md-login__actions`).
-- **Light theme and theme toggle** (branch `theme_toggle`, 2026-11-21, waiting for the user's
-  review): the user liked the palette as a dark theme; the light one was redesigned to mirror it
+- **Light theme and theme toggle** (merged 2026-11-21): the user liked the palette as a dark theme; the light one was redesigned to mirror it
   (same green, neutrals tinted towards it instead of the warm beige). Tokens written once with
   `light-dark()`; a toggle (top bar, corner of the sign-in page) forces the other theme through
   `data-gv-theme` on `<html>`. Kept in the profile (`core.app_user_profile.theme`, migration
