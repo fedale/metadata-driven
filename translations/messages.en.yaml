@@ -9,6 +9,7 @@ nav:
     workspaces: Workspaces
     account: My account
     sign_out: Sign out
+    theme: Switch between the light and the dark theme
 console:
     title: Console
     workspaces: Workspaces
@@ -63,6 +64,14 @@ account:
     by_email_help: 'Every notification of every workspace you are a member of comes to your email too, not only to the bell.'
     save_notifications: Save
     notifications_saved: 'Notifications choice saved.'
+    appearance: Appearance
+    theme: Theme
+    theme_help: 'The system one follows the light or dark setting of your device. The button in the top bar switches it too.'
+    theme_system: System
+    theme_light: Light
+    theme_dark: Dark
+    save_theme: Save
+    theme_saved: 'Theme saved.'
     password: Password
     password_intro: 'Your sessions elsewhere, on other devices and other workspaces, end when it changes.'
     current_password: Current password

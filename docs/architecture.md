@@ -258,6 +258,32 @@ Both follow `block__element--modifier`, and every colour and size comes from the
 Bootstrap or Tailwind presets apply to the whole page. A component useful to any form belongs in
 the bundle; one that exists because of the metadata stays here, with the `md-` prefix.
 
+### Light and dark theme
+
+The tokens are written once each, `light-dark(<light>, <dark>)`: the same green on neutrals
+tinted towards it, the light palette mirroring the dark one. The `color-scheme` of `<html>` picks
+the value: the system's (`light dark`) until the user uses the toggle at the end of the top bar
+(in the top right corner of the sign-in page, which has no top bar). The toggle
+(`theme-toggle` Stimulus controller, `templates/theme/_toggle.html.twig`) forces the other
+theme: `data-gv-theme="light|dark"` on `<html>`, read by `app.css` and by the bundle's
+stylesheet for its own tokens.
+
+Where the choice is kept:
+
+- **In the profile** (`core.app_user_profile.theme`: `light`, `dark`, or null for the system's),
+  next to the language (`locale`) and the notifications choice (`notify_by_email`): the
+  account's preferences, the same in every browser and every workspace. The toggle saves it in
+  the background (`POST /account/theme`); **My account** > **Appearance** sets it too, and is the
+  only way back to the system's. `SecurityUser` carries it, reloaded on every request, like the
+  language.
+- **In the browser**, the `md_theme` cookie (a year): for the pages before signing in (the
+  sign-in page, the forgotten password), where there's no profile to read. The toggle writes it
+  in every case; the account page sets it, or removes it for the system's.
+
+`base.html.twig` sets the attribute in the page it sends, so a forced theme shows from the first
+paint, without a flash of the other one: the profile's theme for a signed-in user, else the
+cookie's.
+
 ## The grid
 
 `RecordGridFactory` builds one grid per object at runtime with `GridviewBuilderFactory`: one

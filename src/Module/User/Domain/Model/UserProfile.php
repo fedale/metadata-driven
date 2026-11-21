@@ -17,6 +17,8 @@ class UserProfile
     private ?string $locale = null;
     /** Whether the notifications come by email too, not only to the bell. */
     private bool $notifyByEmail = false;
+    /** The colour theme, light or dark; null: the system's. */
+    private ?string $theme = null;
     private \DateTimeImmutable $updatedAt;
 
     public function __construct(
@@ -45,6 +47,17 @@ class UserProfile
     public function getLocale(): ?string
     {
         return $this->locale;
+    }
+
+    public function changeTheme(?string $theme): void
+    {
+        $this->theme = $theme;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function getTheme(): ?string
+    {
+        return $this->theme;
     }
 
     public function chooseNotificationsByEmail(bool $byEmail): void

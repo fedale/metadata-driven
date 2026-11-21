@@ -12,85 +12,60 @@
 
 * { box-sizing: border-box; }
 
-/* ── Theme: the --gv-* tokens of the bundle, re-skinned (green accent on warm neutrals) ── */
+/* ── Theme: the --gv-* tokens of the bundle, re-skinned (green accent on green-grey neutrals) ──
+ *
+ * Every token is written once, light-dark(light, dark), and the colour scheme of <html> picks
+ * the value: the system's by default, or the one the top bar's toggle forced (data-gv-theme on
+ * <html>, from the md_theme cookie, which the bundle reads too for its own tokens). The light
+ * palette mirrors the dark one: the same green, neutrals tinted towards it.
+ * `:root` raises the rule above the bundle's [data-gv-theme] overrides (same specificity, later).
+ */
 
-[data-gridview],
-[data-gv-scope] {
-    --md-accent-soft: #e3eee7;
+:root { color-scheme: light dark; }
+:root[data-gv-theme="light"] { color-scheme: light; }
+:root[data-gv-theme="dark"] { color-scheme: dark; }
+
+:root :is([data-gridview], [data-gv-scope]) {
+    --md-accent-soft: light-dark(#e1efe7, #23362b);
     --md-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
-    --gv-color-primary: #2f6b4f;
-    --gv-color-bg: #ffffff;
-    --gv-color-bg-subtle: #f4f2ec;
-    --gv-color-bg-hover: #ebe8df;
-    --gv-color-border: #dcd8cd;
-    --gv-color-text: #1d211d;
-    --gv-color-text-muted: #6b6d64;
-    --gv-color-link: #2f6b4f;
-    --gv-color-link-hover: #234f3b;
-    --gv-input-border: #d6d2c6;
-    --gv-input-border-focus: #2f6b4f;
-    --gv-input-shadow-focus: 0 0 0 3px rgba(47, 107, 79, .18);
+    --gv-color-primary: light-dark(#2f7a55, #5fae86);
+    --gv-color-bg: light-dark(#ffffff, #1b1e1b);
+    --gv-color-bg-subtle: light-dark(#f2f4f1, #141614);
+    --gv-color-bg-hover: light-dark(#e7ebe5, #262a26);
+    --gv-color-border: light-dark(#d9dfd6, #323732);
+    --gv-color-text: light-dark(#1a1f1b, #e5e8e2);
+    --gv-color-text-muted: light-dark(#5c665d, #9aa196);
+    --gv-color-link: light-dark(#2a6e4c, #7cc39f);
+    --gv-color-link-hover: light-dark(#1f5539, #9dd5b8);
+    --gv-input-bg: light-dark(#ffffff, #141614);
+    --gv-input-border: light-dark(#cdd5ca, #3a403a);
+    --gv-input-color: light-dark(#1a1f1b, #e5e8e2);
+    --gv-input-border-focus: light-dark(#2f7a55, #7cc39f);
+    --gv-input-shadow-focus: 0 0 0 3px light-dark(rgba(47, 122, 85, .18), rgba(124, 195, 159, .2));
     --gv-input-radius: 7px;
     --gv-input-padding: .45rem .7rem;
     --gv-input-font-size: .9rem;
     --gv-btn-radius: 7px;
     --gv-btn-padding: .45rem .95rem;
     --gv-btn-font-size: .875rem;
-    --gv-btn-border: #d6d2c6;
-    --gv-btn-bg: #ffffff;
-    --gv-btn-bg-hover: #f4f2ec;
-    --gv-btn-color: #1d211d;
-    --gv-btn-primary-bg: #2f6b4f;
-    --gv-btn-primary-hover: #234f3b;
-    --gv-table-border: #e6e2d8;
-    --gv-th-bg: #f4f2ec;
-    --gv-th-color: #3c4039;
-    --gv-tr-hover-bg: #f4f2ec;
-    --gv-sort-active-color: #2f6b4f;
-    --gv-page-bg-active: #2f6b4f;
-    --gv-page-color: #2f6b4f;
-    --gv-spinner-color: #2f6b4f;
-    --gv-accent-bg: #e3eee7;
-    --gv-accent-border: #c3dacb;
-    --gv-accent-color: #2f6b4f;
+    --gv-btn-border: light-dark(#cdd5ca, #3a403a);
+    --gv-btn-bg: light-dark(#ffffff, #1b1e1b);
+    --gv-btn-bg-hover: light-dark(#f2f4f1, #262a26);
+    --gv-btn-color: light-dark(#1a1f1b, #d9ddd5);
+    --gv-btn-primary-bg: light-dark(#2f7a55, #3f8a63);
+    --gv-btn-primary-hover: light-dark(#266646, #4c9c72);
+    --gv-table-border: light-dark(#e1e6de, #2c312c);
+    --gv-th-bg: light-dark(#f2f4f1, #1f231f);
+    --gv-th-color: light-dark(#384039, #c9cec5);
+    --gv-tr-hover-bg: light-dark(#f2f4f1, #232723);
+    --gv-sort-active-color: light-dark(#2f7a55, #7cc39f);
+    --gv-page-bg-active: light-dark(#2f7a55, #3f8a63);
+    --gv-page-color: light-dark(#2a6e4c, #7cc39f);
+    --gv-spinner-color: light-dark(#2f7a55, #7cc39f);
+    --gv-accent-bg: light-dark(#e1efe7, #23362b);
+    --gv-accent-border: light-dark(#bfdccb, #2f4a3a);
+    --gv-accent-color: light-dark(#2a6e4c, #7cc39f);
     --gv-radius: 7px;
-}
-
-@media (prefers-color-scheme: dark) {
-    :is([data-gridview], [data-gv-scope]) {
-        --md-accent-soft: #23362b;
-        --gv-color-primary: #5fae86;
-        --gv-color-bg: #1b1e1b;
-        --gv-color-bg-subtle: #141614;
-        --gv-color-bg-hover: #262a26;
-        --gv-color-border: #323732;
-        --gv-color-text: #e5e8e2;
-        --gv-color-text-muted: #9aa196;
-        --gv-color-link: #7cc39f;
-        --gv-color-link-hover: #9dd5b8;
-        --gv-input-bg: #141614;
-        --gv-input-border: #3a403a;
-        --gv-input-color: #e5e8e2;
-        --gv-input-border-focus: #7cc39f;
-        --gv-input-shadow-focus: 0 0 0 3px rgba(124, 195, 159, .2);
-        --gv-btn-bg: #1b1e1b;
-        --gv-btn-bg-hover: #262a26;
-        --gv-btn-border: #3a403a;
-        --gv-btn-color: #d9ddd5;
-        --gv-btn-primary-bg: #3f8a63;
-        --gv-btn-primary-hover: #4c9c72;
-        --gv-table-border: #2c312c;
-        --gv-th-bg: #1f231f;
-        --gv-th-color: #c9cec5;
-        --gv-tr-hover-bg: #232723;
-        --gv-sort-active-color: #7cc39f;
-        --gv-page-bg-active: #3f8a63;
-        --gv-page-color: #7cc39f;
-        --gv-spinner-color: #7cc39f;
-        --gv-accent-bg: #23362b;
-        --gv-accent-border: #2f4a3a;
-        --gv-accent-color: #7cc39f;
-    }
 }
 
 body {
@@ -117,6 +92,25 @@ a:hover { color: var(--gv-color-link-hover); }
 .md-topbar__nav { display: flex; gap: 1rem; }
 .md-topbar__nav a { text-decoration: none; }
 .md-topbar__user { margin-left: auto; display: flex; align-items: center; gap: 1rem; color: var(--gv-color-text-muted); }
+
+/* The light / dark toggle: last in the top bar, or in the corner of a page without it. The moon
+   (go dark) shows in the light theme, the sun (go light) in the dark one: forced, or the system's. */
+.md-theme { display: inline-flex; align-items: center; justify-content: center; padding: .3rem; border: 1px solid var(--gv-color-border); border-radius: var(--gv-radius); background: transparent; color: var(--gv-color-text-muted); cursor: pointer; }
+.md-theme:hover { color: var(--gv-color-text); background: var(--gv-color-bg-hover); }
+/* For a signed-in user the button sits in a form (the choice goes to the profile too). */
+.md-theme-form { display: contents; }
+.md-topbar > .md-theme,
+.md-topbar > .md-theme-form > .md-theme { margin-left: auto; }
+.md-topbar__user + .md-theme,
+.md-topbar__user + .md-theme-form > .md-theme { margin-left: 0; }
+.md-theme--floating { position: fixed; top: 1rem; right: 1rem; z-index: 10; background: var(--gv-color-bg); }
+.md-theme__icon--sun { display: none; }
+:root[data-gv-theme="dark"] .md-theme__icon--sun { display: block; }
+:root[data-gv-theme="dark"] .md-theme__icon--moon { display: none; }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-gv-theme="light"]) .md-theme__icon--sun { display: block; }
+    :root:not([data-gv-theme="light"]) .md-theme__icon--moon { display: none; }
+}
 
 /* The language switcher of the top bar: one button per enabled language, the current one filled. */
 .md-locale { display: inline-flex; border: 1px solid var(--gv-color-border); border-radius: var(--gv-radius); overflow: hidden; }

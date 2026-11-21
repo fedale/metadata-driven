@@ -47,6 +47,47 @@ final class AccountControllerTest extends WebTestCase
         self::assertSelectorTextContains('.md-topbar__user', 'Anna Magnani');
     }
 
+    public function testTheThemeChosenOnTheAccountPageIsKeptInTheProfileAndTheBrowser(): void
+    {
+        self::signIn($this->client, 'anna@example.com');
+
+        $crawler = $this->client->request('GET', '/account');
+        self::assertSelectorNotExists('html[data-gv-theme]');
+        $this->client->submit($crawler->filter('#theme form')->form(['appearance[theme]' => 'dark']));
+        self::assertResponseRedirects('/account', 303);
+        self::assertResponseHasCookie('md_theme');
+        self::assertSame('dark', $this->users()->profile('anna@example.com')->theme);
+
+        // Without the cookie too: the profile's theme, from the first paint.
+        $this->client->getCookieJar()->expire('md_theme');
+        $crawler = $this->client->request('GET', '/account');
+        self::assertSelectorExists('html[data-gv-theme="dark"]');
+        self::assertSelectorExists('#theme input[value="dark"][checked]');
+
+        // Back to the system's: no theme forced, the browser's copy removed.
+        $this->client->submit($crawler->filter('#theme form')->form(['appearance[theme]' => '']));
+        self::assertNull($this->users()->profile('anna@example.com')->theme);
+        self::assertSame('', (string) $this->client->getResponse()->headers->getCookies()[0]->getValue());
+        $this->client->followRedirect();
+        self::assertSelectorNotExists('html[data-gv-theme]');
+    }
+
+    public function testTheToggleOfTheTopBarSavesTheThemeInTheProfile(): void
+    {
+        self::signIn($this->client, 'anna@example.com');
+
+        $crawler = $this->client->request('GET', '/account');
+        $this->client->submit($crawler->filter('.md-topbar form.md-theme-form')->form(['theme' => 'light']));
+        self::assertResponseStatusCodeSame(204);
+        self::assertResponseCookieValueSame('md_theme', 'light');
+        self::assertSame('light', $this->users()->profile('anna@example.com')->theme);
+
+        $token = (string) $crawler->filter('.md-theme-form input[name="_token"]')->attr('value');
+        $this->client->request('POST', '/account/theme', ['theme' => 'sepia', '_token' => $token]);
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame('light', $this->users()->profile('anna@example.com')->theme);
+    }
+
     public function testChangesThePasswordKeepingThisSessionAndEndingTheOthers(): void
     {
         self::signIn($this->client, 'anna@example.com');
@@ -136,6 +177,14 @@ final class AccountControllerTest extends WebTestCase
 
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('main', 'olga@example.com');
+    }
+
+    private function users(): UserManagerInterface
+    {
+        $users = self::getContainer()->get(UserManagerInterface::class);
+        self::assertInstanceOf(UserManagerInterface::class, $users);
+
+        return $users;
     }
 
     private function clearLimits(): void

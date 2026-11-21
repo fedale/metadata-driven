@@ -103,6 +103,17 @@ final class UserManager implements UserManagerInterface
         $this->users->save($user);
     }
 
+    public function changeTheme(string $email, ?string $theme): void
+    {
+        if (null !== $theme && !\in_array($theme, Profile::THEMES, true)) {
+            throw InvalidUser::unknownTheme($theme, Profile::THEMES);
+        }
+        $user = $this->users->findByEmail($email) ?? throw InvalidUser::notFound($email);
+        $profile = $user->getProfile() ?? new UserProfile(Uuid::v7(), $user);
+        $profile->changeTheme($theme);
+        $this->users->save($user);
+    }
+
     public function chooseNotificationsByEmail(string $email, bool $byEmail): void
     {
         $user = $this->user($email);
@@ -146,7 +157,7 @@ final class UserManager implements UserManagerInterface
     {
         $user = $this->user($email);
 
-        return new Profile($user->getEmail(), $user->getProfile()?->getFirstName(), $user->getProfile()?->getLastName(), $user->getProfile()?->notifiesByEmail() ?? false);
+        return new Profile($user->getEmail(), $user->getProfile()?->getFirstName(), $user->getProfile()?->getLastName(), $user->getProfile()?->notifiesByEmail() ?? false, $user->getTheme());
     }
 
     public function rename(string $email, ?string $firstName, ?string $lastName): void

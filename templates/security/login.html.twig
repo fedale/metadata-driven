@@ -2,8 +2,8 @@
 
 {% block title %}{{ 'login.title'|trans }}{% endblock %}
 
-{# No top bar: the sign-in form stands alone, in the middle of the page. #}
-{% block header %}{% endblock %}
+{# No top bar (only the theme toggle, in a corner): the sign-in form stands alone, in the middle of the page. #}
+{% block header %}{{ include('theme/_toggle.html.twig', {floating: true}) }}{% endblock %}
 
 {% block body %}
     <div class="md-login">

@@ -124,6 +124,14 @@ class User
         return $this->profile?->getLocale();
     }
 
+    /**
+     * The colour theme chosen in the profile, light or dark; null: the system's.
+     */
+    public function getTheme(): ?string
+    {
+        return $this->profile?->getTheme();
+    }
+
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
