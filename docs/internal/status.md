@@ -255,7 +255,7 @@ revision bumped by triggers, see `architecture.md`).
   in the singular (`object_singular()`, Record UI Twig), and an administrator can show the
   machine names next to the labels (the header's toggle, the `machine-names` Stimulus
   controller, reading `data-gv-field` / `data-md-name` of the rows).
-- **Sign-in page layout** (branch `login_layout`, 2026-11-21, waiting for the user's review):
+- **Sign-in page layout** (merged 2026-11-21):
   no top bar (the base layout's `header` block, emptied by `security/login.html.twig`), the form
   in a card centred in the viewport (`.md-page:has(> .md-login)`), "Forgot your password?" to
   the right of the "Sign in" button (`.md-login__actions`).
