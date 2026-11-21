@@ -12,7 +12,7 @@ symfony console user:create you@example.com --first-name=Ada --last-name=Lovelac
 symfony console rbac:assign you@example.com ROLE_SUPER_ADMIN
 ```
 
-Then sign in at `/login`. A super admin passes every check, including those of objects created
+Then sign in at `/login` (a page of its own, without the top bar). A super admin passes every check, including those of objects created
 later.
 
 ## Users
@@ -124,7 +124,7 @@ the top bar:
 
 ### A forgotten password — `/password/forgot`
 
-**Forgot your password?**, under the sign-in form, in every workspace and on the console
+**Forgot your password?**, next to the sign-in button, in every workspace and on the console
 (accounts are global): enter the email, and if an active account has it, a link to choose a new
 password goes to it, in the account's language. The page answers the same whether an account has
 the address or not.

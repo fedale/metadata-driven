@@ -22,6 +22,8 @@
         {% endif %}
     </head>
     <body data-gv-scope>
+        {# A page without navigation (the sign-in) empties it. #}
+        {% block header %}
         <header class="md-topbar">
             {% if app.request.attributes.get('_system_console') %}
                 {# The system console: the system's, no workspace's navigation (whose
@@ -88,6 +90,7 @@
             {% endif %}
             {% endif %}
         </header>
+        {% endblock %}
         <main class="md-page">
             {% for message in app.flashes('success') %}
                 <p class="md-flash md-flash--success" role="status">{{ message }}</p>
