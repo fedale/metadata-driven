@@ -1,5 +1,8 @@
 <!DOCTYPE html>
-<html lang="{{ app.request.locale }}">
+{# The theme forced by the toggle, set before the first paint: the profile's for a signed-in user,
+   else the browser's md_theme cookie; none: the system's. #}
+{% set theme = app.user and app.user.theme ? app.user.theme : app.request.cookies.get('md_theme') %}
+<html lang="{{ app.request.locale }}"{% if theme in ['light', 'dark'] %} data-gv-theme="{{ theme }}"{% endif %}>
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -89,6 +92,7 @@
                 </div>
             {% endif %}
             {% endif %}
+            {{ include('theme/_toggle.html.twig') }}
         </header>
         {% endblock %}
         <main class="md-page">

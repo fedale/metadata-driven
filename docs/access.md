@@ -22,7 +22,7 @@ A user is two records, one-to-one:
 | Table | Holds |
 |---|---|
 | `core.app_user` | The login identity: email (unique, stored lowercase), password hash, active flag, last login |
-| `core.app_user_profile` | The person: first and last name (the name shown in the top bar), the language of the application (see [Languages](i18n.md#languages-of-the-users)) |
+| `core.app_user_profile` | The person: first and last name (the name shown in the top bar), the language of the application (see [Languages](i18n.md#languages-of-the-users)), the theme (light, dark, or null for the system's) |
 
 Passwords are hashed with Symfony's `auto` hasher and rehashed on sign-in when the algorithm or
 its cost changes; at least 12 characters. An unknown and a deactivated user get the same error.
@@ -105,8 +105,10 @@ history). The user becomes a member of the command's workspace (the default one,
 `--workspace=<slug>`), and starts with no permission there: assign a role or a permission. An email
 that exists already is refused: add that user to another workspace with `workspace:member:add`.
 
-Any signed-in user picks their language in the top bar (`POST /account/locale`); no permission
-is needed.
+Any signed-in user picks their language in the top bar (`POST /account/locale`), and switches
+between the light and the dark theme with the button at its end (`POST /account/theme`); no
+permission is needed. Both are kept in the profile (`core.app_user_profile`, columns `locale` and
+`theme`), so they follow the user to every browser and every workspace.
 
 ### My account — `/account`
 
@@ -117,6 +119,9 @@ the top bar:
   sees the change).
 - **Notifications**: **Also by email** sends every [notification](notifications.md) of every
   workspace to your email too, not only to the bell (off by default).
+- **Appearance**: the theme, **System** (the light or dark setting of the device, the default),
+  **Light** or **Dark**. The button of the top bar sets Light or Dark too; only here does it go
+  back to System.
 - **Password**: the current one, then the new one twice (12 characters at least). Five wrong
   current passwords a quarter of an hour, then it waits: a session left open is no way to guess
   it. Changing it ends every other session of the account, on other devices and in other workspaces,

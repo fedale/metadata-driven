@@ -31,6 +31,14 @@ final class InvalidUser extends UserException
         return new self(\sprintf('"%s" is no language of the application (%s).', $locale, implode(', ', $enabled)));
     }
 
+    /**
+     * @param list<string> $themes
+     */
+    public static function unknownTheme(string $theme, array $themes): self
+    {
+        return new self(\sprintf('"%s" is no theme of the application (%s).', $theme, implode(', ', $themes)));
+    }
+
     public static function wrongPassword(): self
     {
         return new self('This is not the password of the account.');

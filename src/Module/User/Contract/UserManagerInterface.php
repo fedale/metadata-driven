@@ -32,6 +32,14 @@ interface UserManagerInterface
     public function changeLocale(string $email, ?string $locale): void;
 
     /**
+     * Sets the colour theme of the application, light or dark (Profile::THEMES); null goes back
+     * to the system's.
+     *
+     * @throws UserException unknown user, unknown theme
+     */
+    public function changeTheme(string $email, ?string $theme): void;
+
+    /**
      * Lets a user sign in to a workspace, whose roles then apply to them there.
      *
      * @return bool false when they were a member already

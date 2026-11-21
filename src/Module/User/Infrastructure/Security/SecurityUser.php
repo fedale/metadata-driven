@@ -38,6 +38,7 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
         private readonly array $assignedRoles = [],
         private readonly ?string $locale = null,
         ?string $workspaceId = null,
+        private readonly ?string $theme = null,
     ) {
         $this->workspaceId = $workspaceId;
     }
@@ -47,7 +48,7 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
      */
     public static function fromUser(User $user, array $assignedRoles, ?string $workspaceId = null): self
     {
-        return new self($user->getId()->toRfc4122(), $user->getEmail(), $user->getPasswordHash(), $user->getDisplayName(), $assignedRoles, $user->getLocale(), $workspaceId);
+        return new self($user->getId()->toRfc4122(), $user->getEmail(), $user->getPasswordHash(), $user->getDisplayName(), $assignedRoles, $user->getLocale(), $workspaceId, $user->getTheme());
     }
 
     /**
@@ -94,6 +95,15 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
     public function getLocale(): ?string
     {
         return $this->locale;
+    }
+
+    /**
+     * The colour theme chosen in the profile, light or dark; null: the system's (or the browser's
+     * md_theme cookie). Not compared by isEqualTo(): changing it keeps the session.
+     */
+    public function getTheme(): ?string
+    {
+        return $this->theme;
     }
 
     /**

@@ -8,6 +8,7 @@ nav:
     workspaces: Spazi di lavoro
     account: Il mio account
     sign_out: Esci
+    theme: Passa dal tema chiaro a quello scuro e viceversa
 console:
     title: Console
     workspaces: Spazi di lavoro
@@ -62,6 +63,14 @@ account:
     by_email_help: 'Ogni notifica di ogni workspace di cui sei membro arriva anche alla tua email, non solo alla campanella.'
     save_notifications: Salva
     notifications_saved: 'Scelta sulle notifiche salvata.'
+    appearance: Aspetto
+    theme: Tema
+    theme_help: "Quello di sistema segue l'impostazione chiara o scura del tuo dispositivo. Lo cambia anche il pulsante nella barra in alto."
+    theme_system: Sistema
+    theme_light: Chiaro
+    theme_dark: Scuro
+    save_theme: Salva
+    theme_saved: 'Tema salvato.'
     password: Password
     password_intro: 'Quando cambia, le tue sessioni altrove, su altri dispositivi e altri spazi di lavoro, si chiudono.'
     current_password: Password attuale

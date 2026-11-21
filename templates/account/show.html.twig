@@ -24,6 +24,15 @@
         {{ form_end(notifications_form) }}
     </section>
 
+    <section class="md-admin__section" id="theme">
+        <h2>{{ 'account.appearance'|trans }}</h2>
+        {{ form_start(appearance_form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+            {{ form_errors(appearance_form) }}
+            {{ form_rest(appearance_form) }}
+            <button type="submit" class="gv-btn gv-btn-primary">{{ 'account.save_theme'|trans }}</button>
+        {{ form_end(appearance_form) }}
+    </section>
+
     <section class="md-admin__section">
         <h2>{{ 'account.password'|trans }}</h2>
         <p class="gv-muted">{{ 'account.password_intro'|trans }}</p>

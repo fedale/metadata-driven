@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Module\User\UI\Controller;
 
+use App\Module\User\Contract\Dto\Profile;
 use App\Module\User\Contract\Exception\UserException;
 use App\Module\User\Contract\UserManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\Extension\Core\Type\RepeatedType;
@@ -17,6 +19,7 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -27,11 +30,14 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * The signed-in user's own account: their name, their password, the language of the
- * application. Accounts are global: the same page in every workspace, and on the console.
+ * The signed-in user's own account: their name, their password, the language and the colour
+ * theme of the application. Accounts are global: the same page in every workspace, and on the console.
  */
 final class AccountController extends AbstractController
 {
+    /** The browser's copy of the theme, read by base.html.twig before anyone signs in. */
+    private const string THEME_COOKIE = 'md_theme';
+
     /**
      * @param UserProviderInterface<UserInterface> $userProvider
      */
@@ -75,6 +81,25 @@ final class AccountController extends AbstractController
             return $this->redirectToRoute('app_account', [], Response::HTTP_SEE_OTHER);
         }
 
+        $appearance = $this->forms->createNamedBuilder('appearance', FormType::class, ['theme' => $profile->theme ?? ''])
+            ->add('theme', ChoiceType::class, [
+                'label' => 'account.theme',
+                'help' => 'account.theme_help',
+                'choices' => ['account.theme_system' => '', 'account.theme_light' => 'light', 'account.theme_dark' => 'dark'],
+                'expanded' => true,
+                'placeholder' => false,
+                'attr' => ['class' => 'gv-segmented'],
+            ])
+            ->getForm()
+            ->handleRequest($request);
+        if ($appearance->isSubmitted() && $appearance->isValid()) {
+            $theme = self::nullable($appearance, 'theme');
+            $this->users->changeTheme($email, $theme);
+            $this->addFlash('success', $this->translator->trans('account.theme_saved'));
+
+            return self::withThemeCookie($this->redirectToRoute('app_account', [], Response::HTTP_SEE_OTHER), $theme);
+        }
+
         $password = $this->forms->createNamedBuilder('password', FormType::class)
             ->add('current', PasswordType::class, ['label' => 'account.current_password'])
             ->add('new', RepeatedType::class, [
@@ -100,8 +125,9 @@ final class AccountController extends AbstractController
             'email' => $profile->email,
             'name_form' => $name->createView(),
             'notifications_form' => $notifications->createView(),
+            'appearance_form' => $appearance->createView(),
             'password_form' => $password->createView(),
-        ], new Response(status: ($name->isSubmitted() || $notifications->isSubmitted() || $password->isSubmitted()) ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
+        ], new Response(status: ($name->isSubmitted() || $notifications->isSubmitted() || $appearance->isSubmitted() || $password->isSubmitted()) ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     /**
@@ -121,6 +147,38 @@ final class AccountController extends AbstractController
         }
 
         return $this->redirect($this->backTo($request), Response::HTTP_SEE_OTHER);
+    }
+
+    /**
+     * Saves the theme forced by the toggle of the top bar ("" goes back to the system's). Sent in
+     * the background (theme-toggle Stimulus controller), which has switched the page already.
+     */
+    #[Route('/account/theme', name: 'app_account_theme', methods: ['POST'])]
+    #[IsGranted('IS_AUTHENTICATED')]
+    #[IsCsrfTokenValid('submit', tokenKey: '_token')]
+    public function theme(Request $request): Response
+    {
+        $theme = $request->getPayload()->getString('theme');
+        try {
+            $this->users->changeTheme($this->getUser()?->getUserIdentifier() ?? '', '' === $theme ? null : $theme);
+        } catch (UserException $e) {
+            return new Response($e->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        return self::withThemeCookie(new Response(status: Response::HTTP_NO_CONTENT), '' === $theme ? null : $theme);
+    }
+
+    /**
+     * The browser keeps a copy of the theme for the pages before signing in (the sign-in page):
+     * the profile's, set; the system's, removed.
+     */
+    private static function withThemeCookie(Response $response, ?string $theme): Response
+    {
+        null !== $theme && \in_array($theme, Profile::THEMES, true)
+            ? $response->headers->setCookie(Cookie::create(self::THEME_COOKIE, $theme, new \DateTimeImmutable('+1 year'), httpOnly: false, sameSite: Cookie::SAMESITE_LAX))
+            : $response->headers->clearCookie(self::THEME_COOKIE, httpOnly: false, sameSite: Cookie::SAMESITE_LAX);
+
+        return $response;
     }
 
     /**
