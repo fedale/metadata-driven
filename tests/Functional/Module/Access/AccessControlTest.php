@@ -49,6 +49,9 @@ final class AccessControlTest extends WebTestCase
         self::createUser('Anna@Example.com');
 
         $this->client->request('GET', '/login');
+        // The sign-in page stands alone: no top bar, the forgotten-password link next to the button.
+        self::assertSelectorNotExists('.md-topbar');
+        self::assertSelectorExists('.md-login__actions button[type=submit] + a[href="/password/forgot"]');
         $this->client->submitForm('Sign in', ['email' => 'anna@example.com', 'password' => 'wrong password here']);
         $this->client->followRedirect();
         self::assertSelectorExists('.md-flash--error');

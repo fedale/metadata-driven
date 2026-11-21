@@ -177,7 +177,23 @@ a:hover { color: var(--gv-color-link-hover); }
 
 .md-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-.md-login { max-width: 24rem; margin: 3rem auto; }
+/* The sign-in: no top bar, the card (and any flash above it) centred in the viewport. */
+.md-page:has(> .md-login) {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 100dvh;
+}
+.md-page:has(> .md-login) > .md-flash { width: 100%; max-width: 24rem; margin: 0 auto 1rem; }
+.md-login { width: 100%; max-width: 24rem; margin: 0 auto; }
+.md-login__card {
+    padding: 1.5rem;
+    background: var(--gv-color-bg);
+    border: 1px solid var(--gv-color-border);
+    border-radius: var(--gv-radius);
+}
+.md-login__card h1 { margin-top: 0; }
+.md-login__actions { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 
 .md-link-list { padding-left: 1.2rem; }
 
