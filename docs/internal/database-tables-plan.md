@@ -287,6 +287,14 @@ rename, columns added, `NOT NULL` dropped): the table's data and keys are left a
 
 ### Phase 5: exporting objects with their records, from the admin
 
+Done on branch `package_files` (2026-11-22). As delivered: `PackageFileController`
+(`/admin/packages/export`, `/admin/packages/upload`, `/admin/packages/uploads/<token>` and its
+`/discard`), `UploadedPackages` (var/package-uploads/<data schema>/<token>, the download's limits,
+checked as a package before it is kept, removed a day later), `PackageUploadForm` shared with the
+packages page, which shows both. The export packs with `Archive` into a `.tar.gz`; the upload
+reuses the install page and the trial install. Not done: upgrading from an uploaded archive
+(the console does it from a directory); a large seed installed in the background. As planned:
+
 **What already exists.** A package holds objects, their fields, views, forms, translations,
 workflows and **seeds**, the records of an object (see packages.md):
 

@@ -805,6 +805,25 @@ admin:
         give_name: 'Dai al testo un nome e il suo testo in %locale%.'
         text_exists: 'Esiste già un testo di nome "%name%".'
     package_admin:
+        files: File dei package
+        export_title: Esporta un package…
+        export_help: "Alcuni oggetti, con i loro campi e viste, i loro record se vuoi, moduli e workflow, come archivio di un package da scaricare: si installa su un'altra istanza, dalla sua pagina dei package o con metadata:package:install. Un oggetto a cui punta va esportato con lui, o appartenere a un package installato (che allora diventa un requisito)."
+        export_package: Il package
+        export_name: Nome
+        export_name_help: 'vendor/nome, in minuscolo: acme/progetti.'
+        export_label: Titolo
+        export_description: Descrizione
+        export_license: Licenza
+        export_license_help: 'Un identificatore SPDX (MIT), o proprietary.'
+        export_seeds: Anche i loro record
+        export_seeds_help: 'I record di questi oggetti diventano seed, installati con il package e identificati dal loro primo campo univoco: un oggetto che non ne ha non si può esportare con i suoi record.'
+        export_workflows_help: 'Ognuno come si legge la sua bozza, altrimenti la versione attiva; installato come bozza.'
+        export_button: Scarica l'archivio
+        upload_file: Un archivio di package (.tar.gz)
+        upload_help: "Esportato da un'altra istanza, o creato con metadata:package:pack. Prima viene fatta una prova d'installazione."
+        upload_button: Carica e prova
+        upload_missing: Scegli un archivio da caricare.
+        upload_discard: Rinuncia
         intro: 'Un pacchetto porta oggetti, le loro viste e i loro moduli, le traduzioni e i record. Si installa in un colpo solo, e si aggiorna in seguito: si applica solo ciò che la nuova versione ha cambiato, e ciò che è stato cambiato qui resta.'
         installed: Installato
         none_installed: Nessun pacchetto installato.

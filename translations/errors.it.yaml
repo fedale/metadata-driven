@@ -243,6 +243,9 @@ metadata:
         searched: 'Il campo "%field%" è di sola scrittura (il suo valore non viene mai riletto): non si può cercare.'
         unique: 'Il campo "%field%" è di sola scrittura (il suo valore non viene mai riletto): non può essere univoco.'
 package:
+    upload:
+        invalid: '%file%: %problem%'
+        too_large: "L'archivio supera %max% MB: non è stato scompattato."
     install:
         already_installed: '%name% è già installato, nella versione %version%.'
         archived_object_taken: 'Questa istanza ha già un oggetto "%name%" (archiviato).'

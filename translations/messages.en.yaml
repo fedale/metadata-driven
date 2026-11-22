@@ -809,6 +809,25 @@ admin:
         give_name: 'Give the text a name and its %locale% text.'
         text_exists: 'A text named "%name%" already exists.'
     package_admin:
+        files: Package files
+        export_title: Export a package…
+        export_help: 'Some objects, with their fields and views, their records if you want, forms and workflows, as a package archive to download: installed on another instance, from its packages page or metadata:package:install. An object it points at must be exported with it, or belong to an installed package (then it requires that package).'
+        export_package: The package
+        export_name: Name
+        export_name_help: 'vendor/name, in lowercase: acme/projects.'
+        export_label: Title
+        export_description: Description
+        export_license: License
+        export_license_help: 'An SPDX identifier (MIT), or proprietary.'
+        export_seeds: Their records too
+        export_seeds_help: 'The records of these objects go as seeds, installed with the package, named by their first unique field: an object without one cannot be exported with its records.'
+        export_workflows_help: 'Each as its draft reads, else its active version; installed as a draft.'
+        export_button: Download the archive
+        upload_file: A package archive (.tar.gz)
+        upload_help: 'Exported from another instance, or packed with metadata:package:pack. A trial install comes first.'
+        upload_button: Upload and try it
+        upload_missing: Choose an archive to upload.
+        upload_discard: Give it up
         intro: 'A package brings objects, their views and forms, their translations and their records. It is installed in one go, and upgraded later: only what its new version changed is applied, what was changed here is kept.'
         installed: Installed
         none_installed: No package is installed.

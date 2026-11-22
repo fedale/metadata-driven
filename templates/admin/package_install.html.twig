@@ -37,4 +37,11 @@
             <button type="submit" class="gv-btn gv-btn-primary">{{ (many ? 'admin.package_admin.install_button_many' : 'admin.package_admin.install_button')|trans({'%name%': last.name, '%version%': last.version}) }}</button>
         {{ form_end(confirm) }}
     {% endif %}
+    {% if discard is defined %}
+        {# An upload: given up, it is removed. #}
+        <form method="post" action="{{ discard }}" data-turbo="false">
+            <input type="hidden" name="_token" value="{{ csrf_token('discard-upload') }}">
+            <button type="submit" class="gv-btn">{{ 'admin.package_admin.upload_discard'|trans }}</button>
+        </form>
+    {% endif %}
 {% endblock %}

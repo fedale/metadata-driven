@@ -17,6 +17,7 @@ use App\Module\Package\Domain\Exception\InstallRefused;
 use App\Module\Package\Domain\Exception\PackageSourceFailed;
 use App\Module\Package\Domain\Exception\UpgradeRefused;
 use App\Module\Package\Domain\Repository\PackageInstallationRepository;
+use App\Module\Package\UI\Form\PackageUploadForm;
 use App\Shared\Message\MessageTranslator;
 use Fedale\PackageFormat\InvalidPackage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -58,6 +59,7 @@ final class PackageAdminController extends AbstractController
         private readonly AccessCheckerInterface $access,
         private readonly TranslatorInterface $translator,
         private readonly MessageTranslator $messageTranslator,
+        private readonly PackageUploadForm $uploadForm,
     ) {
     }
 
@@ -123,6 +125,7 @@ final class PackageAdminController extends AbstractController
                 array_map(fn (array $index): ?FormView => $index['shared'] ? null : $this->confirmForm('remove_index', [])->createView(), $indexes),
             ),
             'add_form' => $add->createView(),
+            'upload_form' => $this->uploadForm->create()->createView(),
         ], new Response(status: $add->isSubmitted() && !$add->isValid() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
