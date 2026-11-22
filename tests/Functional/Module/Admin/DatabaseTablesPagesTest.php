@@ -93,6 +93,8 @@ final class DatabaseTablesPagesTest extends WebTestCase
         $crawler = $this->client->click($crawler->selectLink('Make it an object…')->link());
         self::assertResponseIsSuccessful();
         self::assertSame('project', $crawler->filter('input[name="adopt[name]"]')->attr('value'));
+        // "Try it" answers with the page: a plain submit, Turbo Drive would not show it.
+        self::assertSame('false', $crawler->filter('form[name="adopt"]')->attr('data-turbo'));
         self::assertSame('title', $crawler->filter('input[name="adopt[columns][c0][field]"]')->attr('value'));
         self::assertSame('text', $crawler->filter('select[name="adopt[columns][c0][type]"] option[selected]')->attr('value'));
 

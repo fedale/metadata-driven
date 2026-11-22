@@ -21,7 +21,9 @@
         </ul>
     {% endif %}
 
-    {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate'}}) }}
+    {# Without Turbo: "Try it" answers its POST with the page itself (200), which Turbo Drive
+       would not show, as it wants a form's answer to redirect. #}
+    {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate', 'data-turbo': 'false'}}) }}
         {{ form_errors(form) }}
         <fieldset>
             <legend>{{ 'admin.tables.the_object'|trans }}</legend>
