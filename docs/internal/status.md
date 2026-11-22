@@ -499,11 +499,10 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   adoption, so an adopted table keeps its own key; the details agreed the same day (the plan's
   "Decisions": the data schema only, no table without a primary key, string keys later). Phases
   0a and 0b (`KeyType`, integer keys numbered by the database, `core.workflow_run.record_id` as
-  `TEXT`; migration `Version20261122065252`, run `make db`) done on branch `object_key_type`
-  (2026-11-22), committed there. 0d (the key in the package format: `key: integer` in an Object
-  document) done on branch `package_key_type`, on top of it, committed there; the format's 2.4.0
-  released on 2026-11-22 (merged, tagged, on Packagist) and required by the app (`^2.4`).
-  Waiting for the user's review of both branches before merging them into `main`. Then discovery of the unmanaged tables of the workspace's data schema,
+  `TEXT`; migration `Version20261122065252`, run `make db`) merged into `main` on 2026-11-22. 0d (the key in the package format: `key: integer` in an Object
+  document) merged into `main` on 2026-11-22; the format's 2.4.0 released the same day (merged,
+  tagged, on Packagist) and required by the app (`^2.4`). Phase 1 (discovery) in progress on
+  branch `table_discovery`. Then discovery of the unmanaged tables of the workspace's data schema,
   adoption of one table and of a set (the system columns added, the table renamed), junctions;
   then exporting packages and installing them from a file in the admin (today the console only).
 - Relation filters in grids keep `multiple: true` by choice.
