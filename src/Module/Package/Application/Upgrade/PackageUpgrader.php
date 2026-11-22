@@ -11,6 +11,7 @@ use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Contract\MetadataTranslationsInterface;
 use App\Module\Package\Application\PackageExporter;
+use App\Module\Package\Application\PackageInstaller;
 use App\Module\Package\Application\PackageNames;
 use App\Module\Package\Application\RequiredItems;
 use App\Module\Package\Application\RequiredPackages;
@@ -348,7 +349,7 @@ final class PackageUpgrader
 
         foreach ($byKind['object']['add'] ?? [] as $change) {
             $new = self::value($change->theirs);
-            $localId = $this->step($change, fn (): string => $this->metadata->createObject(self::string($new['name']), self::string($new['label']), self::string($new['plural']), \is_string($new['icon']) ? $new['icon'] : null));
+            $localId = $this->step($change, fn (): string => $this->metadata->createObject(self::string($new['name']), self::string($new['label']), self::string($new['plural']), \is_string($new['icon']) ? $new['icon'] : null, PackageInstaller::keyType($new['key'] ?? null)));
             $names->renameObject($change->state()->id, self::string($new['name']));
             $items[] = $this->item($theirs, ItemKind::Object, $change->state()->id, $localId);
         }
@@ -726,6 +727,11 @@ final class PackageUpgrader
             $new = self::value($change->theirs);
             $old = self::value($change->mine);
             $kind = $change->state()->kind;
+            if ('object' === $kind && PackageInstaller::keyType($new['key'] ?? null) !== PackageInstaller::keyType($old['key'] ?? null)) {
+                // Never by hand either: the tables pointing at the object hold keys of its type.
+                $reasons[] = InstallRefused::located($change->state()->document->path, $change->item(), new Message('package.upgrade.key_changed', 'its key changed from %from% to %to%: the key of an object is fixed once it exists.', ['from' => PackageInstaller::keyType($old['key'] ?? null)->value, 'to' => PackageInstaller::keyType($new['key'] ?? null)->value]));
+                continue;
+            }
             $what = match (true) {
                 'field' === $kind && $new['object'] !== $old['object'] => new Message('package.upgrade.unsupported.moved', 'moved to another object'),
                 'field' === $kind && $new['type'] !== $old['type'] => new Message('package.upgrade.unsupported.type', 'its type changed from %from% to %to%', ['from' => self::string($old['type']), 'to' => self::string($new['type'])]),

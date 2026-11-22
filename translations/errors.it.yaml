@@ -334,6 +334,7 @@ package:
             delete: 'elimina il record %key%'
             removed_changed_here: 'il record %key%, rimosso in questa versione, è stato cambiato qui'
             update: 'aggiorna il record %key%'
+        key_changed: "la sua chiave è cambiata da %from% a %to%: la chiave di un oggetto non cambia dopo la creazione."
         unsupported:
             icon: 'la sua icona è cambiata'
             moved: 'spostato in un altro oggetto'

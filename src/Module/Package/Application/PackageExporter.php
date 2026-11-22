@@ -6,6 +6,7 @@ namespace App\Module\Package\Application;
 
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\FormDefinitionDto;
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\TranslationKey;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
@@ -322,6 +323,10 @@ final class PackageExporter
         $spec = ['name' => $object->name, 'label' => $object->labelSingular, 'plural' => $object->labelPlural];
         if (null !== $object->icon) {
             $spec['icon'] = $object->icon;
+        }
+        // A UUID key is the format's default: left out, an export reads as before 2.4.
+        if (KeyType::Uuid !== $object->keyType) {
+            $spec['key'] = $object->keyType->value;
         }
         if (null !== $object->labelField) {
             $spec['label_field'] = $refs->field($object->name, $object->labelField);

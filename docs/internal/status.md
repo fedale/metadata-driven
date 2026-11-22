@@ -500,7 +500,10 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   "Decisions": the data schema only, no table without a primary key, string keys later). Phases
   0a and 0b (`KeyType`, integer keys numbered by the database, `core.workflow_run.record_id` as
   `TEXT`; migration `Version20261122065252`, run `make db`) done on branch `object_key_type`
-  (2026-11-22), waiting for the user's review. Next: 0d (the key in the package format). Then discovery of the unmanaged tables of the workspace's data schema,
+  (2026-11-22), committed there. 0d (the key in the package format: `key: integer` in an Object
+  document, format 2.4.0) done on branch `package_key_type`, on top of it, and the format's
+  branch `object_key`: waiting for the user's review, and for the format's release (2.4.0, then
+  `composer unlink-all` and `composer require fedale/metadata-driven-package-format:^2.4`). Then discovery of the unmanaged tables of the workspace's data schema,
   adoption of one table and of a set (the system columns added, the table renamed), junctions;
   then exporting packages and installing them from a file in the admin (today the console only).
 - Relation filters in grids keep `multiple: true` by choice.

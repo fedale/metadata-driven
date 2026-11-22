@@ -96,6 +96,10 @@ spec:                             # the item, as its kind describes it
 - **Only what differs from the defaults.** A field's `required` and `unique` are written when
   true, its settings when they differ from their default: the file stays short enough to read
   and edit.
+- **The key** (format 2.4): an object whose records have an integer [key](field-types.md#keys)
+  says `key: integer`; a UUID one leaves it out (the default), so its file reads as before. The
+  install makes the object with that key. The seeds name records by a field, never by id, so they
+  install whatever the key.
 - **Views and forms as the app stores them.** A form view's `source` is its HTML layout, a grid
   view's is its YAML, both written as literal blocks; inside them, fields are named by name,
   within their object. A form's `definition` is the YAML it was saved with, `object`
@@ -458,7 +462,10 @@ instance holds now.
   changed from number to text, which an upgrade cannot do yet: change it by hand first.`); a
   requirement as installed that the new version doesn't allow, and a new version that would
   break a package requiring it (see [Packages requiring
-  packages](#packages-requiring-packages)).
+  packages](#packages-requiring-packages)). A change of an object's `key` is refused even in a
+  new major version, which the format allows (`objects/product.yaml: object acme.product: its key
+  changed from uuid to integer: the key of an object is fixed once it exists.`): every table
+  pointing at the object holds keys of its type.
   The app's own rules apply too: a setting fixed once a field exists (a text's `maxLength`)
   cannot change.
 
@@ -657,9 +664,5 @@ package's page.
 - **Packages requiring packages**: an upgrade never brings in a missing requirement (install
   it first); extensions (adding fields to a required object), optional requirements, and
   requirements on a version of metadata-driven itself aren't planned yet.
-- **Keys**: the format does not carry an object's [key](field-types.md#keys) yet. An export of
-  an object with an integer key writes it without, and the install makes a UUID one (the seeds
-  refer to records by a field, not by id, so their records come in all the same). Planned in
-  [internal/database-tables-plan.md](internal/database-tables-plan.md), phase 0d.
 
 See the plan in [internal/package-plan.md](internal/package-plan.md).
