@@ -363,6 +363,11 @@ admin:
         name_help: 'Lettere minuscole, cifre e trattini bassi singoli, a partire da una lettera. La tabella è data.c_<nome>.'
         singular_label: Etichetta al singolare
         plural_label: Etichetta al plurale
+        key_type: Chiave
+        key_type_help: "Come sono numerati i record, nel loro id. Non si può cambiare dopo la creazione dell'oggetto."
+        key:
+            uuid: "UUID, generato dall'applicazione (0190c7a2-…)"
+            integer: 'Intero, numerato dal database (1, 2, 3…)'
         created: 'Oggetto "%name%" creato, con la sua tabella.'
         add_field: Aggiungi un campo
         no_fields: 'Ancora nessun campo. La tabella ha solo le colonne di sistema (id, created_at, updated_at, created_by, deleted_at).'

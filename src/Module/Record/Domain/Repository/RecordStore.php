@@ -23,11 +23,15 @@ use App\Module\Record\Domain\Exception\UniqueValueConflict;
 interface RecordStore
 {
     /**
+     * @param string|null          $id     the id the application made (a UUID key); null to have the database make it
+     *                                     (an integer key)
      * @param array<string, mixed> $values denormalized values keyed by field name
+     *
+     * @return string the id of the record written
      *
      * @throws UniqueValueConflict
      */
-    public function insert(ObjectDefinitionDto $object, string $id, array $values, \DateTimeImmutable $now): void;
+    public function insert(ObjectDefinitionDto $object, ?string $id, array $values, \DateTimeImmutable $now): string;
 
     /**
      * @param array<string, mixed> $values denormalized values of the changed fields

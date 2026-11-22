@@ -17,7 +17,7 @@ missing keys take their default, unknown keys are refused.
 | `status` | `states` (required), `initial` (the first), `transitions` | `varchar(100)` | read-only; its transitions as buttons on the record's page | choice |
 | `password` | `minLength` (8), `requireMixedCase`, `requireDigit`, `requireSymbol`, `confirm`, `strengthMeter`, `revealToggle` (all false) | `varchar(255)`, a hash | password input, asked twice with `confirm` | none: never shown |
 | `file` | `accept` (any type), `maxSize` (10 MB), `image` (false), `multiple` (false), `max` | `uuid` + foreign key to `core.file`; with `multiple`, a link table of its own | the current file, an upload input, "Remove the file"; with `multiple`, the list of files to reorder and remove, and an input adding several | yes / no: holds a file or none |
-| `relation` | `target` (required), `onDelete` (`set_null`), `inverseName`, `inverseLabel` | `uuid` + foreign key | autocomplete | choice of records |
+| `relation` | `target` (required), `onDelete` (`set_null`), `inverseName`, `inverseLabel` | the type of the target's key (`uuid` or `bigint`) + foreign key | autocomplete | choice of records |
 | `many_to_many` | `target` (required), `onDelete` (`unlink`), `inverseName`, `inverseLabel`, `max` | none: a link table of its own | autocomplete, several records | choice of records (any of them) |
 
 Settings added to a type after a field was created take their default on that field: a boolean
@@ -51,6 +51,26 @@ field has no column: its links live in a table of their own (see [`many_to_many`
   `select` have a `default` setting), and the form starts with it. A field given empty stays empty.
 - **Conditions**: a field may apply only while another field of the object holds some values
   (see below).
+
+## Keys
+
+Every record has an id, its object's **key**: the `id` column, the primary key of its table. Its
+type is chosen when the object is made (**New object** in the admin, `metadata:object:create
+--key`) and fixed then, since every table pointing at the object holds keys of that type:
+
+| Key | Column | Made by | Written as |
+|---|---|---|---|
+| `uuid` (the default) | `uuid` | the application (a UUID v7), before the record is written | lower case: `0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f70` |
+| `integer` | `bigint`, an identity column | the database, when the record is written: 1, 2, 3… | without leading zeros: `7` |
+
+- A `relation` column, and the link table of a `many_to_many` field, hold keys of the target's
+  type; a link table's `record_id`, keys of the object's own. Objects of both types point at
+  each other freely.
+- An id of the wrong type names no record: the record pages answer 404, a relation refuses it
+  ("This value is not a valid record reference."), a search or a filter on it finds nothing.
+- Integer ids are short and readable, and can be guessed: reading a record is still checked by
+  its permission, but a number tells how many records there are. UUIDs tell nothing, and stay
+  unique across objects and instances.
 
 ## Changing settings
 
@@ -408,7 +428,8 @@ purged physically.
 
 Input and display:
 
-- Input is a record id (UUID, any case). An id that is not a UUID is refused ("This value is not a
+- Input is a record id, of the type of the target's [key](#keys): a UUID (any case) or an
+  integer (`7`, `007`, or the number 7). An id of another type is refused ("This value is not a
   valid record reference."), and so is the id of a missing or deleted record ("The selected record
   does not exist.").
 - Records are shown by their label: the object's label field, chosen with `metadata:object:label`,
@@ -499,13 +520,13 @@ form section, a service field. It can have a condition of its own.
 
 Input and display:
 
-- The value is the list of the linked record ids (UUIDs, any case); a single id counts as a list
-  of one, duplicates count once. The order isn't kept: the links come back oldest first.
+- The value is the list of the linked record ids, of the type of the target's [key](#keys); a
+  single id counts as a list of one, duplicates count once. The order isn't kept: the links come back oldest first.
 - Writing the field replaces its links: the ones missing are added, the others removed; a link
   kept keeps its date. An empty list (or null) removes them all; a write that leaves the field
   out keeps them. Changing the links alone marks the record as updated.
 - Every id must name a live record of the target: "This value is not a valid record reference."
-  for an id that isn't a UUID, "One of the selected records does not exist." for a missing or
+  for an id that isn't a key of the target, "One of the selected records does not exist." for a missing or
   deleted one. **Required** means at least one record; `max` refuses more ("Choose at most 3
   records.").
 - The form offers an autocomplete over the target's records, picking any number of them; it
@@ -575,7 +596,7 @@ symfony console metadata:field:create person tags many_to_many Tags \
   | Error | When |
   |---|---|
   | This row does not belong to the record. | `id` names no live junction record of this record |
-  | This row has no valid id. | `id` is not a UUID |
+  | This row has no valid id. | `id` is not a key of the junction object |
   | This field is set by the record. | a row gives the junction's field pointing at the record |
   | This record is already linked. | two rows name the same target |
   | This value should be a list of rows. | the value is not a list of maps |

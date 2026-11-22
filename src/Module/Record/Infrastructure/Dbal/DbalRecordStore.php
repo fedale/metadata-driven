@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Record\Infrastructure\Dbal;
 
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Record\Contract\Dto\RecordFilter;
 use App\Module\Record\Contract\Dto\RecordOutput;
@@ -27,11 +28,15 @@ final class DbalRecordStore implements RecordStore
     ) {
     }
 
-    public function insert(ObjectDefinitionDto $object, string $id, array $values, \DateTimeImmutable $now): void
+    public function insert(ObjectDefinitionDto $object, ?string $id, array $values, \DateTimeImmutable $now): string
     {
-        $columns = [$this->table->quote('id'), $this->table->quote('created_at'), $this->table->quote('updated_at')];
-        $params = [$id, $now, $now];
-        $types = [Types::GUID, Types::DATETIME_IMMUTABLE, Types::DATETIME_IMMUTABLE];
+        // No id: the database makes it (an integer key).
+        $columns = null === $id ? [] : [$this->table->quote('id')];
+        $params = null === $id ? [] : [$id];
+        $types = null === $id ? [] : [$this->table->idType($object)];
+        array_push($columns, $this->table->quote('created_at'), $this->table->quote('updated_at'));
+        array_push($params, $now, $now);
+        array_push($types, Types::DATETIME_IMMUTABLE, Types::DATETIME_IMMUTABLE);
         foreach ($values as $name => $value) {
             $field = $object->field($name);
             $columns[] = $this->table->quote($field->columnName);
@@ -40,12 +45,19 @@ final class DbalRecordStore implements RecordStore
         }
 
         $sql = \sprintf(
-            'INSERT INTO %s (%s) VALUES (%s)',
+            'INSERT INTO %s (%s) VALUES (%s) RETURNING %s',
             $this->table->table($object),
             implode(', ', $columns),
             implode(', ', array_fill(0, \count($columns), '?')),
+            $this->table->quote('id'),
         );
-        $this->execute($sql, $params, $types);
+        try {
+            $made = $this->connection->transactional(fn (): mixed => $this->connection->fetchOne($sql, $params, $types));
+        } catch (UniqueConstraintViolationException $e) {
+            throw new UniqueValueConflict($e->getMessage(), previous: $e);
+        }
+
+        return KeyType::fromDatabase($made) ?? throw new \LogicException(\sprintf('The record just written in "%s" has no id.', $object->tableName));
     }
 
     public function update(ObjectDefinitionDto $object, string $id, array $values, \DateTimeImmutable $now): bool
@@ -68,7 +80,7 @@ final class DbalRecordStore implements RecordStore
             $this->table->quote('deleted_at'),
         );
 
-        return $this->execute($sql, [...$params, $id], [...$types, Types::GUID]) > 0;
+        return $this->execute($sql, [...$params, $id], [...$types, $this->table->idType($object)]) > 0;
     }
 
     public function softDelete(ObjectDefinitionDto $object, string $id, \DateTimeImmutable $now): bool
@@ -81,7 +93,7 @@ final class DbalRecordStore implements RecordStore
             $this->table->quote('id'),
         );
 
-        return $this->connection->executeStatement($sql, [$now, $now, $id], [Types::DATETIME_IMMUTABLE, Types::DATETIME_IMMUTABLE, Types::GUID]) > 0;
+        return $this->connection->executeStatement($sql, [$now, $now, $id], [Types::DATETIME_IMMUTABLE, Types::DATETIME_IMMUTABLE, $this->table->idType($object)]) > 0;
     }
 
     public function find(ObjectDefinitionDto $object, string $id): ?RecordOutput
@@ -93,7 +105,7 @@ final class DbalRecordStore implements RecordStore
             $this->table->quote('id'),
             $this->table->quote('deleted_at'),
         );
-        $row = $this->connection->fetchAssociative($sql, [$id], [Types::GUID]);
+        $row = $this->connection->fetchAssociative($sql, [$id], [$this->table->idType($object)]);
 
         return false === $row ? null : $this->table->hydrate($object, $row, $this->linksOf($object, [$id])[$id] ?? []);
     }
@@ -103,7 +115,7 @@ final class DbalRecordStore implements RecordStore
         $value = $this->connection->fetchOne(
             \sprintf('SELECT %s FROM %s WHERE %s = ? AND %s IS NULL FOR UPDATE', $this->table->quote($field->columnName), $this->table->table($object), $this->table->quote('id'), $this->table->quote('deleted_at')),
             [$id],
-            [Types::GUID],
+            [$this->table->idType($object)],
         );
 
         return false === $value ? null : $value;
@@ -122,8 +134,9 @@ final class DbalRecordStore implements RecordStore
                 $this->table->quote('deleted_at'),
             );
             foreach ($this->connection->fetchAllAssociative($sql, [$chunk], [ArrayParameterType::STRING]) as $row) {
-                if (\is_string($row['value']) && \is_string($row['id'])) {
-                    $ids[$row['value']] = $row['id'];
+                $id = KeyType::fromDatabase($row['id']);
+                if (\is_string($row['value']) && null !== $id) {
+                    $ids[$row['value']] = $id;
                 }
             }
         }
@@ -147,10 +160,10 @@ final class DbalRecordStore implements RecordStore
             );
             $rows = null === $after
                 ? $this->connection->fetchAllAssociative($sql, [$batch], [ParameterType::INTEGER])
-                : $this->connection->fetchAllAssociative($sql, [$after[0], $after[1], $batch], [ParameterType::STRING, Types::GUID, ParameterType::INTEGER]);
-            $links = $this->linksOf($object, array_values(array_filter(array_column($rows, 'id'), is_string(...))));
+                : $this->connection->fetchAllAssociative($sql, [$after[0], $after[1], $batch], [ParameterType::STRING, $this->table->idType($object), ParameterType::INTEGER]);
+            $links = $this->linksOf($object, self::ids($rows));
             foreach ($rows as $row) {
-                yield $this->table->hydrate($object, $row, \is_string($row['id'] ?? null) ? ($links[$row['id']] ?? []) : []);
+                yield $this->table->hydrate($object, $row, $links[KeyType::fromDatabase($row['id'] ?? null) ?? ''] ?? []);
             }
             $last = end($rows);
             $after = false === $last ? null : [$last['created_at'], $last['id']];
@@ -168,10 +181,10 @@ final class DbalRecordStore implements RecordStore
             $this->table->quote('id'),
         );
         $rows = $this->connection->fetchAllAssociative($sql, [$limit], [ParameterType::INTEGER]);
-        $links = $this->linksOf($object, array_values(array_filter(array_column($rows, 'id'), is_string(...))));
+        $links = $this->linksOf($object, self::ids($rows));
 
         return array_map(
-            fn (array $row): RecordOutput => $this->table->hydrate($object, $row, \is_string($row['id'] ?? null) ? ($links[$row['id']] ?? []) : []),
+            fn (array $row): RecordOutput => $this->table->hydrate($object, $row, $links[KeyType::fromDatabase($row['id'] ?? null) ?? ''] ?? []),
             $rows,
         );
     }
@@ -197,10 +210,10 @@ final class DbalRecordStore implements RecordStore
             $this->table->quote('id'),
             max(1, $limit),
         ), $params, $types);
-        $links = $this->linksOf($object, array_values(array_filter(array_column($rows, 'id'), is_string(...))));
+        $links = $this->linksOf($object, self::ids($rows));
 
         return new RecordSearchResult(
-            array_map(fn (array $row): RecordOutput => $this->table->hydrate($object, $row, \is_string($row['id'] ?? null) ? ($links[$row['id']] ?? []) : []), $rows),
+            array_map(fn (array $row): RecordOutput => $this->table->hydrate($object, $row, $links[KeyType::fromDatabase($row['id'] ?? null) ?? ''] ?? []), $rows),
             is_numeric($total) ? (int) $total : 0,
         );
     }
@@ -215,7 +228,7 @@ final class DbalRecordStore implements RecordStore
             $this->connection->executeStatement(
                 \sprintf('DELETE FROM %s WHERE %s = ?', $links->table, $links->recordColumn),
                 [$recordId],
-                [Types::GUID],
+                [$links->recordType],
             );
 
             return;
@@ -224,14 +237,14 @@ final class DbalRecordStore implements RecordStore
         $this->connection->executeStatement(
             \sprintf('DELETE FROM %s WHERE %s = ? AND %s NOT IN (?)', $links->table, $links->recordColumn, $links->targetColumn),
             [$recordId, $targetIds],
-            [Types::GUID, ArrayParameterType::STRING],
+            [$links->recordType, ArrayParameterType::STRING],
         );
         // The links already there keep their date.
         $params = [];
         $types = [];
         foreach ($targetIds as $targetId) {
             array_push($params, $recordId, $targetId, $now);
-            array_push($types, Types::GUID, Types::GUID, Types::DATETIME_IMMUTABLE);
+            array_push($types, $links->recordType, $links->targetType, Types::DATETIME_IMMUTABLE);
         }
         $this->connection->executeStatement(
             \sprintf(
@@ -254,7 +267,7 @@ final class DbalRecordStore implements RecordStore
         $this->connection->executeStatement(
             \sprintf('DELETE FROM %s WHERE %s = ?', $table, $this->table->quote('record_id')),
             [$recordId],
-            [Types::GUID],
+            [$this->table->idType($object)],
         );
         if ([] === $fileIds) {
             return;
@@ -264,7 +277,7 @@ final class DbalRecordStore implements RecordStore
         $types = [];
         foreach ($fileIds as $position => $fileId) {
             array_push($params, $recordId, $fileId, $position);
-            array_push($types, Types::GUID, Types::GUID, Types::INTEGER);
+            array_push($types, $this->table->idType($object), Types::GUID, Types::INTEGER);
         }
         $this->connection->executeStatement(
             \sprintf(
@@ -295,10 +308,7 @@ final class DbalRecordStore implements RecordStore
             $sql .= ' LIMIT '.max(0, $limit);
         }
 
-        /** @var list<string> $ids */
-        $ids = $this->connection->fetchFirstColumn($sql, [$targetId], [Types::GUID]);
-
-        return $ids;
+        return array_values(array_filter(array_map(KeyType::fromDatabase(...), $this->connection->fetchFirstColumn($sql, [$targetId], [$this->targetType($field)])), is_string(...)));
     }
 
     public function countReferencing(ObjectDefinitionDto $object, FieldDefinitionDto $field, string $targetId): int
@@ -309,7 +319,7 @@ final class DbalRecordStore implements RecordStore
             $this->pointsAt($object, $field),
             $this->table->column('deleted_at'),
         );
-        $count = $this->connection->fetchOne($sql, [$targetId], [Types::GUID]);
+        $count = $this->connection->fetchOne($sql, [$targetId], [$this->targetType($field)]);
 
         return is_numeric($count) ? (int) $count : 0;
     }
@@ -334,12 +344,12 @@ final class DbalRecordStore implements RecordStore
                     $links->targetColumn,
                 ),
                 [$now, $targetId],
-                [Types::DATETIME_IMMUTABLE, Types::GUID],
+                [Types::DATETIME_IMMUTABLE, $links->targetType],
             );
             $this->connection->executeStatement(
                 \sprintf('DELETE FROM %s WHERE %s = ? AND %s IN (%s)', $links->table, $links->targetColumn, $links->recordColumn, $live),
                 [$targetId],
-                [Types::GUID],
+                [$links->targetType],
             );
 
             return;
@@ -352,7 +362,27 @@ final class DbalRecordStore implements RecordStore
             $this->table->column('updated_at'),
             $this->table->column('deleted_at'),
         );
-        $this->connection->executeStatement($sql, [$now, $targetId], [Types::DATETIME_IMMUTABLE, Types::GUID]);
+        $this->connection->executeStatement($sql, [$now, $targetId], [Types::DATETIME_IMMUTABLE, $this->targetType($field)]);
+    }
+
+    /**
+     * The DBAL type binding a key of the object a relation or many-to-many field points at.
+     */
+    private function targetType(FieldDefinitionDto $field): string
+    {
+        return ($this->table->targetKeyType($field) ?? KeyType::Uuid)->dbalType();
+    }
+
+    /**
+     * The ids of some rows, as text.
+     *
+     * @param list<array<string, mixed>> $rows
+     *
+     * @return list<string>
+     */
+    private static function ids(array $rows): array
+    {
+        return array_values(array_filter(array_map(static fn (array $row): ?string => KeyType::fromDatabase($row['id'] ?? null), $rows), is_string(...)));
     }
 
     /**
@@ -406,7 +436,8 @@ final class DbalRecordStore implements RecordStore
                     [ArrayParameterType::STRING],
                 );
                 foreach ($rows as [$recordId, $fileId]) {
-                    if (\is_string($recordId) && \is_string($fileId)) {
+                    $recordId = KeyType::fromDatabase($recordId);
+                    if (null !== $recordId && \is_string($fileId)) {
                         $result[$recordId][$name][] = $fileId;
                     }
                 }
@@ -432,7 +463,9 @@ final class DbalRecordStore implements RecordStore
                 [ArrayParameterType::STRING],
             );
             foreach ($rows as [$recordId, $targetId]) {
-                if (\is_string($recordId) && \is_string($targetId)) {
+                $recordId = KeyType::fromDatabase($recordId);
+                $targetId = KeyType::fromDatabase($targetId);
+                if (null !== $recordId && null !== $targetId) {
                     $result[$recordId][$name][] = $targetId;
                 }
             }
@@ -521,14 +554,14 @@ final class DbalRecordStore implements RecordStore
         if ('id' === $name) {
             $id = $this->table->quote('id');
 
-            return [$id, 'UUID', 'CAST('.$id.' AS TEXT)'];
+            return [$id, KeyType::Uuid === $object->keyType ? 'UUID' : 'NUMERIC', 'CAST('.$id.' AS TEXT)'];
         }
         $field = $object->fields[$name] ?? throw new InvalidRecordSearch(\sprintf('Object "%s" has no field "%s".', $object->name, $name));
         if (!$field->storesColumn() || null !== $field->fileList() || 'file' === $field->type || $this->table->isWriteOnly($field)) {
             throw new InvalidRecordSearch(\sprintf('Field "%s" of "%s" cannot be searched on: a many-to-many, file or password field.', $name, $object->name));
         }
         $cast = match ($this->table->typeOf($field)) {
-            Types::INTEGER, Types::DECIMAL => 'NUMERIC',
+            Types::INTEGER, Types::BIGINT, Types::DECIMAL => 'NUMERIC',
             Types::BOOLEAN => 'BOOLEAN',
             Types::DATE_IMMUTABLE => 'DATE',
             Types::DATETIME_IMMUTABLE => 'TIMESTAMPTZ',

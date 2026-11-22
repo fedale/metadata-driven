@@ -6,6 +6,7 @@ namespace App\Module\Schema\Infrastructure\Dbal;
 
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\ManyToManyOnDelete;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\OnDelete;
@@ -46,7 +47,7 @@ final class TableDefinitionFactory
     {
         $table = Table::editor()
             ->setUnquotedName($this->nonEmpty($object->tableName), $this->workspace->dataSchema())
-            ->addColumn($this->column('id', Types::GUID, notNull: true))
+            ->addColumn($this->keyColumn('id', $object->keyType, notNull: true, generated: KeyType::Integer === $object->keyType))
             ->addColumn($this->column('created_at', Types::DATETIME_IMMUTABLE, notNull: true))
             ->addColumn($this->column('updated_at', Types::DATETIME_IMMUTABLE, notNull: true))
             ->addColumn($this->column('created_by', Types::GUID))
@@ -114,8 +115,8 @@ final class TableDefinitionFactory
             $names = $this->linkNames($object, $field);
             $tables[$field->id] = Table::editor()
                 ->setUnquotedName($names['table'], $this->workspace->dataSchema())
-                ->addColumn($this->column('record_id', Types::GUID, notNull: true))
-                ->addColumn($this->column('target_id', Types::GUID, notNull: true))
+                ->addColumn($this->keyColumn('record_id', $object->keyType, notNull: true))
+                ->addColumn($this->keyColumn('target_id', $this->target($settings->target)->keyType, notNull: true))
                 ->addColumn($this->column('created_at', Types::DATETIME_IMMUTABLE, notNull: true))
                 ->addColumn($this->column('created_by', Types::GUID))
                 ->addPrimaryKeyConstraint(
@@ -166,7 +167,7 @@ final class TableDefinitionFactory
 
         return Table::editor()
             ->setUnquotedName($names['table'], $this->workspace->dataSchema())
-            ->addColumn($this->column('record_id', Types::GUID, notNull: true))
+            ->addColumn($this->keyColumn('record_id', $object->keyType, notNull: true))
             ->addColumn($this->column('target_id', Types::GUID, notNull: true))
             ->addColumn($this->column('position', Types::INTEGER, notNull: true))
             ->addPrimaryKeyConstraint(
@@ -276,16 +277,19 @@ final class TableDefinitionFactory
             ->create();
     }
 
+    private function targetTableName(string $target): string
+    {
+        return $this->target($target)->tableName;
+    }
+
     /**
      * An archived field may point at an archived object: its table is still there.
      */
-    private function targetTableName(string $target): string
+    private function target(string $target): ObjectDefinitionDto
     {
-        $definition = $this->metadata->hasObject($target)
+        return $this->metadata->hasObject($target)
             ? $this->metadata->getObject($target)
             : ($this->metadata->archivedObjects()[$target] ?? $this->metadata->getObject($target));
-
-        return $definition->tableName;
     }
 
     /**
@@ -339,6 +343,11 @@ final class TableDefinitionFactory
 
     private function fieldColumn(FieldDefinitionDto $field): Column
     {
+        // A relation holds a key of its target: its column has the type of that key.
+        $relation = $field->relation();
+        if (null !== $relation) {
+            return $this->keyColumn($field->columnName, $this->target($relation->target)->keyType);
+        }
         $spec = $this->fieldTypes->get($field->type)->columnSpec($field->settings);
 
         $column = Column::editor()
@@ -356,6 +365,20 @@ final class TableDefinitionFactory
         }
 
         return $column->create();
+    }
+
+    /**
+     * A column holding a key of an object: "id", a relation, a link. A generated one (the "id"
+     * of an integer key) is an identity column: the database numbers the records.
+     */
+    private function keyColumn(string $name, KeyType $keyType, bool $notNull = false, bool $generated = false): Column
+    {
+        return Column::editor()
+            ->setUnquotedName($this->nonEmpty($name))
+            ->setTypeName($keyType->dbalType())
+            ->setNotNull($notNull)
+            ->setAutoincrement($generated)
+            ->create();
     }
 
     private function column(string $name, string $type, bool $notNull = false, mixed $default = null): Column

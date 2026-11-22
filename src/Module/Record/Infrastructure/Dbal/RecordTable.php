@@ -6,6 +6,7 @@ namespace App\Module\Record\Infrastructure\Dbal;
 
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Contract\Dto\RecordOutput;
@@ -37,6 +38,7 @@ final class RecordTable
     public function links(ObjectDefinitionDto $object, FieldDefinitionDto $field): LinkSource
     {
         $settings = $field->manyToMany() ?? throw new \LogicException(\sprintf('Field "%s.%s" is not many-to-many: it has no links.', $object->name, $field->name));
+        $target = $this->metadata->getObject($settings->target);
         if ($settings->goesThrough()) {
             $junction = $this->metadata->getObject((string) $settings->through);
 
@@ -44,9 +46,11 @@ final class RecordTable
                 $this->table($junction),
                 $this->quote($junction->field((string) $settings->throughSource)->columnName),
                 $this->quote($junction->field((string) $settings->throughTarget)->columnName),
-                $this->table($this->metadata->getObject($settings->target)),
+                $this->table($target),
                 $this->quote('deleted_at'),
                 isJunction: true,
+                recordType: $object->keyType->dbalType(),
+                targetType: $target->keyType->dbalType(),
             );
         }
 
@@ -54,7 +58,9 @@ final class RecordTable
             $this->quote($this->workspace->dataSchema()).'.'.$this->quote(DataSchema::linkTable($object->name, $field->columnName)),
             $this->quote('record_id'),
             $this->quote('target_id'),
-            $this->table($this->metadata->getObject($settings->target)),
+            $this->table($target),
+            recordType: $object->keyType->dbalType(),
+            targetType: $target->keyType->dbalType(),
         );
     }
 
@@ -83,11 +89,38 @@ final class RecordTable
     }
 
     /**
-     * DBAL type used to bind and read the column of a field.
+     * DBAL type used to bind and read the column of a field. A relation holds a key of its
+     * target, and a many-to-many field links to them: the type of that key.
      */
     public function typeOf(FieldDefinitionDto $field): string
     {
-        return $this->fieldTypes->get($field->type)->columnSpec($field->settings)->type->value;
+        $target = $this->targetKeyType($field);
+
+        return null !== $target ? $target->dbalType() : $this->fieldTypes->get($field->type)->columnSpec($field->settings)->type->value;
+    }
+
+    /**
+     * The type of the keys a relation or many-to-many field holds; null for any other field.
+     */
+    public function targetKeyType(FieldDefinitionDto $field): ?KeyType
+    {
+        $target = $field->relation()->target ?? $field->manyToMany()?->target;
+        if (null === $target) {
+            return null;
+        }
+
+        // An archived field may point at an archived object: its table is still there.
+        $definition = $this->metadata->hasObject($target) ? $this->metadata->getObject($target) : ($this->metadata->archivedObjects()[$target] ?? null);
+
+        return null === $definition ? KeyType::Uuid : $definition->keyType;
+    }
+
+    /**
+     * DBAL type binding an id of a record of the object: the type of its key.
+     */
+    public function idType(ObjectDefinitionDto $object): string
+    {
+        return $object->keyType->dbalType();
     }
 
     /**
@@ -158,10 +191,13 @@ final class RecordTable
             if ($this->isWriteOnly($field)) {
                 continue;
             }
-            $values[$name] = $this->toPhp($row[$field->columnName] ?? null, $this->typeOf($field));
+            // A key is always a string: the driver returns an integer one as an int.
+            $values[$name] = null !== $this->targetKeyType($field)
+                ? KeyType::fromDatabase($row[$field->columnName] ?? null)
+                : $this->toPhp($row[$field->columnName] ?? null, $this->typeOf($field));
         }
 
-        $id = $this->toPhp($row['id'] ?? null, Types::GUID);
+        $id = KeyType::fromDatabase($row['id'] ?? null);
         $createdAt = $this->toPhp($row['created_at'] ?? null, Types::DATETIME_IMMUTABLE);
         $updatedAt = $this->toPhp($row['updated_at'] ?? null, Types::DATETIME_IMMUTABLE);
         if (!\is_string($id) || !$createdAt instanceof \DateTimeImmutable || !$updatedAt instanceof \DateTimeImmutable) {

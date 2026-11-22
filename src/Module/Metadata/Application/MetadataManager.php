@@ -34,6 +34,7 @@ use App\Module\Metadata\Application\Handler\RenameObjectHandler;
 use App\Module\Metadata\Application\Handler\SaveFormHandler;
 use App\Module\Metadata\Application\Handler\SaveViewHandler;
 use App\Module\Metadata\Application\Handler\TranslateHandler;
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\Event\MetadataChanged;
 use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
@@ -77,9 +78,9 @@ final class MetadataManager implements MetadataManagerInterface
     ) {
     }
 
-    public function createObject(string $name, string $labelSingular, string $labelPlural, ?string $icon = null): string
+    public function createObject(string $name, string $labelSingular, string $labelPlural, ?string $icon = null, KeyType $keyType = KeyType::Uuid): string
     {
-        return ($this->createObject)($this->valid(new CreateObjectCommand($name, $labelSingular, $labelPlural, $icon)));
+        return ($this->createObject)($this->valid(new CreateObjectCommand($name, $labelSingular, $labelPlural, $icon, $keyType)));
     }
 
     public function createField(string $objectName, string $name, string $type, string $label, bool $required = false, bool $unique = false, array $settings = []): string

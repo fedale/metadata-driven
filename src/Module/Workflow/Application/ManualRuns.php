@@ -7,6 +7,7 @@ namespace App\Module\Workflow\Application;
 use App\Module\Access\Contract\AccessCheckerInterface;
 use App\Module\Access\Contract\Permissions;
 use App\Module\Access\Contract\RecordAction;
+use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Contract\Dto\RecordFilter;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\RecordFinderInterface;
@@ -15,7 +16,6 @@ use App\Module\Workflow\Application\Engine\ActiveWorkflows;
 use App\Module\Workflow\Application\Engine\RunLog;
 use App\Module\Workflow\Application\Engine\WorkflowEngine;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * The manual workflows: those a user may run (workflow.<id>.run), and their runs, on a record
@@ -28,6 +28,7 @@ final class ManualRuns
         private readonly WorkflowEngine $engine,
         private readonly RecordFinderInterface $finder,
         private readonly AccessCheckerInterface $access,
+        private readonly MetadataRegistryInterface $metadata,
         #[Autowire('%app.workflow.max_records%')]
         private readonly int $maxRecords,
     ) {
@@ -103,13 +104,13 @@ final class ManualRuns
      */
     private function selection(string $object, array $recordIds): array
     {
+        $keyType = $this->metadata->getObject($object)->keyType;
+        $canonical = [];
         foreach ($recordIds as $id) {
-            if (!Uuid::isValid($id)) {
-                throw new ManualRunRefused(\sprintf('"%s" is no record id.', $id), ManualRunRefused::INVALID);
-            }
+            // As the database writes them: an id in capitals is the same record.
+            $canonical[] = $keyType->normalize($id) ?? throw new ManualRunRefused(\sprintf('"%s" is no record id.', $id), ManualRunRefused::INVALID);
         }
-        // As the database writes them: an id in capitals is the same record.
-        $recordIds = array_values(array_unique(array_map(strtolower(...), $recordIds)));
+        $recordIds = array_values(array_unique($canonical));
         if ([] === $recordIds) {
             throw new ManualRunRefused('No record selected.', ManualRunRefused::INVALID);
         }
@@ -198,7 +199,7 @@ final class ManualRuns
             throw new ManualRunRefused(\sprintf('You may not read the records of "%s".', $object), ManualRunRefused::FORBIDDEN);
         }
 
-        $record = Uuid::isValid($recordId) ? $this->finder->find($object, $recordId) : null;
+        $record = $this->finder->find($object, $recordId);
 
         return $record
             ?? throw new ManualRunRefused(\sprintf('There is no record %s of "%s".', $recordId, $object), ManualRunRefused::NOT_FOUND);

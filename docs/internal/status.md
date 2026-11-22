@@ -4,7 +4,7 @@ Internal notes for whoever (human or agent) picks the work up, on any machine. R
 starting a task; update it in the same branch whenever a decision is taken, a feature lands or the
 work queue changes. The user-facing documentation is in [../README.md](../README.md).
 
-Last updated: 2026-11-21.
+Last updated: 2026-11-22.
 
 ## Setting up on a new machine
 
@@ -100,6 +100,14 @@ Things that are not obvious from a single file, and that are easy to break.
 - **Field types** (`FieldTypeInterface`): `defaultValue()`, `isWriteOnly()`, `toStorage()`; the
   snapshot loader merges each type's default settings. Passwords are hashed through
   `SecretHasherInterface` ("record_secret" hasher), write-only, blank on update keeps the value.
+- **Keys** (`KeyType`, since 2026-11-22): an object's `id` is a UUID or an integer, and so is
+  every column holding one of its ids. PDO returns an integer as a PHP int: every id read from
+  SQL goes through `KeyType::fromDatabase()`, and every id given goes through the object's
+  `KeyType::normalize()` before a query (a wrong one fails the query and its transaction). A new
+  column outside the record tables holding a record id of any object is `TEXT`. To check a change
+  against both types, run the suite once with `KeyType::Integer` as the default of
+  `CreateObjectCommand` and `MetadataManager::createObject()` (only the tests naming UUIDs on
+  purpose should fail).
 - **Relations**: their config lives in field settings (`RelationSettings`), there is no relation
   table. A `many_to_many` field (`ManyToManySettings`) has no column: `FieldDefinitionDto::
   storesColumn()` is false and every module touching columns must skip it; its link table
@@ -485,6 +493,16 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   waiting for the user's review. Open: `HostWorkspaceUrls` takes the scheme and port of a link from the request
   (the host from the configuration); from `DEFAULT_URI` only, or `framework.trusted_hosts`, is
   the user's call (a security review's remark on part C).
+- **Tables loaded into the database** (as Directus's "database only" collections): proposed in
+  [database-tables-plan.md](database-tables-plan.md) on 2026-11-22. Of three alternatives, the
+  user chose (2026-11-22) a key type per object (`uuid`, `integer`, `string`; phase 0) before the
+  adoption, so an adopted table keeps its own key; the details agreed the same day (the plan's
+  "Decisions": the data schema only, no table without a primary key, string keys later). Phases
+  0a and 0b (`KeyType`, integer keys numbered by the database, `core.workflow_run.record_id` as
+  `TEXT`; migration `Version20261122065252`, run `make db`) done on branch `object_key_type`
+  (2026-11-22), waiting for the user's review. Next: 0d (the key in the package format). Then discovery of the unmanaged tables of the workspace's data schema,
+  adoption of one table and of a set (the system columns added, the table renamed), junctions;
+  then exporting packages and installing them from a file in the admin (today the console only).
 - Relation filters in grids keep `multiple: true` by choice.
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`

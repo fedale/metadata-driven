@@ -6,9 +6,11 @@ namespace App\Module\Record\Application;
 
 use App\Module\FieldType\Contract\Exception\InvalidFieldValue;
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
+use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
+use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Contract\Dto\RecordInput;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * Converts the raw values of a RecordInput to typed PHP values, field by field.
@@ -18,9 +20,11 @@ final class RecordInputDenormalizer
     public const string UNKNOWN_FIELD_MESSAGE = 'This field does not exist.';
     public const string ROWS_MESSAGE = 'This value should be a list of rows.';
     public const string ROW_ID_MESSAGE = 'This row has no valid id.';
+    public const string REFERENCE_MESSAGE = 'This value is not a valid record reference.';
 
     public function __construct(
         private readonly FieldTypeRegistryInterface $fieldTypes,
+        private readonly MetadataRegistryInterface $metadata,
     ) {
     }
 
@@ -43,7 +47,7 @@ final class RecordInputDenormalizer
             // of the junction by the record manager.
             if (true === $field->manyToMany()?->goesThrough()) {
                 if ($input->has($name)) {
-                    $rows = self::rows($input->values[$name], $name, $errors);
+                    $rows = self::rows($input->values[$name], $name, $this->keyType((string) $field->manyToMany()->through), $errors);
                     if (null !== $rows) {
                         $values[$name] = [] === $rows ? null : $rows;
                     }
@@ -62,7 +66,7 @@ final class RecordInputDenormalizer
             }
 
             try {
-                $value = $type->denormalize($input->values[$name], $field->settings);
+                $value = $this->keys($field, $type->denormalize($input->values[$name], $field->settings));
             } catch (InvalidFieldValue $e) {
                 $errors[$name][] = $e->getMessage();
                 continue;
@@ -85,7 +89,7 @@ final class RecordInputDenormalizer
      *
      * @return array<int|string, array<string, mixed>>|null
      */
-    private static function rows(mixed $raw, string $name, array &$errors): ?array
+    private static function rows(mixed $raw, string $name, KeyType $keyType, array &$errors): ?array
     {
         if (null === $raw || '' === $raw) {
             return [];
@@ -104,14 +108,37 @@ final class RecordInputDenormalizer
             }
             /** @var array<string, mixed> $row a map: its keys are strings */
             $id = $row['id'] ?? null;
-            if (null !== $id && '' !== $id && (!\is_string($id) || !Uuid::isValid($id))) {
+            $row['id'] = null === $id || '' === $id ? null : $keyType->normalize($id);
+            if (null !== $id && '' !== $id && null === $row['id']) {
                 $errors[$name.'.'.$key][] = self::ROW_ID_MESSAGE;
                 continue;
             }
-            $row['id'] = \is_string($id) && '' !== $id ? strtolower($id) : null;
             $rows[$key] = $row;
         }
 
         return $rows;
+    }
+
+    /**
+     * The ids a relation or many-to-many field holds, in the canonical text of its target's key
+     * (the field type takes any text: it does not know the target); any other value as it is.
+     *
+     * @throws InvalidFieldValue
+     */
+    private function keys(FieldDefinitionDto $field, mixed $value): mixed
+    {
+        $target = $field->relation()->target ?? $field->manyToMany()?->target;
+        if (null === $target || null === $value) {
+            return $value;
+        }
+        $keyType = $this->keyType($target);
+        $normalize = static fn (mixed $id): string => $keyType->normalize($id) ?? throw new InvalidFieldValue(self::REFERENCE_MESSAGE);
+
+        return \is_array($value) ? array_values(array_unique(array_map($normalize, $value))) : $normalize($value);
+    }
+
+    private function keyType(string $objectName): KeyType
+    {
+        return $this->metadata->hasObject($objectName) ? $this->metadata->getObject($objectName)->keyType : KeyType::Uuid;
     }
 }

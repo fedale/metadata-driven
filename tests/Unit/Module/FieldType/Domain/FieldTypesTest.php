@@ -98,7 +98,9 @@ final class FieldTypesTest extends TestCase
         yield 'url trims' => [new UrlFieldType(), [], ' https://example.com ', 'https://example.com'];
         yield 'phone collapses spaces' => [new TelFieldType(), [], " +39  333\t123 4567 ", '+39 333 123 4567'];
         $tags = ['target' => 'tag'];
-        yield 'many-to-many ids, lower case, once each' => [new ManyToManyFieldType(), $tags, ['0190A5E2-4C8B-7D3E-9F10-2B3C4D5E6F70', ' 0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f71 ', '0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f70', ''], ['0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f70', '0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f71']];
+        // Checked and written as keys of the target by the record module (KeyType), which knows it.
+        yield 'many-to-many ids, trimmed, once each' => [new ManyToManyFieldType(), $tags, ['0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f70', ' 0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f71 ', '0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f70', ''], ['0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f70', '0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f71']];
+        yield 'many-to-many integer keys' => [new ManyToManyFieldType(), $tags, ['42', 7], ['42', '7']];
         yield 'many-to-many single id' => [new ManyToManyFieldType(), $tags, '0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f70', ['0190a5e2-4c8b-7d3e-9f10-2b3c4d5e6f70']];
         yield 'many-to-many empty list is null' => [new ManyToManyFieldType(), $tags, [], null];
         yield 'many-to-many blanks only is null' => [new ManyToManyFieldType(), $tags, ['', ' '], null];
@@ -120,7 +122,7 @@ final class FieldTypesTest extends TestCase
         yield 'overflowing date' => [new DateFieldType(), [], '2026-02-31', 'not a valid date'];
         yield 'date with time' => [new DateFieldType(), [], '2026-02-01 10:00', 'not a valid date'];
         yield 'datetime garbage' => [new DateFieldType(), ['includeTime' => true], 'tomorrow', 'not a valid date and time'];
-        yield 'many-to-many not an id' => [new ManyToManyFieldType(), ['target' => 'tag'], ['42'], 'not a valid record reference'];
+        yield 'many-to-many id too long' => [new ManyToManyFieldType(), ['target' => 'tag'], [str_repeat('1', 101)], 'not a valid record reference'];
         yield 'many-to-many nested list' => [new ManyToManyFieldType(), ['target' => 'tag'], [['a']], 'should be a string'];
     }
 

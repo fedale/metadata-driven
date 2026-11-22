@@ -12,6 +12,7 @@ use App\Module\FieldType\Contract\Exception\UnknownFieldType;
 use App\Module\FieldType\Contract\FieldTypeInterface;
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewKind;
@@ -99,12 +100,21 @@ final class AdminController extends AbstractController
             ->add('name', TextType::class, ['label' => 'admin.machine_name', 'help' => 'admin.object.name_help'])
             ->add('labelSingular', TextType::class, ['label' => 'admin.object.singular_label'])
             ->add('labelPlural', TextType::class, ['label' => 'admin.object.plural_label'])
+            ->add('keyType', EnumType::class, [
+                'class' => KeyType::class,
+                'label' => 'admin.object.key_type',
+                'help' => 'admin.object.key_type_help',
+                'choice_label' => static fn (KeyType $type): string => 'admin.object.key.'.$type->value,
+                'data' => KeyType::Uuid,
+                'expanded' => true,
+            ])
             ->getForm()
             ->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
             $name = $this->text($form, 'name');
-            $done = $this->apply($form, fn () => $this->manager->createObject($name, $this->text($form, 'labelSingular'), $this->text($form, 'labelPlural')));
+            $keyType = $form->get('keyType')->getData();
+            $done = $this->apply($form, fn () => $this->manager->createObject($name, $this->text($form, 'labelSingular'), $this->text($form, 'labelPlural'), keyType: $keyType instanceof KeyType ? $keyType : KeyType::Uuid));
             if ($done) {
                 $this->addFlash('success', $this->translator->trans('admin.object.created', ['%name%' => $name]));
 

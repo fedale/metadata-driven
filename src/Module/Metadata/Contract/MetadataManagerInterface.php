@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Contract;
 
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\Exception\InvalidFieldSettings;
 use App\Module\Metadata\Contract\Exception\MetadataException;
@@ -22,7 +23,7 @@ interface MetadataManagerInterface
     /**
      * @return string the id of the new object
      */
-    public function createObject(string $name, string $labelSingular, string $labelPlural, ?string $icon = null): string;
+    public function createObject(string $name, string $labelSingular, string $labelPlural, ?string $icon = null, KeyType $keyType = KeyType::Uuid): string;
 
     /**
      * @param array<string, mixed> $settings

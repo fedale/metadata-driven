@@ -657,5 +657,9 @@ package's page.
 - **Packages requiring packages**: an upgrade never brings in a missing requirement (install
   it first); extensions (adding fields to a required object), optional requirements, and
   requirements on a version of metadata-driven itself aren't planned yet.
+- **Keys**: the format does not carry an object's [key](field-types.md#keys) yet. An export of
+  an object with an integer key writes it without, and the install makes a UUID one (the seeds
+  refer to records by a field, not by id, so their records come in all the same). Planned in
+  [internal/database-tables-plan.md](internal/database-tables-plan.md), phase 0d.
 
 See the plan in [internal/package-plan.md](internal/package-plan.md).

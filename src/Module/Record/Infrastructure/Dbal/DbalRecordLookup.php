@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Record\Infrastructure\Dbal;
 
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Application\RecordLabels;
@@ -12,8 +13,6 @@ use App\Module\Record\Contract\RecordLookupInterface;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Query\QueryBuilder;
-use Doctrine\DBAL\Types\Types;
-use Symfony\Component\Uid\Uuid;
 
 final class DbalRecordLookup implements RecordLookupInterface
 {
@@ -32,13 +31,19 @@ final class DbalRecordLookup implements RecordLookupInterface
 
         $index = 0;
         foreach ($filters as $fieldName => $id) {
-            // Whitelisted: only a relation field of the object, compared as a uuid.
+            // Whitelisted: only a relation field of the object, compared as a key of its target.
             if (!$object->hasField($fieldName) || null === $object->field($fieldName)->relation()) {
                 throw new \InvalidArgumentException(\sprintf('Object "%s" has no relation field "%s" to filter on.', $object->name, $fieldName));
             }
+            $keyType = $this->table->targetKeyType($object->field($fieldName)) ?? KeyType::Uuid;
+            $id = $keyType->normalize($id);
+            if (null === $id) {
+                // No record of the target has it: none points at it.
+                return [];
+            }
             $param = 'filter'.$index++;
             $qb->andWhere(\sprintf('%s = :%s', $this->table->column($object->field($fieldName)->columnName), $param))
-                ->setParameter($param, $id, Types::GUID);
+                ->setParameter($param, $id, $keyType->dbalType());
         }
 
         $term = trim($term);
@@ -56,14 +61,15 @@ final class DbalRecordLookup implements RecordLookupInterface
 
     public function labels(string $objectName, array $ids): array
     {
-        $ids = array_values(array_filter($ids, static fn (string $id): bool => Uuid::isValid($id)));
+        $object = $this->metadata->getObject($objectName);
+        $ids = array_values(array_filter(array_map($object->keyType->normalize(...), $ids), is_string(...)));
         if ([] === $ids) {
             return [];
         }
 
-        [$qb] = $this->query($this->metadata->getObject($objectName));
+        [$qb] = $this->query($object);
         $qb->andWhere(\sprintf('%s IN (:ids)', $this->table->column('id')))
-            ->setParameter('ids', array_map(strtolower(...), $ids), ArrayParameterType::STRING);
+            ->setParameter('ids', $ids, ArrayParameterType::STRING);
 
         $labels = [];
         foreach ($qb->executeQuery()->fetchAllAssociative() as $row) {
@@ -95,7 +101,7 @@ final class DbalRecordLookup implements RecordLookupInterface
      */
     private function toLabel(array $row): RecordLabel
     {
-        $id = \is_string($row['id'] ?? null) ? $row['id'] : '';
+        $id = KeyType::fromDatabase($row['id'] ?? null) ?? '';
         $label = \is_string($row['label'] ?? null) && '' !== trim($row['label']) ? $row['label'] : RecordLabels::fallback($id);
 
         return new RecordLabel($id, $label);

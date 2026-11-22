@@ -85,6 +85,7 @@ final class MetadataSnapshotLoader
             array_map($this->mapView(...), $object->getViews()),
             $archived,
             $object->getUniqueTogether(),
+            $object->getKeyType(),
         );
     }
 

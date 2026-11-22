@@ -24,6 +24,10 @@ final readonly class LinkSource
         public ?string $deletedColumn = null,
         // Whether the links are the records of a junction object, written by its own pipeline.
         public bool $isJunction = false,
+        // The DBAL types binding a value of the record column and of the target column: the
+        // types of the keys of the two objects.
+        public string $recordType = 'guid',
+        public string $targetType = 'guid',
     ) {
     }
 

@@ -8,7 +8,6 @@ use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Validation\Contract\UniqueValueCheckerInterface;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Types\Types;
 
 final class DbalUniqueValueChecker implements UniqueValueCheckerInterface
 {
@@ -31,7 +30,7 @@ final class DbalUniqueValueChecker implements UniqueValueCheckerInterface
         if (null !== $exceptRecordId) {
             $sql .= \sprintf(' AND %s <> ?', $this->table->quote('id'));
             $params[] = $exceptRecordId;
-            $types[] = Types::GUID;
+            $types[] = $this->table->idType($object);
         }
 
         return false !== $this->connection->fetchOne($sql.' LIMIT 1', $params, $types);
@@ -57,7 +56,7 @@ final class DbalUniqueValueChecker implements UniqueValueCheckerInterface
                 // NULL there compares as unknown: an empty stored value matches nothing.
                 $where[] = \sprintf('%s = (SELECT %s FROM %s WHERE %s = ?)', $column, $this->table->column($field->columnName), $this->table->table($object), $this->table->column('id'));
                 $params[] = $exceptRecordId;
-                $types[] = Types::GUID;
+                $types[] = $this->table->idType($object);
             } else {
                 return false;
             }
@@ -65,7 +64,7 @@ final class DbalUniqueValueChecker implements UniqueValueCheckerInterface
         if (null !== $exceptRecordId) {
             $where[] = $this->table->column('id', 't').' <> ?';
             $params[] = $exceptRecordId;
-            $types[] = Types::GUID;
+            $types[] = $this->table->idType($object);
         }
 
         $sql = \sprintf('SELECT 1 FROM %s t WHERE %s LIMIT 1', $this->table->table($object), implode(' AND ', $where));

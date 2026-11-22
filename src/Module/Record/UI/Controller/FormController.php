@@ -9,6 +9,7 @@ use App\Module\Access\Contract\RecordAction;
 use App\Module\Metadata\Contract\Dto\FormDefinitionDto;
 use App\Module\Metadata\Contract\Dto\FormNodeDto;
 use App\Module\Metadata\Contract\Dto\FormNodeMode;
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Exception\FormDefinitionNotFound;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
@@ -22,7 +23,6 @@ use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Routing\Requirement\Requirement;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -70,7 +70,7 @@ final class FormController extends AbstractController
         return $this->render('form/page.html.twig', [...$this->page($definition), 'form' => $sheet, 'id' => null, 'can_save' => true]);
     }
 
-    #[Route('/{id}/edit', name: 'edit', requirements: ['id' => Requirement::UUID], methods: ['GET', 'POST'])]
+    #[Route('/{id}/edit', name: 'edit', requirements: ['id' => KeyType::ROUTE_REQUIREMENT], methods: ['GET', 'POST'])]
     public function edit(string $form, string $id, Request $request): Response
     {
         $definition = $this->formOr404($form);
