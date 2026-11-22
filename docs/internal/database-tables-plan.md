@@ -117,7 +117,7 @@ afterwards: a changed key would have to be rewritten in every table pointing at 
 form and the forms show it on create only; the CSV import maps a column to it.
 
 **0d. Packages** — done on branch `package_key_type` (2026-11-22), the format on its branch
-`object_key` (not released yet: the app works on it through `composer link`). As delivered:
+`object_key`, released as 2.4.0 on 2026-11-22 and required by the app (`^2.4`). As delivered:
 `key` in the Object schema, an enum, left out meaning `uuid`; `ItemStates` reads a key left
 out as `uuid`, so versions written before 2.4 compare equal; `VersionCheck` asks a major version
 for a change of key, and the app refuses it even then (`package.upgrade.key_changed`). The

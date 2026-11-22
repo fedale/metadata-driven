@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "92f5bcd83ff9d5933a48a27acb1f47a8",
+    "content-hash": "e1e66977e6c62c8954829e6362e4c341",
     "packages": [
         {
             "name": "composer/semver",
@@ -1415,16 +1415,16 @@
         },
         {
             "name": "fedale/metadata-driven-package-format",
-            "version": "v2.3.0",
+            "version": "v2.4.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/fedale/metadata-driven-package-format.git",
-                "reference": "dd97a7dcbf869144f9acde96b90c4ccae86537c0"
+                "reference": "629cec457394b3fae6dd8e5f2acacd102fc3238b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/fedale/metadata-driven-package-format/zipball/dd97a7dcbf869144f9acde96b90c4ccae86537c0",
-                "reference": "dd97a7dcbf869144f9acde96b90c4ccae86537c0",
+                "url": "https://api.github.com/repos/fedale/metadata-driven-package-format/zipball/629cec457394b3fae6dd8e5f2acacd102fc3238b",
+                "reference": "629cec457394b3fae6dd8e5f2acacd102fc3238b",
                 "shasum": ""
             },
             "require": {
@@ -1463,9 +1463,9 @@
             ],
             "support": {
                 "issues": "https://github.com/fedale/metadata-driven-package-format/issues",
-                "source": "https://github.com/fedale/metadata-driven-package-format/tree/v2.3.0"
+                "source": "https://github.com/fedale/metadata-driven-package-format/tree/v2.4.0"
             },
-            "time": "2026-11-16T19:16:53+00:00"
+            "time": "2026-11-22T08:07:25+00:00"
         },
         {
             "name": "fedale/rbac-bundle",
