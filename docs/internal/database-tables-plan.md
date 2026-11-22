@@ -129,6 +129,14 @@ Seeds already refer to records by a unique field, not by id: nothing changes the
 
 ### Phase 1: discovery (read only)
 
+Done on branch `table_discovery` (2026-11-22). As delivered: `DatabaseTablesInterface` (Schema
+contract: `unmanaged()`, `find()`) and its DTOs (`DatabaseTable`, `DatabaseColumn`,
+`DatabaseForeignKey`, `TableKind`), implemented by `PgDatabaseTables` (five catalog queries for
+the whole schema); the object name proposed by `ProposedNames` (none when an object, archived
+ones too, has it: phase 2 asks for one); the refusals as `Message`s (`schema.table.*`). A name
+taken is not a refusal. The status column of the admin list says "Yes" or "No, see why" (no count:
+the translator reads "No:" as a plural label, and the project writes no plurals). As planned:
+
 - A `DatabaseTables` service in the Schema module (behind a Schema contract interface) reads the
   workspace's data schema (`CurrentWorkspace::dataSchema()`) from the catalog and returns the
   tables that belong to nothing: not the table of an object (active or archived), not a link

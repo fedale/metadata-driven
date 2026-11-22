@@ -27,6 +27,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:archive`](#metadataarchive) | Take an object or a field out of the application, its data kept; `--restore` brings it back |
 | [`metadata:purge`](#metadatapurge) | Delete an archived object or field for good, its data with it |
 | [`metadata:list`](#metadatalist) | List the objects, or the fields of one object, and what is archived |
+| [`metadata:table:list`](#metadatatablelist) | List the tables of the data schema no object owns, loaded into the database by hand |
 | [`metadata:files:gc`](#metadatafilesgc) | Delete the stored files no record references any more |
 | [`workflow:run`](#workflowrun) | Run a manual workflow, on a record or none, with the answers of its form |
 | [`workflow:secrets:key`](#workflowsecretskey) | Print a new key for `WORKFLOW_SECRETS_KEY` |
@@ -478,6 +479,35 @@ so the command asks to type the name back (`pet`, or `pet.chip_code`); without a
 ```
 metadata:purge [--field=FIELD] [--force] <object>
 ```
+
+## `metadata:table:list`
+
+List the tables of the workspace's data schema that no object owns: loaded into the database by
+hand, a dump or a script (see [Tables loaded into the database](database-tables.md)). Read only.
+
+```
+metadata:table:list [--table=TABLE]
+```
+
+| Option | Description |
+|---|---|
+| `--table` | Show one table in detail: kind, estimated rows, primary key, the object name and key it would take, its columns, unique constraints and foreign keys, and why it cannot become an object |
+
+```bash
+symfony console metadata:table:list
+symfony console metadata:table:list --table=project
+```
+
+```
+ ------------------ --------- ----------------- ------------------ --------- ------------------------
+  Table              Columns   Rows (estimate)   Object name        Key       Can become an object
+ ------------------ --------- ----------------- ------------------ --------- ------------------------
+  loose              1         ?                 loose              -         no (--table tells why)
+  project            2         120               project            integer   yes
+ ------------------ --------- ----------------- ------------------ --------- ------------------------
+```
+
+With `--table`, fails when the data schema has no such table, or an object owns it.
 
 ## `metadata:list`
 

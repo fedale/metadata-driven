@@ -353,6 +353,40 @@ admin:
     name_help: 'Lettere minuscole, cifre e trattini bassi singoli, a partire da una lettera.'
     form_expired: 'Il modulo è scaduto: riprova.'
     rewritten: 'Riscritte per usare il nuovo nome: %definitions% (una definizione YAML riscritta perde i commenti).'
+    tables:
+        title: Tabelle del database
+        help: 'Tabelle dello schema dati che nessun oggetto possiede ancora: caricate nel database a mano (un dump, uno script). Sono lette dal database così come è adesso.'
+        empty: 'Nessuna tabella caricata a mano nel database. Caricale nello schema %schema% (un dump, uno script): compaiono qui, pronte a diventare oggetti.'
+        database_only: 'Solo database: una tabella che nessun oggetto possiede ancora.'
+        columns: Colonne
+        column: Colonna
+        rows: Righe (stima)
+        status: Può diventare un oggetto?
+        adoptable: Sì
+        not_adoptable: 'No, vedi perché'
+        can_become: 'Può diventare un oggetto, di nome "%name%".'
+        cannot_become: 'Non può ancora diventare un oggetto:'
+        kind: Tipo
+        kinds:
+            Table: Tabella
+            Partitioned: Tabella partizionata
+            View: Vista
+            MaterializedView: Vista materializzata
+            Foreign: Tabella esterna
+        primary_key: Chiave primaria
+        object_name: Nome dell'oggetto
+        name_to_choose: 'Da scegliere: il nome della tabella non ne dà uno libero'
+        none: Nessuna
+        type: Tipo di dato
+        nullable: Può essere vuota
+        default: Predefinito
+        identity: Numerata dal database
+        constraints: Vincoli
+        unique: Univoco
+        foreign_key: Chiave esterna
+        on_delete: alla cancellazione
+        'yes': Sì
+        'no': 'No'
     index:
         new_object: Nuovo oggetto
         empty: 'Ancora nessun oggetto. Crea il primo: ha subito una tabella tutta sua.'

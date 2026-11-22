@@ -357,6 +357,40 @@ admin:
     name_help: 'Lowercase letters, digits and single underscores, starting with a letter.'
     form_expired: 'The form expired: try again.'
     rewritten: 'Rewritten to name the new one: %definitions% (a YAML definition rewritten loses its comments).'
+    tables:
+        title: Database tables
+        help: 'Tables of the data schema no object owns yet: loaded into the database by hand (a dump, a script). They are read from the database as it is now.'
+        empty: 'No tables loaded into the database by hand. Load them into the schema %schema% (a dump, a script): they show up here, ready to become objects.'
+        database_only: 'Database only: a table no object owns yet.'
+        columns: Columns
+        column: Column
+        rows: Rows (estimate)
+        status: Can it become an object?
+        adoptable: 'Yes'
+        not_adoptable: 'No, see why'
+        can_become: 'It can become an object, named "%name%".'
+        cannot_become: 'It cannot become an object yet:'
+        kind: Kind
+        kinds:
+            Table: Table
+            Partitioned: Partitioned table
+            View: View
+            MaterializedView: Materialized view
+            Foreign: Foreign table
+        primary_key: Primary key
+        object_name: Object name
+        name_to_choose: 'To choose: the table''s name gives none free'
+        none: None
+        type: Type
+        nullable: Empty allowed
+        default: Default
+        identity: Numbered by the database
+        constraints: Constraints
+        unique: Unique
+        foreign_key: Foreign key
+        on_delete: on delete
+        'yes': 'Yes'
+        'no': 'No'
     index:
         new_object: New object
         empty: 'No objects yet. Create the first one: it gets its own table at once.'

@@ -343,3 +343,18 @@ package:
             type: 'il suo tipo è cambiato da %from% a %to%'
             unique: 'è cambiato se è univoco'
         workflow_taken: 'questa istanza ha già un workflow "%name%".'
+schema:
+    table:
+        composite_key: 'La sua chiave primaria ha più colonne (%columns%): una tabella così non può ancora diventare un oggetto.'
+        kind:
+            foreign: tabella esterna
+            materialized_view: vista materializzata
+            partitioned: tabella partizionata
+            table: tabella
+            view: vista
+        key_type: 'La sua chiave primaria è di tipo %type%: solo un UUID o un intero possono essere la chiave di un oggetto.'
+        no_primary_key: 'Non ha una chiave primaria: aggiungila prima.'
+        not_a_table: 'È una %kind%: solo una tabella può diventare un oggetto.'
+        rule: 'La regola %name% agisce su di essa, e si romperebbe: eliminala prima.'
+        trigger: 'Il trigger %name% agisce su di essa, e si romperebbe: eliminalo prima.'
+        view: 'La vista %name% la legge, e si romperebbe: eliminala prima.'
