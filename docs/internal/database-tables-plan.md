@@ -129,6 +129,14 @@ Seeds already refer to records by a unique field, not by id: nothing changes the
 
 ### Phase 1: discovery (read only)
 
+Done on branch `table_discovery` (2026-11-22). As delivered: `DatabaseTablesInterface` (Schema
+contract: `unmanaged()`, `find()`) and its DTOs (`DatabaseTable`, `DatabaseColumn`,
+`DatabaseForeignKey`, `TableKind`), implemented by `PgDatabaseTables` (five catalog queries for
+the whole schema); the object name proposed by `ProposedNames` (none when an object, archived
+ones too, has it: phase 2 asks for one); the refusals as `Message`s (`schema.table.*`). A name
+taken is not a refusal. The status column of the admin list says "Yes" or "No, see why" (no count:
+the translator reads "No:" as a plural label, and the project writes no plurals). As planned:
+
 - A `DatabaseTables` service in the Schema module (behind a Schema contract interface) reads the
   workspace's data schema (`CurrentWorkspace::dataSchema()`) from the catalog and returns the
   tables that belong to nothing: not the table of an object (active or archived), not a link
@@ -144,6 +152,17 @@ Seeds already refer to records by a unique field, not by id: nothing changes the
   by the revision the triggers bump, so an adoption is seen by every server at once.
 
 ### Phase 2: adopting one table
+
+Done on branch `table_discovery` (2026-11-22), with phase 1. As delivered: `TableAdopterInterface`
+(Schema contract: `propose()`, `adopt()` with a dry run), `ColumnProposer` (Application),
+`DbalTableAdopter` (Infrastructure: the DDL, then the metadata through
+`MetadataManagerInterface`, then `synchronize()`, whose plan must be empty but for the indexes:
+`TableAdoptionTest` checks it); `/admin/tables/<table>/adopt`, `metadata:table:adopt`. Departures
+from the plan below: a table whose primary key is not named `id` is adopted too (the column is
+renamed); an enum column and a `CHECK (... IN ...)` are left out (not a `select` yet); an
+`email`/`url`/`tel` proposal looks at the column's name only, not its values (a value that does not
+fit is refused at the record's next save); the console takes the proposal as it is (no
+`--mapping` file). As planned:
 
 The admin clicks a grey table and gets a **preview** of the adoption, which they can change
 before confirming:

@@ -12,7 +12,12 @@ records. **New object** asks for the machine name, the two labels and the **Key*
 records' id: a UUID made by the application (the default), or an integer the database numbers (1,
 2, 3…), fixed once the object exists (see [Field types](field-types.md#keys)). The labels are written in
 the default language (English); **Translations** gives them their text in the other languages.
-Under them, the **Archived** objects, each with **Restore** (see [Renaming and archiving](lifecycle.md)).
+Under them, the **Database tables**, greyed: the tables loaded into the data schema by hand that
+no object owns yet, with their columns, an estimate of their rows, and whether they can become an
+object; each one has a page at `/admin/tables/<table>` (see [Tables loaded into the
+database](database-tables.md)); with none, the section says where to load them. A table that
+can become an object has **Make it an object…**: the field each column becomes, tried first, then
+adopted (see [Adopting a table](database-tables.md#adopting-a-table)). Then the **Archived** objects, each with **Restore** (see [Renaming and archiving](lifecycle.md)).
 
 ## An object — `/admin/objects/<object>`
 

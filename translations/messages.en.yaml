@@ -357,6 +357,54 @@ admin:
     name_help: 'Lowercase letters, digits and single underscores, starting with a letter.'
     form_expired: 'The form expired: try again.'
     rewritten: 'Rewritten to name the new one: %definitions% (a YAML definition rewritten loses its comments).'
+    tables:
+        title: Database tables
+        help: 'Tables of the data schema no object owns yet: loaded into the database by hand (a dump, a script). They are read from the database as it is now.'
+        empty: 'No tables loaded into the database by hand. Load them into the schema %schema% (a dump, a script): they show up here, ready to become objects.'
+        adopt_button: Make it an object…
+        adopt_title: 'Make %table% an object'
+        adopt_help: 'Choose the object''s name and labels, and the field each column becomes. Try it first: everything is done, then undone, and the page shows the changes. Make a backup of the database before adopting a table you cannot load again.'
+        the_object: The object
+        from_key: 'from its primary key %column%'
+        field_type: Field
+        left_out: '(leave it out)'
+        label: Label
+        what_changes: 'Adopting it renames the table c_<name> and the columns as their fields, gives the columns the types their fields want, adds the system columns (created_at, updated_at, created_by, deleted_at, sort) and makes the key id. The records and their keys stay. A column left out stays in the table, unknown to the application.'
+        try: Try it
+        adopt: Adopt
+        tried: 'It works: adopting it makes the object "%name%" with these changes. Nothing was changed yet.'
+        not_adopted: 'It cannot be adopted as it is:'
+        adopted: 'Table "%table%" is the object "%name%" now.'
+        database_only: 'Database only: a table no object owns yet.'
+        columns: Columns
+        column: Column
+        rows: Rows (estimate)
+        status: Can it become an object?
+        adoptable: 'Yes'
+        not_adoptable: 'No, see why'
+        can_become: 'It can become an object, named "%name%".'
+        cannot_become: 'It cannot become an object yet:'
+        kind: Kind
+        kinds:
+            Table: Table
+            Partitioned: Partitioned table
+            View: View
+            MaterializedView: Materialized view
+            Foreign: Foreign table
+        primary_key: Primary key
+        object_name: Object name
+        name_to_choose: 'To choose: the table''s name gives none free'
+        none: None
+        type: Type
+        nullable: Empty allowed
+        default: Default
+        identity: Numbered by the database
+        constraints: Constraints
+        unique: Unique
+        foreign_key: Foreign key
+        on_delete: on delete
+        'yes': 'Yes'
+        'no': 'No'
     index:
         new_object: New object
         empty: 'No objects yet. Create the first one: it gets its own table at once.'

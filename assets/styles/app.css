@@ -197,6 +197,9 @@ a:hover { color: var(--gv-color-link-hover); }
 .md-table { width: 100%; border-collapse: collapse; background: var(--gv-color-bg); }
 .md-table th, .md-table td { padding: .5rem .75rem; border-bottom: 1px solid var(--gv-table-border); text-align: left; }
 .md-table th { background: var(--gv-th-bg); color: var(--gv-th-color); font-weight: 600; }
+/* Tables no object owns yet ("database only"): greyed, as the objects' list continues below them. */
+.md-table--database-only td { color: var(--gv-color-text-muted); }
+.md-table--database-only td a { color: inherit; }
 
 .md-facts { display: grid; grid-template-columns: max-content 1fr; gap: .25rem 1rem; }
 .md-facts dt { color: var(--gv-color-text-muted); }

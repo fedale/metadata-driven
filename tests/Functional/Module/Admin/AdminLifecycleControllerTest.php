@@ -77,7 +77,7 @@ final class AdminLifecycleControllerTest extends WebTestCase
         $this->client->submit($crawler->filter('form[name="archive"]')->form());
         self::assertResponseRedirects('/admin', 303);
         $crawler = $this->client->followRedirect();
-        self::assertSelectorTextContains('.md-admin__section', 'Archived');
+        self::assertSelectorTextContains('#archived-objects', 'Archived');
         $this->client->request('GET', '/o/note');
         self::assertResponseStatusCodeSame(404);
 

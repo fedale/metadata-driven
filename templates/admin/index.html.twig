@@ -43,8 +43,37 @@
         </table>
     {% endif %}
 
+    <section class="md-admin__section" id="database-tables">
+        <h2>{{ 'admin.tables.title'|trans }}</h2>
+        {% if tables is empty %}
+            <p class="gv-muted">{{ 'admin.tables.empty'|trans({'%schema%': data_schema}) }}</p>
+        {% else %}
+            <p class="gv-muted">{{ 'admin.tables.help'|trans }}</p>
+            <table class="md-table md-table--database-only">
+                <thead>
+                    <tr>
+                        <th scope="col">{{ 'admin.table'|trans }}</th>
+                        <th scope="col">{{ 'admin.tables.columns'|trans }}</th>
+                        <th scope="col">{{ 'admin.tables.rows'|trans }}</th>
+                        <th scope="col">{{ 'admin.tables.status'|trans }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for table in tables %}
+                        <tr>
+                            <td><a href="{{ path('admin_table_show', {table: table.name}) }}"><code>{{ table.name }}</code></a></td>
+                            <td>{{ table.columns|length }}</td>
+                            <td>{{ table.rows ?? '?' }}</td>
+                            <td>{{ table.adoptable ? 'admin.tables.adoptable'|trans : 'admin.tables.not_adoptable'|trans }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </section>
+
     {% if archived is not empty %}
-        <section class="md-admin__section">
+        <section class="md-admin__section" id="archived-objects">
             <h2>{{ 'admin.index.archived'|trans }}</h2>
             <p class="gv-muted">{{ 'admin.index.archived_help'|trans|raw }}</p>
             <table class="md-table">

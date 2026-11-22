@@ -23,8 +23,10 @@ use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Contract\SearchHandlerCatalogInterface;
+use App\Module\Schema\Contract\DatabaseTablesInterface;
 use App\Module\Schema\Contract\SchemaSynchronizerInterface;
 use App\Shared\Message\MessageTranslator;
+use App\Shared\Workspace\CurrentWorkspace;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -76,6 +78,8 @@ final class AdminController extends AbstractController
         private readonly LifecycleForms $lifecycle,
         private readonly TranslatorInterface $translator,
         private readonly MessageTranslator $messageTranslator,
+        private readonly DatabaseTablesInterface $tables,
+        private readonly CurrentWorkspace $workspace,
     ) {
     }
 
@@ -89,7 +93,7 @@ final class AdminController extends AbstractController
             $archived[$name] = ['object' => $object, 'restore_form' => $this->lifecycle->button('restore', $this->generateUrl('admin_object_restore', ['object' => $name]))->createView()];
         }
 
-        return $this->render('admin/index.html.twig', ['objects' => $this->metadata->allObjects(), 'archived' => $archived]);
+        return $this->render('admin/index.html.twig', ['objects' => $this->metadata->allObjects(), 'archived' => $archived, 'tables' => $this->tables->unmanaged(), 'data_schema' => $this->workspace->dataSchema()]);
     }
 
     #[Route('/objects/new', name: 'object_new', methods: ['GET', 'POST'])]

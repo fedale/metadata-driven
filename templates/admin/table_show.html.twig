@@ -1,0 +1,65 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ table.name }}{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('admin_index') }}">&larr; {{ 'admin.objects'|trans }}</a></p>
+    <h1><code>{{ data_schema }}.{{ table.name }}</code></h1>
+    <p class="gv-muted">{{ 'admin.tables.database_only'|trans }}</p>
+
+    {% if table.adoptable %}
+        <p class="md-flash md-flash--success">{{ 'admin.tables.can_become'|trans({'%name%': table.proposedName ?? '…'}) }}</p>
+        <p><a class="gv-btn gv-btn-primary" href="{{ path('admin_table_adopt', {table: table.name}) }}">{{ 'admin.tables.adopt_button'|trans }}</a></p>
+    {% else %}
+        <div class="md-flash md-flash--error">
+            <p>{{ 'admin.tables.cannot_become'|trans }}</p>
+            <ul>{% for reason in table.refusals %}<li>{{ reason|message }}</li>{% endfor %}</ul>
+        </div>
+    {% endif %}
+
+    <dl class="md-facts">
+        <dt>{{ 'admin.tables.kind'|trans }}</dt><dd>{{ ('admin.tables.kinds.' ~ table.kind.name)|trans }}</dd>
+        <dt>{{ 'admin.tables.rows'|trans }}</dt><dd>{{ table.rows ?? '?' }}</dd>
+        <dt>{{ 'admin.tables.primary_key'|trans }}</dt><dd>{% if table.primaryKey is empty %}{{ 'admin.tables.none'|trans }}{% else %}<code>{{ table.primaryKey|join(', ') }}</code>{% endif %}</dd>
+        <dt>{{ 'admin.object.key_type'|trans }}</dt><dd>{{ table.keyType ? ('admin.object.key.' ~ table.keyType.value)|trans : 'admin.tables.none'|trans }}</dd>
+        <dt>{{ 'admin.tables.object_name'|trans }}</dt><dd>{% if table.proposedName %}<code>{{ table.proposedName }}</code>{% else %}{{ 'admin.tables.name_to_choose'|trans }}{% endif %}</dd>
+    </dl>
+
+    <section class="md-admin__section">
+        <h2>{{ 'admin.tables.columns'|trans }}</h2>
+        <table class="md-table">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'admin.tables.column'|trans }}</th>
+                    <th scope="col">{{ 'admin.tables.type'|trans }}</th>
+                    <th scope="col">{{ 'admin.tables.nullable'|trans }}</th>
+                    <th scope="col">{{ 'admin.tables.default'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for column in table.columns %}
+                    <tr>
+                        <td><code>{{ column.name }}</code>{% if column.name in table.primaryKey %} <span class="gv-muted">({{ 'admin.tables.primary_key'|trans|lower }})</span>{% endif %}</td>
+                        <td><code>{{ column.type }}</code></td>
+                        <td>{{ column.nullable ? 'admin.tables.yes'|trans : 'admin.tables.no'|trans }}</td>
+                        <td>{% if column.identity %}{{ 'admin.tables.identity'|trans }}{% elseif column.default is not null %}<code>{{ column.default }}</code>{% endif %}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    {% if table.uniques is not empty or table.foreignKeys is not empty %}
+        <section class="md-admin__section">
+            <h2>{{ 'admin.tables.constraints'|trans }}</h2>
+            <ul>
+                {% for unique in table.uniques %}
+                    <li>{{ 'admin.tables.unique'|trans }}: <code>{{ unique|join(', ') }}</code></li>
+                {% endfor %}
+                {% for key in table.foreignKeys %}
+                    <li>{{ 'admin.tables.foreign_key'|trans }} <code>{{ key.name }}</code>: <code>{{ key.columns|join(', ') }}</code> &rarr; <code>{{ key.referencedSchema }}.{{ key.referencedTable }} ({{ key.referencedColumns|join(', ') }})</code>, {{ 'admin.tables.on_delete'|trans }} <code>{{ key.onDelete }}</code></li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+{% endblock %}

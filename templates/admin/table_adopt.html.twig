@@ -1,0 +1,65 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'admin.tables.adopt_title'|trans({'%table%': proposal.table.name}) }}{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('admin_table_show', {table: proposal.table.name}) }}">&larr; <code>{{ data_schema }}.{{ proposal.table.name }}</code></a></p>
+    <h1>{{ 'admin.tables.adopt_title'|trans({'%table%': proposal.table.name}) }}</h1>
+    <p class="gv-muted">{{ 'admin.tables.adopt_help'|trans }}</p>
+
+    {% if reasons is not empty %}
+        <div class="md-flash md-flash--error">
+            <p>{{ 'admin.tables.not_adopted'|trans }}</p>
+            <ul>{% for reason in reasons %}<li>{{ reason|message }}</li>{% endfor %}</ul>
+        </div>
+    {% elseif report %}
+        <div class="md-flash md-flash--success">
+            <p>{{ 'admin.tables.tried'|trans({'%name%': report.objectName}) }}</p>
+        </div>
+        <ul class="md-sql">
+            {% for statement in report.statements %}<li><code>{{ statement }}</code></li>{% endfor %}
+        </ul>
+    {% endif %}
+
+    {# Without Turbo: "Try it" answers its POST with the page itself (200), which Turbo Drive
+       would not show, as it wants a form's answer to redirect. #}
+    {{ form_start(form, {attr: {class: 'md-form', novalidate: 'novalidate', 'data-turbo': 'false'}}) }}
+        {{ form_errors(form) }}
+        <fieldset>
+            <legend>{{ 'admin.tables.the_object'|trans }}</legend>
+            {{ form_row(form.name) }}
+            {{ form_row(form.labelSingular) }}
+            {{ form_row(form.labelPlural) }}
+            <p>{{ 'admin.object.key_type'|trans }}: {{ ('admin.object.key.' ~ proposal.keyType.value)|trans }} ({{ 'admin.tables.from_key'|trans({'%column%': proposal.table.primaryKey|first}) }})</p>
+        </fieldset>
+
+        <table class="md-table">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'admin.tables.column'|trans }}</th>
+                    <th scope="col">{{ 'admin.tables.type'|trans }}</th>
+                    <th scope="col">{{ 'admin.tables.field_type'|trans }}</th>
+                    <th scope="col">{{ 'admin.machine_name'|trans }}</th>
+                    <th scope="col">{{ 'admin.tables.label'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for key, name in keys %}
+                    {% set row = form.columns[key] %}
+                    <tr>
+                        <td><code>{{ name }}</code></td>
+                        <td><code>{{ proposal.columns[name].column.type }}</code></td>
+                        <td>{{ form_widget(row.type) }}</td>
+                        <td>{{ form_widget(row.field) }}</td>
+                        <td>{{ form_widget(row.label) }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p class="gv-muted">{{ 'admin.tables.what_changes'|trans({'%table%': proposal.table.name}) }}</p>
+
+        {{ form_row(form.try, {attr: {class: 'gv-btn'}}) }}
+        {{ form_row(form.adopt, {attr: {class: 'gv-btn gv-btn-primary'}}) }}
+        {{ form_rest(form) }}
+    {{ form_end(form) }}
+{% endblock %}
