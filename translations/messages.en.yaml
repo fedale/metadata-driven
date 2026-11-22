@@ -381,6 +381,12 @@ admin:
         points_here: '(this one points at it)'
         update_set: Update the tables
         adopted_many: 'The tables are the objects %names% now.'
+        junction: 'It links two tables, by %source% and %target%'
+        junction_help: 'Its rows become the links of a many-to-many field on the object of the first one, named below. As a junction object, it is an object of its own too (named here), with a key added and its other columns as fields; the field goes through it.'
+        junction_mode: It becomes
+        as_links: The links of a many-to-many field
+        as_object: A junction object, the field going through it
+        no_field: An object, with no many-to-many field
         database_only: 'Database only: a table no object owns yet.'
         columns: Columns
         column: Column

@@ -4,8 +4,7 @@ A table can reach the database without the application: a dump restored, a scrip
 `psql`, an ETL. The application does not own it, but it sees it: the admin lists it, greyed, under
 the objects (**Database tables**), tells what it holds and whether it can become an object, and
 makes it one: it **adopts** it, records and keys kept, alone or with the tables it is linked to by
-foreign keys. The tables linking two others (a primary key made of two foreign keys) come next;
-see the plan in
+foreign keys; a table linking two others becomes a many-to-many field. See the plan in
 [internal/database-tables-plan.md](internal/database-tables-plan.md).
 
 ## Where to load them
@@ -51,7 +50,7 @@ loaded a moment ago is there, with no cache to clear and nothing to restart.
 |---|---|
 | It is a view (a materialized view, a partitioned or foreign table): only a table can become an object | Copy it into a table, if that is what you want |
 | It has no primary key | Add one: `ALTER TABLE data.t ADD PRIMARY KEY (id)`, or a new `id` column first |
-| Its primary key has several columns | Not yet: a table linking two others (a junction) will become a many-to-many field later |
+| Its primary key has several columns | A table linking two others (its key two columns, each a foreign key) is no reason: see [Tables linking two others](#tables-linking-two-others). Any other key of several columns is not supported: give the table a key of one column first |
 | Its primary key is of another type (a text, a date) | Not yet: only a UUID or an integer can be the key of an object |
 | A trigger, a rule or a view uses it | Adopting it renames the table and some columns, which would break them: drop them first |
 
@@ -115,6 +114,36 @@ A foreign key to a table not adopted with it stays as it is, on a plain `number`
 synchronization never drops a foreign key the metadata does not define (the object's page lists
 it, "not defined in the metadata"). Adopting that table later makes it no relation by itself:
 the field stays a number.
+
+## Tables linking two others
+
+A table whose primary key is two columns, each a foreign key of its own (`task_tag (task_id,
+tag_id)`), links the records of two tables: it becomes a **many-to-many** field on the object the
+first column points at (`task.tags`), to the object the second one points at. Both must be
+adopted with it, or be objects already: the page brings them along, and refuses the table alone
+("Table task_tag links task, tag: adopt it with them."). Its section on the page asks what it
+becomes:
+
+- **The links of a many-to-many field** (when it has no other columns): the table becomes the
+  field's link table, `l_<object>__<field>`, its columns `record_id` and `target_id`, `created_at`
+  added. No object. The field's rule on delete is `unlink` when the target's foreign key cascaded,
+  `restrict` otherwise.
+- **A junction object, the field going through it** (the only choice when it has columns of its
+  own, a `role`): the table becomes an object too, with a key of its own added (an integer,
+  numbering the rows there are), its two columns relations unique together, its other columns
+  fields; the many-to-many field goes through it (see [the `many_to_many`
+  type](field-types.md#many_to_many)), so the form of a task edits its rows.
+
+Either way the links stay: the task shows its tags as before.
+
+The most common shape has a key of its own instead: `assignment (id, task_id, person_id, hours)`,
+the pair made unique by `UNIQUE (task_id, person_id)`. It is a junction object already: adopted
+with the two tables (or once they are objects), it becomes an object keeping its key, its two
+columns relations unique together, and the page proposes the many-to-many field going through it
+(`task.persons`); **An object, with no many-to-many field** leaves it a plain object with its two
+relations. Without the unique constraint nothing is proposed: the same two records could be
+linked twice, which a many-to-many field does not allow (add the constraint first, if they never
+are).
 
 ## After adopting
 

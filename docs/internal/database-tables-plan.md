@@ -247,6 +247,18 @@ With the key types of phase 0, a foreign key between loaded tables already has t
 
 ### Phase 4: junction tables
 
+Done on branch `junction_tables` (2026-11-22). As delivered: `DatabaseTable::$junction` (a key of
+two columns, each a single-column foreign key: no longer refused); `JunctionMapping` on the
+proposal and the request (source and target columns, the field's name and label, `asObject`);
+`DbalTableAdopter::reshapeLink()` (the link table, its key rebuilt as (record_id, target_id)) and
+`addKey()` (a junction object's identity key, then the usual reshape, the pair unique together);
+the many-to-many fields made last, after the unique sets. A junction alone is refused, its targets
+named. The admin section asks links or junction object; the field's name is the target's in the
+plural ("tags"). Added at the user's request: a table with a key of its own and two foreign keys
+unique together (`UNIQUE (a, b)`) is proposed as a junction object too, its key kept, the
+many-to-many field going through it, or none ("An object, with no many-to-many field"). As
+planned:
+
 A table whose primary key is the pair of its two foreign keys (`project_task_tag (task_id,
 tag_id)`) is a many-to-many link: proposed as a `many_to_many` field on the first target, the
 table renamed to the app's link table `l_<object>__<field>` and its columns to `record_id` /

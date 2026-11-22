@@ -82,6 +82,7 @@ final class PgDatabaseTables implements DatabaseTablesInterface
                 $keyType = self::KEY_TYPES[self::baseType($columns[$name][$primaryKey[0]] ?? null)] ?? null;
             }
             $proposed = ProposedNames::forTable($name);
+            $junction = self::isJunction($primaryKey, $constraints[$name]['f'] ?? []);
             $rows = is_numeric($row['reltuples']) ? (int) $row['reltuples'] : -1;
 
             $result[] = new DatabaseTable(
@@ -94,7 +95,8 @@ final class PgDatabaseTables implements DatabaseTablesInterface
                 $rows < 0 ? null : $rows,
                 null === $proposed || isset($takenNames[$proposed]) ? null : $proposed,
                 $keyType,
-                $this->refusals($kind, $primaryKey, $columns[$name] ?? [], $keyType, $users[$name] ?? []),
+                $this->refusals($kind, $primaryKey, $columns[$name] ?? [], $keyType, $users[$name] ?? [], $junction),
+                $junction,
             );
         }
 
@@ -108,7 +110,7 @@ final class PgDatabaseTables implements DatabaseTablesInterface
      *
      * @return list<Message>
      */
-    private function refusals(TableKind $kind, array $primaryKey, array $columns, ?KeyType $keyType, array $users): array
+    private function refusals(TableKind $kind, array $primaryKey, array $columns, ?KeyType $keyType, array $users, bool $junction): array
     {
         if (TableKind::Table !== $kind) {
             return [new Message('schema.table.not_a_table', 'It is a %kind%: only a table can become an object.', ['kind' => $kind->message()])];
@@ -116,6 +118,8 @@ final class PgDatabaseTables implements DatabaseTablesInterface
         $refusals = [];
         if ([] === $primaryKey) {
             $refusals[] = new Message('schema.table.no_primary_key', 'It has no primary key: give it one first.');
+        } elseif ($junction) {
+            // A table linking two others: a many-to-many field, or a junction object.
         } elseif (\count($primaryKey) > 1) {
             $refusals[] = new Message('schema.table.composite_key', 'Its primary key has several columns (%columns%): such a table cannot become an object yet.', ['columns' => implode(', ', $primaryKey)]);
         } elseif (null === $keyType) {
@@ -244,6 +248,27 @@ final class PgDatabaseTables implements DatabaseTablesInterface
         }
 
         return $users;
+    }
+
+    /**
+     * A primary key of two columns, each a foreign key of its own.
+     *
+     * @param list<string>                                     $primaryKey
+     * @param list<array{name: string, columns: list<string>}> $foreignKeys
+     */
+    private static function isJunction(array $primaryKey, array $foreignKeys): bool
+    {
+        if (2 !== \count($primaryKey) || $primaryKey[0] === $primaryKey[1]) {
+            return false;
+        }
+        $single = [];
+        foreach ($foreignKeys as $foreignKey) {
+            if (1 === \count($foreignKey['columns'])) {
+                $single[$foreignKey['columns'][0]] = true;
+            }
+        }
+
+        return isset($single[$primaryKey[0]], $single[$primaryKey[1]]);
     }
 
     /**
