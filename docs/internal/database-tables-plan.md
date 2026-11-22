@@ -116,7 +116,13 @@ text. As planned: the key typed by the user when the record is created (a code: 
 afterwards: a changed key would have to be rewritten in every table pointing at it. The new-record
 form and the forms show it on create only; the CSV import maps a column to it.
 
-**0d. Packages.** The package format gets the key type in the `Object` kind (the format library,
+**0d. Packages** — done on branch `package_key_type` (2026-11-22), the format on its branch
+`object_key`, released as 2.4.0 on 2026-11-22 and required by the app (`^2.4`). As delivered:
+`key` in the Object schema, an enum, left out meaning `uuid`; `ItemStates` reads a key left
+out as `uuid`, so versions written before 2.4 compare equal; `VersionCheck` asks a major version
+for a change of key, and the app refuses it even then (`package.upgrade.key_changed`). The
+export writes `key` only when it is not `uuid`. The seed's key stays a field: an object's own
+key is never written in a package (its records get new ids at each install). As planned: The package format gets the key type in the `Object` kind (the format library,
 `../metadata-driven-package-format`: a minor version, 2.4.0, with its tests, absent meaning
 `uuid`); export, install and the three-way upgrade carry it, an upgrade changing it is refused.
 Seeds already refer to records by a unique field, not by id: nothing changes there.

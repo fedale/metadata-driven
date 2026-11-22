@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Package\Application;
 
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\TextDto;
 use App\Module\Metadata\Contract\Dto\TranslationKey;
 use App\Module\Metadata\Contract\Dto\ViewKind;
@@ -230,6 +231,7 @@ final class PackageInstaller
                 self::string($object->spec['label'] ?? null),
                 self::string($object->spec['plural'] ?? null),
                 \is_string($object->spec['icon'] ?? null) ? $object->spec['icon'] : null,
+                self::keyType($object->spec['key'] ?? null),
             ));
             $items[] = $this->item($package, ItemKind::Object, $object->id, $localId);
         }
@@ -520,5 +522,14 @@ final class PackageInstaller
     {
         // The checker has validated every document against its schema: a miss is a bug.
         return \is_string($value) ? $value : throw new \LogicException('A value the schema requires is missing.');
+    }
+
+    /**
+     * The key an object's spec says; left out (or before 2.4), a UUID one. The checker has
+     * refused any other value.
+     */
+    public static function keyType(mixed $key): KeyType
+    {
+        return \is_string($key) ? KeyType::tryFrom($key) ?? KeyType::Uuid : KeyType::Uuid;
     }
 }
