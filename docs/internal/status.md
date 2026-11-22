@@ -509,8 +509,10 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   `metadata:table:adopt` with several tables; the synchronizer keeps the foreign keys the
   metadata does not define) merged into `main` on 2026-11-22. Phase 4 (junction tables: the
   links of a many-to-many field, or a junction object it goes through; also a table with a key of
-  its own and a unique pair of foreign keys) merged into `main` on 2026-11-22. Left: phase 5 (exporting and
-  installing packages from the admin). Then discovery of the unmanaged tables of the workspace's data schema,
+  its own and a unique pair of foreign keys) merged into `main` on 2026-11-22. Phase 5 (a
+  package exported as an archive from the admin, `/admin/packages/export`; an archive uploaded,
+  tried and installed, `/admin/packages/uploads/<token>`) done on branch `package_files`
+  (2026-11-22), waiting for the user's review: the plan is complete with it. Then discovery of the unmanaged tables of the workspace's data schema,
   adoption of one table and of a set (the system columns added, the table renamed), junctions;
   then exporting packages and installing them from a file in the admin (today the console only).
 - Relation filters in grids keep `multiple: true` by choice.

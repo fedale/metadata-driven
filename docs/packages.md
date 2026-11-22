@@ -6,7 +6,9 @@ control, share it, validate it without a database, and install it on another ins
 
 **Today** a package can be exported, validated, packed, published in a signed index, and
 installed and upgraded from a directory or by its name, its records included, from your own
-indexes or from the [package catalog](#the-package-catalog). A package can require other
+indexes or from the [package catalog](#the-package-catalog). From the admin, a package can also be
+exported as an archive to download, and installed from an archive uploaded (see [Admin
+UI](admin.md#packages--adminpackages)). A package can require other
 packages: exported, installed, upgraded and published with them (see [Packages requiring
 packages](#packages-requiring-packages)).
 

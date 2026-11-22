@@ -89,7 +89,9 @@ The language of the pages themselves is picked by each user in the top bar (**EN
 ## Packages — `/admin/packages`
 
 A model packaged to be installed in one go, and upgraded later (see [Packages](packages.md)).
-The page has three parts:
+The page has four parts:
+
+- **Package files**: **Export a package…** and the upload of an archive (below).
 
 - **Installed**: each package, its version, when it was installed and upgraded, and the index
   it came from.
@@ -111,8 +113,23 @@ side, and a choice, item by item, of which stays (this instance's, by default). 
 applies the upgrade with those choices. A change the upgrade cannot make, or a version number
 that does not fit its changes, is shown instead of the button.
 
-Packages are only named on these pages (`vendor/name@version`), never given as a directory of
-the server: installing from a directory, packing and exporting are console commands
+**Export a package…** (`/admin/packages/export`) asks the package's name (`vendor/name`), its
+version, title, description and license, then the objects (with their fields and views), the
+objects whose **records** go too (as seeds, named by their first unique field), the forms and the
+workflows. **Download the archive** writes it as `metadata:package:export` would, packed as
+`<vendor>-<name>-<version>.tar.gz`; an export the format refuses (an object pointing at one not
+exported, an object without a unique field to name its records by) is shown on the page instead.
+
+**Upload and try it** takes an archive (`.tar.gz`, exported from another instance or packed with
+`metadata:package:pack`): it is unpacked and checked (the limits of a download: 50 MB, 200 MB
+unpacked), then the page of its trial install opens, as for **Install…**; **Install** installs it
+(its source reads `upload: <file>`), **Give it up** removes it. An upload neither installed nor
+given up is removed a day later. A package requiring others this instance doesn't have is
+refused, the missing ones named: install them first. An uploaded archive does not upgrade an
+installed package: that is `metadata:package:upgrade` with its directory.
+
+Packages are otherwise named on these pages (`vendor/name@version`), never given as a directory
+of the server: installing or upgrading from a directory, and packing, are console commands
 ([`metadata:package:*`](console.md)).
 
 ## Workflows — `/admin/workflows`

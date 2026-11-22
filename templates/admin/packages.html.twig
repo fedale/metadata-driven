@@ -7,6 +7,15 @@
     <h1>{{ 'admin.packages'|trans }}</h1>
     <p class="gv-muted">{{ 'admin.package_admin.intro'|trans }}</p>
 
+    <section class="md-admin__section" id="package-files">
+        <h2>{{ 'admin.package_admin.files'|trans }}</h2>
+        <p><a class="gv-btn" href="{{ path('admin_package_export') }}">{{ 'admin.package_admin.export_title'|trans }}</a></p>
+        {{ form_start(upload_form, {attr: {class: 'md-form', 'data-turbo': 'false'}}) }}
+            {{ form_row(upload_form.archive) }}
+            <button type="submit" class="gv-btn">{{ 'admin.package_admin.upload_button'|trans }}</button>
+        {{ form_end(upload_form) }}
+    </section>
+
     <h2>{{ 'admin.package_admin.installed'|trans }}</h2>
     {% if installed is empty %}
         <p class="gv-muted">{{ 'admin.package_admin.none_installed'|trans }}</p>
