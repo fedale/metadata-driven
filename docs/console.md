@@ -28,6 +28,7 @@ symfony console <command> --help        # the same reference, from the command i
 | [`metadata:purge`](#metadatapurge) | Delete an archived object or field for good, its data with it |
 | [`metadata:list`](#metadatalist) | List the objects, or the fields of one object, and what is archived |
 | [`metadata:table:list`](#metadatatablelist) | List the tables of the data schema no object owns, loaded into the database by hand |
+| [`metadata:table:adopt`](#metadatatableadopt) | Make one of those tables an object, its records and keys kept |
 | [`metadata:files:gc`](#metadatafilesgc) | Delete the stored files no record references any more |
 | [`workflow:run`](#workflowrun) | Run a manual workflow, on a record or none, with the answers of its form |
 | [`workflow:secrets:key`](#workflowsecretskey) | Print a new key for `WORKFLOW_SECRETS_KEY` |
@@ -508,6 +509,32 @@ symfony console metadata:table:list --table=project
 ```
 
 With `--table`, fails when the data schema has no such table, or an object owns it.
+
+## `metadata:table:adopt`
+
+Make a table of the data schema that no object owns an object: the metadata built from the table,
+the table brought to an object's shape, its records and keys kept, in one transaction (see
+[Adopting a table](database-tables.md#adopting-a-table)). Each column becomes the field proposed
+for it: to choose them, adopt it from the admin.
+
+```
+metadata:table:adopt [--name=NAME] [--singular=SINGULAR] [--plural=PLURAL] [--dry-run] <table>
+```
+
+| Argument / option | Description |
+|---|---|
+| `table` | The table, in the data schema |
+| `--name` | The object's machine name (default: the one proposed from the table's name) |
+| `--singular`, `--plural` | Its labels (default: from its name) |
+| `--dry-run` | Do it all, then undo it: show the SQL, change nothing |
+
+```bash
+symfony console metadata:table:adopt project --dry-run
+symfony console metadata:table:adopt project --name=plan --singular=Plan --plural=Plans
+```
+
+Shows the fields proposed and the SQL run. Fails, changing nothing, when the table cannot be
+adopted, with the reasons (no primary key, a name taken, a value a field's column cannot hold...).
 
 ## `metadata:list`
 

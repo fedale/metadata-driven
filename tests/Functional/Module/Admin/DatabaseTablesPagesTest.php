@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Module\Admin;
 
+use App\Module\Metadata\Contract\MetadataManagerInterface;
+use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Tests\Support\SignsIn;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -80,6 +82,60 @@ final class DatabaseTablesPagesTest extends WebTestCase
 
         $this->client->request('GET', '/admin/tables/loose', server: ['HTTP_ACCEPT_LANGUAGE' => 'it']);
         self::assertSelectorTextContains('.md-flash--error', 'Non ha una chiave primaria: aggiungila prima.');
+    }
+
+    public function testAnAdministratorTriesThenAdoptsATable(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        self::getContainer()->get(Connection::class)->executeStatement("INSERT INTO data.project (title) VALUES ('Alpha')");
+
+        $crawler = $this->client->request('GET', '/admin/tables/project');
+        $crawler = $this->client->click($crawler->selectLink('Make it an object…')->link());
+        self::assertResponseIsSuccessful();
+        self::assertSame('project', $crawler->filter('input[name="adopt[name]"]')->attr('value'));
+        self::assertSame('title', $crawler->filter('input[name="adopt[columns][c0][field]"]')->attr('value'));
+        self::assertSame('text', $crawler->filter('select[name="adopt[columns][c0][type]"] option[selected]')->attr('value'));
+
+        // Tried: the changes shown, nothing changed.
+        $crawler = $this->client->submit($crawler->selectButton('Try it')->form(['adopt[labelPlural]' => 'Projects', 'adopt[columns][c0][label]' => 'Project title']));
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('.md-flash--success', 'adopting it makes the object "project"');
+        self::assertSelectorTextContains('.md-sql', 'ALTER TABLE "data"."project" RENAME TO "c_project"');
+        self::assertFalse(self::getContainer()->get(MetadataRegistryInterface::class)->hasObject('project'));
+
+        // A name taken: told on the page.
+        self::getContainer()->get(MetadataManagerInterface::class)->createObject('taken', 'Taken', 'Takens');
+        $this->client->submit($crawler->selectButton('Adopt')->form(['adopt[name]' => 'taken']));
+        self::assertResponseStatusCodeSame(422);
+        self::assertSelectorTextContains('.md-flash--error', 'An object is named "taken" already: choose another name.');
+
+        $crawler = $this->client->getCrawler();
+        $this->client->submit($crawler->selectButton('Adopt')->form(['adopt[name]' => 'project', 'adopt[labelPlural]' => 'Projects', 'adopt[columns][c0][label]' => 'Project title']));
+        self::assertResponseRedirects('/admin/objects/project', 303);
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.md-flash--success', 'Table "project" is the object "project" now.');
+        $object = self::getContainer()->get(MetadataRegistryInterface::class)->getObject('project');
+        self::assertSame(['Projects', 'Project title'], [$object->labelPlural, $object->field('title')->label]);
+
+        // Its records, by their numbers.
+        $this->client->request('GET', '/o/project/1/edit');
+        self::assertResponseIsSuccessful();
+        self::assertSame('Alpha', $this->client->getCrawler()->filter('input[name="record[title]"]')->attr('value'));
+    }
+
+    public function testTheConsoleAdoptsATable(): void
+    {
+        $adopt = new CommandTester((new Application(self::$kernel ?? self::bootKernel()))->find('metadata:table:adopt'));
+
+        self::assertSame(Command::SUCCESS, $adopt->execute(['table' => 'project', '--dry-run' => true]));
+        $display = static fn (): string => (string) preg_replace('/\s+/', ' ', $adopt->getDisplay());
+        self::assertStringContainsString('Dry run: object "project" would be made of table "project". Nothing was changed.', $display());
+        self::assertSame(Command::FAILURE, $adopt->execute(['table' => 'loose']));
+        self::assertStringContainsString('It has no primary key: give it one first.', $display());
+
+        self::assertSame(Command::SUCCESS, $adopt->execute(['table' => 'project', '--name' => 'plan', '--plural' => 'Plans']));
+        self::assertStringContainsString('Table "project" is object "plan" now.', $display());
+        self::assertSame('Plans', self::getContainer()->get(MetadataRegistryInterface::class)->getObject('plan')->labelPlural);
     }
 
     public function testOnlyAnAdministratorSeesThem(): void

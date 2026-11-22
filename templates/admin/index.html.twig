@@ -43,7 +43,7 @@
         </table>
     {% endif %}
 
-    <section class="md-admin__section">
+    <section class="md-admin__section" id="database-tables">
         <h2>{{ 'admin.tables.title'|trans }}</h2>
         {% if tables is empty %}
             <p class="gv-muted">{{ 'admin.tables.empty'|trans({'%schema%': data_schema}) }}</p>
@@ -73,7 +73,7 @@
     </section>
 
     {% if archived is not empty %}
-        <section class="md-admin__section">
+        <section class="md-admin__section" id="archived-objects">
             <h2>{{ 'admin.index.archived'|trans }}</h2>
             <p class="gv-muted">{{ 'admin.index.archived_help'|trans|raw }}</p>
             <table class="md-table">

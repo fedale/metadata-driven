@@ -357,6 +357,20 @@ admin:
         title: Tabelle del database
         help: 'Tabelle dello schema dati che nessun oggetto possiede ancora: caricate nel database a mano (un dump, uno script). Sono lette dal database così come è adesso.'
         empty: 'Nessuna tabella caricata a mano nel database. Caricale nello schema %schema% (un dump, uno script): compaiono qui, pronte a diventare oggetti.'
+        adopt_button: Trasformala in oggetto…
+        adopt_title: 'Trasforma %table% in oggetto'
+        adopt_help: "Scegli il nome e le etichette dell'oggetto, e il campo che diventa ogni colonna. Prima provalo: viene fatto tutto e poi annullato, e la pagina mostra le modifiche. Fai un backup del database prima di adottare una tabella che non puoi ricaricare."
+        the_object: "L'oggetto"
+        from_key: 'dalla sua chiave primaria %column%'
+        field_type: Campo
+        left_out: '(lasciala fuori)'
+        label: Etichetta
+        what_changes: "Adottarla rinomina la tabella c_<nome> e le colonne come i loro campi, dà alle colonne i tipi che i campi vogliono, aggiunge le colonne di sistema (created_at, updated_at, created_by, deleted_at, sort) e fa della chiave id. I record e le loro chiavi restano. Una colonna lasciata fuori resta nella tabella, sconosciuta all'applicazione."
+        try: Prova
+        adopt: Adotta
+        tried: 'Funziona: adottarla crea l''oggetto "%name%" con queste modifiche. Non è ancora stato cambiato nulla.'
+        not_adopted: 'Così com''è non può essere adottata:'
+        adopted: 'La tabella "%table%" ora è l''oggetto "%name%".'
         database_only: 'Solo database: una tabella che nessun oggetto possiede ancora.'
         columns: Colonne
         column: Colonna

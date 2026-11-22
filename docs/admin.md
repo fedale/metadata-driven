@@ -15,7 +15,9 @@ the default language (English); **Translations** gives them their text in the ot
 Under them, the **Database tables**, greyed: the tables loaded into the data schema by hand that
 no object owns yet, with their columns, an estimate of their rows, and whether they can become an
 object; each one has a page at `/admin/tables/<table>` (see [Tables loaded into the
-database](database-tables.md)); with none, the section says where to load them. Then the **Archived** objects, each with **Restore** (see [Renaming and archiving](lifecycle.md)).
+database](database-tables.md)); with none, the section says where to load them. A table that
+can become an object has **Make it an object…**: the field each column becomes, tried first, then
+adopted (see [Adopting a table](database-tables.md#adopting-a-table)). Then the **Archived** objects, each with **Restore** (see [Renaming and archiving](lifecycle.md)).
 
 ## An object — `/admin/objects/<object>`
 

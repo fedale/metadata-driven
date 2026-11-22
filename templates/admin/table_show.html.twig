@@ -9,6 +9,7 @@
 
     {% if table.adoptable %}
         <p class="md-flash md-flash--success">{{ 'admin.tables.can_become'|trans({'%name%': table.proposedName ?? '…'}) }}</p>
+        <p><a class="gv-btn gv-btn-primary" href="{{ path('admin_table_adopt', {table: table.name}) }}">{{ 'admin.tables.adopt_button'|trans }}</a></p>
     {% else %}
         <div class="md-flash md-flash--error">
             <p>{{ 'admin.tables.cannot_become'|trans }}</p>
