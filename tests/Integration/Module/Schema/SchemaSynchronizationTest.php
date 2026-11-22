@@ -140,6 +140,22 @@ final class SchemaSynchronizationTest extends KernelTestCase
         self::assertArrayNotHasKey('legacy_code', $this->columns('c_pet'));
     }
 
+    /**
+     * A foreign key a table brought along when it was adopted, to a table no object owns: the
+     * metadata does not define it, and the synchronization leaves it, as an unknown column.
+     */
+    public function testAForeignKeyTheMetadataDoesNotDefineStays(): void
+    {
+        ($this->createObject)(new CreateObjectCommand('pet', 'Pet', 'Pets'));
+        $this->connection->executeStatement('CREATE TABLE data.breed (id int PRIMARY KEY)');
+        $this->connection->executeStatement('ALTER TABLE data.c_pet ADD breed int CONSTRAINT pet_breed_fkey REFERENCES data.breed (id)');
+
+        $plan = $this->synchronizer->synchronize('pet');
+        self::assertTrue($plan->isEmpty());
+        self::assertSame(['Column "breed" is not defined in the metadata: not dropped.', 'Foreign key "pet_breed_fkey" is not defined in the metadata: not dropped.'], $plan->skipped);
+        self::assertEquals(1, $this->connection->fetchOne("SELECT COUNT(*) FROM pg_constraint WHERE conname = 'pet_breed_fkey'"));
+    }
+
     public function testFailingDdlRollsBackTheDefinition(): void
     {
         // A pre-existing table whose duplicate ids make the primary key impossible to add.

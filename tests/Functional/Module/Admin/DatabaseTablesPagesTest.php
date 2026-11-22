@@ -92,14 +92,14 @@ final class DatabaseTablesPagesTest extends WebTestCase
         $crawler = $this->client->request('GET', '/admin/tables/project');
         $crawler = $this->client->click($crawler->selectLink('Make it an object…')->link());
         self::assertResponseIsSuccessful();
-        self::assertSame('project', $crawler->filter('input[name="adopt[name]"]')->attr('value'));
+        self::assertSame('project', $crawler->filter('input[name="adopt[t0][name]"]')->attr('value'));
         // "Try it" answers with the page: a plain submit, Turbo Drive would not show it.
         self::assertSame('false', $crawler->filter('form[name="adopt"]')->attr('data-turbo'));
-        self::assertSame('title', $crawler->filter('input[name="adopt[columns][c0][field]"]')->attr('value'));
-        self::assertSame('text', $crawler->filter('select[name="adopt[columns][c0][type]"] option[selected]')->attr('value'));
+        self::assertSame('title', $crawler->filter('input[name="adopt[t0][columns][c0][field]"]')->attr('value'));
+        self::assertSame('text', $crawler->filter('select[name="adopt[t0][columns][c0][type]"] option[selected]')->attr('value'));
 
         // Tried: the changes shown, nothing changed.
-        $crawler = $this->client->submit($crawler->selectButton('Try it')->form(['adopt[labelPlural]' => 'Projects', 'adopt[columns][c0][label]' => 'Project title']));
+        $crawler = $this->client->submit($crawler->selectButton('Try it')->form(['adopt[t0][labelPlural]' => 'Projects', 'adopt[t0][columns][c0][label]' => 'Project title']));
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('.md-flash--success', 'adopting it makes the object "project"');
         self::assertSelectorTextContains('.md-sql', 'ALTER TABLE "data"."project" RENAME TO "c_project"');
@@ -107,12 +107,12 @@ final class DatabaseTablesPagesTest extends WebTestCase
 
         // A name taken: told on the page.
         self::getContainer()->get(MetadataManagerInterface::class)->createObject('taken', 'Taken', 'Takens');
-        $this->client->submit($crawler->selectButton('Adopt')->form(['adopt[name]' => 'taken']));
+        $this->client->submit($crawler->selectButton('Adopt')->form(['adopt[t0][name]' => 'taken']));
         self::assertResponseStatusCodeSame(422);
         self::assertSelectorTextContains('.md-flash--error', 'An object is named "taken" already: choose another name.');
 
         $crawler = $this->client->getCrawler();
-        $this->client->submit($crawler->selectButton('Adopt')->form(['adopt[name]' => 'project', 'adopt[labelPlural]' => 'Projects', 'adopt[columns][c0][label]' => 'Project title']));
+        $this->client->submit($crawler->selectButton('Adopt')->form(['adopt[t0][name]' => 'project', 'adopt[t0][labelPlural]' => 'Projects', 'adopt[t0][columns][c0][label]' => 'Project title']));
         self::assertResponseRedirects('/admin/objects/project', 303);
         $this->client->followRedirect();
         self::assertSelectorTextContains('.md-flash--success', 'Table "project" is the object "project" now.');
@@ -129,15 +129,49 @@ final class DatabaseTablesPagesTest extends WebTestCase
     {
         $adopt = new CommandTester((new Application(self::$kernel ?? self::bootKernel()))->find('metadata:table:adopt'));
 
-        self::assertSame(Command::SUCCESS, $adopt->execute(['table' => 'project', '--dry-run' => true]));
+        self::assertSame(Command::SUCCESS, $adopt->execute(['tables' => ['project'], '--dry-run' => true]));
         $display = static fn (): string => (string) preg_replace('/\s+/', ' ', $adopt->getDisplay());
-        self::assertStringContainsString('Dry run: object "project" would be made of table "project". Nothing was changed.', $display());
-        self::assertSame(Command::FAILURE, $adopt->execute(['table' => 'loose']));
+        self::assertStringContainsString('Dry run: "project" would be made of project. Nothing was changed.', $display());
+        self::assertSame(Command::FAILURE, $adopt->execute(['tables' => ['loose']]));
         self::assertStringContainsString('It has no primary key: give it one first.', $display());
 
-        self::assertSame(Command::SUCCESS, $adopt->execute(['table' => 'project', '--name' => 'plan', '--plural' => 'Plans']));
-        self::assertStringContainsString('Table "project" is object "plan" now.', $display());
+        self::assertSame(Command::INVALID, $adopt->execute(['tables' => ['project', 'project_activity'], '--name' => 'plan']));
+        self::assertSame(Command::SUCCESS, $adopt->execute(['tables' => ['project'], '--name' => 'plan', '--plural' => 'Plans']));
+        self::assertStringContainsString('project: "plan" now.', $display());
         self::assertSame('Plans', self::getContainer()->get(MetadataRegistryInterface::class)->getObject('plan')->labelPlural);
+    }
+
+    public function testTablesLinkedByAForeignKeyAreAdoptedTogether(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        $connection = self::getContainer()->get(Connection::class);
+        $connection->executeStatement("INSERT INTO data.project (title) VALUES ('Alpha')");
+        $connection->executeStatement('INSERT INTO data.project_activity (project) VALUES (1)');
+
+        // The table it points at comes along: the foreign key is a relation to it.
+        $crawler = $this->client->request('GET', '/admin/tables/project_activity/adopt');
+        self::assertSame(['data.project', 'data.project_activity'], $crawler->filter('form[name="adopt"] h2')->each(static fn ($h2): string => $h2->text()));
+        self::assertTrue($crawler->filter('input[type="checkbox"][value="project"]')->matches('[checked]'));
+        self::assertSame('relation', $crawler->filter('select[name="adopt[t1][columns][c0][type]"] option[selected]')->attr('value'));
+
+        // Left out: the foreign key stays a number.
+        $alone = $this->client->request('GET', '/admin/tables/project_activity/adopt', ['with' => ['']]);
+        self::assertCount(1, $alone->filter('form[name="adopt"] h2'));
+        self::assertSame('number', $alone->filter('select[name="adopt[t0][columns][c0][type]"] option[selected]')->attr('value'));
+
+        $this->client->submit($crawler->selectButton('Adopt')->form());
+        self::assertResponseRedirects('/admin', 303);
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.md-flash--success', 'The tables are the objects project, project_activity now.');
+        self::assertSame('project', self::getContainer()->get(MetadataRegistryInterface::class)->getObject('project_activity')->field('project')->relation()?->target);
+    }
+
+    public function testTheConsoleAdoptsSeveralTables(): void
+    {
+        $adopt = new CommandTester((new Application(self::$kernel ?? self::bootKernel()))->find('metadata:table:adopt'));
+
+        self::assertSame(Command::SUCCESS, $adopt->execute(['tables' => ['project_activity', 'project']]));
+        self::assertSame('project', self::getContainer()->get(MetadataRegistryInterface::class)->getObject('project_activity')->field('project')->relation()?->target);
     }
 
     public function testOnlyAnAdministratorSeesThem(): void

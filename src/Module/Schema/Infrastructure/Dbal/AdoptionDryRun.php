@@ -11,7 +11,10 @@ use App\Module\Schema\Contract\Dto\AdoptionReport;
  */
 final class AdoptionDryRun extends \RuntimeException
 {
-    public function __construct(public readonly AdoptionReport $report)
+    /**
+     * @param list<AdoptionReport> $reports
+     */
+    public function __construct(public readonly array $reports)
     {
         parent::__construct('Dry run: rolled back.');
     }

@@ -518,19 +518,20 @@ the table brought to an object's shape, its records and keys kept, in one transa
 for it: to choose them, adopt it from the admin.
 
 ```
-metadata:table:adopt [--name=NAME] [--singular=SINGULAR] [--plural=PLURAL] [--dry-run] <table>
+metadata:table:adopt [--name=NAME] [--singular=SINGULAR] [--plural=PLURAL] [--dry-run] <tables>...
 ```
 
 | Argument / option | Description |
 |---|---|
-| `table` | The table, in the data schema |
-| `--name` | The object's machine name (default: the one proposed from the table's name) |
-| `--singular`, `--plural` | Its labels (default: from its name) |
+| `tables` | The tables, in the data schema. Adopted together, in one transaction: a foreign key between two of them becomes a relation |
+| `--name` | The object's machine name, for one table (default: the one proposed from the table's name) |
+| `--singular`, `--plural` | Its labels, for one table (default: from its name) |
 | `--dry-run` | Do it all, then undo it: show the SQL, change nothing |
 
 ```bash
 symfony console metadata:table:adopt project --dry-run
 symfony console metadata:table:adopt project --name=plan --singular=Plan --plural=Plans
+symfony console metadata:table:adopt project project_task project_task_item
 ```
 
 Shows the fields proposed and the SQL run. Fails, changing nothing, when the table cannot be
@@ -1041,8 +1042,9 @@ pet (data.c_pet)
  Executed.
 ```
 
-**Destructive changes are never applied by default.** A column or an index the metadata does not
-define is kept, a column whose definition differs is not altered, and each one is reported as a
+**Destructive changes are never applied by default.** A column, an index or a foreign key the
+metadata does not define is kept (a foreign key an [adopted table](database-tables.md) brought
+along, pointing at a table no object owns, for one), a column whose definition differs is not altered, and each one is reported as a
 warning:
 
 ```

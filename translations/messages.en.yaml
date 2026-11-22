@@ -375,6 +375,12 @@ admin:
         tried: 'It works: adopting it makes the object "%name%" with these changes. Nothing was changed yet.'
         not_adopted: 'It cannot be adopted as it is:'
         adopted: 'Table "%table%" is the object "%name%" now.'
+        with: Adopted with it
+        with_help: 'The tables it is linked to by a foreign key. Adopted together, a foreign key between two of them becomes a relation; left out, it stays a number.'
+        pointed_at: '(it points at this one)'
+        points_here: '(this one points at it)'
+        update_set: Update the tables
+        adopted_many: 'The tables are the objects %names% now.'
         database_only: 'Database only: a table no object owns yet.'
         columns: Columns
         column: Column

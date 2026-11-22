@@ -349,9 +349,11 @@ schema:
         database: 'Il database l''ha rifiutato: %reason%'
         metadata: 'I metadati l''hanno rifiutato: %reason%'
         name_invalid: 'Il nome dell''oggetto "%name%" non è un nome macchina: lettere minuscole, cifre e trattini bassi singoli, a partire da una lettera.'
+        name_twice: 'Due tabelle diventerebbero l''oggetto "%name%": dai a una un altro nome.'
         name_taken: 'Un oggetto si chiama già "%name%": scegli un altro nome.'
         no_table: 'Lo schema dati non ha una tabella "%table%" che nessun oggetto possiede.'
         required_left_out: 'La colonna %column% non può essere lasciata fuori: non può essere vuota e non ha un valore predefinito, quindi nessun record potrebbe essere scritto.'
+        target_not_adopted: 'La colonna %column% è una relazione verso la tabella %table%, che non viene adottata con lei: adottale insieme, o non farne una relazione.'
         unknown_column: 'La tabella non ha una colonna %column%.'
     table:
         composite_key: 'La sua chiave primaria ha più colonne (%columns%): una tabella così non può ancora diventare un oggetto.'

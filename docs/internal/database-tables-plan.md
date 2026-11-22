@@ -218,6 +218,17 @@ to be decided in the phase.
 
 ### Phase 3: adopting a set of related tables
 
+Done on branch `table_sets` (2026-11-22). As delivered: `proposeSet()`, `adoptSet()` and
+`related()` on `TableAdopterInterface`; `ColumnMapping::$targetTable` names the table of the set a
+relation points at (its object's name resolved at adoption). One transaction: every table reshaped,
+then every object made, then every field (so circles and a table pointing at itself work), then
+the unique sets, then each object synchronized. The admin page takes `with[]`, by default the
+tables pointed at, transitively; the console takes several tables. Found on the way: the
+synchronizer dropped the foreign keys the metadata does not define even when not destructive; it
+keeps them now, as columns and indexes (`DbalSchemaSynchronizer::withoutDestructiveChanges()`,
+which also stops reporting the index DBAL makes up for such a foreign key). A foreign key to a
+non-key unique column is left a plain field, as planned. As planned:
+
 With the key types of phase 0, a foreign key between loaded tables already has the right type:
 `project_task.project_id integer → project.id integer` is a relation as it is. What is left:
 
