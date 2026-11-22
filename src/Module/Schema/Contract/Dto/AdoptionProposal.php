@@ -22,6 +22,8 @@ final readonly class AdoptionProposal
         public string $labelPlural,
         public KeyType $keyType,
         public array $columns,
+        // A table linking two others: the many-to-many field it is proposed as; null for any other.
+        public ?JunctionMapping $junction = null,
     ) {
     }
 
@@ -36,6 +38,7 @@ final readonly class AdoptionProposal
             $this->labelSingular,
             $this->labelPlural,
             array_map(static fn (ColumnProposal $column): ?ColumnMapping => $column->mapping(), $this->columns),
+            $this->junction,
         );
     }
 }

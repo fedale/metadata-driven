@@ -10,6 +10,7 @@ use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
 use App\Module\Schema\Contract\DatabaseTablesInterface;
 use App\Module\Schema\Contract\Dto\AdoptionProposal;
 use App\Module\Schema\Contract\Dto\AdoptionRequest;
+use App\Module\Schema\Contract\Dto\JunctionMapping;
 use App\Module\Schema\Contract\Exception\AdoptionRefused;
 use App\Module\Schema\Contract\TableAdopterInterface;
 use App\Shared\Workspace\CurrentWorkspace;
@@ -177,7 +178,25 @@ final class AdminTableController extends AbstractController
                 ->add('label', TextType::class, ['label' => 'admin.tables.label', 'data' => $mapping->label ?? '', 'required' => false]));
         }
 
-        return $this->forms->createNamedBuilder($key, FormType::class, null, ['label' => false])
+        $builder = $this->forms->createNamedBuilder($key, FormType::class, null, ['label' => false]);
+        $junction = $proposal->junction;
+        if (null !== $junction) {
+            $modes = ['admin.tables.as_object' => 'object'];
+            if (!$junction->asObject) {
+                // Columns of its own would be lost as a link table: only a junction object then.
+                $modes = ['admin.tables.as_links' => 'links'] + $modes;
+            }
+            if (!$proposal->table->junction) {
+                // A key of its own: an object anyway, with the many-to-many field or without.
+                $modes += ['admin.tables.no_field' => 'none'];
+            }
+            $builder->add($this->forms->createNamedBuilder('junction', FormType::class, null, ['label' => false])
+                ->add('mode', ChoiceType::class, ['label' => 'admin.tables.junction_mode', 'choices' => $modes, 'data' => $junction->asObject ? 'object' : 'links', 'expanded' => true])
+                ->add('field', TextType::class, ['label' => 'admin.machine_name', 'data' => $junction->fieldName])
+                ->add('label', TextType::class, ['label' => 'admin.tables.label', 'data' => $junction->label]));
+        }
+
+        return $builder
             ->add('name', TextType::class, ['label' => 'admin.machine_name', 'data' => $proposal->objectName])
             ->add('labelSingular', TextType::class, ['label' => 'admin.object.singular_label', 'data' => $proposal->labelSingular])
             ->add('labelPlural', TextType::class, ['label' => 'admin.object.plural_label', 'data' => $proposal->labelPlural])
@@ -201,12 +220,24 @@ final class AdminTableController extends AbstractController
                 $option = $column->options[self::text($row->get('type')->getData())] ?? null;
                 $columns[$column->column->name] = $option?->withNames(self::text($row->get('field')->getData()), self::text($row->get('label')->getData()));
             }
+            $junction = null;
+            if (null !== $proposal->junction && 'none' !== $table->get('junction')->get('mode')->getData()) {
+                $chosen = $table->get('junction');
+                $junction = new JunctionMapping(
+                    $proposal->junction->sourceColumn,
+                    $proposal->junction->targetColumn,
+                    self::text($chosen->get('field')->getData()),
+                    self::text($chosen->get('label')->getData()),
+                    'object' === $chosen->get('mode')->getData(),
+                );
+            }
             $requests[] = new AdoptionRequest(
                 $proposal->table->name,
                 self::text($table->get('name')->getData()),
                 self::text($table->get('labelSingular')->getData()),
                 self::text($table->get('labelPlural')->getData()),
                 $columns,
+                $junction,
             );
         }
 

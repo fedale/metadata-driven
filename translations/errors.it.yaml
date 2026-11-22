@@ -347,6 +347,12 @@ schema:
     adopt:
         column_missing: 'Colonna %column%: indica quale campo diventa, o lasciala fuori.'
         database: 'Il database l''ha rifiutato: %reason%'
+        junction_alone: 'La tabella %table% collega %tables%: adottala insieme a loro.'
+        junction_columns: 'Le due colonne di un campo many-to-many sono la coppia che collega %table% alle altre due: %columns%.'
+        junction_expected: 'La tabella %table% collega due altre: indica cosa diventa, un campo many-to-many o un oggetto ponte.'
+        junction_id: 'Come oggetto ponte riceve una chiave sua, "id": rinomina prima la sua colonna id.'
+        keyed_junction: 'La tabella %table% ha una chiave sua: diventa un oggetto ponte, da cui passa il campo many-to-many.'
+        link_columns: 'Come collegamenti di un campo many-to-many, le sue colonne %columns% andrebbero perse: fanne un oggetto ponte.'
         metadata: 'I metadati l''hanno rifiutato: %reason%'
         name_invalid: 'Il nome dell''oggetto "%name%" non è un nome macchina: lettere minuscole, cifre e trattini bassi singoli, a partire da una lettera.'
         name_twice: 'Due tabelle diventerebbero l''oggetto "%name%": dai a una un altro nome.'

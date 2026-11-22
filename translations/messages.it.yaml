@@ -377,6 +377,12 @@ admin:
         points_here: '(questa punta a lei)'
         update_set: Aggiorna le tabelle
         adopted_many: 'Le tabelle ora sono gli oggetti %names%.'
+        junction: 'Collega due tabelle, tramite %source% e %target%'
+        junction_help: "Le sue righe diventano i collegamenti di un campo many-to-many sull'oggetto della prima, con il nome qui sotto. Come oggetto ponte è anche un oggetto a sé (con il nome qui), con una chiave aggiunta e le altre colonne come campi; il campo passa da lui."
+        junction_mode: Diventa
+        as_links: I collegamenti di un campo many-to-many
+        as_object: Un oggetto ponte, da cui passa il campo
+        no_field: Un oggetto, senza campo many-to-many
         database_only: 'Solo database: una tabella che nessun oggetto possiede ancora.'
         columns: Colonne
         column: Colonna

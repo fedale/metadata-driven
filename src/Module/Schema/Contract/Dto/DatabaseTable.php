@@ -25,6 +25,8 @@ final readonly class DatabaseTable
      *                                               no object has; null when there is none to propose
      * @param KeyType|null             $keyType      the key its primary key would give the object; null for none
      * @param list<Message>            $refusals     why it cannot be adopted; empty when it can
+     * @param bool                     $junction     a table linking two others: its primary key is made of two
+     *                                               columns, each a foreign key of its own; no key of its own
      */
     public function __construct(
         public string $name,
@@ -37,6 +39,7 @@ final readonly class DatabaseTable
         public ?string $proposedName,
         public ?KeyType $keyType,
         public array $refusals,
+        public bool $junction = false,
     ) {
     }
 

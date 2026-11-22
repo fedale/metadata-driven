@@ -20,6 +20,7 @@ use App\Module\Schema\Contract\Dto\ColumnMapping;
 use App\Module\Schema\Contract\Dto\ColumnProposal;
 use App\Module\Schema\Contract\Dto\DatabaseColumn;
 use App\Module\Schema\Contract\Dto\DatabaseTable;
+use App\Module\Schema\Contract\Dto\JunctionMapping;
 use App\Module\Schema\Contract\Exception\AdoptionRefused;
 use App\Module\Schema\Contract\SchemaSynchronizerInterface;
 use App\Module\Schema\Contract\TableAdopterInterface;
@@ -104,7 +105,7 @@ final class DbalTableAdopter implements TableAdopterInterface
             $columns = [];
             $names = [];
             foreach ($table->columns as $column) {
-                if ($column->name === $table->primaryKey[0] || $this->isSystemColumn($column)) {
+                if (\in_array($column->name, self::keyColumns($table), true) || $this->isSystemColumn($column)) {
                     continue;
                 }
                 $proposal = ColumnProposer::propose($column, isset($uniques[$column->name]), $targets[$column->name] ?? null);
@@ -117,10 +118,88 @@ final class DbalTableAdopter implements TableAdopterInterface
                     $proposal->proposed,
                 );
             }
-            $proposals[] = new AdoptionProposal($table, $members[$name]['object'], $members[$name]['label'], $members[$name]['label'], $table->keyType ?? KeyType::Uuid, $columns);
+            $junction = null;
+            if ($table->junction) {
+                [$sourceColumn, $targetColumn] = $table->primaryKey;
+                $missing = array_values(array_unique(array_filter(
+                    array_map(fn (string $column): ?string => isset($targets[$column]) ? null : $this->referencedTable($table, $column), $table->primaryKey),
+                    is_string(...),
+                )));
+                if ([] !== $missing) {
+                    throw new AdoptionRefused([new Message('schema.adopt.junction_alone', 'Table %table% links %tables%: adopt it with them.', ['table' => $name, 'tables' => implode(', ', $missing)])]);
+                }
+                $fieldName = self::plural($targets[$targetColumn]['object']);
+                // Columns of its own besides the pair: a junction object keeps them as fields.
+                $junction = new JunctionMapping($sourceColumn, $targetColumn, $fieldName, ColumnProposer::label($fieldName), [] !== array_diff(array_keys($columns), $table->primaryKey));
+            } elseif (null !== ($pair = self::keyedPair($table)) && isset($targets[$pair[0]], $targets[$pair[1]])) {
+                // A key of its own, and a pair of relations unique together: a junction object
+                // already, which a many-to-many field may go through.
+                $fieldName = self::plural($targets[$pair[1]]['object']);
+                $junction = new JunctionMapping($pair[0], $pair[1], $fieldName, ColumnProposer::label($fieldName), true);
+            }
+            $proposals[] = new AdoptionProposal($table, $members[$name]['object'], $members[$name]['label'], $members[$name]['label'], $table->junction ? KeyType::Integer : $table->keyType ?? KeyType::Uuid, $columns, $junction);
         }
 
         return $proposals;
+    }
+
+    /**
+     * The columns that are the table's key, and so no field: none for a junction, whose two
+     * columns become relations (as a junction object) or the links (as a link table).
+     *
+     * @return list<string>
+     */
+    private static function keyColumns(DatabaseTable $table): array
+    {
+        return $table->junction ? [] : [$table->primaryKey[0]];
+    }
+
+    /**
+     * A table with a key of its own linking two others: the first unique constraint of two
+     * columns, each a foreign key of its own. Null for any other table.
+     *
+     * @return array{string, string}|null
+     */
+    private static function keyedPair(DatabaseTable $table): ?array
+    {
+        if ($table->junction) {
+            return null;
+        }
+        $single = [];
+        foreach ($table->foreignKeys as $foreignKey) {
+            if (1 === \count($foreignKey->columns)) {
+                $single[$foreignKey->columns[0]] = true;
+            }
+        }
+        foreach ($table->uniques as $unique) {
+            if (2 === \count($unique) && isset($single[$unique[0]], $single[$unique[1]])) {
+                return [$unique[0], $unique[1]];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The table a column's foreign key points at, if it has one of its own.
+     */
+    private function referencedTable(DatabaseTable $table, string $column): ?string
+    {
+        foreach ($table->foreignKeys as $foreignKey) {
+            if ([$column] === $foreignKey->columns) {
+                return $foreignKey->referencedTable;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * A field holding several records is named in the plural: "tag" gives "tags".
+     */
+    private static function plural(string $name): string
+    {
+        return str_ends_with($name, 's') ? $name : $name.'s';
     }
 
     public function related(array $tables): array
@@ -166,6 +245,9 @@ final class DbalTableAdopter implements TableAdopterInterface
         $objects = [];
         foreach ($requests as $request) {
             $tables[$request->table] = $this->adoptable($request->table);
+            if (self::isLink($request)) {
+                continue;
+            }
             if (isset($objects[$request->objectName])) {
                 throw new AdoptionRefused([new Message('schema.adopt.name_twice', 'Two tables would become the object "%name%": give one another name.', ['name' => $request->objectName])]);
             }
@@ -178,22 +260,50 @@ final class DbalTableAdopter implements TableAdopterInterface
 
         try {
             return $this->transactions->run(function () use ($requests, $tables, $byTable, $dryRun): array {
-                // The key each object will have, for the relations pointing at it.
+                // The key each object will have, for the relations pointing at it: a junction
+                // object gets an integer one.
                 $keys = [];
                 foreach ($tables as $name => $table) {
-                    $keys[$name] = $table->keyType ?? KeyType::Uuid;
+                    $keys[$name] = $table->junction ? KeyType::Integer : $table->keyType ?? KeyType::Uuid;
                 }
                 $statements = [];
                 $uniqueSets = [];
+                $links = [];
                 foreach ($requests as $i => $request) {
-                    [$statements[$i], $uniqueSets[$i]] = $this->reshape($tables[$request->table], $request, $keys);
+                    $table = $tables[$request->table];
+                    $junction = $request->junction;
+                    if (null !== $junction) {
+                        $links[$i] = [
+                            'source' => $this->objectOf($table, $junction->sourceColumn, $byTable),
+                            'target' => $this->objectOf($table, $junction->targetColumn, $byTable),
+                        ];
+                    }
+                    if (self::isLink($request)) {
+                        $statements[$i] = $this->reshapeLink($table, $request, $links[$i]['source'], $links[$i]['target'], $keys);
+                        $uniqueSets[$i] = [];
+                        continue;
+                    }
+                    $added = $table->junction ? $this->addKey($table) : [];
+                    [$statements[$i], $uniqueSets[$i]] = $this->reshape($table->junction ? $this->adoptable($table->name) : $table, $request, $keys);
+                    $statements[$i] = [...$added, ...$statements[$i]];
+                    // A key of two columns: unique together now (a unique constraint already
+                    // is, as the reshape made it).
+                    if (null !== $junction && $table->junction) {
+                        // Their pair was the key: unique together now.
+                        $uniqueSets[$i][] = [$request->columns[$junction->sourceColumn]->fieldName ?? $junction->sourceColumn, $request->columns[$junction->targetColumn]->fieldName ?? $junction->targetColumn];
+                    }
                 }
                 // Every object first, then the fields: a relation finds its target, whichever
                 // order the tables point at each other in.
                 foreach ($requests as $request) {
-                    $this->manager->createObject($request->objectName, $request->labelSingular, $request->labelPlural, null, $keys[$request->table]);
+                    if (!self::isLink($request)) {
+                        $this->manager->createObject($request->objectName, $request->labelSingular, $request->labelPlural, null, $keys[$request->table]);
+                    }
                 }
                 foreach ($requests as $request) {
+                    if (self::isLink($request)) {
+                        continue;
+                    }
                     foreach (array_filter($request->columns) as $mapping) {
                         $settings = $mapping->settings;
                         if (null !== $mapping->targetTable) {
@@ -207,10 +317,29 @@ final class DbalTableAdopter implements TableAdopterInterface
                         $this->manager->addUniqueTogether($request->objectName, $fields);
                     }
                 }
+                // The many-to-many fields last: a junction object needs its pair unique together.
+                foreach ($requests as $i => $request) {
+                    $junction = $request->junction;
+                    if (null === $junction) {
+                        continue;
+                    }
+                    $settings = ['target' => $links[$i]['target']];
+                    if ($junction->asObject) {
+                        $settings += [
+                            'through' => $request->objectName,
+                            'throughSource' => $request->columns[$junction->sourceColumn]->fieldName ?? '',
+                            'throughTarget' => $request->columns[$junction->targetColumn]->fieldName ?? '',
+                        ];
+                    } else {
+                        $settings['onDelete'] = 'CASCADE' === $this->onDelete($tables[$request->table], $junction->targetColumn) ? 'unlink' : 'restrict';
+                    }
+                    $this->manager->createField($links[$i]['source'], $junction->fieldName, 'many_to_many', $junction->label, settings: $settings);
+                }
                 // Anything the application's own shape still wants (its indexes, mostly).
                 $reports = [];
                 foreach ($requests as $i => $request) {
-                    $reports[] = new AdoptionReport($request->objectName, [...$statements[$i], ...$this->synchronizer->synchronize($request->objectName)->statements], $dryRun);
+                    $object = self::isLink($request) ? $links[$i]['source'] : $request->objectName;
+                    $reports[] = new AdoptionReport($object, [...$statements[$i], ...$this->synchronizer->synchronize($object)->statements], $dryRun);
                 }
                 if ($dryRun) {
                     throw new AdoptionDryRun($reports);
@@ -274,7 +403,7 @@ final class DbalTableAdopter implements TableAdopterInterface
     private function adoptable(string $name): DatabaseTable
     {
         $table = $this->tables->find($name) ?? throw new AdoptionRefused([new Message('schema.adopt.no_table', 'The data schema has no table "%table%" that no object owns.', ['table' => $name])]);
-        if (!$table->isAdoptable() || null === $table->keyType) {
+        if (!$table->isAdoptable() || (null === $table->keyType && !$table->junction)) {
             throw new AdoptionRefused($table->refusals);
         }
 
@@ -293,6 +422,31 @@ final class DbalTableAdopter implements TableAdopterInterface
     private function checkRequest(DatabaseTable $table, AdoptionRequest $request, array $set): void
     {
         $reasons = [];
+        $junction = $request->junction;
+        if ($table->junction && null === $junction) {
+            throw new AdoptionRefused([new Message('schema.adopt.junction_expected', 'Table %table% links two others: say what it becomes, a many-to-many field or a junction object.', ['table' => $table->name])]);
+        }
+        if (null !== $junction) {
+            // The pair of the key, or of the unique constraint of a table with a key of its own.
+            $pair = $table->junction ? $table->primaryKey : self::keyedPair($table) ?? [];
+            if ([$junction->sourceColumn, $junction->targetColumn] !== $pair && [$junction->targetColumn, $junction->sourceColumn] !== $pair) {
+                throw new AdoptionRefused([new Message('schema.adopt.junction_columns', 'The two columns of a many-to-many field are the pair linking %table% to two others: %columns%.', ['table' => $table->name, 'columns' => implode(', ', $pair)])]);
+            }
+            if (!$table->junction && !$junction->asObject) {
+                throw new AdoptionRefused([new Message('schema.adopt.keyed_junction', 'Table %table% has a key of its own: it becomes a junction object, the many-to-many field going through it.', ['table' => $table->name])]);
+            }
+            if (!$junction->asObject) {
+                $extra = array_values(array_filter(array_map(static fn (DatabaseColumn $column): string => $column->name, $table->columns), fn (string $column): bool => !\in_array($column, $table->primaryKey, true) && !\in_array($column, ['created_at', 'created_by'], true)));
+                if ([] !== $extra) {
+                    throw new AdoptionRefused([new Message('schema.adopt.link_columns', 'As the links of a many-to-many field, its columns %columns% would be lost: make it a junction object.', ['columns' => implode(', ', $extra)])]);
+                }
+
+                return;
+            }
+            if ($table->junction && null !== $table->column('id')) {
+                $reasons[] = new Message('schema.adopt.junction_id', 'As a junction object it gets a key of its own, "id": rename its column id first.');
+            }
+        }
         foreach (array_filter($request->columns) as $column => $mapping) {
             if (null !== $mapping->targetTable && !isset($set[$mapping->targetTable])) {
                 $reasons[] = new Message('schema.adopt.target_not_adopted', 'Column %column% is a relation to table %table%, which is not adopted with it: adopt both together, or make it no relation.', ['column' => $column, 'table' => $mapping->targetTable]);
@@ -304,7 +458,7 @@ final class DbalTableAdopter implements TableAdopterInterface
             $reasons[] = new Message('schema.adopt.name_taken', 'An object is named "%name%" already: choose another name.', ['name' => $request->objectName]);
         }
         foreach ($table->columns as $column) {
-            if ($column->name === $table->primaryKey[0] || $this->isSystemColumn($column)) {
+            if (\in_array($column->name, self::keyColumns($table), true) || $this->isSystemColumn($column)) {
                 continue;
             }
             if (!\array_key_exists($column->name, $request->columns)) {
@@ -632,6 +786,170 @@ final class DbalTableAdopter implements TableAdopterInterface
         }
 
         return $candidate;
+    }
+
+    /**
+     * A table linking two others adopted as the links of a many-to-many field: no object.
+     */
+    private static function isLink(AdoptionRequest $request): bool
+    {
+        return null !== $request->junction && !$request->junction->asObject;
+    }
+
+    /**
+     * The object a column's foreign key points at: one a table of the set becomes, or one there
+     * is.
+     *
+     * @param array<string, string> $set the objects the tables adopted together become, by table
+     *
+     * @throws AdoptionRefused
+     */
+    private function objectOf(DatabaseTable $table, string $column, array $set): string
+    {
+        $referenced = $this->referencedTable($table, $column) ?? '';
+        if (isset($set[$referenced])) {
+            return $set[$referenced];
+        }
+        foreach ($this->metadata->allObjects() as $object) {
+            if ($object->tableName === $referenced) {
+                return $object->name;
+            }
+        }
+
+        throw new AdoptionRefused([new Message('schema.adopt.junction_alone', 'Table %table% links %tables%: adopt it with them.', ['table' => $table->name, 'tables' => $referenced])]);
+    }
+
+    /**
+     * The rule on delete of a column's foreign key, as SQL says it.
+     */
+    private function onDelete(DatabaseTable $table, string $column): string
+    {
+        foreach ($table->foreignKeys as $foreignKey) {
+            if ([$column] === $foreignKey->columns) {
+                return $foreignKey->onDelete;
+            }
+        }
+
+        return 'NO ACTION';
+    }
+
+    /**
+     * A junction table made a table of records: a key of its own, an identity column numbering
+     * the rows there are, instead of its pair of columns.
+     *
+     * @return list<string> the statements run
+     */
+    private function addKey(DatabaseTable $table): array
+    {
+        $quote = $this->connection->quoteSingleIdentifier(...);
+        $t = $quote($this->workspace->dataSchema()).'.'.$quote($table->name);
+        $statements = [];
+        $primaryKey = $this->primaryKeyName($table->name);
+        if (null !== $primaryKey) {
+            $statements[] = \sprintf('ALTER TABLE %s DROP CONSTRAINT %s', $t, $quote($primaryKey));
+        }
+        $statements[] = \sprintf('ALTER TABLE %s ADD COLUMN %s BIGINT GENERATED BY DEFAULT AS IDENTITY', $t, $quote('id'));
+        $statements[] = \sprintf('ALTER TABLE %s ADD PRIMARY KEY (%s)', $t, $quote('id'));
+        foreach ($statements as $sql) {
+            $this->connection->executeStatement($sql);
+        }
+
+        return $statements;
+    }
+
+    /**
+     * A junction table made the link table of a many-to-many field, as the Schema module builds
+     * it: (record_id, target_id) of the two objects' keys, the key, created_at and created_by.
+     * The synchronization adds its indexes and foreign keys.
+     *
+     * @param array<string, KeyType> $keys the key of each table adopted with it
+     *
+     * @return list<string> the statements run
+     */
+    private function reshapeLink(DatabaseTable $table, AdoptionRequest $request, string $source, string $target, array $keys): array
+    {
+        $junction = $request->junction ?? throw new \LogicException('A junction.');
+        $statements = [];
+        $run = function (string $sql) use (&$statements): void {
+            $this->connection->executeStatement($sql);
+            $statements[] = $sql;
+        };
+        $quote = $this->connection->quoteSingleIdentifier(...);
+        $t = $quote($this->workspace->dataSchema()).'.'.$quote($table->name);
+        $link = DataSchema::linkTable($source, $junction->fieldName);
+        $keyOf = function (string $column) use ($table, $keys): KeyType {
+            $referenced = $this->referencedTable($table, $column) ?? '';
+            if (isset($keys[$referenced])) {
+                return $keys[$referenced];
+            }
+            foreach ($this->metadata->allObjects() as $object) {
+                if ($object->tableName === $referenced) {
+                    return $object->keyType;
+                }
+            }
+
+            return KeyType::Uuid;
+        };
+
+        foreach ($table->foreignKeys as $foreignKey) {
+            $run(\sprintf('ALTER TABLE %s DROP CONSTRAINT %s', $t, $quote($foreignKey->name)));
+        }
+        $primaryKey = $this->primaryKeyName($table->name);
+        if (null !== $primaryKey) {
+            $run(\sprintf('ALTER TABLE %s DROP CONSTRAINT %s', $t, $quote($primaryKey)));
+        }
+        $run(\sprintf('ALTER TABLE %s RENAME COLUMN %s TO %s', $t, $quote($junction->sourceColumn), $quote('__adopt_record')));
+        $run(\sprintf('ALTER TABLE %s RENAME COLUMN %s TO %s', $t, $quote($junction->targetColumn), $quote('__adopt_target')));
+        $run(\sprintf('ALTER TABLE %s RENAME COLUMN %s TO %s', $t, $quote('__adopt_record'), $quote('record_id')));
+        $run(\sprintf('ALTER TABLE %s RENAME COLUMN %s TO %s', $t, $quote('__adopt_target'), $quote('target_id')));
+        foreach (['record_id' => $keyOf($junction->sourceColumn), 'target_id' => $keyOf($junction->targetColumn)] as $column => $key) {
+            $type = $this->typeDeclaration($key->dbalType());
+            $current = $table->column('record_id' === $column ? $junction->sourceColumn : $junction->targetColumn);
+            if (null === $current || !self::sameType($current->type, $type)) {
+                $run(\sprintf('ALTER TABLE %s ALTER COLUMN %s TYPE %s USING %s::%s', $t, $quote($column), $type, $quote($column), $type));
+            }
+            if (null !== $current?->default) {
+                $run(\sprintf('ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT', $t, $quote($column)));
+            }
+        }
+        $timestamp = $this->typeDeclaration(Types::DATETIME_IMMUTABLE);
+        $createdAt = $table->column('created_at');
+        if (null === $createdAt) {
+            $run(\sprintf('ALTER TABLE %s ADD COLUMN %s %s NOT NULL DEFAULT LOCALTIMESTAMP(0)', $t, $quote('created_at'), $timestamp));
+            $run(\sprintf('ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT', $t, $quote('created_at')));
+        } else {
+            if (!self::sameType($createdAt->type, $timestamp)) {
+                $run(\sprintf('ALTER TABLE %s ALTER COLUMN %s TYPE %s USING %s::%s', $t, $quote('created_at'), $timestamp, $quote('created_at'), $timestamp));
+            }
+            $run(\sprintf('UPDATE %s SET %s = LOCALTIMESTAMP(0) WHERE %s IS NULL', $t, $quote('created_at'), $quote('created_at')));
+            $run(\sprintf('ALTER TABLE %s ALTER COLUMN %s SET NOT NULL', $t, $quote('created_at')));
+            if (null !== $createdAt->default) {
+                $run(\sprintf('ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT', $t, $quote('created_at')));
+            }
+        }
+        $uuid = $this->typeDeclaration(Types::GUID);
+        $createdBy = $table->column('created_by');
+        if (null === $createdBy) {
+            $run(\sprintf('ALTER TABLE %s ADD COLUMN %s %s', $t, $quote('created_by'), $uuid));
+        } elseif (!self::sameType($createdBy->type, $uuid)) {
+            $run(\sprintf('ALTER TABLE %s ALTER COLUMN %s TYPE %s USING %s::%s', $t, $quote('created_by'), $uuid, $quote('created_by'), $uuid));
+        }
+        $run(\sprintf('ALTER TABLE %s ADD CONSTRAINT %s PRIMARY KEY (%s, %s)', $t, $quote(DataSchema::identifier($link.'_pkey')), $quote('record_id'), $quote('target_id')));
+        if ($link !== $table->name) {
+            $run(\sprintf('ALTER TABLE %s RENAME TO %s', $t, $quote($link)));
+        }
+
+        return $statements;
+    }
+
+    private function primaryKeyName(string $table): ?string
+    {
+        $name = $this->connection->fetchOne(
+            "SELECT con.conname FROM pg_constraint con JOIN pg_class c ON c.oid = con.conrelid JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = ? AND c.relname = ? AND con.contype = 'p'",
+            [$this->workspace->dataSchema(), $table],
+        );
+
+        return \is_string($name) ? $name : null;
     }
 
     private static function databaseError(DbalException $e): string

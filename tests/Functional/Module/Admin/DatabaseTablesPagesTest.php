@@ -166,6 +166,50 @@ final class DatabaseTablesPagesTest extends WebTestCase
         self::assertSame('project', self::getContainer()->get(MetadataRegistryInterface::class)->getObject('project_activity')->field('project')->relation()?->target);
     }
 
+    public function testAJunctionTableBecomesAManyToManyField(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        $connection = self::getContainer()->get(Connection::class);
+        $connection->executeStatement('CREATE TABLE data.label (id serial PRIMARY KEY, name text)');
+        $connection->executeStatement('CREATE TABLE data.project_label (project_id int REFERENCES data.project (id), label_id int REFERENCES data.label (id), PRIMARY KEY (project_id, label_id))');
+        $connection->executeStatement("INSERT INTO data.project (title) VALUES ('Alpha')");
+        $connection->executeStatement("INSERT INTO data.label (name) VALUES ('Red')");
+        $connection->executeStatement('INSERT INTO data.project_label VALUES (1, 1)');
+
+        $crawler = $this->client->request('GET', '/admin/tables/project_label/adopt');
+        self::assertSelectorTextContains('form[name="adopt"]', 'It links two tables, by project_id and label_id');
+        self::assertSame('links', $crawler->filter('input[name="adopt[t2][junction][mode]"][checked]')->attr('value'));
+        self::assertSame('labels', $crawler->filter('input[name="adopt[t2][junction][field]"]')->attr('value'));
+
+        $this->client->submit($crawler->selectButton('Adopt')->form());
+        self::assertResponseRedirects('/admin', 303);
+        $registry = self::getContainer()->get(MetadataRegistryInterface::class);
+        self::assertFalse($registry->hasObject('project_label'));
+        self::assertSame('label', $registry->getObject('project')->field('labels')->manyToMany()?->target);
+
+        $this->client->request('GET', '/o/project/1/edit');
+        self::assertResponseIsSuccessful();
+    }
+
+    public function testATableWithAKeyOfItsOwnMayGetTheManyToManyFieldOrNot(): void
+    {
+        self::signInAsSuperAdmin($this->client);
+        $connection = self::getContainer()->get(Connection::class);
+        $connection->executeStatement('CREATE TABLE data.label (id serial PRIMARY KEY, name text)');
+        $connection->executeStatement('CREATE TABLE data.project_label (id serial PRIMARY KEY, project_id int REFERENCES data.project (id), label_id int REFERENCES data.label (id), note text, UNIQUE (project_id, label_id))');
+
+        $crawler = $this->client->request('GET', '/admin/tables/project_label/adopt');
+        $modes = $crawler->filter('input[name="adopt[t2][junction][mode]"]');
+        self::assertSame(['object', 'none'], $modes->each(static fn ($input): ?string => $input->attr('value')));
+        self::assertSame('object', $modes->filter('[checked]')->attr('value'));
+
+        $this->client->submit($crawler->selectButton('Adopt')->form(['adopt[t2][junction][mode]' => 'none']));
+        self::assertResponseRedirects('/admin', 303);
+        $registry = self::getContainer()->get(MetadataRegistryInterface::class);
+        self::assertFalse($registry->getObject('project')->hasField('labels'));
+        self::assertTrue($registry->hasObject('project_label'));
+    }
+
     public function testTheConsoleAdoptsSeveralTables(): void
     {
         $adopt = new CommandTester((new Application(self::$kernel ?? self::bootKernel()))->find('metadata:table:adopt'));

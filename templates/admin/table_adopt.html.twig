@@ -52,6 +52,15 @@
             {% set t = form['t' ~ loop.index0] %}
             <section class="md-admin__section">
                 <h2><code>{{ data_schema }}.{{ proposal.table.name }}</code></h2>
+                {% if proposal.junction %}
+                    <fieldset>
+                        <legend>{{ 'admin.tables.junction'|trans({'%source%': proposal.junction.sourceColumn, '%target%': proposal.junction.targetColumn}) }}</legend>
+                        <p class="gv-muted">{{ 'admin.tables.junction_help'|trans }}</p>
+                        {{ form_row(t.junction.mode) }}
+                        {{ form_row(t.junction.field) }}
+                        {{ form_row(t.junction.label) }}
+                    </fieldset>
+                {% endif %}
                 <fieldset>
                     <legend>{{ 'admin.tables.the_object'|trans }}</legend>
                     {{ form_row(t.name) }}
