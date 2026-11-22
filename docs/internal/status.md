@@ -503,9 +503,9 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   document) merged into `main` on 2026-11-22; the format's 2.4.0 released the same day (merged,
   tagged, on Packagist) and required by the app (`^2.4`). Phase 1 (discovery: the unmanaged
   tables of the data schema greyed under the objects, `/admin/tables/<table>`,
-  `metadata:table:list`, the guide database-tables.md) committed on branch `table_discovery`
-  (2026-11-22); phase 2 (adopting one table: `/admin/tables/<table>/adopt`,
-  `metadata:table:adopt`) done on the same branch, waiting for the user's review. Then discovery of the unmanaged tables of the workspace's data schema,
+  `metadata:table:list`, the guide database-tables.md) and phase 2 (adopting one table:
+  `/admin/tables/<table>/adopt`, `metadata:table:adopt`) merged into `main` on 2026-11-22, tried
+  by the user. Phase 3 (a set of related tables) in progress on branch `table_sets`. Then discovery of the unmanaged tables of the workspace's data schema,
   adoption of one table and of a set (the system columns added, the table renamed), junctions;
   then exporting packages and installing them from a file in the admin (today the console only).
 - Relation filters in grids keep `multiple: true` by choice.
