@@ -8,7 +8,9 @@ console. It needs the `admin.metadata` permission (or `ROLE_SUPER_ADMIN`), see
 ## Objects — `/admin`
 
 The list of objects, with their machine name, table and number of fields, and a link to their
-records. **New object** asks for the machine name and the two labels. The labels are written in
+records. **New object** asks for the machine name, the two labels and the **Key**, the type of the
+records' id: a UUID made by the application (the default), or an integer the database numbers (1,
+2, 3…), fixed once the object exists (see [Field types](field-types.md#keys)). The labels are written in
 the default language (English); **Translations** gives them their text in the other languages.
 Under them, the **Archived** objects, each with **Restore** (see [Renaming and archiving](lifecycle.md)).
 

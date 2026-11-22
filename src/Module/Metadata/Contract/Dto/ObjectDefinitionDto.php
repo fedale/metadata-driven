@@ -21,6 +21,7 @@ final readonly class ObjectDefinitionDto
      *                                                          stay (the schema keeps them, the admin lists them)
      * @param list<list<string>>                $uniqueTogether the field sets no two live records may share all the values
      *                                                          of, each set in the order of its index
+     * @param KeyType                           $keyType        the type of its key, the "id" column
      */
     public function __construct(
         public string $id,
@@ -38,6 +39,7 @@ final readonly class ObjectDefinitionDto
         public array $views = [],
         public array $archivedFields = [],
         public array $uniqueTogether = [],
+        public KeyType $keyType = KeyType::Uuid,
     ) {
     }
 

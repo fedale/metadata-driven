@@ -215,6 +215,18 @@ object it goes through (`through`), whose live records are the links. The Schema
 link tables with their object's table, and renames and drops them with the field or the object;
 a field going through a junction object has none.
 
+An object's key (`KeyType`, Metadata contract: `uuid` or `integer`) is the type of its `id`
+column, and of every column holding one of its ids: relations pointing at it, link tables. Ids
+travel as strings whatever the type, written one way (`KeyType::normalize()`: a UUID in lower
+case, an integer without leading zeros); anything read from the database goes through
+`KeyType::fromDatabase()`, since the driver returns an integer key as a PHP int. An id is checked
+against its object's key before it reaches a query (a wrong one would fail the query, and the
+transaction with it): the record manager, the reference and unique checks, the lookups and the
+grid filters do it; the field types `relation` and `many_to_many` cannot (they do not know the
+target), and the record module's denormalizer checks their values instead. Outside the record
+tables, a column holding a record id of any object is `TEXT` (`core.workflow_run.record_id`):
+**a new one is `TEXT` too**.
+
 A rename goes the same way: `RenameObjectHandler` / `RenameFieldHandler` save the definitions,
 rewrite the views and forms naming the old name (compiled again against the renamed
 definitions, which the registry reads from the database), then dispatch `ObjectDefinitionRenamed`

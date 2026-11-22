@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Application\Command;
 
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Domain\Model\MachineName;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -22,6 +23,7 @@ final readonly class CreateObjectCommand
         public string $labelPlural,
         #[Assert\Length(max: 50)]
         public ?string $icon = null,
+        public KeyType $keyType = KeyType::Uuid,
     ) {
     }
 }

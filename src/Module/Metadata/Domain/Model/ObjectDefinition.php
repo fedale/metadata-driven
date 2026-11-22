@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Metadata\Domain\Model;
 
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\RelationSettings;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewKind;
@@ -51,6 +52,8 @@ class ObjectDefinition
         string $labelPlural,
         private ?string $icon = null,
         private bool $isSystem = false,
+        // Fixed: the tables pointing at the object hold keys of this type.
+        private KeyType $keyType = KeyType::Uuid,
     ) {
         $this->name = MachineName::assert($name);
         $this->tableName = self::TABLE_PREFIX.$this->name;
@@ -453,6 +456,11 @@ class ObjectDefinition
     public function getTableName(): string
     {
         return $this->tableName;
+    }
+
+    public function getKeyType(): KeyType
+    {
+        return $this->keyType;
     }
 
     public function getLabelSingular(): string

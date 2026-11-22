@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Workflow\Application\Engine;
 
 use App\Module\Access\Contract\WorkspaceRolesInterface;
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Notification\Contract\Dto\NotificationMessage;
 use App\Module\Notification\Contract\NotifierInterface;
 use App\Module\User\Contract\Dto\Member;
@@ -18,7 +19,6 @@ use App\Shared\Workspace\CurrentWorkspace;
 use App\Shared\Workspace\Workspace;
 use App\Shared\Workspace\Workspaces;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * The steps that tell people: send_email and notify (docs/workflows.md, "Email and
@@ -119,11 +119,9 @@ final class WorkflowMessages
         $text = null === $step->string('text') ? null : $chain->text($step->string('text'));
         $link = null;
         if (null !== $target = $step->link()) {
-            $id = trim($chain->text($target['id']));
-            if (!Uuid::isValid($id)) {
-                throw new StepFailed(\sprintf('The link names no record of %s: "%s" is no id.', $target['object'], $id));
-            }
-            $link = \sprintf('/o/%s/%s/edit', $target['object'], strtolower($id));
+            $named = trim($chain->text($target['id']));
+            $id = KeyType::canonical($named) ?? throw new StepFailed(\sprintf('The link names no record of %s: "%s" is no id.', $target['object'], $named));
+            $link = \sprintf('/o/%s/%s/edit', $target['object'], $id);
         }
         $message = new NotificationMessage($title, $text, $link, \sprintf('Workflow %s', $run->workflow->name));
         [$recipients, $leftOut, $byEmail] = $this->recipients($step, $chain, $this->current(), false);

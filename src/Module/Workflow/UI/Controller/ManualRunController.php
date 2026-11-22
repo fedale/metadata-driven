@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Workflow\UI\Controller;
 
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Contract\RecordSelectionInterface;
@@ -55,7 +56,7 @@ final class ManualRunController extends AbstractController
     ) {
     }
 
-    #[Route('/w/{workflowId}/run/{recordId}', name: 'workflow_run_record', requirements: ['workflowId' => Requirement::UUID, 'recordId' => Requirement::UUID], methods: ['GET', 'POST'])]
+    #[Route('/w/{workflowId}/run/{recordId}', name: 'workflow_run_record', requirements: ['workflowId' => Requirement::UUID, 'recordId' => KeyType::ROUTE_REQUIREMENT], methods: ['GET', 'POST'])]
     public function run(string $workflowId, string $recordId, Request $request): Response
     {
         try {

@@ -34,7 +34,7 @@ final class CreateObjectHandler
                 throw $existing->isActive() ? InvalidMetadataDefinition::duplicateObject($command->name) : InvalidMetadataDefinition::archivedObjectNameTaken($command->name);
             }
 
-            $object = new ObjectDefinition(Uuid::v7(), $command->name, $command->labelSingular, $command->labelPlural, $command->icon);
+            $object = new ObjectDefinition(Uuid::v7(), $command->name, $command->labelSingular, $command->labelPlural, $command->icon, keyType: $command->keyType);
             $this->objects->save($object);
 
             $id = $object->getId()->toRfc4122();

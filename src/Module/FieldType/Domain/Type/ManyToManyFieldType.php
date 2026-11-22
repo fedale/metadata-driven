@@ -13,7 +13,6 @@ use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\Exception\InvalidFieldValue;
 use App\Module\Metadata\Contract\Dto\ManyToManyOnDelete;
 use App\Module\Metadata\Contract\Dto\ManyToManySettings;
-use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -76,7 +75,7 @@ final class ManyToManyFieldType extends AbstractFieldType
     }
 
     /**
-     * A list of record ids (UUIDs, any case); a single id counts as a list of one. Duplicates
+     * A list of record ids (checked by the record module against the target's key); a single id counts as a list of one. Duplicates
      * are dropped, the order is not kept. No id at all is null, so that "required" means "at
      * least one".
      *
@@ -97,10 +96,11 @@ final class ManyToManyFieldType extends AbstractFieldType
             if (null === $id) {
                 continue;
             }
-            if (!Uuid::isValid($id)) {
+            // Checked against the type of the target's key by the record module.
+            if (\strlen($id) > RelationFieldType::MAX_ID_LENGTH) {
                 throw new InvalidFieldValue('This value is not a valid record reference.');
             }
-            $ids[strtolower($id)] = true;
+            $ids[$id] = true;
         }
 
         return [] === $ids ? null : array_keys($ids);

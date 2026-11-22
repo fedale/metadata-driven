@@ -93,7 +93,7 @@ Errors are printed in red and the command exits with a non-zero code; nothing is
 Create an object (a record type) and its table.
 
 ```
-metadata:object:create [--icon=ICON] <name> <label-singular> <label-plural>
+metadata:object:create [--icon=ICON] [--key=KEY] <name> <label-singular> <label-plural>
 ```
 
 | Argument / option | Description |
@@ -102,13 +102,16 @@ metadata:object:create [--icon=ICON] <name> <label-singular> <label-plural>
 | `label-singular` | Shown in the UI, e.g. `Pet` ("New pet", "Pet created.") |
 | `label-plural` | Shown in the UI, e.g. `Pets` (grid title, home page) |
 | `--icon` | Icon name, stored for the admin UI (not shown yet) |
+| `--key` | The type of the records' id: `uuid` (the default, made by the application) or `integer` (numbered by the database: 1, 2, 3…). Fixed once the object exists |
 
 ```bash
 symfony console metadata:object:create pet Pet Pets
 symfony console metadata:object:create contact Contatto Contatti --icon=user
+symfony console metadata:object:create ticket Ticket Tickets --key=integer
 ```
 
-The table starts with the system columns: `id` (UUID, primary key), `created_at`, `updated_at`,
+The table starts with the system columns: `id` (the primary key: a UUID, or with `--key=integer`
+a `bigint` identity column the database numbers), `created_at`, `updated_at`,
 `created_by`, `deleted_at` (records are soft deleted) and `sort` (an integer, positive or
 negative, default `0`, for the manual order of the records; the application does not use it yet).
 Tables created before `sort` existed get it from [`schema:sync`](#schemasync).

@@ -158,6 +158,7 @@
 
     <section class="md-admin__section">
         <h2>{{ 'admin.table'|trans }} <code>data.{{ object.tableName }}</code></h2>
+        <p>{{ 'admin.object.key_type'|trans }}: {{ ('admin.object.key.' ~ object.keyType.value)|trans }}</p>
         {% if plan.isEmpty and plan.skipped is empty %}
             <p class="md-flash md-flash--success">{{ 'admin.object.table_matches'|trans }}</p>
         {% else %}

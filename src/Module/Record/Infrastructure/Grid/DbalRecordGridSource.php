@@ -8,6 +8,7 @@ use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
 use App\Module\File\Contract\FileStorageInterface;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Application\Grid\RecordGridSourceInterface;
@@ -23,7 +24,6 @@ use Fedale\GridviewBundle\DataSource\FilterCriterion;
 use Fedale\GridviewBundle\DataSource\FilterOperator;
 use Fedale\GridviewBundle\DataSource\GridQuery;
 use Fedale\GridviewBundle\DataSource\SortDirection;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * Runs a grid query on an object table with DBAL.
@@ -433,12 +433,7 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
         if (!\in_array($criterion->operator, [FilterOperator::Eq, FilterOperator::In], true)) {
             throw new \InvalidArgumentException(\sprintf('Field "%s" of "%s" is many-to-many: it is filtered by the records it links to, not with "%s".', $field->name, $object->name, $criterion->operator->value));
         }
-        $ids = [];
-        foreach (\is_array($criterion->value) ? $criterion->value : [$criterion->value] as $value) {
-            if (\is_string($value) && Uuid::isValid(trim($value))) {
-                $ids[] = strtolower(trim($value));
-            }
-        }
+        $ids = $this->keys($field, $criterion->value);
         if ([] === $ids) {
             $qb->andWhere('1 = 0');
 
@@ -451,7 +446,27 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
             $this->table->quote(self::LINK_ALIAS),
             $links->targetColumn,
             $param,
-        ))->setParameter($param, array_values(array_unique($ids)), ArrayParameterType::STRING);
+        ))->setParameter($param, $ids, ArrayParameterType::STRING);
+    }
+
+    /**
+     * The keys of the field's target among some filter values (one, or a list), in their
+     * canonical text, each once; the others left out.
+     *
+     * @return list<string>
+     */
+    private function keys(FieldDefinitionDto $field, mixed $value): array
+    {
+        $keyType = $this->table->targetKeyType($field) ?? KeyType::Uuid;
+        $ids = [];
+        foreach (\is_array($value) ? $value : [$value] as $item) {
+            $id = \is_string($item) || \is_int($item) ? $keyType->normalize($item) : null;
+            if (null !== $id) {
+                $ids[$id] = true;
+            }
+        }
+
+        return array_keys($ids);
     }
 
     /**
@@ -483,6 +498,19 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
 
         $column = $this->table->column($field->columnName, self::ALIAS);
         $type = $this->table->typeOf($field);
+        // A relation compares keys of its target: a value that is none matches nothing (and
+        // would fail the query).
+        if (null !== $field->relation() && null !== $criterion->value && \in_array($criterion->operator, [FilterOperator::Eq, FilterOperator::Neq, FilterOperator::In], true)) {
+            $ids = $this->keys($field, $criterion->value);
+            if ([] === $ids) {
+                $qb->andWhere(FilterOperator::Neq === $criterion->operator ? '1 = 1' : '1 = 0');
+
+                return;
+            }
+            $this->compare($qb, $column, $criterion->operator, $param, \is_array($criterion->value) ? $ids : $ids[0], ':%s', \is_array($criterion->value) ? Types::STRING : $type);
+
+            return;
+        }
         // Numbers come as int or float: compare as NUMERIC, so "age > 3.5" is not truncated to 3.
         if (\in_array($type, [Types::INTEGER, Types::DECIMAL], true)) {
             $value = \is_array($criterion->value) ? array_map($this->string(...), $criterion->value) : $this->string($criterion->value);

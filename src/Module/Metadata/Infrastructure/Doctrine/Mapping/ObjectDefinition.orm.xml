@@ -13,6 +13,11 @@
 
         <field name="name" length="50"/>
         <field name="tableName" length="63"/>
+        <field name="keyType" length="10" enum-type="App\Module\Metadata\Contract\Dto\KeyType">
+            <options>
+                <option name="default">uuid</option>
+            </options>
+        </field>
         <field name="labelSingular" length="100"/>
         <field name="labelPlural" length="100"/>
         <field name="icon" length="50" nullable="true"/>

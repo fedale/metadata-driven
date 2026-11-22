@@ -367,6 +367,11 @@ admin:
         name_help: 'Lowercase letters, digits and single underscores, starting with a letter. The table is data.c_<name>.'
         singular_label: Singular label
         plural_label: Plural label
+        key_type: Key
+        key_type_help: 'How the records are numbered, in their id. Fixed once the object exists.'
+        key:
+            uuid: 'UUID, made by the application (0190c7a2-…)'
+            integer: 'Integer, numbered by the database (1, 2, 3…)'
         created: 'Object "%name%" created, with its table.'
         add_field: Add a field
         no_fields: 'No fields yet. The table only has its system columns (id, created_at, updated_at, created_by, deleted_at).'

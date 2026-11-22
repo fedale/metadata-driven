@@ -13,7 +13,6 @@ use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\Exception\InvalidFieldValue;
 use App\Module\Metadata\Contract\Dto\OnDelete;
 use App\Module\Metadata\Contract\Dto\RelationSettings;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * Many-to-one link: stores the id of a record of the target object.
@@ -22,6 +21,9 @@ use Symfony\Component\Uid\Uuid;
  */
 final class RelationFieldType extends AbstractFieldType
 {
+    // Longer than any key: a UUID has 36 characters, a bigint at most 20.
+    public const int MAX_ID_LENGTH = 100;
+
     public function name(): string
     {
         return RelationSettings::FIELD_TYPE;
@@ -74,11 +76,13 @@ final class RelationFieldType extends AbstractFieldType
         if (null === $id) {
             return null;
         }
-        if (!Uuid::isValid($id)) {
+        // The id of a record of the target, checked against the type of its key by the record
+        // module, which knows the target.
+        if (\strlen($id) > self::MAX_ID_LENGTH) {
             throw new InvalidFieldValue('This value is not a valid record reference.');
         }
 
-        return strtolower($id);
+        return $id;
     }
 
     public function widget(array $settings): Widget

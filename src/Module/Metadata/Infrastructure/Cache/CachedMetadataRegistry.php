@@ -48,7 +48,7 @@ final class CachedMetadataRegistry implements MetadataRegistryInterface, ResetIn
     // for the form DTOs (FormDefinitionDto, FormNodeDto, ServiceFieldDto, ...).
     // The key also carries a fingerprint of the field types' default settings: the snapshot
     // merges them into the stored settings, so a setting added to a type renews it by itself.
-    private const string CACHE_KEY = 'metadata_snapshot.v11';
+    private const string CACHE_KEY = 'metadata_snapshot.v12';
     private const string FORMS_CACHE_KEY = 'metadata_forms.v5';
     private const string CACHE_TAG = 'metadata';
     // Stale items (an older revision) are never read again: they only take room until then.

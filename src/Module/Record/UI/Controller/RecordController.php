@@ -6,6 +6,7 @@ namespace App\Module\Record\UI\Controller;
 
 use App\Module\Access\Contract\AccessCheckerInterface;
 use App\Module\Access\Contract\RecordAction;
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewKind;
@@ -37,8 +38,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Routing\Requirement\Requirement;
-use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[Route('/o/{object}', name: 'record_', requirements: ['object' => '[a-z][a-z0-9_]*'])]
@@ -126,7 +125,10 @@ final class RecordController extends AbstractController
         $definition = $this->objectFor($object, RecordAction::Read);
         $filters = [];
         foreach ($request->query->all('filter') as $field => $id) {
-            if (!\is_string($id) || !Uuid::isValid($id)) {
+            // No id of any key type: nothing chosen yet. The lookup checks it against the
+            // key of the field's target.
+            $id = KeyType::canonical($id);
+            if (null === $id) {
                 return $this->json(['results' => []]);
             }
             $filters[(string) $field] = $id;
@@ -182,7 +184,7 @@ final class RecordController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}/edit', name: 'edit', requirements: ['id' => Requirement::UUID], methods: ['GET', 'POST'])]
+    #[Route('/{id}/edit', name: 'edit', requirements: ['id' => KeyType::ROUTE_REQUIREMENT], methods: ['GET', 'POST'])]
     public function edit(string $object, string $id, Request $request): Response
     {
         // Reading opens the page; saving needs the update permission.
@@ -224,7 +226,7 @@ final class RecordController extends AbstractController
      * Takes a transition of a Status field: a button of the record's page, its form only its
      * token (the stateless "submit" one, as the page renders it).
      */
-    #[Route('/{id}/transition/{field}/{name}', name: 'transition', requirements: ['id' => Requirement::UUID, 'field' => '[a-z][a-z0-9_]*', 'name' => '[a-z][a-z0-9_]*'], methods: ['POST'])]
+    #[Route('/{id}/transition/{field}/{name}', name: 'transition', requirements: ['id' => KeyType::ROUTE_REQUIREMENT, 'field' => '[a-z][a-z0-9_]*', 'name' => '[a-z][a-z0-9_]*'], methods: ['POST'])]
     public function transition(string $object, string $id, string $field, string $name, Request $request): Response
     {
         $definition = $this->objectFor($object, RecordAction::Update);
@@ -247,7 +249,7 @@ final class RecordController extends AbstractController
         return $this->redirectToRoute('record_edit', ['object' => $definition->name, 'id' => $id], Response::HTTP_SEE_OTHER);
     }
 
-    #[Route('/{id}/delete', name: 'delete', requirements: ['id' => Requirement::UUID], methods: ['POST'])]
+    #[Route('/{id}/delete', name: 'delete', requirements: ['id' => KeyType::ROUTE_REQUIREMENT], methods: ['POST'])]
     public function delete(string $object, string $id, Request $request): Response
     {
         $definition = $this->objectFor($object, RecordAction::Delete);

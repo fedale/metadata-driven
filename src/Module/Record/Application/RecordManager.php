@@ -6,6 +6,7 @@ namespace App\Module\Record\Application;
 
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
 use App\Module\Metadata\Contract\Dto\FileListSettings;
+use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\ManyToManyOnDelete;
 use App\Module\Metadata\Contract\Dto\ManyToManySettings;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
@@ -77,7 +78,8 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     public function create(RecordInput $input): RecordOutput
     {
         $object = $this->metadata->getObject($input->objectName);
-        $id = Uuid::v7()->toRfc4122();
+        // A UUID is made here; an integer key by the database, when the record is written.
+        $id = KeyType::Uuid === $object->keyType ? Uuid::v7()->toRfc4122() : null;
 
         // The listeners of RecordWriting first, in the transaction: the values they set are
         // validated as the others.
@@ -87,9 +89,11 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
             $values = $this->states->check($object, RecordWriteAction::Create, null, $this->validValues($object, $this->beforeWrite($object, RecordWriteAction::Create, null, $input, null), null), null);
             $stored = $this->stored($object, $values);
             $now = new \DateTimeImmutable();
-            $this->write($object, $values, null, fn () => $this->transactions->run(function () use ($object, $id, $stored, $now): void {
-                $this->store->insert($object, $id, self::columns($object, $stored), $now);
+            $id = $this->write($object, $values, null, fn (): string => $this->transactions->run(function () use ($object, $id, $stored, $now): string {
+                $id = $this->store->insert($object, $id, self::columns($object, $stored), $now);
                 $this->writeLinks($object, $id, $stored, $now);
+
+                return $id;
             }));
 
             return $this->withRows($object, $this->store->find($object, $id) ?? throw new \LogicException('The record just created cannot be read back.'));
@@ -102,6 +106,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     public function update(string $id, RecordInput $input): RecordOutput
     {
         $object = $this->metadata->getObject($input->objectName);
+        $id = $object->keyType->normalize($id) ?? throw RecordNotFound::withId($object->name, $id);
         $found = $this->store->find($object, $id) ?? throw RecordNotFound::withId($object->name, $id);
         $before = $this->withRows($object, $found);
 
@@ -136,6 +141,8 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     public function check(RecordInput $input, ?string $id = null): array
     {
         $object = $this->metadata->getObject($input->objectName);
+        // An id that is not one of the object's can be no record's: nothing to leave out.
+        $id = null === $id ? null : $object->keyType->normalize($id);
         try {
             $this->validValues($object, $input, $id);
         } catch (RecordValidationFailed $e) {
@@ -148,14 +155,18 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     public function delete(string $objectName, string $id): void
     {
         $object = $this->metadata->getObject($objectName);
+        $id = $object->keyType->normalize($id) ?? throw RecordNotFound::withId($object->name, $id);
         $visited = [];
         $this->transactions->run(fn () => $this->deleteWithRules($object, $id, new \DateTimeImmutable(), $visited));
     }
 
     public function referencing(string $objectName, string $id, int $limit = 20): array
     {
-        $this->metadata->getObject($objectName);
+        $id = $this->metadata->getObject($objectName)->keyType->normalize($id);
         $groups = [];
+        if (null === $id) {
+            return $groups;
+        }
         $junctionSides = $this->junctionSides();
         // The relations pointing at it, then the many-to-many fields linking to it: both read
         // the same way, through the store.
@@ -182,10 +193,11 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
 
     public function find(string $objectName, string $id): ?RecordOutput
     {
-        if (!Uuid::isValid($id)) {
+        $object = $this->metadata->getObject($objectName);
+        $id = $object->keyType->normalize($id);
+        if (null === $id) {
             return null;
         }
-        $object = $this->metadata->getObject($objectName);
         $record = $this->store->find($object, $id);
 
         return null === $record ? null : $this->withRows($object, $record);
@@ -204,8 +216,14 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
     {
         $object = $this->metadata->getObject($objectName);
         $records = [];
+        $field = $object->field($fieldName);
+        $target = $field->relation()->target ?? $field->manyToMany()?->target;
+        $targetId = null === $target ? null : $this->metadata->getObject($target)->keyType->normalize($targetId);
+        if (null === $targetId) {
+            return $records;
+        }
         // The store lists the newest first.
-        foreach (array_reverse($this->store->referencingIds($object, $object->field($fieldName), $targetId)) as $id) {
+        foreach (array_reverse($this->store->referencingIds($object, $field, $targetId)) as $id) {
             $record = $this->store->find($object, $id);
             if (null !== $record) {
                 // A form's rows: they carry their own junction rows, as their form edits them.
@@ -394,11 +412,14 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
                 }
                 // A row updating its record without naming the target keeps the stored one.
                 $targetId = \array_key_exists($target, $row) ? $row[$target] : (null === $rowId ? null : $this->store->find($junction, $rowId)?->get($target));
-                if (\is_string($targetId) && '' !== $targetId) {
-                    if (isset($linked[strtolower($targetId)])) {
+                // An integer key may come as an int (the form's choice).
+                $targetId = KeyType::fromDatabase($targetId);
+                if (null !== $targetId && '' !== trim($targetId)) {
+                    $targetId = strtolower(trim($targetId));
+                    if (isset($linked[$targetId])) {
                         $errors[$path.'.'.$target][] = self::LINKED_TWICE_MESSAGE;
                     }
-                    $linked[strtolower($targetId)] = true;
+                    $linked[$targetId] = true;
                 }
             }
         }
