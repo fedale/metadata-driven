@@ -23,44 +23,59 @@ final class AdoptTableConsoleCommand
     ) {
     }
 
+    /**
+     * @param list<string> $tables
+     */
     public function __invoke(
         SymfonyStyle $io,
-        #[Argument('The table, in the data schema')] string $table,
-        #[Option('The object\'s machine name (default: the one proposed from the table\'s)')] ?string $name = null,
-        #[Option('Singular label')] ?string $singular = null,
-        #[Option('Plural label')] ?string $plural = null,
+        #[Argument('The tables, in the data schema: adopted together, a foreign key between two of them becomes a relation')] array $tables,
+        #[Option('The object\'s machine name, for one table (default: the one proposed from the table\'s)')] ?string $name = null,
+        #[Option('Singular label, for one table')] ?string $singular = null,
+        #[Option('Plural label, for one table')] ?string $plural = null,
         #[Option('Show what it would do, change nothing')] bool $dryRun = false,
     ): int {
+        if (\count($tables) > 1 && (null !== $name || null !== $singular || null !== $plural)) {
+            $io->error('--name, --singular and --plural name the object of one table: adopt several with the names proposed, or one at a time.');
+
+            return Command::INVALID;
+        }
         try {
-            $proposal = $this->adopter->propose($table);
-            $proposed = $proposal->request();
-            $request = new AdoptionRequest(
-                $table,
-                $name ?? $proposed->objectName,
-                $singular ?? $proposed->labelSingular,
-                $plural ?? $proposed->labelPlural,
-                $proposed->columns,
-            );
-            $io->table(
-                ['Column', 'Type', 'Field', 'Field type'],
-                array_map(static fn (ColumnProposal $column): array => [
-                    $column->column->name,
-                    $column->column->type,
-                    $column->mapping()->fieldName ?? '(left out)',
-                    $column->mapping()->type ?? '',
-                ], array_values($proposal->columns)),
-            );
-            $report = $this->adopter->adopt($request, $dryRun);
+            $requests = [];
+            foreach ($this->adopter->proposeSet($tables) as $proposal) {
+                $proposed = $proposal->request();
+                $requests[] = new AdoptionRequest(
+                    $proposed->table,
+                    $name ?? $proposed->objectName,
+                    $singular ?? $proposed->labelSingular,
+                    $plural ?? $proposed->labelPlural,
+                    $proposed->columns,
+                );
+                $io->section($proposal->table->name);
+                $io->table(
+                    ['Column', 'Type', 'Field', 'Field type'],
+                    array_map(static fn (ColumnProposal $column): array => [
+                        $column->column->name,
+                        $column->column->type,
+                        $column->mapping()->fieldName ?? '(left out)',
+                        null === $column->mapping() ? '' : $column->mapping()->type.(null !== $column->mapping()->targetTable ? ' → '.$column->mapping()->targetTable : ''),
+                    ], array_values($proposal->columns)),
+                );
+            }
+            $reports = $this->adopter->adoptSet($requests, $dryRun);
         } catch (AdoptionRefused $e) {
-            $io->error(['The table was not adopted:', ...array_map(static fn (Message $reason): string => (string) $reason, $e->reasons)]);
+            $io->error(['Nothing was adopted:', ...array_map(static fn (Message $reason): string => (string) $reason, $e->reasons)]);
 
             return Command::FAILURE;
         }
 
-        $io->listing($report->statements);
+        foreach ($reports as $report) {
+            $io->section($report->objectName);
+            $io->listing($report->statements);
+        }
+        $objects = implode(', ', array_map(static fn ($report): string => '"'.$report->objectName.'"', $reports));
         $io->success($dryRun
-            ? \sprintf('Dry run: object "%s" would be made of table "%s". Nothing was changed.', $report->objectName, $table)
-            : \sprintf('Table "%s" is object "%s" now.', $table, $report->objectName));
+            ? \sprintf('Dry run: %s would be made of %s. Nothing was changed.', $objects, implode(', ', $tables))
+            : \sprintf('%s: %s now.', implode(', ', $tables), $objects));
 
         return Command::SUCCESS;
     }

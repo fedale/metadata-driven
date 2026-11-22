@@ -314,18 +314,53 @@ final class DbalSchemaSynchronizer implements SchemaSynchronizerInterface
             $skipped[] = \sprintf('Column "%s" differs from the metadata: not altered.', $this->rawName($old->getObjectName()));
         }
         // A modified index is reported as dropped and re-added under the same name.
+        $existing = null;
         foreach ($diff->getDroppedIndexes() as $index) {
             $name = $index->getObjectName();
             if ($desired->hasIndex($name->toString())) {
                 $editor->dropIndex($name);
                 $skipped[] = \sprintf('Index "%s" differs from the metadata: not altered.', $this->rawName($name));
-            } else {
+            } elseif (isset(($existing ??= $this->indexNames($actual))[strtolower($this->rawName($name))])) {
+                // Not the index DBAL makes up for a foreign key without one: it is not there.
                 $skipped[] = \sprintf('Index "%s" is not defined in the metadata: not dropped.', $this->rawName($name));
             }
             $editor->addIndex($index);
         }
+        // A foreign key the metadata does not define (one a table brought along when it was
+        // adopted, pointing at a table no object owns) stays; one it defines may change (a
+        // changed one is reported as dropped and added again under its name).
+        $defined = [];
+        foreach ($desired->getForeignKeys() as $foreignKey) {
+            $name = $foreignKey->getObjectName();
+            if (null !== $name) {
+                $defined[strtolower($this->rawName($name))] = true;
+            }
+        }
+        foreach ($diff->getDroppedForeignKeys() as $foreignKey) {
+            $objectName = $foreignKey->getObjectName();
+            $name = null === $objectName ? '' : $this->rawName($objectName);
+            if (!isset($defined[strtolower($name)])) {
+                $editor->addForeignKeyConstraint($foreignKey);
+                $skipped[] = \sprintf('Foreign key "%s" is not defined in the metadata: not dropped.', $name);
+            }
+        }
 
         return $editor->create();
+    }
+
+    /**
+     * The indexes the table has in the database, by lower-case name.
+     *
+     * @return array<string, true>
+     */
+    private function indexNames(Table $table): array
+    {
+        $names = $this->connection->fetchFirstColumn(
+            'SELECT indexname FROM pg_indexes WHERE schemaname = ? AND tablename = ?',
+            [$this->workspace->dataSchema(), $table->getObjectName()->getUnqualifiedName()->getValue()],
+        );
+
+        return array_fill_keys(array_map(static fn (mixed $name): string => strtolower(\is_string($name) ? $name : ''), $names), true);
     }
 
     /**

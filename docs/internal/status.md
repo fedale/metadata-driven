@@ -505,7 +505,10 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   tables of the data schema greyed under the objects, `/admin/tables/<table>`,
   `metadata:table:list`, the guide database-tables.md) and phase 2 (adopting one table:
   `/admin/tables/<table>/adopt`, `metadata:table:adopt`) merged into `main` on 2026-11-22, tried
-  by the user. Phase 3 (a set of related tables) in progress on branch `table_sets`. Then discovery of the unmanaged tables of the workspace's data schema,
+  by the user. Phase 3 (a set of related tables: `adoptSet()`, the page's "Adopted with it",
+  `metadata:table:adopt` with several tables; the synchronizer keeps the foreign keys the
+  metadata does not define) done on branch `table_sets` (2026-11-22), waiting for the user's
+  review. Then discovery of the unmanaged tables of the workspace's data schema,
   adoption of one table and of a set (the system columns added, the table renamed), junctions;
   then exporting packages and installing them from a file in the admin (today the console only).
 - Relation filters in grids keep `multiple: true` by choice.

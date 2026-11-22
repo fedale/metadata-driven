@@ -25,8 +25,10 @@ final class ColumnProposer
     private const int FLOAT_DECIMALS = 2;
 
     /**
-     * @param array{object: string, label: string, onDelete: string}|null $target the object a foreign key on the column alone
-     *                                                                            points at (its key), and its rule on delete
+     * @param array{object: string, label: string, onDelete: string, table: string|null}|null $target the object a foreign key on
+     *                                                                                                the column alone points at (its key),
+     *                                                                                                its rule on delete, and the table
+     *                                                                                                adopted with this one it is, if so
      */
     public static function propose(DatabaseColumn $column, bool $unique, ?array $target): ColumnProposal
     {
@@ -38,7 +40,7 @@ final class ColumnProposer
 
         $options = [];
         if (null !== $target) {
-            $options['relation'] = new ColumnMapping($name, $target['label'], 'relation', ['target' => $target['object'], 'onDelete' => $target['onDelete']], $required, $unique);
+            $options['relation'] = new ColumnMapping($name, $target['label'], 'relation', ['target' => $target['object'], 'onDelete' => $target['onDelete']], $required, $unique, $target['table']);
         }
         switch ($base) {
             case 'character varying':

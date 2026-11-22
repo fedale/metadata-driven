@@ -75,50 +75,153 @@ final class DbalTableAdopter implements TableAdopterInterface
 
     public function propose(string $table): AdoptionProposal
     {
-        $found = $this->adoptable($table);
-        $uniques = array_fill_keys(array_merge(...array_map(static fn (array $unique): array => 1 === \count($unique) ? $unique : [], $found->uniques)), true);
-        $targets = $this->targets($found);
+        return $this->proposeSet([$table])[0];
+    }
 
-        $columns = [];
-        $names = [];
-        foreach ($found->columns as $column) {
-            if ($column->name === $found->primaryKey[0] || $this->isSystemColumn($column)) {
-                continue;
-            }
-            $proposal = ColumnProposer::propose($column, isset($uniques[$column->name]), $targets[$column->name] ?? null);
-            // Field names: unique in the object, never a system column's.
-            $name = $this->free(ProposedNames::machineName($column->name) ?? 'column', $names);
-            $names[$name] = true;
-            $columns[$column->name] = new ColumnProposal(
-                $column,
-                array_map(static fn (ColumnMapping $option): ColumnMapping => $option->withNames($name, 'relation' === $option->type ? $option->label : ColumnProposer::label($name)), $proposal->options),
-                $proposal->proposed,
-            );
+    public function proposeSet(array $tables): array
+    {
+        $found = [];
+        foreach (array_values(array_unique($tables)) as $name) {
+            $found[$name] = $this->adoptable($name);
         }
-        $objectName = $found->proposedName ?? '';
-        $singular = '' === $objectName ? $found->name : ColumnProposer::label($objectName);
+        // The objects the tables would become: proposed names, each once.
+        $members = [];
+        $taken = [];
+        foreach ($found as $name => $table) {
+            $objectName = $table->proposedName ?? '';
+            if ('' !== $objectName) {
+                $objectName = $this->free($objectName, $taken);
+                $taken[$objectName] = true;
+            }
+            $members[$name] = ['object' => $objectName, 'label' => '' === $objectName ? $name : ColumnProposer::label($objectName)];
+        }
 
-        return new AdoptionProposal($found, $objectName, $singular, $singular, $found->keyType ?? KeyType::Uuid, $columns);
+        $proposals = [];
+        foreach (self::ordered($found) as $name) {
+            $table = $found[$name];
+            $uniques = array_fill_keys(array_merge(...array_map(static fn (array $unique): array => 1 === \count($unique) ? $unique : [], $table->uniques)), true);
+            $targets = $this->targets($table, $found, $members);
+            $columns = [];
+            $names = [];
+            foreach ($table->columns as $column) {
+                if ($column->name === $table->primaryKey[0] || $this->isSystemColumn($column)) {
+                    continue;
+                }
+                $proposal = ColumnProposer::propose($column, isset($uniques[$column->name]), $targets[$column->name] ?? null);
+                // Field names: unique in the object, never a system column's.
+                $field = $this->free(ProposedNames::machineName($column->name) ?? 'column', $names);
+                $names[$field] = true;
+                $columns[$column->name] = new ColumnProposal(
+                    $column,
+                    array_map(static fn (ColumnMapping $option): ColumnMapping => $option->withNames($field, 'relation' === $option->type ? $option->label : ColumnProposer::label($field)), $proposal->options),
+                    $proposal->proposed,
+                );
+            }
+            $proposals[] = new AdoptionProposal($table, $members[$name]['object'], $members[$name]['label'], $members[$name]['label'], $table->keyType ?? KeyType::Uuid, $columns);
+        }
+
+        return $proposals;
+    }
+
+    public function related(array $tables): array
+    {
+        $in = array_fill_keys($tables, true);
+        $pointedAt = [];
+        $pointing = [];
+        foreach ($this->tables->unmanaged() as $table) {
+            foreach ($table->foreignKeys as $foreignKey) {
+                if ($foreignKey->referencedSchema !== $this->workspace->dataSchema()) {
+                    continue;
+                }
+                if (isset($in[$table->name]) && !isset($in[$foreignKey->referencedTable])) {
+                    $pointedAt[$foreignKey->referencedTable] = true;
+                }
+                if (!isset($in[$table->name]) && isset($in[$foreignKey->referencedTable]) && $table->isAdoptable()) {
+                    $pointing[$table->name] = true;
+                }
+            }
+        }
+        // Only the tables pointed at that can be adopted (an object's is no candidate).
+        $adoptable = [];
+        foreach ($this->tables->unmanaged() as $table) {
+            if ($table->isAdoptable()) {
+                $adoptable[$table->name] = true;
+            }
+        }
+
+        return [
+            'pointedAt' => array_values(array_filter(array_keys($pointedAt), static fn (string $name): bool => isset($adoptable[$name]))),
+            'pointing' => array_keys($pointing),
+        ];
     }
 
     public function adopt(AdoptionRequest $request, bool $dryRun = false): AdoptionReport
     {
-        $table = $this->adoptable($request->table);
-        $this->checkRequest($table, $request);
+        return $this->adoptSet([$request], $dryRun)[0];
+    }
+
+    public function adoptSet(array $requests, bool $dryRun = false): array
+    {
+        $tables = [];
+        $objects = [];
+        foreach ($requests as $request) {
+            $tables[$request->table] = $this->adoptable($request->table);
+            if (isset($objects[$request->objectName])) {
+                throw new AdoptionRefused([new Message('schema.adopt.name_twice', 'Two tables would become the object "%name%": give one another name.', ['name' => $request->objectName])]);
+            }
+            $objects[$request->objectName] = $request->table;
+        }
+        $byTable = array_flip($objects);
+        foreach ($requests as $request) {
+            $this->checkRequest($tables[$request->table], $request, $byTable);
+        }
 
         try {
-            return $this->transactions->run(function () use ($table, $request, $dryRun): AdoptionReport {
-                $report = new AdoptionReport($request->objectName, $this->reshape($table, $request), $dryRun);
+            return $this->transactions->run(function () use ($requests, $tables, $byTable, $dryRun): array {
+                // The key each object will have, for the relations pointing at it.
+                $keys = [];
+                foreach ($tables as $name => $table) {
+                    $keys[$name] = $table->keyType ?? KeyType::Uuid;
+                }
+                $statements = [];
+                $uniqueSets = [];
+                foreach ($requests as $i => $request) {
+                    [$statements[$i], $uniqueSets[$i]] = $this->reshape($tables[$request->table], $request, $keys);
+                }
+                // Every object first, then the fields: a relation finds its target, whichever
+                // order the tables point at each other in.
+                foreach ($requests as $request) {
+                    $this->manager->createObject($request->objectName, $request->labelSingular, $request->labelPlural, null, $keys[$request->table]);
+                }
+                foreach ($requests as $request) {
+                    foreach (array_filter($request->columns) as $mapping) {
+                        $settings = $mapping->settings;
+                        if (null !== $mapping->targetTable) {
+                            $settings['target'] = $byTable[$mapping->targetTable];
+                        }
+                        $this->manager->createField($request->objectName, $mapping->fieldName, $mapping->type, $mapping->label, $mapping->required, $mapping->unique, $settings);
+                    }
+                }
+                foreach ($requests as $i => $request) {
+                    foreach ($uniqueSets[$i] as $fields) {
+                        $this->manager->addUniqueTogether($request->objectName, $fields);
+                    }
+                }
+                // Anything the application's own shape still wants (its indexes, mostly).
+                $reports = [];
+                foreach ($requests as $i => $request) {
+                    $reports[] = new AdoptionReport($request->objectName, [...$statements[$i], ...$this->synchronizer->synchronize($request->objectName)->statements], $dryRun);
+                }
                 if ($dryRun) {
-                    throw new AdoptionDryRun($report);
+                    throw new AdoptionDryRun($reports);
                 }
 
-                return $report;
+                return $reports;
             });
         } catch (AdoptionDryRun $done) {
             $this->entityManager->clear();
 
-            return $done->report;
+            return $done->reports;
         } catch (AdoptionRefused $e) {
             $this->entityManager->clear();
 
@@ -132,6 +235,37 @@ final class DbalTableAdopter implements TableAdopterInterface
 
             throw new AdoptionRefused([new Message('schema.adopt.database', 'The database refused it: %reason%', ['reason' => self::databaseError($e)])], $e);
         }
+    }
+
+    /**
+     * The tables in an order where a table comes after those it points at, as far as they do
+     * not point at each other in a circle; otherwise in the order given.
+     *
+     * @param array<string, DatabaseTable> $tables
+     *
+     * @return list<string>
+     */
+    private static function ordered(array $tables): array
+    {
+        $ordered = [];
+        $visiting = [];
+        $visit = static function (string $name) use (&$visit, &$ordered, &$visiting, $tables): void {
+            if (isset($ordered[$name]) || isset($visiting[$name])) {
+                return;
+            }
+            $visiting[$name] = true;
+            foreach ($tables[$name]->foreignKeys as $foreignKey) {
+                if ($foreignKey->referencedTable !== $name && isset($tables[$foreignKey->referencedTable])) {
+                    $visit($foreignKey->referencedTable);
+                }
+            }
+            $ordered[$name] = true;
+        };
+        foreach (array_keys($tables) as $name) {
+            $visit((string) $name);
+        }
+
+        return array_map(strval(...), array_keys($ordered));
     }
 
     /**
@@ -149,13 +283,21 @@ final class DbalTableAdopter implements TableAdopterInterface
 
     /**
      * Every column but the key and the system columns reused has its say, and a column left out
-     * must not stop the application from writing a record.
+     * must not stop the application from writing a record. A relation to a table adopted with
+     * it needs that table in the set.
+     *
+     * @param array<string, string> $set the objects the tables adopted together become, by table
      *
      * @throws AdoptionRefused
      */
-    private function checkRequest(DatabaseTable $table, AdoptionRequest $request): void
+    private function checkRequest(DatabaseTable $table, AdoptionRequest $request, array $set): void
     {
         $reasons = [];
+        foreach (array_filter($request->columns) as $column => $mapping) {
+            if (null !== $mapping->targetTable && !isset($set[$mapping->targetTable])) {
+                $reasons[] = new Message('schema.adopt.target_not_adopted', 'Column %column% is a relation to table %table%, which is not adopted with it: adopt both together, or make it no relation.', ['column' => $column, 'table' => $mapping->targetTable]);
+            }
+        }
         if (ProposedNames::machineName($request->objectName) !== $request->objectName) {
             $reasons[] = new Message('schema.adopt.name_invalid', 'The object\'s name "%name%" is not a machine name: lowercase letters, digits and single underscores, starting with a letter.', ['name' => $request->objectName]);
         } elseif ($this->metadata->hasObject($request->objectName) || isset($this->metadata->archivedObjects()[$request->objectName])) {
@@ -186,9 +328,12 @@ final class DbalTableAdopter implements TableAdopterInterface
     /**
      * The table brought to the shape of the object's.
      *
-     * @return list<string> the statements run
+     * @param array<string, KeyType> $keys the key of each table adopted with it
+     *
+     * @return array{list<string>, list<list<string>>} the statements run, and the sets of fields
+     *                                                 unique together its unique constraints become
      */
-    private function reshape(DatabaseTable $table, AdoptionRequest $request): array
+    private function reshape(DatabaseTable $table, AdoptionRequest $request, array $keys): array
     {
         $statements = [];
         $run = function (string $sql) use (&$statements): void {
@@ -249,7 +394,7 @@ final class DbalTableAdopter implements TableAdopterInterface
         foreach ($mapped as $column => $mapping) {
             $database = $table->column($column) ?? throw new \LogicException('Checked.');
             $c = $quote($mapping->fieldName);
-            $type = $this->declaration($mapping);
+            $type = $this->declaration($mapping, $keys);
             if (self::sameType($database->type, $type)) {
                 // Nothing to convert.
             } else {
@@ -353,19 +498,14 @@ final class DbalTableAdopter implements TableAdopterInterface
             $run(\sprintf('ALTER TABLE %s RENAME TO %s', $t, $quote($tableName)));
         }
 
-        // 7. The metadata: the synchronization each change runs finds the columns there.
-        $this->manager->createObject($request->objectName, $request->labelSingular, $request->labelPlural, null, $table->keyType ?? KeyType::Uuid);
-        foreach ($mapped as $mapping) {
-            $this->manager->createField($request->objectName, $mapping->fieldName, $mapping->type, $mapping->label, $mapping->required, $mapping->unique, $mapping->settings);
-        }
+        $uniqueSets = [];
         foreach ($uniqueConstraints as $columns) {
             if (\count($columns) > 1 && [] === array_diff($columns, array_keys($mapped))) {
-                $this->manager->addUniqueTogether($request->objectName, array_map(static fn (string $column): string => $mapped[$column]->fieldName, $columns));
+                $uniqueSets[] = array_map(static fn (string $column): string => $mapped[$column]->fieldName, $columns);
             }
         }
 
-        // 8. Anything the application's own shape still wants (its indexes, mostly).
-        return [...$statements, ...$this->synchronizer->synchronize($request->objectName)->statements];
+        return [$statements, $uniqueSets];
     }
 
     /**
@@ -395,9 +535,14 @@ final class DbalTableAdopter implements TableAdopterInterface
      * The objects the table's foreign keys point at, by column: a key of one column pointing at
      * the key of an object of this workspace.
      *
-     * @return array<string, array{object: string, label: string, onDelete: string}>
+     * And the tables adopted with it, by the objects they will become.
+     *
+     * @param array<string, DatabaseTable>                        $set     the tables adopted together, by name
+     * @param array<string, array{object: string, label: string}> $members the objects they become
+     *
+     * @return array<string, array{object: string, label: string, onDelete: string, table: string|null}>
      */
-    private function targets(DatabaseTable $table): array
+    private function targets(DatabaseTable $table, array $set, array $members): array
     {
         $byTable = [];
         foreach ($this->metadata->allObjects() as $object) {
@@ -406,8 +551,15 @@ final class DbalTableAdopter implements TableAdopterInterface
         $targets = [];
         foreach ($table->foreignKeys as $foreignKey) {
             $object = $byTable[$foreignKey->referencedTable] ?? null;
-            if ($object instanceof ObjectDefinitionDto && 1 === \count($foreignKey->columns) && ['id'] === $foreignKey->referencedColumns && $foreignKey->referencedSchema === $this->workspace->dataSchema()) {
-                $targets[$foreignKey->columns[0]] = ['object' => $object->name, 'label' => $object->labelSingular, 'onDelete' => self::ON_DELETE[$foreignKey->onDelete] ?? 'restrict'];
+            if (1 !== \count($foreignKey->columns) || $foreignKey->referencedSchema !== $this->workspace->dataSchema()) {
+                continue;
+            }
+            $onDelete = self::ON_DELETE[$foreignKey->onDelete] ?? 'restrict';
+            $member = $set[$foreignKey->referencedTable] ?? null;
+            if (null !== $member && $member->primaryKey === $foreignKey->referencedColumns) {
+                $targets[$foreignKey->columns[0]] = ['object' => $members[$member->name]['object'], 'label' => $members[$member->name]['label'], 'onDelete' => $onDelete, 'table' => $member->name];
+            } elseif ($object instanceof ObjectDefinitionDto && ['id'] === $foreignKey->referencedColumns) {
+                $targets[$foreignKey->columns[0]] = ['object' => $object->name, 'label' => $object->labelSingular, 'onDelete' => $onDelete, 'table' => null];
             }
         }
 
@@ -427,8 +579,14 @@ final class DbalTableAdopter implements TableAdopterInterface
     /**
      * The SQL type a field's column has, as the Schema module builds it.
      */
-    private function declaration(ColumnMapping $mapping): string
+    /**
+     * @param array<string, KeyType> $keys the key of each table adopted with it
+     */
+    private function declaration(ColumnMapping $mapping, array $keys): string
     {
+        if ('relation' === $mapping->type && null !== $mapping->targetTable) {
+            return $this->typeDeclaration(($keys[$mapping->targetTable] ?? KeyType::Uuid)->dbalType());
+        }
         if ('relation' === $mapping->type) {
             $target = \is_string($mapping->settings['target'] ?? null) && $this->metadata->hasObject($mapping->settings['target']) ? $this->metadata->getObject($mapping->settings['target'])->keyType : KeyType::Uuid;
 

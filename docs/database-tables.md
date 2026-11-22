@@ -3,8 +3,9 @@
 A table can reach the database without the application: a dump restored, a script run with
 `psql`, an ETL. The application does not own it, but it sees it: the admin lists it, greyed, under
 the objects (**Database tables**), tells what it holds and whether it can become an object, and
-makes it one: it **adopts** it, records and keys kept. Tables related to one another, and the
-tables linking two others, come next; see the plan in
+makes it one: it **adopts** it, records and keys kept, alone or with the tables it is linked to by
+foreign keys. The tables linking two others (a primary key made of two foreign keys) come next;
+see the plan in
 [internal/database-tables-plan.md](internal/database-tables-plan.md).
 
 ## Where to load them
@@ -90,6 +91,33 @@ What adopting does to the table, in this order:
 7. The object, its fields and its unique sets are made, as from the admin (permissions included),
    then the application's indexes (search, unique, foreign keys).
 
+## Tables linked by foreign keys
+
+Tables loaded together often point at each other: `project_task.project_id` at `project.id`.
+Adopted together, such a foreign key becomes a **relation** field to the object the other table
+becomes, its `ON DELETE` the field's rule (`CASCADE` → `cascade`, `SET NULL` → `set_null`,
+`RESTRICT` / `NO ACTION` → `restrict`); the links between the records stay, since every table
+keeps its keys. A foreign key to the key of an object there already becomes a relation too.
+
+The adoption page of a table lists, under **Adopted with it**, the tables it is linked to:
+
+- the ones it points at, and those they point at, are ticked: left out, its foreign keys to them
+  stay plain numbers;
+- the ones pointing at it are not: tick them to adopt them in the same go.
+
+**Update the tables** reloads the page with the tables ticked, one section each, the tables pointed
+at first. **Try it** and **Adopt** take them all, in one transaction: all of them become objects,
+or none does. Tables pointing at each other in a circle (a person and their partner), and a table
+pointing at itself (a task and its parent), are adopted as well: every object is made before any
+of their fields.
+
+A foreign key to a table not adopted with it stays as it is, on a plain `number` field: the
+synchronization never drops a foreign key the metadata does not define (the object's page lists
+it, "not defined in the metadata"). Adopting that table later makes it no relation by itself:
+the field stays a number.
+
+## After adopting
+
 The records and their keys stay: `/o/<object>/<key>/edit` opens them. A column left out stays in
 the table, unknown to the application; the object's page says so ("not defined in the metadata:
 not dropped"). It must allow empty values or have a default, or no record could be written:
@@ -126,8 +154,9 @@ symfony console metadata:table:list                    # every unmanaged table, 
 symfony console metadata:table:list --table=project    # one table in detail
 symfony console metadata:table:adopt project --dry-run # what adopting it would do
 symfony console metadata:table:adopt project --name=plan --plural=Plans
+symfony console metadata:table:adopt project project_task    # together: the foreign key a relation
 ```
 
-The console adopts a table with the fields proposed. See
+The console adopts the tables named, with the fields proposed. See
 [`metadata:table:list`](console.md#metadatatablelist) and
 [`metadata:table:adopt`](console.md#metadatatableadopt).
