@@ -96,6 +96,22 @@ final class AdminControllerTest extends WebTestCase
         self::assertAnySelectorTextContains('.gv-form-error', 'which cannot be unique');
     }
 
+    public function testAddsATagsFieldWithItsSuggestions(): void
+    {
+        $this->createObject('ticket', 'Ticket', 'Tickets');
+        $this->addField('ticket', 'tags', ['name' => 'labels', 'label' => 'Labels', 'settings' => ['options' => "Urgent\n\n  Later  \n", 'max' => '5']]);
+        self::assertResponseRedirects();
+
+        // assertEquals: JSONB does not keep the key order.
+        self::assertEquals(['options' => ['Urgent', 'Later'], 'restrict' => false, 'max' => 5, 'maxLength' => 50], $this->registry()->getObject('ticket')->field('labels')->settings);
+        $crawler = $this->client->request('GET', '/admin/objects/ticket/fields/labels');
+        self::assertSame("Urgent\nLater", $crawler->filter('textarea[name="field_settings[settings][options]"]')->text(null, false));
+
+        $this->addField('ticket', 'tags', ['name' => 'keywords', 'label' => 'Keywords', 'settings' => ['options' => "urgent\nUrgent"]]);
+        self::assertResponseStatusCodeSame(422);
+        self::assertAnySelectorTextContains('.gv-form-error', 'is already there');
+    }
+
     public function testRelationFieldsOfferTheObjectsAsTargets(): void
     {
         $this->createObject('author', 'Author', 'Authors');

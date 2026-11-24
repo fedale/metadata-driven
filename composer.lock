@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f012c518672d6c37774b156e689f6b9e",
+    "content-hash": "d6c7c97ce5dab0ec0bc5a89789270fa0",
     "packages": [
         {
             "name": "composer/semver",
@@ -1333,16 +1333,16 @@
         },
         {
             "name": "fedale/gridview-bundle",
-            "version": "v1.8.0",
+            "version": "v1.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/fedale/gridview-bundle.git",
-                "reference": "8ec4b00e5dd99da6df702bafd0f1bbdc9d21ae35"
+                "reference": "1c508fd56232591b877b18315ad25e47bda81e24"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/fedale/gridview-bundle/zipball/8ec4b00e5dd99da6df702bafd0f1bbdc9d21ae35",
-                "reference": "8ec4b00e5dd99da6df702bafd0f1bbdc9d21ae35",
+                "url": "https://api.github.com/repos/fedale/gridview-bundle/zipball/1c508fd56232591b877b18315ad25e47bda81e24",
+                "reference": "1c508fd56232591b877b18315ad25e47bda81e24",
                 "shasum": ""
             },
             "require": {
@@ -1413,22 +1413,22 @@
             ],
             "support": {
                 "issues": "https://github.com/fedale/gridview-bundle/issues",
-                "source": "https://github.com/fedale/gridview-bundle/tree/v1.8.0"
+                "source": "https://github.com/fedale/gridview-bundle/tree/v1.9.0"
             },
-            "time": "2026-11-24T13:27:32+00:00"
+            "time": "2026-11-24T14:38:15+00:00"
         },
         {
             "name": "fedale/metadata-driven-package-format",
-            "version": "v2.4.0",
+            "version": "v2.5.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/fedale/metadata-driven-package-format.git",
-                "reference": "629cec457394b3fae6dd8e5f2acacd102fc3238b"
+                "reference": "4403d436b950289c6e68e381dfa5a844374b19e1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/fedale/metadata-driven-package-format/zipball/629cec457394b3fae6dd8e5f2acacd102fc3238b",
-                "reference": "629cec457394b3fae6dd8e5f2acacd102fc3238b",
+                "url": "https://api.github.com/repos/fedale/metadata-driven-package-format/zipball/4403d436b950289c6e68e381dfa5a844374b19e1",
+                "reference": "4403d436b950289c6e68e381dfa5a844374b19e1",
                 "shasum": ""
             },
             "require": {
@@ -1467,9 +1467,9 @@
             ],
             "support": {
                 "issues": "https://github.com/fedale/metadata-driven-package-format/issues",
-                "source": "https://github.com/fedale/metadata-driven-package-format/tree/v2.4.0"
+                "source": "https://github.com/fedale/metadata-driven-package-format/tree/v2.5.0"
             },
-            "time": "2026-11-22T08:07:25+00:00"
+            "time": "2026-11-24T16:26:15+00:00"
         },
         {
             "name": "fedale/rbac-bundle",

@@ -33,4 +33,9 @@ enum WidgetKind: string
     case Relation = 'relation';
     /** An uploaded file, or several with option "multiple"; options "accept" (MIME types), "maxSize" (in MB) and "image". */
     case Media = 'media';
+    /**
+     * Free text labels, a list of strings; options "suggestions" (labels offered), "restrict"
+     * (only those), "max" (the most labels) and "maxLength" (the longest one).
+     */
+    case Tags = 'tags';
 }

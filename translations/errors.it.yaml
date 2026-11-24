@@ -40,6 +40,12 @@ field_type:
         transition_roles_invalid: 'Transizione #%position%: "roles" deve elencare nomi di ruolo, ad esempio ROLE_CLERK.'
         transition_to_invalid: 'Transizione #%position%: "to" deve essere uno stato del campo.'
         transitions_invalid: 'L''impostazione "transitions" deve essere una lista di voci {name, label, from, to, roles}.'
+    tags:
+        max_invalid: 'L''impostazione "max" deve essere un numero intero tra 1 e %max%, o vuota per nessun limite.'
+        option_invalid: 'Suggerimento #%position%: un''etichetta da 1 a %max% caratteri, senza virgole né spazi attorno.'
+        option_twice: 'Suggerimento #%position%: "%label%" c''è già.'
+        options_invalid: 'L''impostazione "options" deve essere una lista di etichette.'
+        restrict_without_options: 'L''impostazione "restrict" richiede dei suggerimenti: sono le sole etichette permesse.'
     target_invalid: 'L''impostazione "target" deve essere il nome dell''oggetto collegato.'
     text:
         pattern_invalid: 'L''impostazione "pattern" deve essere un''espressione regolare di al massimo %max% caratteri.'

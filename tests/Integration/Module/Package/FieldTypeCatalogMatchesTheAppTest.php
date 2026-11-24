@@ -42,6 +42,7 @@ final class FieldTypeCatalogMatchesTheAppTest extends KernelTestCase
                     SettingKind::Choice => ['choice'],
                     SettingKind::ObjectName => ['object'],
                     SettingKind::OptionList => ['options'],
+                    SettingKind::StringList => ['strings'],
                     SettingKind::TransitionList => ['transitions'],
                 }, $where);
                 if (SettingKind::Choice === $definition->kind) {

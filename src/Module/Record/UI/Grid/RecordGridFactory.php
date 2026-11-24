@@ -252,6 +252,7 @@ final class RecordGridFactory
             null === $value => '',
             WidgetKind::Relation === $widget->kind => \is_string($label = $row[$field->name.RecordGridSourceInterface::LABEL_SUFFIX] ?? null) ? $label : (\is_string($value) ? RecordLabels::fallback($value) : ''),
             WidgetKind::Choice === $widget->kind && \is_scalar($value) => $widget->choices()[(string) $value] ?? (string) $value,
+            WidgetKind::Tags === $widget->kind => self::tags($value),
             \is_bool($value) => $value ? '✓' : '✗',
             $value instanceof \DateTimeInterface => $value->format(WidgetKind::DateTime === $widget->kind ? 'Y-m-d H:i' : 'Y-m-d'),
             \is_scalar($value) => (string) $value,
@@ -270,6 +271,14 @@ final class RecordGridFactory
         $labels = $row[$name.RecordGridSourceInterface::LABEL_SUFFIX] ?? null;
 
         return \is_string($labels) ? $labels : '';
+    }
+
+    /**
+     * The labels of a tags field, joined as the export writes them.
+     */
+    private static function tags(mixed $value): string
+    {
+        return \is_array($value) ? implode(', ', array_filter($value, \is_string(...))) : '';
     }
 
     private function column(FieldDefinitionDto $field, Widget $widget): AbstractColumnConfig
@@ -310,6 +319,8 @@ final class RecordGridFactory
             WidgetKind::Media => TextColumn::new($name)
                 ->value(fn (array $row): Markup => new Markup($this->fileCell->render($name, $row), 'UTF-8'))
                 ->filter(FilterType::Boolean),
+            // The labels, no sort (a set) and no filter yet.
+            WidgetKind::Tags => TextColumn::new($name)->value(static fn (array $row): string => self::tags($row[$name] ?? null))->filter(false),
         };
     }
 

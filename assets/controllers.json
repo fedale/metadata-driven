@@ -104,6 +104,10 @@
             "media-list": {
                 "enabled": true,
                 "fetch": "lazy"
+            },
+            "tags": {
+                "enabled": true,
+                "fetch": "lazy"
             }
         },
         "@symfony/ux-autocomplete": {
