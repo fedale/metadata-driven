@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6ff709dea7f9262516e002e95ad0adfd",
+    "content-hash": "4e4958dadabec56e92a468bd3b6fc908",
     "packages": [
         {
             "name": "composer/semver",
@@ -1333,16 +1333,16 @@
         },
         {
             "name": "fedale/gridview-bundle",
-            "version": "v1.6.0",
+            "version": "v1.7.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/fedale/gridview-bundle.git",
-                "reference": "762c17f0458e14df9df4b9d58504b67e8adef0c6"
+                "reference": "bab49767feecda27049f49605e4169bda9cc2719"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/fedale/gridview-bundle/zipball/762c17f0458e14df9df4b9d58504b67e8adef0c6",
-                "reference": "762c17f0458e14df9df4b9d58504b67e8adef0c6",
+                "url": "https://api.github.com/repos/fedale/gridview-bundle/zipball/bab49767feecda27049f49605e4169bda9cc2719",
+                "reference": "bab49767feecda27049f49605e4169bda9cc2719",
                 "shasum": ""
             },
             "require": {
@@ -1413,9 +1413,9 @@
             ],
             "support": {
                 "issues": "https://github.com/fedale/gridview-bundle/issues",
-                "source": "https://github.com/fedale/gridview-bundle/tree/v1.6.0"
+                "source": "https://github.com/fedale/gridview-bundle/tree/v1.7.0"
             },
-            "time": "2026-11-24T11:07:40+00:00"
+            "time": "2026-11-24T11:47:39+00:00"
         },
         {
             "name": "fedale/metadata-driven-package-format",

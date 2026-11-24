@@ -1,9 +1,7 @@
 # Plan: the record form controls are gridview's controls
 
-Status: **phases 0 to 3 done and merged** (2026-11-24); gridview released as v1.4.0 (phase 1),
-v1.5.0 (phase 2) and v1.6.0 (phase 3).
-**Phase 4 done on branches** (`media_control` in both repositories), waiting for the gridview
-release.
+Status: **phases 0 to 4 done and merged** (2026-11-24); gridview released as v1.4.0 (phase 1),
+v1.5.0 (phase 2), v1.6.0 (phase 3) and v1.7.0 (phase 4).
 Written on 2026-11-23, decisions taken the same day.
 
 - Phase 0: `GoldenRecordFormsTest`, stored copies in `tests/Fixtures/golden-forms/`.
@@ -24,6 +22,7 @@ Written on 2026-11-23, decisions taken the same day.
   and `file_list_controller.js`. Gridview binds an `UploadedFile`; a model transformer here turns
   it into the record pipeline's `FileUpload`. The golden forms change on purpose, class and
   controller names only (`md-file` → `gv-media`, `file-list` → `gridview-media-list`).
+  metadata-driven requires gridview `^1.7`.
 - Not as planned: the date controls keep Symfony's default `widget` in gridview (changing it would
   change every host on Symfony 6.4); metadata-driven passes `single_text` itself. The control
   settings sit beside `options`, not inside it (NumberType has a `scale` option of its own); so do
