@@ -20,34 +20,31 @@ use App\Module\Record\Application\RecordLabels;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordLookupInterface;
+use Fedale\GridviewBundle\Form\Control\BooleanDisplay;
+use Fedale\GridviewBundle\Form\Control\ChoiceDisplay;
+use Fedale\GridviewBundle\Form\Control\ControlBuilder;
+use Fedale\GridviewBundle\Form\Control\ControlType;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Form\Event\PreSubmitEvent;
-use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
-use Symfony\Component\Form\Extension\Core\Type\DateTimeType;
-use Symfony\Component\Form\Extension\Core\Type\DateType;
-use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
-use Symfony\Component\Form\Extension\Core\Type\IntegerType;
-use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\Extension\Core\Type\RepeatedType;
-use Symfony\Component\Form\Extension\Core\Type\TelType;
-use Symfony\Component\Form\Extension\Core\Type\TextareaType;
-use Symfony\Component\Form\Extension\Core\Type\TextType;
-use Symfony\Component\Form\Extension\Core\Type\UrlType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormEvents;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
+use Symfony\Component\Form\FormTypeInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
  * Builds the record form from the field definitions at runtime.
  *
  * The form only converts input: it carries no constraints, validation is done once
- * by the Record module with the rules stored in the metadata.
+ * by the Record module with the rules stored in the metadata. The controls are those of
+ * fedale/gridview-bundle (ControlBuilder), the same as in a grid's CRUD forms; see
+ * docs/internal/controls-alignment-plan.md for the ones still built here.
  */
 final class RecordFormFactory
 {
@@ -62,6 +59,7 @@ final class RecordFormFactory
         private readonly MetadataRegistryInterface $metadata,
         private readonly AccessCheckerInterface $access,
         private readonly CascadeTargets $cascadeTargets,
+        private readonly ControlBuilder $controls,
     ) {
     }
 
@@ -311,34 +309,17 @@ final class RecordFormFactory
     }
 
     /**
-     * @return array{class-string<FormType|TextType|TextareaType|IntegerType|NumberType|CheckboxType|DateType|DateTimeType|EmailType|ChoiceType|PasswordType|RepeatedType|UrlType|TelType|RecordFileType|RecordFileListType>, array<string, mixed>}
+     * @return array{class-string<FormTypeInterface<mixed>>, array<string, mixed>}
      */
     private function control(FieldDefinitionDto $field, Widget $widget, mixed $value, bool $isNew, mixed $parentValue = null): array
     {
         $required = ['required' => $field->isRequired];
-        $maxLength = \is_int($widget->options['maxLength'] ?? null) ? ['attr' => ['maxlength' => $widget->options['maxLength']]] : [];
-        $bounds = ['attr' => array_filter(['min' => $widget->options['min'] ?? null, 'max' => $widget->options['max'] ?? null], is_int(...))];
 
         return match ($widget->kind) {
-            WidgetKind::Text => [TextType::class, $required + $maxLength],
-            WidgetKind::Textarea => [TextareaType::class, $required + $maxLength],
-            WidgetKind::Email => [EmailType::class, $required + $maxLength],
-            WidgetKind::Url => [UrlType::class, $required + $maxLength + ['default_protocol' => null]],
-            WidgetKind::Tel => [TelType::class, $required + $maxLength],
+            WidgetKind::Text, WidgetKind::Textarea, WidgetKind::Email, WidgetKind::Url, WidgetKind::Tel,
+            WidgetKind::Integer, WidgetKind::Decimal, WidgetKind::Checkbox, WidgetKind::Date,
+            WidgetKind::DateTime, WidgetKind::Choice => $this->controls->field($this->gridviewControl($field, $widget)),
             WidgetKind::Password => $this->password($field, $widget, $isNew),
-            WidgetKind::Integer => [IntegerType::class, $required + $bounds],
-            // No "scale": the form would silently round extra decimals instead of reporting them.
-            WidgetKind::Decimal => [NumberType::class, $required + ['input' => 'string', 'html5' => true, 'attr' => ['step' => $this->step($widget)] + $bounds['attr']]],
-            // A required checkbox would have to be checked: "required" only means "not null" here.
-            WidgetKind::Checkbox => [CheckboxType::class, ['required' => false] + ('switch' === ($widget->options['display'] ?? null)
-                ? ['attr' => ['class' => 'gv-switch', 'role' => 'switch']]
-                : [])],
-            WidgetKind::Date => [DateType::class, $required + ['widget' => 'single_text', 'input' => 'datetime_immutable']],
-            WidgetKind::DateTime => [DateTimeType::class, $required + ['widget' => 'single_text', 'input' => 'datetime_immutable']],
-            WidgetKind::Choice => [ChoiceType::class, $required + ['choices' => array_flip($widget->choices())] + ('radio' === ($widget->options['display'] ?? null)
-                // No placeholder: an empty radio group already means "no value".
-                ? ['expanded' => true, 'placeholder' => false, 'attr' => ['class' => 'gv-segmented']]
-                : ['placeholder' => $field->isRequired ? 'form.choose_option' : '—'])],
             WidgetKind::Relation => [ChoiceType::class, $required + [
                 'choices' => \is_string($value) ? array_flip($this->lookup->labels($this->target($widget), [$value])) : [],
                 'placeholder' => $field->isRequired ? 'form.choose_record' : '—',
@@ -356,6 +337,42 @@ final class RecordFormFactory
             ]],
             WidgetKind::File => $this->file($field, $widget, $value),
         };
+    }
+
+    /**
+     * The fedale/gridview-bundle control of a field: its type, the field's rules as the
+     * control's settings, and the few form options gridview has no setting for. The form
+     * adds no constraint ("validate" false): the Record module validates the record once,
+     * and its errors are put back on the form (addErrors()).
+     *
+     * @return array<string, mixed>
+     */
+    private function gridviewControl(FieldDefinitionDto $field, Widget $widget): array
+    {
+        $maxLength = \is_int($widget->options['maxLength'] ?? null) ? $widget->options['maxLength'] : null;
+        $min = \is_int($widget->options['min'] ?? null) ? $widget->options['min'] : null;
+        $max = \is_int($widget->options['max'] ?? null) ? $widget->options['max'] : null;
+        $dates = ['widget' => 'single_text', 'input' => 'datetime_immutable'];
+        $radio = 'radio' === ($widget->options['display'] ?? null);
+
+        return match ($widget->kind) {
+            WidgetKind::Text => ['type' => ControlType::Text, 'maxLength' => $maxLength],
+            WidgetKind::Textarea => ['type' => ControlType::Textarea, 'maxLength' => $maxLength],
+            WidgetKind::Email => ['type' => ControlType::Email, 'maxLength' => $maxLength],
+            WidgetKind::Url => ['type' => ControlType::Url, 'maxLength' => $maxLength, 'options' => ['default_protocol' => null]],
+            WidgetKind::Tel => ['type' => ControlType::Tel, 'maxLength' => $maxLength],
+            WidgetKind::Integer => ['type' => ControlType::Integer, 'min' => $min, 'max' => $max],
+            // The scale is the input's step: the decimals beyond it are reported, not rounded.
+            WidgetKind::Decimal => ['type' => ControlType::Number, 'min' => $min, 'max' => $max, 'scale' => \is_int($widget->options['scale'] ?? null) ? $widget->options['scale'] : 0, 'options' => ['input' => 'string', 'html5' => true]],
+            // A required checkbox would have to be checked: "required" only means "not null" here.
+            WidgetKind::Checkbox => ['type' => ControlType::Boolean, 'required' => false, 'display' => 'switch' === ($widget->options['display'] ?? null) ? BooleanDisplay::Switch : BooleanDisplay::Checkbox],
+            WidgetKind::Date => ['type' => ControlType::Date, 'options' => $dates],
+            WidgetKind::DateTime => ['type' => ControlType::Datetime, 'options' => $dates],
+            // The "radio" display of a select is drawn as buttons side by side; an empty group
+            // already means "no value", so only the dropdown has a placeholder.
+            WidgetKind::Choice => ['type' => ControlType::Choice, 'display' => $radio ? ChoiceDisplay::Segmented : ChoiceDisplay::Dropdown, 'options' => ['choices' => array_flip($widget->choices())] + ($radio ? [] : ['placeholder' => $field->isRequired ? 'form.choose_option' : '—'])],
+            default => throw new \LogicException(\sprintf('Widget "%s" has no gridview control of its own yet.', $widget->kind->value)),
+        } + ['required' => $field->isRequired, 'validate' => false];
     }
 
     /**
@@ -516,12 +533,5 @@ final class RecordFormFactory
     private function target(Widget $widget): string
     {
         return \is_string($widget->options['target'] ?? null) ? $widget->options['target'] : throw new \LogicException('A relation widget needs a target.');
-    }
-
-    private function step(Widget $widget): string
-    {
-        $scale = \is_int($widget->options['scale'] ?? null) ? $widget->options['scale'] : 0;
-
-        return $scale > 0 ? '0.'.str_repeat('0', $scale - 1).'1' : '1';
     }
 }

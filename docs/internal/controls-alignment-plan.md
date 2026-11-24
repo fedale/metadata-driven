@@ -1,6 +1,16 @@
 # Plan: the record form controls are gridview's controls
 
-Status: **decided**, not started. Written on 2026-11-23, decisions taken the same day.
+Status: **phases 0 and 1 done on branches** (2026-11-24), waiting for the gridview release.
+Written on 2026-11-23, decisions taken the same day.
+
+- Phase 0: `GoldenRecordFormsTest`, stored copies in `tests/Fixtures/golden-forms/`.
+- Phase 1: gridview branch `control_builder` (`ControlBuilder`, the control settings, `textarea`,
+  `Length` and `Range` when the form validates), metadata-driven branch `control_alignment`
+  (`RecordFormFactory::gridviewControl()`). The golden forms are unchanged. metadata-driven still
+  requires gridview `^1.3`: raise it once the branch is released.
+- Not as planned: the date controls keep Symfony's default `widget` in gridview (changing it would
+  change every host on Symfony 6.4); metadata-driven passes `single_text` itself. The control
+  settings sit beside `options`, not inside it (NumberType has a `scale` option of its own).
 
 Decided by the user on 2026-11-23: the form controls of metadata-driven are to be **exactly** the
 controls of `fedale/gridview-bundle`, its `ControlType` enum and `ControlTypeRegistry`. A control
