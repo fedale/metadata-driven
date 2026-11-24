@@ -11,9 +11,11 @@ use App\Module\Metadata\Application\Handler\CreateObjectHandler;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
+use App\Module\Record\UI\Grid\RecordGridFactory;
 use App\Tests\Support\SignsIn;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\DomCrawler\Crawler;
 
 /**
  * A tags field through HTTP: gridview's tags control in the form (a text input of labels
@@ -68,6 +70,32 @@ final class TagsFieldControllerTest extends WebTestCase
         self::assertSelectorTextContains('[data-gv-field="labels"]', 'Give at most 3 labels.');
     }
 
+    public function testWithoutSuggestionsTheFilterOffersTheLabelsInUse(): void
+    {
+        ($this->client->getContainer()->get(CreateFieldHandler::class))(new CreateFieldCommand('ticket', 'keywords', 'tags', 'Keywords'));
+        $records = self::getContainer()->get(RecordManagerInterface::class);
+        $records->create(new RecordInput('ticket', ['subject' => 'Printer', 'keywords' => ['paper', 'Toner']]));
+        $records->create(new RecordInput('ticket', ['subject' => 'Copier', 'keywords' => ['toner']]));
+
+        $crawler = $this->client->request('GET', '/o/ticket', ['sort' => 'subject']);
+        self::assertSame(['paper', 'Toner'], $this->filterChoices($crawler->filter('select[name="fedaleForm[keywords][]"]')));
+        $this->client->request('GET', '/o/ticket', ['sort' => 'subject', 'fedaleForm' => ['keywords' => ['Toner']]]);
+        self::assertSame(['Copier', 'Printer'], $this->cells('subject'));
+    }
+
+    public function testPastTheMostLabelsInUseTheFilterTakesAText(): void
+    {
+        ($this->client->getContainer()->get(CreateFieldHandler::class))(new CreateFieldCommand('ticket', 'keywords', 'tags', 'Keywords'));
+        $records = self::getContainer()->get(RecordManagerInterface::class);
+        $records->create(new RecordInput('ticket', ['subject' => 'Printer', 'keywords' => array_map(static fn (int $i): string => 'k'.$i, range(0, RecordGridFactory::MAX_FILTER_LABELS))]));
+        $records->create(new RecordInput('ticket', ['subject' => 'Copier', 'keywords' => ['toner']]));
+
+        $crawler = $this->client->request('GET', '/o/ticket', ['sort' => 'subject']);
+        self::assertCount(1, $crawler->filter('input[name="fedaleForm[keywords]"]'));
+        $this->client->request('GET', '/o/ticket', ['sort' => 'subject', 'fedaleForm' => ['keywords' => 'TON']]);
+        self::assertSame(['Copier'], $this->cells('subject'));
+    }
+
     public function testTheGridAndTheExportShowTheLabels(): void
     {
         $records = self::getContainer()->get(RecordManagerInterface::class);
@@ -76,8 +104,13 @@ final class TagsFieldControllerTest extends WebTestCase
 
         $crawler = $this->client->request('GET', '/o/ticket', ['sort' => 'subject']);
         self::assertResponseIsSuccessful();
-        self::assertSame(['Urgent, client x', ''], $crawler->filter('#gv-tbody-record_ticket td[data-col-key="labels"]')->each(static fn ($cell): string => trim($cell->text())));
+        self::assertSame(['Urgent, client x', ''], $this->cells('labels'));
+        self::assertSame(['Urgent', 'client x'], $crawler->filter('#gv-tbody-record_ticket td[data-col-key="labels"] .gv-badge')->each(static fn ($badge): string => $badge->text()));
         self::assertCount(0, $crawler->filter('table[data-gv="record_ticket"] thead th[data-col-key="labels"] a[href*="sort="]'));
+        // The filter offers the suggestions; any of those picked, ignoring case.
+        self::assertSame(['Urgent', 'Later'], $this->filterChoices($crawler->filter('select[name="fedaleForm[labels][]"][multiple]')));
+        $this->client->request('GET', '/o/ticket', ['sort' => 'subject', 'fedaleForm' => ['labels' => ['Urgent', 'Later']]]);
+        self::assertSame(['Printer'], $this->cells('subject'));
 
         $this->client->request('GET', '/o/ticket/export', ['format' => 'csv', 'sort' => 'subject', 'cols' => 'subject,labels']);
         self::assertResponseIsSuccessful();
@@ -85,5 +118,28 @@ final class TagsFieldControllerTest extends WebTestCase
             ['Subject,Labels', 'Printer,"Urgent, client x"', 'Screen,'],
             array_map(trim(...), explode("\n", trim((string) $this->client->getInternalResponse()->getContent(), "\u{FEFF}\n"))),
         );
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function cells(string $column): array
+    {
+        return $this->client->getCrawler()
+            ->filter(\sprintf('#gv-tbody-record_ticket td[data-col-key="%s"]', $column))
+            ->each(static fn ($cell): string => trim($cell->text()));
+    }
+
+    /**
+     * The values a relation filter offers: its controller draws them from a JSON attribute.
+     *
+     * @return list<mixed>
+     */
+    private function filterChoices(Crawler $select): array
+    {
+        $choices = json_decode((string) $select->attr('data-gridview-relation-filter-choices-value'), true);
+        self::assertIsArray($choices);
+
+        return array_column($choices, 'v');
     }
 }

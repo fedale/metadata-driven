@@ -40,6 +40,8 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
     /** Aliases of a link table and of its linked object's table, inside a subquery. */
     private const string LINK_ALIAS = 'l';
     private const string LINKED_ALIAS = 'x';
+    /** Of a label of a tags field, inside a subquery. */
+    private const string LABEL_ALIAS = 'lbl';
     /** Of the SQL column carrying the linked ids of a many-to-many field or the file ids of a file list ("<field>__ids"). */
     private const string LINK_IDS_SUFFIX = '__ids';
     /** Between the labels of the linked records in a cell. */
@@ -239,6 +241,47 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
         return WidgetKind::Media === $this->fieldTypes->get($field->type)->widget($field->settings)->kind;
     }
 
+    private function isTags(FieldDefinitionDto $field): bool
+    {
+        return WidgetKind::Tags === $this->fieldTypes->get($field->type)->widget($field->settings)->kind;
+    }
+
+    public function labelsInUse(ObjectDefinitionDto $object, string $fieldName, int $limit): array
+    {
+        $field = $this->readableField($object, $fieldName);
+        if (!$this->isTags($field)) {
+            throw new \InvalidArgumentException(\sprintf('Field "%s" of "%s" holds no labels.', $fieldName, $object->name));
+        }
+        // One spelling per label ignoring case, the first in the order of the code points.
+        $labels = $this->connection->fetchFirstColumn(\sprintf(
+            'SELECT MIN(%1$s) FROM %2$s %3$s CROSS JOIN LATERAL jsonb_array_elements_text(%4$s) %1$s WHERE %5$s IS NULL GROUP BY LOWER(%1$s) ORDER BY LOWER(%1$s) LIMIT %6$d',
+            $this->table->quote(self::LABEL_ALIAS),
+            $this->table->table($object),
+            $this->table->quote(self::ALIAS),
+            $this->table->column($field->columnName, self::ALIAS),
+            $this->table->column('deleted_at', self::ALIAS),
+            max(0, $limit),
+        ));
+
+        return array_values(array_filter($labels, \is_string(...)));
+    }
+
+    /**
+     * "A label of the field matches": the correlated EXISTS over the labels of the row, the
+     * condition given on LOWER() of a label.
+     */
+    private function anyLabel(FieldDefinitionDto $field, string $condition): string
+    {
+        $label = $this->table->quote(self::LABEL_ALIAS);
+
+        return \sprintf(
+            'EXISTS (SELECT 1 FROM jsonb_array_elements_text(%s) %s WHERE %s)',
+            $this->table->column($field->columnName, self::ALIAS),
+            $label,
+            \sprintf($condition, 'LOWER('.$label.')'),
+        );
+    }
+
     /**
      * The correlated subqueries listing the live records linked to the row by a many-to-many
      * field: their labels joined by ", " and their ids joined by ",", both in the order of the
@@ -338,6 +381,10 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
                 $this->applyFileCriterion($qb, $object, $field, $criterion);
                 continue;
             }
+            if ($this->isTags($field)) {
+                $this->applyTagsCriterion($qb, $object, $field, $criterion, 'c'.$index);
+                continue;
+            }
             $this->applyCriterion($qb, $field, $criterion, 'c'.$index);
         }
 
@@ -377,6 +424,9 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
     private function searchMatch(ObjectDefinitionDto $object, string $attribute, string $param): string
     {
         $field = $this->readableField($object, $attribute);
+        if ($this->isTags($field)) {
+            return $this->anyLabel($field, '%s LIKE :'.$param);
+        }
         $target = $field->target();
         if (null === $target) {
             return \sprintf('LOWER(%s) LIKE :%s', $this->table->asText($this->columnField($object, $attribute), self::ALIAS), $param);
@@ -485,6 +535,41 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
             return;
         }
         $qb->andWhere(\sprintf('%s IS %sNULL', $this->table->column($field->columnName, self::ALIAS), $criterion->value ? 'NOT ' : ''));
+    }
+
+    /**
+     * A tags field matches the records holding a label, ignoring case: one (Eq), any of a list
+     * (In), or one containing, starting or ending with a text (Contains, StartsWith, EndsWith;
+     * NotContains: none does). Eq with true or false matches the records holding a label, or
+     * none: no label at all is stored as null.
+     */
+    private function applyTagsCriterion(QueryBuilder $qb, ObjectDefinitionDto $object, FieldDefinitionDto $field, FilterCriterion $criterion, string $param): void
+    {
+        $value = $criterion->value;
+        if (FilterOperator::Eq === $criterion->operator && \is_bool($value)) {
+            $qb->andWhere(\sprintf('%s IS %sNULL', $this->table->column($field->columnName, self::ALIAS), $value ? 'NOT ' : ''));
+
+            return;
+        }
+        $like = $this->likePattern($criterion->operator);
+        if (null !== $like) {
+            $match = $this->anyLabel($field, '%s LIKE :'.$param);
+            $qb->andWhere(FilterOperator::NotContains === $criterion->operator ? 'NOT '.$match : $match)
+                ->setParameter($param, $like[0].RecordTable::escapeLike($this->lower($value)).$like[1]);
+
+            return;
+        }
+        if (!\in_array($criterion->operator, [FilterOperator::Eq, FilterOperator::In], true)) {
+            throw new \InvalidArgumentException(\sprintf('Field "%s" of "%s" holds labels: it is filtered by the labels it holds, not with "%s".', $field->name, $object->name, $criterion->operator->value));
+        }
+        $labels = array_values(array_unique(array_map($this->lower(...), \is_array($value) ? $value : [$value])));
+        if ([] === $labels) {
+            $qb->andWhere('1 = 0');
+
+            return;
+        }
+        $qb->andWhere($this->anyLabel($field, '%s IN (:'.$param.')'))
+            ->setParameter($param, $labels, ArrayParameterType::STRING);
     }
 
     private function applyCriterion(QueryBuilder $qb, FieldDefinitionDto $field, FilterCriterion $criterion, string $param): void

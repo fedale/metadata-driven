@@ -7,20 +7,30 @@ namespace App\Tests\Integration\Module\Record;
 use App\Module\Metadata\Application\Command\ConfigureFieldConditionCommand;
 use App\Module\Metadata\Application\Command\ConfigureFieldSettingsCommand;
 use App\Module\Metadata\Application\Command\ConfigureObjectLabelCommand;
+use App\Module\Metadata\Application\Command\ConfigureObjectSearchCommand;
 use App\Module\Metadata\Application\Command\CreateFieldCommand;
 use App\Module\Metadata\Application\Command\CreateObjectCommand;
 use App\Module\Metadata\Application\Handler\ConfigureFieldConditionHandler;
 use App\Module\Metadata\Application\Handler\ConfigureFieldSettingsHandler;
 use App\Module\Metadata\Application\Handler\ConfigureObjectLabelHandler;
+use App\Module\Metadata\Application\Handler\ConfigureObjectSearchHandler;
 use App\Module\Metadata\Application\Handler\CreateFieldHandler;
 use App\Module\Metadata\Application\Handler\CreateObjectHandler;
 use App\Module\Metadata\Contract\Exception\MetadataException;
+use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Record\Application\Grid\RecordGridSourceInterface;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
 use App\Module\Schema\Contract\SchemaSynchronizerInterface;
+use App\Module\Search\Contract\SearchConfigurationInterface;
 use Doctrine\DBAL\Connection;
+use Fedale\GridviewBundle\DataSource\FilterCriterion;
+use Fedale\GridviewBundle\DataSource\FilterOperator;
+use Fedale\GridviewBundle\DataSource\GridQuery;
+use Fedale\GridviewBundle\DataSource\SortDirection;
+use Fedale\GridviewBundle\DataSource\SortOrder;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
@@ -92,6 +102,64 @@ final class TagsRecordsTest extends KernelTestCase
                 $this->addToAssertionCount(1);
             }
         }
+    }
+
+    public function testTheGridFiltersOnTheLabelsIgnoringCase(): void
+    {
+        $this->tickets();
+        $subjects = fn (FilterCriterion ...$criteria): array => $this->subjects(new GridQuery(source: ['object' => 'ticket'], criteria: array_values($criteria), sort: [new SortOrder('subject', SortDirection::Asc)]));
+
+        self::assertSame(['Printer', 'Scanner'], $subjects(new FilterCriterion('labels', FilterOperator::Eq, 'URGENT')));
+        self::assertSame(['Printer', 'Scanner', 'Screen'], $subjects(new FilterCriterion('labels', FilterOperator::In, ['client x', 'later'])));
+        self::assertSame(['Printer', 'Scanner', 'Screen'], $subjects(new FilterCriterion('labels', FilterOperator::Eq, true)));
+        self::assertSame(['Mouse'], $subjects(new FilterCriterion('labels', FilterOperator::Eq, false)));
+        self::assertSame(['Printer', 'Scanner'], $subjects(new FilterCriterion('labels', FilterOperator::Contains, 'IENT')));
+        self::assertSame(['Mouse', 'Screen'], $subjects(new FilterCriterion('labels', FilterOperator::NotContains, 'client')));
+        self::assertSame([], $subjects(new FilterCriterion('labels', FilterOperator::In, [])));
+
+        $this->expectException(\InvalidArgumentException::class);
+        $subjects(new FilterCriterion('labels', FilterOperator::Gt, 'a'));
+    }
+
+    public function testTheSearchMatchesALabel(): void
+    {
+        $this->tickets();
+
+        // A tags field is searched by default, as a text field is.
+        $ticket = self::getContainer()->get(MetadataRegistryInterface::class)->getObject('ticket');
+        self::assertSame(['subject', 'labels'], self::getContainer()->get(SearchConfigurationInterface::class)->fieldsFor($ticket));
+        self::assertSame(['Printer', 'Scanner'], $this->subjects(new GridQuery(source: ['object' => 'ticket'], searchTerm: 'clie', searchFields: ['subject', 'labels'], sort: [new SortOrder('subject', SortDirection::Asc)])));
+        (self::getContainer()->get(ConfigureObjectSearchHandler::class))(new ConfigureObjectSearchCommand('ticket', 'phrase', ['labels']));
+        self::assertSame(['labels'], self::getContainer()->get(MetadataRegistryInterface::class)->getObject('ticket')->searchFields);
+    }
+
+    public function testTheLabelsInUseAreThoseOfTheLiveRecords(): void
+    {
+        $this->tickets();
+        $gone = $this->records->create(new RecordInput('ticket', ['subject' => 'Fax', 'labels' => ['obsolete']]));
+        $this->records->delete('ticket', $gone->id);
+        $object = self::getContainer()->get(MetadataRegistryInterface::class)->getObject('ticket');
+        $source = self::getContainer()->get(RecordGridSourceInterface::class);
+
+        // One spelling of "client x"; nothing of the deleted record.
+        self::assertSame(['Client X', 'Later', 'Urgent'], $source->labelsInUse($object, 'labels', 10));
+        self::assertSame(['Client X'], $source->labelsInUse($object, 'labels', 1));
+    }
+
+    private function tickets(): void
+    {
+        $this->records->create(new RecordInput('ticket', ['subject' => 'Printer', 'labels' => ['Urgent', 'client x']]));
+        $this->records->create(new RecordInput('ticket', ['subject' => 'Scanner', 'labels' => ['urgent', 'Client X']]));
+        $this->records->create(new RecordInput('ticket', ['subject' => 'Screen', 'labels' => ['later']]));
+        $this->records->create(new RecordInput('ticket', ['subject' => 'Mouse']));
+    }
+
+    /**
+     * @return list<mixed>
+     */
+    private function subjects(GridQuery $query): array
+    {
+        return array_column([...self::getContainer()->get(RecordGridSourceInterface::class)->fetch($query)], 'subject');
     }
 
     private function connection(): Connection

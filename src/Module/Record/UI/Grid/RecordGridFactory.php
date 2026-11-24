@@ -47,6 +47,8 @@ use Twig\Markup;
 final class RecordGridFactory
 {
     public const int DEFAULT_PAGE_SIZE = 25;
+    /** The most labels in use the filter of a tags field lists; past them it takes a text. */
+    public const int MAX_FILTER_LABELS = 200;
 
     public function __construct(
         private readonly GridviewBuilderFactory $builders,
@@ -92,7 +94,7 @@ final class RecordGridFactory
                 if ($type->isWriteOnly()) {
                     continue;
                 }
-                $column = $this->column($field, $type->widget($field->settings))->label($field->label);
+                $column = $this->column($object, $field, $type->widget($field->settings))->label($field->label);
                 // A file column holds an id, a many-to-many one a set of records: there is no
                 // order to sort them by (the bundle's columns are sortable unless told otherwise).
                 $columns[] = $column->sortable($type->isSortable());
@@ -196,7 +198,7 @@ final class RecordGridFactory
             $field = $object->field($column->field);
             $widget = $this->fieldTypes->get($field->type)->widget($field->settings);
             $text = static fn (array $row): string => self::text($field, $widget, $row);
-            $config = $this->column($field, $widget)->label($column->label ?? $field->label);
+            $config = $this->column($object, $field, $widget)->label($column->label ?? $field->label);
             if (!$column->filter) {
                 $config->filter(false);
             }
@@ -281,7 +283,39 @@ final class RecordGridFactory
         return \is_array($value) ? implode(', ', array_filter($value, \is_string(...))) : '';
     }
 
-    private function column(FieldDefinitionDto $field, Widget $widget): AbstractColumnConfig
+    /**
+     * The labels of a tags field as badges. Between them a text separator, hidden on screen: a
+     * screen reader and the export read "Urgent, client x".
+     */
+    private static function tagBadges(mixed $value): Markup
+    {
+        $badges = array_map(
+            static fn (string $label): string => '<span class="gv-badge">'.htmlspecialchars($label, \ENT_QUOTES).'</span>',
+            \is_array($value) ? array_values(array_filter($value, \is_string(...))) : [],
+        );
+
+        return new Markup([] === $badges ? '' : '<span class="md-tags-cell">'.implode('<span class="md-tags-cell__separator">, </span>', $badges).'</span>', 'UTF-8');
+    }
+
+    /**
+     * The filter of a tags field: its labels to pick, any of them. They are the suggestions of
+     * the field, or else the labels its records hold; past MAX_FILTER_LABELS of those, a text
+     * the labels are matched against.
+     */
+    private function tagsFilter(ObjectDefinitionDto $object, FieldDefinitionDto $field, Widget $widget, AbstractColumnConfig $column): AbstractColumnConfig
+    {
+        $labels = \is_array($widget->options['suggestions'] ?? null) ? array_values(array_filter($widget->options['suggestions'], \is_string(...))) : [];
+        if ([] === $labels) {
+            $labels = $this->source->labelsInUse($object, $field->name, self::MAX_FILTER_LABELS + 1);
+            if (\count($labels) > self::MAX_FILTER_LABELS) {
+                return $column->filterText();
+            }
+        }
+
+        return $column->filterRelation(choices: array_combine($labels, $labels), multiple: true, searchable: true);
+    }
+
+    private function column(ObjectDefinitionDto $object, FieldDefinitionDto $field, Widget $widget): AbstractColumnConfig
     {
         $name = $field->name;
 
@@ -319,8 +353,8 @@ final class RecordGridFactory
             WidgetKind::Media => TextColumn::new($name)
                 ->value(fn (array $row): Markup => new Markup($this->fileCell->render($name, $row), 'UTF-8'))
                 ->filter(FilterType::Boolean),
-            // The labels, no sort (a set) and no filter yet.
-            WidgetKind::Tags => TextColumn::new($name)->value(static fn (array $row): string => self::tags($row[$name] ?? null))->filter(false),
+            // A badge per label; filters on the labels held (any of those picked), no sort (a set).
+            WidgetKind::Tags => $this->tagsFilter($object, $field, $widget, TextColumn::new($name)->value(static fn (array $row): Markup => self::tagBadges($row[$name] ?? null))),
         };
     }
 

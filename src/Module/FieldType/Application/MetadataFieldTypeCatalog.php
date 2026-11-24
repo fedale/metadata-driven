@@ -78,6 +78,11 @@ final class MetadataFieldTypeCatalog implements FieldTypeCatalogInterface
         return $this->registry->has($type) && $this->registry->get($type)->isSortable();
     }
 
+    public function isSearchable(string $type): bool
+    {
+        return $this->registry->has($type) && $this->registry->get($type)->isSearchable();
+    }
+
     public function resolveSettings(string $type, array $settings): array
     {
         $fieldType = $this->registry->get($type);

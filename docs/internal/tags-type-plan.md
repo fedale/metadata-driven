@@ -2,8 +2,12 @@
 
 Status: **in progress**. Phase 1 done on 2026-11-24, with the form of phase 3 (gridview's tags
 control, released in gridview 1.9.0) and the `tags` entry of the package format (released in 2.5.0, its kind
-`strings` for `options`), which the app's catalog test requires. Next: phase 2 (grid), the
-suggestions endpoint of phase 3, the CSV import and seeds of phase 4. Written and decided on 2026-11-23, after comparing the package format with
+`strings` for `options`), which the app's catalog test requires. Phase 2 done the same day: the
+cell is a badge per label (drawn by `RecordGridFactory`, as gridview's `badge` column renders one
+value), with a hidden ", " between them for the export; the filter is a multiple relation filter
+on static choices, a text filter past 200 labels in use; a tags field is searchable
+(`FieldTypeInterface::isSearchable()`). Next: the suggestions endpoint of phase 3, the CSV import
+and seeds of phase 4. Written and decided on 2026-11-23, after comparing the package format with
 a Directus schema snapshot: Directus has a `json` field with the `tags` interface (free labels on
 a record, `["urgent", "client-x"]`), and metadata-driven has nothing to map it to.
 

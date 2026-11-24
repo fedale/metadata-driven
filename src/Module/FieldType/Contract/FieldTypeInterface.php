@@ -113,6 +113,12 @@ interface FieldTypeInterface
     public function isSortable(): bool;
 
     /**
+     * Whether a search term can match its values: those with a text of their own (see
+     * isSortable()), and a set of texts, such as the labels of a tags field.
+     */
+    public function isSearchable(): bool;
+
+    /**
      * Converts a valid, denormalized value to what the column stores (e.g. a password hash).
      * Called after validation, so the constraints see the value as typed.
      *

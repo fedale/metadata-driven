@@ -158,6 +158,8 @@ on it); its renderer, if any, gets the labels as its text. A [`file`](field-type
 follows the same rules: it shows a link to the file (with a thumbnail for an image), filters on
 whether there is one, never sorts, and its renderer gets the original name as its text. With
 `multiple`, the cell shows each file in turn, and a renderer gets the names joined by ", ".
+A [`tags`](field-types.md#tags) field shows a badge per label, filters on the labels it holds
+and never sorts; its renderer gets the labels joined by ", ".
 
 ### Virtual columns
 
@@ -167,7 +169,7 @@ A virtual column shows several fields as one: `'{first_name} {last_name}'` reads
   `'{last_name} {first_name}'`.
 - Its **filter** is a text filter on its fields joined by spaces, empty ones skipped: "lovel"
   and "ada lov" both find Ada Lovelace. A select is matched on its stored value, not its label.
-- Its fields cannot be relations, `many_to_many` or `file` fields: show them in a column of
+- Its fields cannot be relations, `many_to_many`, `file` or `tags` fields: show them in a column of
   their own, where they filter on the related records, or on whether there is a file.
 
 ### Renderers
