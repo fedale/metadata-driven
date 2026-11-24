@@ -64,6 +64,12 @@ interface FieldTypeCatalogInterface
     public function isSortable(string $type): bool;
 
     /**
+     * Whether a search term can match a field of this type: one with a text of its own (see
+     * isSortable()), or a set of texts (the labels of a tags field).
+     */
+    public function isSearchable(string $type): bool;
+
+    /**
      * Validates the given settings and merges them with the type defaults.
      *
      * @param array<string, mixed> $settings

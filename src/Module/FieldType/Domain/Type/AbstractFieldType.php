@@ -58,6 +58,11 @@ abstract class AbstractFieldType implements FieldTypeInterface
         return !$this->isWriteOnly();
     }
 
+    public function isSearchable(): bool
+    {
+        return $this->isSortable();
+    }
+
     public function toStorage(mixed $value, array $settings): mixed
     {
         return $value;

@@ -237,6 +237,18 @@ a:hover { color: var(--gv-color-link-hover); }
 .md-file-cell__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .md-file-cell__separator { color: var(--gv-color-text-muted); }
 
+/* The labels of a tags field: a badge each. The ", " between them is for the export and
+   screen readers only (RecordGridFactory::tagBadges()). */
+.md-tags-cell { display: inline-flex; flex-wrap: wrap; gap: .25rem; }
+.md-tags-cell__separator {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
 /* ── Form sheets: a header with the actions, an index on the side, numbered cards ── */
 
 .md-sheet__header {

@@ -176,6 +176,14 @@ final class TagsFieldType extends AbstractFieldType
         return false;
     }
 
+    /**
+     * A search term matches a record holding a label that matches it.
+     */
+    public function isSearchable(): bool
+    {
+        return true;
+    }
+
     public function supportsUnique(): bool
     {
         return false;

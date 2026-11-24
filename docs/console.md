@@ -285,7 +285,7 @@ metadata:object:search [--handler=HANDLER] [--fields=FIELDS] <object>
 |---|---|
 | `object` | The object's machine name |
 | `--handler` | `free_text_multi_field` (default) or `phrase` |
-| `--fields` | Comma separated fields to search. Default: every text-like field (text, multiline text, email). A `relation` or `many_to_many` field is searched on the labels of the records it points at, and only when listed here: it is never a default. A password or a file field is refused. |
+| `--fields` | Comma separated fields to search. Default: every text-like field (text, multiline text, email, phone, link) and every `tags` field, which matches when one of its labels does. A `relation` or `many_to_many` field is searched on the labels of the records it points at, and only when listed here: it is never a default. A password or a file field is refused. |
 
 The handlers:
 

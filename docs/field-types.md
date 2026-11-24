@@ -14,7 +14,7 @@ missing keys take their default, unknown keys are refused.
 | `tel` | none | `varchar(30)` | phone input | text |
 | `url` | none | `varchar(2048)` | URL input | text (shown as a link) |
 | `select` | `options` (required), `default`, `display` (`dropdown`) | `varchar(100)` | select or buttons side by side | choice |
-| `tags` | `options` (none), `restrict` (false), `max`, `maxLength` (50) | `jsonb`, an array of strings | labels typed or picked among the suggestions, drawn as chips | none yet |
+| `tags` | `options` (none), `restrict` (false), `max`, `maxLength` (50) | `jsonb`, an array of strings | labels typed or picked among the suggestions, drawn as chips | choice of labels (any of them) |
 | `status` | `states` (required), `initial` (the first), `transitions` | `varchar(100)` | read-only; its transitions as buttons on the record's page | choice |
 | `password` | `minLength` (8), `requireMixedCase`, `requireDigit`, `requireSymbol`, `confirm`, `strengthMeter`, `revealToggle` (all false) | `varchar(255)`, a hash | password input, asked twice with `confirm` | none: never shown |
 | `file` | `accept` (any type), `maxSize` (10 MB), `image` (false), `multiple` (false), `max` | `uuid` + foreign key to `core.file`; with `multiple`, a link table of its own | the current file, an upload input, "Remove the file"; with `multiple`, the list of files to reorder and remove, and an input adding several | yes / no: holds a file or none |
@@ -267,9 +267,14 @@ labels to manage, and a new one is typed right in the form. For a vocabulary wit
 - The form shows the labels as chips, with an input adding them: Enter or a comma adds one,
   Backspace on an empty input removes the last one, and the suggestions are offered as you
   type. Without JavaScript it's a text input of labels separated by commas.
-- The grid and the exports show the labels joined with `", "`. A tags field has no order of
-  its own: it can't be sorted on, nor be the record label, a search field, unique, or the
-  deciding field of a [condition](#conditions).
+- The grid shows a badge per label, and the exports the labels joined with `", "`.
+- The grid's filter offers the suggestions, or without them the labels the records hold (up to
+  200; past them, a text matched against each label). It finds the records holding any of the
+  labels picked, ignoring case.
+- The search box matches a record when one of its labels matches. A tags field is searched by
+  default, like a text field.
+- A tags field has no order of its own: it can't be sorted on, nor be the record label, unique,
+  part of a virtual column, or the deciding field of a [condition](#conditions).
 
 ## `status`
 
