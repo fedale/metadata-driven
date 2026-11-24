@@ -16,7 +16,6 @@ use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ServiceFieldDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Application\CascadeTargets;
-use App\Module\Record\Application\RecordLabels;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordLookupInterface;
@@ -25,12 +24,10 @@ use Fedale\GridviewBundle\Form\Control\ChoiceDisplay;
 use Fedale\GridviewBundle\Form\Control\ControlBuilder;
 use Fedale\GridviewBundle\Form\Control\ControlType;
 use Symfony\Component\DependencyInjection\Attribute\Target;
-use Symfony\Component\Form\Event\PreSubmitEvent;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormError;
-use Symfony\Component\Form\FormEvents;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormTypeInterface;
@@ -88,7 +85,6 @@ final class RecordFormFactory
      */
     public function addControls(FormBuilderInterface $builder, ObjectDefinitionDto $object, array $fieldNames, bool $isNew, array $current, array $required = [], bool $placeholders = false): void
     {
-        $relations = [];
         foreach ($fieldNames as $name) {
             $field = $object->field($name);
             $requiredHere = \in_array($name, $required, true);
@@ -117,75 +113,79 @@ final class RecordFormFactory
                 continue;
             }
             $builder->add($name, $type, $options);
-            if (\in_array($widget->kind, [WidgetKind::Relation, WidgetKind::ManyToMany], true)) {
-                $relations[$name] = [$options, $this->target($widget), WidgetKind::ManyToMany === $widget->kind];
-            }
         }
-        if ([] === $relations) {
-            return;
-        }
-
-        // A relation (or a many-to-many) offers only the current records until the user
-        // searches: the submitted records become choices again, so that the form accepts them.
-        $builder->addEventListener(FormEvents::PRE_SUBMIT, function (PreSubmitEvent $event) use ($relations): void {
-            $data = $event->getData();
-            foreach ($relations as $name => [$options, $target, $multiple]) {
-                $submitted = \is_array($data) ? ($data[$name] ?? null) : null;
-                $ids = array_values(array_filter(\is_array($submitted) ? $submitted : [$submitted], static fn (mixed $id): bool => \is_string($id) && '' !== $id));
-                $options = $multiple
-                    ? $this->linkChoices($target, $ids) + $options
-                    : ['choices' => [] !== $ids ? array_flip($this->lookup->labels($target, $ids)) : []] + $options;
-                $event->getForm()->add($name, ChoiceType::class, $options);
-            }
-        });
     }
 
     /**
      * Every row names its field; the row of a field with a condition is shown and hidden by
      * the gridview-conditional controller of fedale/gridview-bundle, as the deciding field
      * changes. The server empties the field when it does not apply, whatever the browser did.
+     * A cascade's row already carries gridview-dependent-select (see relationControl()).
      *
      * @return array<string, mixed>
      */
     private function rowAttr(FieldDefinitionDto $field, mixed $rowAttr): array
     {
         /** @var array<string, mixed> $rowAttr row_attr is a map of HTML attributes */
-        $rowAttr = (\is_array($rowAttr) ? $rowAttr : []) + ['data-gv-field' => $field->name];
-        $controllers = [];
+        $rowAttr = ['data-gv-field' => $field->name] + (\is_array($rowAttr) ? $rowAttr : []);
         if (null !== $field->condition) {
-            $controllers[] = 'gridview-conditional';
             $rowAttr['data-gridview-conditional-field-value'] = $field->condition->field;
             $rowAttr['data-gridview-conditional-values-value'] = json_encode($field->condition->values, \JSON_THROW_ON_ERROR);
-        }
-        // A cascade: when the field it depends on changes, its choice is emptied and its lookup
-        // URL follows (gridview-dependent-select of fedale/gridview-bundle).
-        $relation = $field->relation();
-        if (null !== $relation?->dependsOn && null !== $relation->dependsVia) {
-            $controllers[] = 'gridview-dependent-select';
-            $rowAttr['data-gridview-dependent-select-field-value'] = $relation->dependsOn;
-            $rowAttr['data-gridview-dependent-select-url-value'] = $this->urls->generate('record_lookup', ['object' => $relation->target]);
-            $rowAttr['data-gridview-dependent-select-param-value'] = \sprintf('filter[%s]', $relation->dependsVia);
-        }
-        if ([] !== $controllers) {
-            $rowAttr['data-controller'] = implode(' ', $controllers);
+            $controllers = \is_string($rowAttr['data-controller'] ?? null) ? $rowAttr['data-controller'] : '';
+            $rowAttr['data-controller'] = trim('gridview-conditional '.$controllers);
         }
 
         return $rowAttr;
     }
 
     /**
-     * The lookup URL of a relation; for a cascade, filtered by the record chosen in the field it
-     * depends on (an empty filter lists nothing until one is chosen).
+     * A relation searched at the lookup URL of its target, through fedale/gridview-bundle:
+     * the form knows the current records and the submitted ones only. A cascade is filtered by
+     * the record chosen in the field it depends on (an empty filter lists nothing until one is
+     * chosen), and gridview puts gridview-dependent-select on its row.
+     *
+     * @return array<string, mixed>
      */
-    private function lookupUrl(FieldDefinitionDto $field, Widget $widget, mixed $parentValue): string
+    private function relationControl(FieldDefinitionDto $field, Widget $widget, mixed $parentValue): array
     {
+        $target = $this->target($widget);
+        $control = [
+            'type' => ControlType::Relation,
+            'url' => $this->urls->generate('record_lookup', ['object' => $target]),
+            'labels' => $this->labelsOf($target),
+        ];
         $relation = $field->relation();
-        $parameters = ['object' => $this->target($widget)];
-        if (null !== $relation?->dependsVia) {
-            $parameters['filter'] = [$relation->dependsVia => \is_string($parentValue) ? $parentValue : ''];
+        if (null !== $relation?->dependsOn && null !== $relation->dependsVia) {
+            $control += [
+                'dependsOn' => $relation->dependsOn,
+                'dependsParam' => \sprintf('filter[%s]', $relation->dependsVia),
+                'dependsValue' => \is_string($parentValue) ? $parentValue : null,
+            ];
         }
 
-        return $this->urls->generate('record_lookup', $parameters);
+        return $control;
+    }
+
+    /**
+     * The labels of some records of an object, keyed by the ids as given: the lookup keys
+     * them in lower case.
+     *
+     * @return \Closure(list<string>): array<array-key, string>
+     */
+    private function labelsOf(string $target): \Closure
+    {
+        return function (array $ids) use ($target): array {
+            $ids = array_values(array_filter($ids, \is_string(...)));
+            $found = $this->lookup->labels($target, $ids);
+            $labels = [];
+            foreach ($ids as $id) {
+                if (isset($found[strtolower($id)])) {
+                    $labels[$id] = $found[strtolower($id)];
+                }
+            }
+
+            return $labels;
+        };
     }
 
     /**
@@ -311,29 +311,13 @@ final class RecordFormFactory
      */
     private function control(FieldDefinitionDto $field, Widget $widget, mixed $value, bool $isNew, mixed $parentValue = null): array
     {
-        $required = ['required' => $field->isRequired];
-
         return match ($widget->kind) {
             WidgetKind::Text, WidgetKind::Textarea, WidgetKind::Email, WidgetKind::Url, WidgetKind::Tel,
             WidgetKind::Integer, WidgetKind::Decimal, WidgetKind::Checkbox, WidgetKind::Date,
             WidgetKind::DateTime, WidgetKind::Choice => $this->controls->field($this->gridviewControl($field, $widget, $isNew)),
             // The label goes on the first input of a password asked twice, so gridview needs it.
             WidgetKind::Password => $this->controls->field($this->gridviewControl($field, $widget, $isNew), $field->label),
-            WidgetKind::Relation => [ChoiceType::class, $required + [
-                'choices' => \is_string($value) ? array_flip($this->lookup->labels($this->target($widget), [$value])) : [],
-                'placeholder' => $field->isRequired ? 'form.choose_record' : '—',
-                'autocomplete' => true,
-                'autocomplete_url' => $this->lookupUrl($field, $widget, $parentValue),
-                // A cascade lists the few records of the chosen parent as soon as it opens.
-                'min_characters' => null === $field->relation()?->dependsOn ? 1 : 0,
-            ]],
-            // The linked records, in the order they were linked; any number of them.
-            WidgetKind::ManyToMany => [ChoiceType::class, $required + $this->linkChoices($this->target($widget), \is_array($value) ? array_values(array_filter($value, \is_string(...))) : []) + [
-                'multiple' => true,
-                'autocomplete' => true,
-                'autocomplete_url' => $this->lookupUrl($field, $widget, null),
-                'min_characters' => 1,
-            ]],
+            WidgetKind::Relation, WidgetKind::ManyToMany => $this->controls->field($this->gridviewControl($field, $widget, $isNew, $parentValue)),
             WidgetKind::File => $this->file($field, $widget, $value),
         };
     }
@@ -346,7 +330,7 @@ final class RecordFormFactory
      *
      * @return array<string, mixed>
      */
-    private function gridviewControl(FieldDefinitionDto $field, Widget $widget, bool $isNew): array
+    private function gridviewControl(FieldDefinitionDto $field, Widget $widget, bool $isNew, mixed $parentValue = null): array
     {
         $maxLength = \is_int($widget->options['maxLength'] ?? null) ? $widget->options['maxLength'] : null;
         $min = \is_int($widget->options['min'] ?? null) ? $widget->options['min'] : null;
@@ -374,6 +358,9 @@ final class RecordFormFactory
             // stored one, so only a new record needs it. Asked twice, the second input is a
             // form-only field, not stored.
             WidgetKind::Password => $this->passwordControl($field, $widget, $isNew),
+            WidgetKind::Relation => $this->relationControl($field, $widget, $parentValue) + ['options' => ['placeholder' => $field->isRequired ? 'form.choose_record' : '—']],
+            // The linked records, in the order they were linked; any number of them.
+            WidgetKind::ManyToMany => $this->relationControl($field, $widget, null) + ['options' => ['multiple' => true]],
             default => throw new \LogicException(\sprintf('Widget "%s" has no gridview control of its own yet.', $widget->kind->value)),
         } + ['required' => $field->isRequired, 'validate' => false];
     }
@@ -496,25 +483,6 @@ final class RecordFormFactory
         }
 
         return JunctionAccess::Rows;
-    }
-
-    /**
-     * The choices of a many-to-many control: the linked ids, as the record holds them, named by
-     * the labels of their records. Ids, not labels, are the keys: two tags may share a label, and
-     * both must stay chosen.
-     *
-     * @param list<string> $ids
-     *
-     * @return array{choices: list<string>, choice_label: \Closure(string): string}
-     */
-    private function linkChoices(string $target, array $ids): array
-    {
-        $labels = [] !== $ids ? $this->lookup->labels($target, $ids) : [];
-
-        return [
-            'choices' => array_values(array_filter($ids, static fn (string $id): bool => isset($labels[strtolower($id)]))),
-            'choice_label' => static fn (string $id): string => $labels[strtolower($id)] ?? RecordLabels::fallback($id),
-        ];
     }
 
     private function target(Widget $widget): string

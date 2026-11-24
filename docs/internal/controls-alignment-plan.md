@@ -1,7 +1,8 @@
 # Plan: the record form controls are gridview's controls
 
 Status: **phases 0 to 2 done and merged** (2026-11-24); gridview released as v1.4.0 (phase 1)
-and v1.5.0 (phase 2).
+and v1.5.0 (phase 2). **Phase 3 done on branches** (`remote_relation` in both repositories),
+waiting for the gridview release.
 Written on 2026-11-23, decisions taken the same day.
 
 - Phase 0: `GoldenRecordFormsTest`, stored copies in `tests/Fixtures/golden-forms/`.
@@ -11,9 +12,16 @@ Written on 2026-11-23, decisions taken the same day.
 - Phase 2: gridview's `password` takes `confirm`, `strengthMeter`, `revealToggle` and `minLength`
   (a `Length` constraint when the form validates); `RecordFormFactory::password()` is gone. The
   golden forms are unchanged. metadata-driven requires gridview `^1.5`.
+- Phase 3: gridview's `relation` takes a `url` and a `labels` callable (a `ChoiceType` with
+  `RemoteChoiceLoader`, UX Autocomplete a `suggest`), and a cascade with `dependsOn`,
+  `dependsParam` and `dependsValue`. `relation` and plain `many_to_many` go through it; the
+  `PRE_SUBMIT` listener, `linkChoices()`, `lookupUrl()` and `rowAttr()`'s cascade part are gone.
+  The golden forms are unchanged. metadata-driven still requires `^1.5`: raise it once released.
 - Not as planned: the date controls keep Symfony's default `widget` in gridview (changing it would
   change every host on Symfony 6.4); metadata-driven passes `single_text` itself. The control
-  settings sit beside `options`, not inside it (NumberType has a `scale` option of its own).
+  settings sit beside `options`, not inside it (NumberType has a `scale` option of its own); so do
+  the remote relation's `url`, `labels` and `depends*` (section 3 shows them in `options`). The
+  cascade also takes `dependsValue`, the current value, so the search starts filtered.
 
 Decided by the user on 2026-11-23: the form controls of metadata-driven are to be **exactly** the
 controls of `fedale/gridview-bundle`, its `ControlType` enum and `ControlTypeRegistry`. A control
