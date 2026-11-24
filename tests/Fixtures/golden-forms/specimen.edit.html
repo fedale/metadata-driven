@@ -1,0 +1,167 @@
+<form name="record" method="post" class="md-sheet" novalidate="novalidate" data-controller="machine-names" enctype="multipart/form-data">
+<header class="md-sheet__header">
+<div>
+<p class="md-sheet__crumb">
+<a href="/o/specimen">Specimens</a>
+</p>
+<h1 class="md-sheet__title">Edit specimen</h1>
+</div>
+<div class="md-sheet__actions">
+<button type="button" class="gv-btn md-sheet__machine-names" aria-pressed="false" data-machine-names-target="toggle" data-action="machine-names#toggle">Machine names</button>
+<a class="gv-btn" href="/o/specimen">Cancel</a>
+<button type="submit" class="gv-btn gv-btn-primary">Save</button>
+</div>
+</header>
+<div class="md-sheet__parts md-sheet__parts--single">
+<section class="md-card">
+<div data-gv-field="title" class="gv-form-row">
+<label class="gv-form-label required" for="record_title">Title</label>
+<input type="text" id="record_title" name="record[title]" required="required" maxlength="40" class="gv-form-control" value="Blue morpho">
+</div>
+<div data-gv-field="notes" class="gv-form-row">
+<label class="gv-form-label" for="record_notes">Notes</label>
+<textarea id="record_notes" name="record[notes]" maxlength="255" class="gv-form-control">Seen twice.
+Both in the morning.</textarea>
+</div>
+<div data-gv-field="code" class="gv-form-row">
+<label class="gv-form-label" for="record_code">Code</label>
+<input type="text" id="record_code" name="record[code]" maxlength="255" class="gv-form-control">
+</div>
+<div data-gv-field="count" class="gv-form-row">
+<label class="gv-form-label" for="record_count">Count</label>
+<input type="number" id="record_count" name="record[count]" min="1" max="10" class="gv-form-control" value="3">
+</div>
+<div data-gv-field="price" class="gv-form-row">
+<label class="gv-form-label" for="record_price">Price</label>
+<input type="number" id="record_price" name="record[price]" step="0.01" class="gv-form-control" value="12.5">
+</div>
+<div data-gv-field="active" class="gv-form-row gv-form-row--check">
+<label class="gv-form-label" for="record_active">Active</label>
+<input type="checkbox" id="record_active" name="record[active]" value="1" checked>
+</div>
+<div data-gv-field="featured" class="gv-form-row gv-form-row--switch">
+<label class="gv-form-label" for="record_featured">Featured</label>
+<input type="checkbox" id="record_featured" name="record[featured]" class="gv-switch" role="switch" value="1">
+</div>
+<div data-gv-field="born_on" class="gv-form-row">
+<label class="gv-form-label" for="record_born_on">Born on</label>
+<input type="date" id="record_born_on" name="record[born_on]" class="gv-form-control" value="2026-05-01">
+</div>
+<div data-gv-field="seen_at" class="gv-form-row">
+<label class="gv-form-label" for="record_seen_at">Seen at</label>
+<input type="datetime-local" id="record_seen_at" name="record[seen_at]" class="gv-form-control" value="2026-05-02T09:30">
+</div>
+<div data-gv-field="email" class="gv-form-row">
+<label class="gv-form-label" for="record_email">Email</label>
+<input type="email" id="record_email" name="record[email]" maxlength="254" class="gv-form-control" value="curator@example.org">
+</div>
+<div data-gv-field="phone" class="gv-form-row">
+<label class="gv-form-label" for="record_phone">Phone</label>
+<input type="tel" id="record_phone" name="record[phone]" maxlength="30" class="gv-form-control" value="+39 02 1234 5678">
+</div>
+<div data-gv-field="site" class="gv-form-row">
+<label class="gv-form-label" for="record_site">Site</label>
+<input type="url" id="record_site" name="record[site]" maxlength="2048" class="gv-form-control" value="https://example.org/morpho">
+</div>
+<div data-gv-field="kind" class="gv-form-row">
+<label class="gv-form-label required" for="record_kind">Kind</label>
+<select id="record_kind" name="record[kind]" required="required" class="gv-form-control">
+<option value="" hidden="hidden">Choose an option</option>
+<option value="course" selected>Course</option>
+<option value="language">Language</option>
+</select>
+</div>
+<div data-gv-field="hours" data-gridview-conditional-field-value="kind" data-gridview-conditional-values-value='["course"]' data-controller="gridview-conditional" class="gv-form-row">
+<label class="gv-form-label" for="record_hours">Hours</label>
+<input type="number" id="record_hours" name="record[hours]" class="gv-form-control" value="12">
+</div>
+<div data-gv-field="size" class="gv-form-row">
+<label class="gv-form-label">Size</label>
+<div id="record_size" class="gv-segmented gv-choices">
+<input type="radio" id="record_size_0" name="record[size]" value="small">
+<label class="gv-form-label" for="record_size_0">Small</label>
+<input type="radio" id="record_size_1" name="record[size]" value="large" checked>
+<label class="gv-form-label" for="record_size_1">Large</label>
+</div>
+</div>
+<div data-gv-field="state" class="gv-form-row">
+<label class="gv-form-label" for="record_state">State</label>
+<select id="record_state" name="record[state]" disabled aria-describedby="record_state_help" class="gv-form-control">
+<option value="">—</option>
+<option value="draft" selected>Draft</option>
+<option value="published">Published</option>
+</select>
+<div id="record_state_help" class="gv-form-help help-text">Changed by its transitions only: the buttons at the top.</div>
+</div>
+<div class="gv-form-row">
+<label class="gv-form-label" for="record_secret_first">Secret</label>
+<input type="password" id="record_secret_first" name="record[secret][first]" autocomplete="new-password" data-action="gridview-password-strength#update" data-gridview-password-strength-min-length-value="10" data-controller="gridview-password-strength gridview-password-reveal" aria-describedby="record_secret_first_help" class="gv-form-control">
+<div id="record_secret_first_help" class="gv-form-help help-text">Leave empty to keep the current password.</div>
+</div>
+<div class="gv-form-row">
+<label class="gv-form-label" for="record_secret_second">Repeat secret</label>
+<input type="password" id="record_secret_second" name="record[secret][second]" autocomplete="new-password" class="gv-form-control">
+</div>
+<div data-gv-field="pin" class="gv-form-row">
+<label class="gv-form-label" for="record_pin">PIN</label>
+<input type="password" id="record_pin" name="record[pin]" autocomplete="new-password" aria-describedby="record_pin_help" class="gv-form-control">
+<div id="record_pin_help" class="gv-form-help help-text">Leave empty to keep the current password.</div>
+</div>
+<div data-gv-field="region" class="gv-form-row">
+<label class="gv-form-label" for="record_region">Region</label>
+<select id="record_region" name="record[region]" data-controller="symfony--ux-autocomplete--autocomplete" data-symfony--ux-autocomplete--autocomplete-url-value="/o/region/lookup" data-symfony--ux-autocomplete--autocomplete-max-results-value="10" data-symfony--ux-autocomplete--autocomplete-min-characters-value="1" data-symfony--ux-autocomplete--autocomplete-loading-more-text-value="Loading more results..." data-symfony--ux-autocomplete--autocomplete-no-results-found-text-value="No results found" data-symfony--ux-autocomplete--autocomplete-no-more-results-text-value="No more results" data-symfony--ux-autocomplete--autocomplete-create-option-text-value="Add %placeholder%..." data-symfony--ux-autocomplete--autocomplete-preload-value="focus" class="gv-form-control">
+<option value="">—</option>
+<option value="{uuid}" selected>Lombardia</option>
+</select>
+</div>
+<div data-gv-field="province" data-gridview-dependent-select-field-value="region" data-gridview-dependent-select-url-value="/o/province/lookup" data-gridview-dependent-select-param-value="filter[region]" data-controller="gridview-dependent-select" class="gv-form-row">
+<label class="gv-form-label" for="record_province">Province</label>
+<select id="record_province" name="record[province]" data-controller="symfony--ux-autocomplete--autocomplete" data-symfony--ux-autocomplete--autocomplete-url-value="/o/province/lookup?filter%5Bregion%5D={uuid}" data-symfony--ux-autocomplete--autocomplete-max-results-value="10" data-symfony--ux-autocomplete--autocomplete-loading-more-text-value="Loading more results..." data-symfony--ux-autocomplete--autocomplete-no-results-found-text-value="No results found" data-symfony--ux-autocomplete--autocomplete-no-more-results-text-value="No more results" data-symfony--ux-autocomplete--autocomplete-create-option-text-value="Add %placeholder%..." data-symfony--ux-autocomplete--autocomplete-preload-value="focus" class="gv-form-control">
+<option value="">—</option>
+<option value="{uuid}" selected>Milano</option>
+</select>
+</div>
+<div data-gv-field="tags" class="gv-form-row">
+<label class="gv-form-label" for="record_tags">Tags</label>
+<select id="record_tags" name="record[tags][]" data-controller="symfony--ux-autocomplete--autocomplete" data-symfony--ux-autocomplete--autocomplete-url-value="/o/tag/lookup" data-symfony--ux-autocomplete--autocomplete-max-results-value="10" data-symfony--ux-autocomplete--autocomplete-min-characters-value="1" data-symfony--ux-autocomplete--autocomplete-loading-more-text-value="Loading more results..." data-symfony--ux-autocomplete--autocomplete-no-results-found-text-value="No results found" data-symfony--ux-autocomplete--autocomplete-no-more-results-text-value="No more results" data-symfony--ux-autocomplete--autocomplete-create-option-text-value="Add %placeholder%..." data-symfony--ux-autocomplete--autocomplete-preload-value="focus" class="gv-form-control" multiple>
+<option value="{uuid}" selected>Rare</option>
+</select>
+</div>
+<div data-gv-field="labels" class="gv-form-row">
+<label class="gv-form-label">Labels</label>
+<div class="gv-collection md-junction-rows" data-controller="gridview-collection" data-gridview-collection-prototype-value='&lt;fieldset class="gv-collection__row gv-collection__row--inline" data-gridview-collection-target="row"&gt;
+        &lt;div class="gv-collection__fields"&gt;&lt;div id="record_labels___labels___values"&gt;&lt;div data-gv-field="label" class="gv-form-row"&gt;&lt;label class="gv-form-label" for="record_labels___labels___values_label"&gt;Label&lt;/label&gt;&lt;select id="record_labels___labels___values_label" name="record[labels][__labels__][values][label]" data-controller="symfony--ux-autocomplete--autocomplete" data-symfony--ux-autocomplete--autocomplete-url-value="/o/label/lookup" data-symfony--ux-autocomplete--autocomplete-max-results-value="10" data-symfony--ux-autocomplete--autocomplete-min-characters-value="1" data-symfony--ux-autocomplete--autocomplete-loading-more-text-value="Loading more results..." data-symfony--ux-autocomplete--autocomplete-no-results-found-text-value="No results found" data-symfony--ux-autocomplete--autocomplete-no-more-results-text-value="No more results" data-symfony--ux-autocomplete--autocomplete-create-option-text-value="Add %placeholder%..." data-symfony--ux-autocomplete--autocomplete-preload-value="focus" class="gv-form-control"&gt;&lt;option value=""&gt;Choose a record&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;&lt;div data-gv-field="note" class="gv-form-row"&gt;&lt;label class="gv-form-label" for="record_labels___labels___values_note"&gt;Note&lt;/label&gt;&lt;input type="text" id="record_labels___labels___values_note" name="record[labels][__labels__][values][note]" maxlength="255" placeholder="Note" class="gv-form-control" /&gt;&lt;/div&gt;&lt;/div&gt;&lt;input type="hidden" id="record_labels___labels___id" name="record[labels][__labels__][id]" /&gt;&lt;/div&gt;&lt;button type="button" class="gv-btn gv-collection__remove" data-action="gridview-collection#remove" aria-label="Remove"&gt;×&lt;/button&gt;&lt;/fieldset&gt;' data-gridview-collection-prototype-name-value="__labels__" data-gridview-collection-index-value="0" data-gridview-collection-min-value="0" data-gridview-collection-max-value="3">
+<div class="gv-collection__rows" data-gridview-collection-target="list">
+</div>
+<button type="button" class="gv-btn gv-collection__add" data-gridview-collection-target="add" data-action="gridview-collection#add">
+                + Labels
+            </button>
+</div>
+</div>
+<div data-gv-field="manual" class="gv-form-row">
+<label for="record_manual_upload" class="gv-form-label">Manual</label>
+<div id="record_manual" class="md-file" aria-describedby="record_manual_help">
+<input type="file" id="record_manual_upload" name="record[manual][upload]" accept="application/pdf" class="gv-form-control">
+</div>
+<div id="record_manual_help" class="gv-form-help help-text">Up to 2 MB.</div>
+</div>
+<div data-gv-field="photos" class="gv-form-row">
+<label for="record_photos_upload" class="gv-form-label">Photos</label>
+<div id="record_photos" class="md-file-list" data-controller="file-list" aria-describedby="record_photos_help">
+<input type="hidden" id="record_photos_kept" name="record[photos][kept]" data-file-list-target="kept">
+<input type="file" id="record_photos_upload" name="record[photos][upload][]" accept="image/*" multiple class="gv-form-control">
+</div>
+<div id="record_photos_help" class="gv-form-help help-text">Up to 4 files, 10 MB each; new files go to the end of the list.</div>
+</div>
+<input type="hidden" id="record__token" name="record[_token]" data-controller="csrf-protection" value="{token}">
+</section>
+<footer class="md-sheet__footer">
+<p class="gv-required-note">
+<span class="gv-required-note__mark">*</span> Required field</p>
+<div class="md-sheet__actions">
+<a class="gv-btn" href="/o/specimen">Cancel</a>
+<button type="submit" class="gv-btn gv-btn-primary">Save</button>
+</div>
+</footer>
+</div>
+</form>
