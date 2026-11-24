@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e1e66977e6c62c8954829e6362e4c341",
+    "content-hash": "7f4f3b99d0aaefe1cf944a3a3cc44f58",
     "packages": [
         {
             "name": "composer/semver",
@@ -1333,16 +1333,16 @@
         },
         {
             "name": "fedale/gridview-bundle",
-            "version": "v1.3.0",
+            "version": "v1.4.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/fedale/gridview-bundle.git",
-                "reference": "d3011abc2eb175cf5feac38ba3bc2946cd241589"
+                "reference": "8ea2b44f70da078720879595296fec7f8ef8ab5d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/fedale/gridview-bundle/zipball/d3011abc2eb175cf5feac38ba3bc2946cd241589",
-                "reference": "d3011abc2eb175cf5feac38ba3bc2946cd241589",
+                "url": "https://api.github.com/repos/fedale/gridview-bundle/zipball/8ea2b44f70da078720879595296fec7f8ef8ab5d",
+                "reference": "8ea2b44f70da078720879595296fec7f8ef8ab5d",
                 "shasum": ""
             },
             "require": {
@@ -1365,7 +1365,8 @@
                 "symfony/console": "^6.4 || ^7.0 || ^8.0",
                 "symfony/http-client": "^6.4 || ^7.0 || ^8.0",
                 "symfony/intl": "^8.1",
-                "symfony/maker-bundle": "^1.50"
+                "symfony/maker-bundle": "^1.50",
+                "symfony/validator": "^6.4 || ^7.0 || ^8.0"
             },
             "suggest": {
                 "ext-intl": "Enables full ICU-based locale-aware number/date/currency formatting; a reduced fallback is used without it.",
@@ -1373,7 +1374,8 @@
                 "symfony/http-client": "Enables the built-in JsonDataProvider for grids backed by a JSON-over-HTTP endpoint instead of Doctrine",
                 "symfony/intl": "Enables localized names for the country/language/locale/currency column types; the bare ISO code is shown without it.",
                 "symfony/maker-bundle": "Enables the make:gridview:crud scaffolding command. Install it in your app with: composer require --dev symfony/maker-bundle",
-                "symfony/mercure-bundle": "Enables real-time grid updates (signal + auto-refresh) over Mercure"
+                "symfony/mercure-bundle": "Enables real-time grid updates (signal + auto-refresh) over Mercure",
+                "symfony/validator": "Validates the controls server-side: required controls add NotBlank, unique ones UniqueEntity"
             },
             "type": "symfony-bundle",
             "extra": {
@@ -1409,9 +1411,9 @@
             ],
             "support": {
                 "issues": "https://github.com/fedale/gridview-bundle/issues",
-                "source": "https://github.com/fedale/gridview-bundle/tree/v1.3.0"
+                "source": "https://github.com/fedale/gridview-bundle/tree/v1.4.0"
             },
-            "time": "2026-11-02T05:56:09+00:00"
+            "time": "2026-11-24T09:00:44+00:00"
         },
         {
             "name": "fedale/metadata-driven-package-format",
