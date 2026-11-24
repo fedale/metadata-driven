@@ -248,7 +248,7 @@ final class RecordGridFactory
         $value = $row[$field->name] ?? null;
 
         return match (true) {
-            WidgetKind::ManyToMany === $widget->kind, WidgetKind::File === $widget->kind => self::linkedLabels($field->name, $row),
+            WidgetKind::Relation === $widget->kind && $widget->isMultiple(), WidgetKind::Media === $widget->kind => self::linkedLabels($field->name, $row),
             null === $value => '',
             WidgetKind::Relation === $widget->kind => \is_string($label = $row[$field->name.RecordGridSourceInterface::LABEL_SUFFIX] ?? null) ? $label : (\is_string($value) ? RecordLabels::fallback($value) : ''),
             WidgetKind::Choice === $widget->kind && \is_scalar($value) => $widget->choices()[(string) $value] ?? (string) $value,
@@ -282,22 +282,22 @@ final class RecordGridFactory
             WidgetKind::Url => UrlColumn::new($name)->filterText(),
             WidgetKind::Tel => TelColumn::new($name)->filterText(),
             WidgetKind::Password => throw new \LogicException(\sprintf('Field "%s" is write-only: it has no grid column.', $name)),
-            // Shows the labels of the linked records; filters on their ids (any of them), no sort.
-            WidgetKind::ManyToMany => $this->filterRecords(
-                TextColumn::new($name)->value(static fn (array $row): string => self::linkedLabels($name, $row)),
-                $widget,
-            ),
             WidgetKind::Integer => NumberColumn::new($name)->decimals(0)->filterNumber(),
-            WidgetKind::Decimal => NumberColumn::new($name)
+            WidgetKind::Number => NumberColumn::new($name)
                 ->decimals(\is_int($widget->options['scale'] ?? null) ? $widget->options['scale'] : 2)
                 ->filterNumber(),
-            WidgetKind::Checkbox => BooleanColumn::new($name)->filterBoolean(),
+            WidgetKind::Boolean => BooleanColumn::new($name)->filterBoolean(),
             WidgetKind::Date => DateColumn::new($name)->filterDate(),
             WidgetKind::DateTime => DatetimeColumn::new($name)->filterDate(),
             // Shows the option label, filters and sorts on the stored value.
             WidgetKind::Choice => SelectColumn::new($name)->choices(array_flip($widget->choices())),
-            // Shows the label of the related record; filters on its id, sorts on its label.
-            WidgetKind::Relation => $this->filterRecords(
+            // A many-to-many link shows the labels of the linked records and filters on their ids
+            // (any of them), no sort.
+            WidgetKind::Relation => $widget->isMultiple() ? $this->filterRecords(
+                TextColumn::new($name)->value(static fn (array $row): string => self::linkedLabels($name, $row)),
+                $widget,
+            ) : $this->filterRecords(
+                // One record: shows its label, filters on its id, sorts on its label.
                 TextColumn::new($name)->value(static function (array $row) use ($name): string {
                     $label = $row[$name.RecordGridSourceInterface::LABEL_SUFFIX] ?? null;
                     $id = $row[$name] ?? null;
@@ -307,7 +307,7 @@ final class RecordGridFactory
                 $widget,
             ),
             // A link to each file, with a thumbnail for an image; filters on whether there is one.
-            WidgetKind::File => TextColumn::new($name)
+            WidgetKind::Media => TextColumn::new($name)
                 ->value(fn (array $row): Markup => new Markup($this->fileCell->render($name, $row), 'UTF-8'))
                 ->filter(FilterType::Boolean),
         };

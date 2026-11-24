@@ -236,7 +236,7 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
 
     private function isFile(FieldDefinitionDto $field): bool
     {
-        return WidgetKind::File === $this->fieldTypes->get($field->type)->widget($field->settings)->kind;
+        return WidgetKind::Media === $this->fieldTypes->get($field->type)->widget($field->settings)->kind;
     }
 
     /**

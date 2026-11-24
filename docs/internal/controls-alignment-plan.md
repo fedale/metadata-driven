@@ -2,6 +2,7 @@
 
 Status: **phases 0 to 5 done and merged** (2026-11-24); gridview released as v1.4.0 (phase 1),
 v1.5.0 (phase 2), v1.6.0 (phase 3), v1.7.0 (phase 4) and v1.8.0 (phase 5).
+**Phase 6 done on a branch** (`widget_kinds`, metadata-driven only: nothing to release).
 Written on 2026-11-23, decisions taken the same day.
 
 - Phase 0: `GoldenRecordFormsTest`, stored copies in `tests/Fixtures/golden-forms/`.
@@ -31,6 +32,13 @@ Written on 2026-11-23, decisions taken the same day.
   The golden forms change on purpose: the container gains its `id`, the prototype loses a line
   break.
   metadata-driven requires gridview `^1.8`.
+- Phase 6: the `WidgetKind` values are gridview's control names (`checkbox` → `boolean`,
+  `decimal` → `number`, `file` → `media`), and the cases are renamed to match (`Boolean`, `Number`,
+  `Media`). A backed enum can't hold two cases with one value, so `ManyToMany` is gone: a
+  many-to-many field asks for `Relation` with option `multiple` (`Widget::isMultiple()`).
+  `RecordFormFactory::gridviewControl()` takes the control type from the kind
+  (`ControlType::from()`), and `WidgetKindTest` fails the build for a kind gridview lacks. The
+  golden forms are unchanged.
 - Not as planned: the date controls keep Symfony's default `widget` in gridview (changing it would
   change every host on Symfony 6.4); metadata-driven passes `single_text` itself. The control
   settings sit beside `options`, not inside it (NumberType has a `scale` option of its own); so do

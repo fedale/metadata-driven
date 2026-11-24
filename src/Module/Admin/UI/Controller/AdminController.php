@@ -724,7 +724,7 @@ final class AdminController extends AbstractController
             $widget = $this->fieldTypes->get($candidate->type)->widget($candidate->settings);
             $values = match ($widget->kind) {
                 WidgetKind::Choice => array_map(strval(...), array_keys($widget->choices())),
-                WidgetKind::Checkbox => ['true', 'false'],
+                WidgetKind::Boolean => ['true', 'false'],
                 default => null,
             };
             if (null !== $values) {

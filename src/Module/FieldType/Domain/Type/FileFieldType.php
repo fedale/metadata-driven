@@ -166,7 +166,7 @@ final class FileFieldType extends AbstractFieldType
         $types = self::types(self::nullableStringSetting($settings, 'accept') ?? '');
         $image = self::boolSetting($settings, 'image');
 
-        return new Widget(WidgetKind::File, [
+        return new Widget(WidgetKind::Media, [
             // A hint for the browser's file picker; the server checks the content.
             'accept' => implode(',', [] !== $types ? $types : ($image ? ['image/*'] : [])),
             'maxSize' => self::intSetting($settings, 'maxSize'),

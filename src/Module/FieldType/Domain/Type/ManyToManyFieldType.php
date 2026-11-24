@@ -115,7 +115,7 @@ final class ManyToManyFieldType extends AbstractFieldType
 
     public function widget(array $settings): Widget
     {
-        return new Widget(WidgetKind::ManyToMany, ['target' => ManyToManySettings::fromSettings($settings)->target]);
+        return new Widget(WidgetKind::Relation, ['target' => ManyToManySettings::fromSettings($settings)->target, 'multiple' => true]);
     }
 
     public function isSortable(): bool

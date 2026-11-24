@@ -36,7 +36,7 @@ final class DbalFileReferences implements FileReferences
                         $this->table->fileListTable($object, $field),
                         $this->table->quote('target_id'),
                     );
-                } elseif (WidgetKind::File === $this->fieldTypes->get($field->type)->widget($field->settings)->kind) {
+                } elseif (WidgetKind::Media === $this->fieldTypes->get($field->type)->widget($field->settings)->kind) {
                     $conditions[] = \sprintf('%s = :file', $this->table->column($field->columnName));
                 }
             }

@@ -41,7 +41,7 @@ final class FileFieldTypeTest extends TestCase
         self::assertSame([], $type->validateSettings(['accept' => 'application/pdf, IMAGE/*', 'maxSize' => 5]));
         self::assertEquals(new ColumnSpec(ColumnType::Guid, referencesCoreTable: 'file'), $type->columnSpec($type->defaultSettings()));
         self::assertEquals(
-            new Widget(WidgetKind::File, ['accept' => 'application/pdf,image/*', 'maxSize' => 5, 'image' => false, 'multiple' => false, 'max' => null]),
+            new Widget(WidgetKind::Media, ['accept' => 'application/pdf,image/*', 'maxSize' => 5, 'image' => false, 'multiple' => false, 'max' => null]),
             $type->widget(['accept' => 'application/pdf, IMAGE/*', 'maxSize' => 5] + $type->defaultSettings()),
         );
         // An image field without types offers images to the browser's file picker.

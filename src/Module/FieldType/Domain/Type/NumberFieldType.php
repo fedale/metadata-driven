@@ -137,6 +137,6 @@ final class NumberFieldType extends AbstractFieldType
 
         return 0 === $decimals
             ? new Widget(WidgetKind::Integer, $bounds)
-            : new Widget(WidgetKind::Decimal, ['scale' => $decimals] + $bounds);
+            : new Widget(WidgetKind::Number, ['scale' => $decimals] + $bounds);
     }
 }

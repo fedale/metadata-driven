@@ -99,6 +99,6 @@ final class BooleanFieldType extends AbstractFieldType
 
     public function widget(array $settings): Widget
     {
-        return new Widget(WidgetKind::Checkbox, ['display' => $settings['display'] ?? 'checkbox']);
+        return new Widget(WidgetKind::Boolean, ['display' => $settings['display'] ?? 'checkbox']);
     }
 }

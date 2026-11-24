@@ -104,10 +104,10 @@ final class RecordFormFactory
                 $options = ['disabled' => true, 'required' => false, 'help' => 'form.changed_by_transitions'] + $options;
             }
             // A checkbox required by the form must be checked (by its object, only set).
-            if ($requiredHere && WidgetKind::Checkbox === $widget->kind) {
+            if ($requiredHere && WidgetKind::Boolean === $widget->kind) {
                 $options['required'] = true;
             }
-            if ($placeholders && !\in_array($widget->kind, [WidgetKind::Choice, WidgetKind::Relation, WidgetKind::ManyToMany, WidgetKind::Checkbox, WidgetKind::File], true)) {
+            if ($placeholders && !\in_array($widget->kind, [WidgetKind::Choice, WidgetKind::Relation, WidgetKind::Boolean, WidgetKind::Media], true)) {
                 $options['attr'] = (\is_array($options['attr'] ?? null) ? $options['attr'] : []) + ['placeholder' => $field->label.($field->isRequired ? ' *' : '')];
             }
             $options += ['label' => $field->label];
@@ -118,7 +118,7 @@ final class RecordFormFactory
                 continue;
             }
             $builder->add($name, $type, $options);
-            if (WidgetKind::File === $widget->kind) {
+            if (WidgetKind::Media === $widget->kind) {
                 self::fileUploads($builder->get($name));
             }
         }
@@ -209,13 +209,13 @@ final class RecordFormFactory
         $definition = new FieldDefinitionDto('', $field->name, $field->name, $field->type, $field->label, $field->isRequired, false, $field->settings, 0, false);
         $widget = $this->fieldTypes->get($field->type)->widget($field->settings);
         [$type, $options] = $this->control($definition, $widget, null, true);
-        if (WidgetKind::Checkbox === $widget->kind) {
+        if (WidgetKind::Boolean === $widget->kind) {
             $options['required'] = $field->isRequired;
         }
         // Named like a record field's row (data-gv-field), but apart: no condition or cascade
         // may take a service field for a field of the record.
         $builder->add($field->name, $type, $options + ['label' => $field->label, 'row_attr' => ['data-md-name' => $field->name]]);
-        if (WidgetKind::File === $widget->kind) {
+        if (WidgetKind::Media === $widget->kind) {
             self::fileUploads($builder->get($field->name));
         }
     }
@@ -324,12 +324,12 @@ final class RecordFormFactory
     {
         return match ($widget->kind) {
             WidgetKind::Text, WidgetKind::Textarea, WidgetKind::Email, WidgetKind::Url, WidgetKind::Tel,
-            WidgetKind::Integer, WidgetKind::Decimal, WidgetKind::Checkbox, WidgetKind::Date,
+            WidgetKind::Integer, WidgetKind::Number, WidgetKind::Boolean, WidgetKind::Date,
             WidgetKind::DateTime, WidgetKind::Choice => $this->controls->field($this->gridviewControl($field, $widget, $isNew)),
             // The label goes on the first input of a password asked twice, so gridview needs it.
             WidgetKind::Password => $this->controls->field($this->gridviewControl($field, $widget, $isNew), $field->label),
-            WidgetKind::Relation, WidgetKind::ManyToMany => $this->controls->field($this->gridviewControl($field, $widget, $isNew, $parentValue)),
-            WidgetKind::File => $this->controls->field($this->fileControl($field, $widget, $value)),
+            WidgetKind::Relation => $this->controls->field($this->gridviewControl($field, $widget, $isNew, $parentValue)),
+            WidgetKind::Media => $this->controls->field($this->fileControl($field, $widget, $value)),
         };
     }
 
@@ -350,30 +350,32 @@ final class RecordFormFactory
         $radio = 'radio' === ($widget->options['display'] ?? null);
 
         return match ($widget->kind) {
-            WidgetKind::Text => ['type' => ControlType::Text, 'maxLength' => $maxLength],
-            WidgetKind::Textarea => ['type' => ControlType::Textarea, 'maxLength' => $maxLength],
-            WidgetKind::Email => ['type' => ControlType::Email, 'maxLength' => $maxLength],
-            WidgetKind::Url => ['type' => ControlType::Url, 'maxLength' => $maxLength, 'options' => ['default_protocol' => null]],
-            WidgetKind::Tel => ['type' => ControlType::Tel, 'maxLength' => $maxLength],
-            WidgetKind::Integer => ['type' => ControlType::Integer, 'min' => $min, 'max' => $max],
+            WidgetKind::Text, WidgetKind::Textarea, WidgetKind::Email, WidgetKind::Tel => ['maxLength' => $maxLength],
+            WidgetKind::Url => ['maxLength' => $maxLength, 'options' => ['default_protocol' => null]],
+            WidgetKind::Integer => ['min' => $min, 'max' => $max],
             // The scale is the input's step: the decimals beyond it are reported, not rounded.
-            WidgetKind::Decimal => ['type' => ControlType::Number, 'min' => $min, 'max' => $max, 'scale' => \is_int($widget->options['scale'] ?? null) ? $widget->options['scale'] : 0, 'options' => ['input' => 'string', 'html5' => true]],
+            WidgetKind::Number => ['min' => $min, 'max' => $max, 'scale' => \is_int($widget->options['scale'] ?? null) ? $widget->options['scale'] : 0, 'options' => ['input' => 'string', 'html5' => true]],
             // A required checkbox would have to be checked: "required" only means "not null" here.
-            WidgetKind::Checkbox => ['type' => ControlType::Boolean, 'required' => false, 'display' => 'switch' === ($widget->options['display'] ?? null) ? BooleanDisplay::Switch : BooleanDisplay::Checkbox],
-            WidgetKind::Date => ['type' => ControlType::Date, 'options' => $dates],
-            WidgetKind::DateTime => ['type' => ControlType::Datetime, 'options' => $dates],
+            WidgetKind::Boolean => ['required' => false, 'display' => 'switch' === ($widget->options['display'] ?? null) ? BooleanDisplay::Switch : BooleanDisplay::Checkbox],
+            WidgetKind::Date, WidgetKind::DateTime => ['options' => $dates],
             // The "radio" display of a select is drawn as buttons side by side; an empty group
             // already means "no value", so only the dropdown has a placeholder.
-            WidgetKind::Choice => ['type' => ControlType::Choice, 'display' => $radio ? ChoiceDisplay::Segmented : ChoiceDisplay::Dropdown, 'options' => ['choices' => array_flip($widget->choices())] + ($radio ? [] : ['placeholder' => $field->isRequired ? 'form.choose_option' : '—'])],
+            WidgetKind::Choice => ['display' => $radio ? ChoiceDisplay::Segmented : ChoiceDisplay::Dropdown, 'options' => ['choices' => array_flip($widget->choices())] + ($radio ? [] : ['placeholder' => $field->isRequired ? 'form.choose_option' : '—'])],
             // A password is never prefilled: left empty on an existing record, it keeps the
             // stored one, so only a new record needs it. Asked twice, the second input is a
             // form-only field, not stored.
             WidgetKind::Password => $this->passwordControl($field, $widget, $isNew),
-            WidgetKind::Relation => $this->relationControl($field, $widget, $parentValue) + ['options' => ['placeholder' => $field->isRequired ? 'form.choose_record' : '—']],
-            // The linked records, in the order they were linked; any number of them.
-            WidgetKind::ManyToMany => $this->relationControl($field, $widget, null) + ['options' => ['multiple' => true]],
+            // Many-to-many: the linked records, in the order they were linked; any number of them.
+            WidgetKind::Relation => $widget->isMultiple()
+                ? $this->relationControl($field, $widget, null) + ['options' => ['multiple' => true]]
+                : $this->relationControl($field, $widget, $parentValue) + ['options' => ['placeholder' => $field->isRequired ? 'form.choose_record' : '—']],
             default => throw new \LogicException(\sprintf('Widget "%s" has no gridview control of its own yet.', $widget->kind->value)),
-        } + ['required' => $field->isRequired, 'validate' => false];
+        } + [
+            // The widget kinds are named after gridview's controls (see WidgetKind).
+            'type' => ControlType::from($widget->kind->value),
+            'required' => $field->isRequired,
+            'validate' => false,
+        ];
     }
 
     /**

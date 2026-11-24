@@ -129,21 +129,21 @@ final class FieldTypesTest extends TestCase
     public function testWidgetsDescribeTheControl(): void
     {
         self::assertEquals(new Widget(WidgetKind::Text, ['maxLength' => 80]), (new TextFieldType())->widget(['maxLength' => 80, 'multiline' => false]));
-        self::assertEquals(new Widget(WidgetKind::Decimal, ['scale' => 2]), (new NumberFieldType())->widget(['decimals' => 2]));
+        self::assertEquals(new Widget(WidgetKind::Number, ['scale' => 2]), (new NumberFieldType())->widget(['decimals' => 2]));
         self::assertEquals(new Widget(WidgetKind::Integer, ['min' => 1900, 'max' => 2100]), (new NumberFieldType())->widget(['decimals' => 0, 'min' => 1900, 'max' => 2100]));
         self::assertEquals(new Widget(WidgetKind::DateTime), (new DateFieldType())->widget(['includeTime' => true]));
         self::assertEquals(
             new Widget(WidgetKind::Choice, ['choices' => ['dog' => 'Dog', 'cat' => 'Cat'], 'display' => 'radio']),
             (new SelectFieldType())->widget(['options' => [['value' => 'dog', 'label' => 'Dog'], ['value' => 'cat', 'label' => 'Cat']], 'display' => 'radio']),
         );
-        self::assertEquals(new Widget(WidgetKind::Checkbox, ['display' => 'switch']), (new BooleanFieldType())->widget(['default' => true, 'display' => 'switch']));
+        self::assertEquals(new Widget(WidgetKind::Boolean, ['display' => 'switch']), (new BooleanFieldType())->widget(['default' => true, 'display' => 'switch']));
         self::assertEquals(
             new Widget(WidgetKind::Password, ['confirm' => true, 'strengthMeter' => true, 'revealToggle' => true, 'minLength' => 8]),
             self::password()->widget(['confirm' => true, 'strengthMeter' => true, 'revealToggle' => true] + self::password()->defaultSettings()),
         );
         self::assertEquals(new Widget(WidgetKind::Url, ['maxLength' => 2048]), (new UrlFieldType())->widget([]));
         self::assertEquals(new Widget(WidgetKind::Tel, ['maxLength' => 30]), (new TelFieldType())->widget([]));
-        self::assertEquals(new Widget(WidgetKind::ManyToMany, ['target' => 'tag']), (new ManyToManyFieldType())->widget(['target' => 'tag']));
+        self::assertEquals(new Widget(WidgetKind::Relation, ['target' => 'tag', 'multiple' => true]), (new ManyToManyFieldType())->widget(['target' => 'tag']));
     }
 
     public function testDefaultValues(): void

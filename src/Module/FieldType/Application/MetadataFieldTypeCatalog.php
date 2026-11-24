@@ -58,7 +58,7 @@ final class MetadataFieldTypeCatalog implements FieldTypeCatalogInterface
 
         return match ($widget->kind) {
             WidgetKind::Choice => array_map(strval(...), array_keys($widget->choices())),
-            WidgetKind::Checkbox => ['true', 'false'],
+            WidgetKind::Boolean => ['true', 'false'],
             default => null,
         };
     }
