@@ -497,18 +497,31 @@ final class RecordFormFactory
         // The target first, then the junction's other fields; the record is the row's owner.
         $target = (string) $settings->throughTarget;
         $fields = [$target, ...array_values(array_diff(array_keys($junction->fields), [$target, (string) $settings->throughSource]))];
-        $builder->add($field->name, JunctionRowsType::class, [
-            'label' => $options['label'] ?? $field->label,
-            'row_attr' => $options['row_attr'] ?? [],
+        // The repeatable rows of gridview's collection control, one JunctionRowType each.
+        // "min" and "max" only guide its buttons: the record manager checks both.
+        $label = \is_string($options['label'] ?? null) ? $options['label'] : $field->label;
+        [$type, $rowsOptions] = $this->controls->field([
+            'type' => ControlType::Collection,
             'required' => $field->isRequired,
-            'entry_options' => ['junction' => $junction, 'fields' => $fields],
-            // Distinct per field: a row's prototype is rendered inside the page.
-            'prototype_name' => '__'.$field->name.'__',
-            'prototype_data' => ['id' => null] + array_intersect_key($this->defaults($junction), array_flip($fields)),
-            'disabled' => JunctionAccess::ReadOnly === $access,
+            'validate' => false,
             'min' => $field->isRequired ? 1 : 0,
             'max' => $settings->max ?? 0,
+            'inline' => true,
+            'options' => [
+                'label' => $label,
+                'row_attr' => $options['row_attr'] ?? [],
+                'attr' => ['class' => 'md-junction-rows'],
+                'entry_type' => JunctionRowType::class,
+                'entry_options' => ['junction' => $junction, 'fields' => $fields],
+                // Distinct per field: a row's prototype is rendered inside the page.
+                'prototype_name' => '__'.$field->name.'__',
+                'prototype_data' => ['id' => null] + array_intersect_key($this->defaults($junction), array_flip($fields)),
+                'disabled' => JunctionAccess::ReadOnly === $access,
+                'add_label' => 'form.add',
+                'add_label_translation_parameters' => ['%label%' => $label],
+            ],
         ]);
+        $builder->add($field->name, $type, $rowsOptions);
     }
 
     private function junctionAccess(ManyToManySettings $settings): JunctionAccess

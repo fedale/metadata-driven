@@ -341,7 +341,7 @@ a:hover { color: var(--gv-color-link-hover); }
 .md-row__remove:hover { color: var(--gv-danger-color); background: transparent; }
 .md-row__body { padding: 1rem; }
 
-/* The rows of a many-to-many field going through a junction object (junction_rows_widget): the
+/* The rows of a many-to-many field going through a junction object (gridview collection): the
    first row shows the labels, as the headings of the columns below it (a select has no
    placeholder to name it); the other rows keep them for screen readers, as the bundle does. */
 .md-junction-rows .gv-collection__row--inline:first-child .gv-form-label {
