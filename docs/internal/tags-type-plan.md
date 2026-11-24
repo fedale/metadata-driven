@@ -1,6 +1,9 @@
 # Plan: the `tags` field type
 
-Status: **decided**, not started. Written and decided on 2026-11-23, after comparing the package format with
+Status: **in progress**. Phase 1 done on 2026-11-24, with the form of phase 3 (gridview's tags
+control, released in gridview 1.9.0) and the `tags` entry of the package format (2.5.0, its kind
+`strings` for `options`), which the app's catalog test requires. Next: phase 2 (grid), the
+suggestions endpoint of phase 3, the CSV import and seeds of phase 4. Written and decided on 2026-11-23, after comparing the package format with
 a Directus schema snapshot: Directus has a `json` field with the `tags` interface (free labels on
 a record, `["urgent", "client-x"]`), and metadata-driven has nothing to map it to.
 

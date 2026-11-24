@@ -160,6 +160,22 @@ status:
         transitions:
             label: Transizioni
             help: 'Una per riga: nome | etichetta | gli stati da cui parte, separati da virgole | lo stato a cui arriva | i ruoli che la possono eseguire, separati da virgole (nessuno: chi può modificare il record).'
+tags:
+    label: Etichette
+    description: Etichette di testo libero, quante servono, scritte o scelte tra i suggerimenti.
+    settings:
+        options:
+            label: Suggerimenti
+            help: Le etichette che il campo suggerisce, in quest'ordine.
+        restrict:
+            label: Solo i suggerimenti
+            help: Nessun'altra etichetta è permessa.
+        max:
+            label: Massimo
+            help: 'Quante etichette può avere un record. Vuoto: nessun limite.'
+        maxLength:
+            label: Etichetta più lunga
+            help: In caratteri.
 tel:
     label: Telefono
     description: 'Un numero di telefono: cifre, un "+" iniziale facoltativo, spazi, punti, trattini e parentesi.'

@@ -14,6 +14,7 @@ missing keys take their default, unknown keys are refused.
 | `tel` | none | `varchar(30)` | phone input | text |
 | `url` | none | `varchar(2048)` | URL input | text (shown as a link) |
 | `select` | `options` (required), `default`, `display` (`dropdown`) | `varchar(100)` | select or buttons side by side | choice |
+| `tags` | `options` (none), `restrict` (false), `max`, `maxLength` (50) | `jsonb`, an array of strings | labels typed or picked among the suggestions, drawn as chips | none yet |
 | `status` | `states` (required), `initial` (the first), `transitions` | `varchar(100)` | read-only; its transitions as buttons on the record's page | choice |
 | `password` | `minLength` (8), `requireMixedCase`, `requireDigit`, `requireSymbol`, `confirm`, `strengthMeter`, `revealToggle` (all false) | `varchar(255)`, a hash | password input, asked twice with `confirm` | none: never shown |
 | `file` | `accept` (any type), `maxSize` (10 MB), `image` (false), `multiple` (false), `max` | `uuid` + foreign key to `core.file`; with `multiple`, a link table of its own | the current file, an upload input, "Remove the file"; with `multiple`, the list of files to reorder and remove, and an input adding several | yes / no: holds a file or none |
@@ -85,6 +86,7 @@ The settings of an existing field can change, from its admin page (section **Set
 | `date` | `includeTime` | — |
 | `boolean` | — | `default`, `display` |
 | `select` | — | `options`, `default`, `display` |
+| `tags` | — | every setting (they check the labels saved from then on) |
 | `password` | — | every setting |
 | `file` | `multiple` | `accept`, `maxSize`, `image`, `max` (they check the files uploaded from then on) |
 | `relation` | `target`, `onDelete`, `inverseName` | `inverseLabel`, `dependsOn`, `dependsVia` |
@@ -236,6 +238,38 @@ A postal code is a text with a pattern, not a number: a number would drop the le
 - The value is stored; the label is shown in forms, grid cells and exports.
 - A value outside the options is refused: "The value you selected is not a valid choice.".
 - Filters and sort work on the stored value.
+
+## `tags`
+
+Free text labels on a record: a ticket's keywords, a contact's interests. There's no table of
+labels to manage, and a new one is typed right in the form. For a vocabulary with data of its own
+(a colour, a description, a label renamed once for every record), use a
+[`many_to_many`](#many_to_many) field to an object of tags instead.
+
+| Setting | Type | Rule |
+|---|---|---|
+| `options` | list of strings | the labels the input suggests, in this order; each one 1 to `maxLength` characters, no comma, no spaces around it, not twice (ignoring case) |
+| `restrict` | bool | only the labels of `options` are allowed; needs `options` |
+| `max` | int or null | the most labels a record holds, 1 to 100; null: no limit |
+| `maxLength` | int | the longest label, 1 to 100 characters (default 50) |
+
+```json
+{"options": ["Urgent", "Later"], "max": 5}
+{"options": ["Bug", "Feature", "Question"], "restrict": true}
+```
+
+- The value is a list of strings in the record arrays (callbacks, workflows, the API), or null.
+  It's given as a list, or as one string of labels separated by commas (`"urgent, client x"`).
+- Each label is trimmed and its inner spaces collapsed; empty labels are dropped. Labels are
+  kept as typed and compared ignoring case: `Urgent` and `urgent` on the same record are one
+  label, the first spelling wins, and a label matching a suggestion takes its spelling. A label
+  can't hold a comma. No label at all is null, so a required tags field needs one.
+- The form shows the labels as chips, with an input adding them: Enter or a comma adds one,
+  Backspace on an empty input removes the last one, and the suggestions are offered as you
+  type. Without JavaScript it's a text input of labels separated by commas.
+- The grid and the exports show the labels joined with `", "`. A tags field has no order of
+  its own: it can't be sorted on, nor be the record label, a search field, unique, or the
+  deciding field of a [condition](#conditions).
 
 ## `status`
 

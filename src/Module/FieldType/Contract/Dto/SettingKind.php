@@ -19,6 +19,8 @@ enum SettingKind: string
     case ObjectName = 'object_name';
     /** A list of {value, label} pairs. */
     case OptionList = 'option_list';
+    /** A list of strings. */
+    case StringList = 'string_list';
     /** A Status field's transitions: name, label, the states from, the state to, the roles. */
     case TransitionList = 'transition_list';
 }

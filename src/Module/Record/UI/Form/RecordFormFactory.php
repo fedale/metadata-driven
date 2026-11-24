@@ -325,7 +325,7 @@ final class RecordFormFactory
         return match ($widget->kind) {
             WidgetKind::Text, WidgetKind::Textarea, WidgetKind::Email, WidgetKind::Url, WidgetKind::Tel,
             WidgetKind::Integer, WidgetKind::Number, WidgetKind::Boolean, WidgetKind::Date,
-            WidgetKind::DateTime, WidgetKind::Choice => $this->controls->field($this->gridviewControl($field, $widget, $isNew)),
+            WidgetKind::DateTime, WidgetKind::Choice, WidgetKind::Tags => $this->controls->field($this->gridviewControl($field, $widget, $isNew)),
             // The label goes on the first input of a password asked twice, so gridview needs it.
             WidgetKind::Password => $this->controls->field($this->gridviewControl($field, $widget, $isNew), $field->label),
             WidgetKind::Relation => $this->controls->field($this->gridviewControl($field, $widget, $isNew, $parentValue)),
@@ -369,6 +369,14 @@ final class RecordFormFactory
             WidgetKind::Relation => $widget->isMultiple()
                 ? $this->relationControl($field, $widget, null) + ['options' => ['multiple' => true]]
                 : $this->relationControl($field, $widget, $parentValue) + ['options' => ['placeholder' => $field->isRequired ? 'form.choose_record' : '—']],
+            // Free labels: the form gives them gridview's spelling and order, the field type
+            // checks them (TagsFieldType::denormalize() and constraints()).
+            WidgetKind::Tags => [
+                'suggestions' => \is_array($widget->options['suggestions'] ?? null) ? array_values(array_filter($widget->options['suggestions'], \is_string(...))) : [],
+                'restrict' => true === ($widget->options['restrict'] ?? false),
+                'max' => $max,
+                'maxLength' => $maxLength,
+            ],
             default => throw new \LogicException(\sprintf('Widget "%s" has no gridview control of its own yet.', $widget->kind->value)),
         } + [
             // The widget kinds are named after gridview's controls (see WidgetKind).
