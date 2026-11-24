@@ -1,8 +1,7 @@
 # Plan: the record form controls are gridview's controls
 
-Status: **phases 0 to 2 done and merged** (2026-11-24); gridview released as v1.4.0 (phase 1)
-and v1.5.0 (phase 2). **Phase 3 done on branches** (`remote_relation` in both repositories),
-waiting for the gridview release.
+Status: **phases 0 to 3 done and merged** (2026-11-24); gridview released as v1.4.0 (phase 1),
+v1.5.0 (phase 2) and v1.6.0 (phase 3).
 Written on 2026-11-23, decisions taken the same day.
 
 - Phase 0: `GoldenRecordFormsTest`, stored copies in `tests/Fixtures/golden-forms/`.
@@ -16,7 +15,7 @@ Written on 2026-11-23, decisions taken the same day.
   `RemoteChoiceLoader`, UX Autocomplete a `suggest`), and a cascade with `dependsOn`,
   `dependsParam` and `dependsValue`. `relation` and plain `many_to_many` go through it; the
   `PRE_SUBMIT` listener, `linkChoices()`, `lookupUrl()` and `rowAttr()`'s cascade part are gone.
-  The golden forms are unchanged. metadata-driven still requires `^1.5`: raise it once released.
+  The golden forms are unchanged. metadata-driven requires gridview `^1.6`.
 - Not as planned: the date controls keep Symfony's default `widget` in gridview (changing it would
   change every host on Symfony 6.4); metadata-driven passes `single_text` itself. The control
   settings sit beside `options`, not inside it (NumberType has a `scale` option of its own); so do

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "79a9af3d610b40a0a11e3aa36264be85",
+    "content-hash": "6ff709dea7f9262516e002e95ad0adfd",
     "packages": [
         {
             "name": "composer/semver",
@@ -1333,16 +1333,16 @@
         },
         {
             "name": "fedale/gridview-bundle",
-            "version": "v1.5.0",
+            "version": "v1.6.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/fedale/gridview-bundle.git",
-                "reference": "b328f1a329c0e756f93a3229aeb64c7105ec6f32"
+                "reference": "762c17f0458e14df9df4b9d58504b67e8adef0c6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/fedale/gridview-bundle/zipball/b328f1a329c0e756f93a3229aeb64c7105ec6f32",
-                "reference": "b328f1a329c0e756f93a3229aeb64c7105ec6f32",
+                "url": "https://api.github.com/repos/fedale/gridview-bundle/zipball/762c17f0458e14df9df4b9d58504b67e8adef0c6",
+                "reference": "762c17f0458e14df9df4b9d58504b67e8adef0c6",
                 "shasum": ""
             },
             "require": {
@@ -1366,6 +1366,7 @@
                 "symfony/http-client": "^6.4 || ^7.0 || ^8.0",
                 "symfony/intl": "^8.1",
                 "symfony/maker-bundle": "^1.50",
+                "symfony/ux-autocomplete": "^2.13 || ^3.0",
                 "symfony/validator": "^6.4 || ^7.0 || ^8.0"
             },
             "suggest": {
@@ -1375,6 +1376,7 @@
                 "symfony/intl": "Enables localized names for the country/language/locale/currency column types; the bare ISO code is shown without it.",
                 "symfony/maker-bundle": "Enables the make:gridview:crud scaffolding command. Install it in your app with: composer require --dev symfony/maker-bundle",
                 "symfony/mercure-bundle": "Enables real-time grid updates (signal + auto-refresh) over Mercure",
+                "symfony/ux-autocomplete": "Enables the remote relation control: a select that searches the records it offers at a URL",
                 "symfony/validator": "Validates the controls server-side: required controls add NotBlank, unique ones UniqueEntity"
             },
             "type": "symfony-bundle",
@@ -1411,9 +1413,9 @@
             ],
             "support": {
                 "issues": "https://github.com/fedale/gridview-bundle/issues",
-                "source": "https://github.com/fedale/gridview-bundle/tree/v1.5.0"
+                "source": "https://github.com/fedale/gridview-bundle/tree/v1.6.0"
             },
-            "time": "2026-11-24T10:36:55+00:00"
+            "time": "2026-11-24T11:07:40+00:00"
         },
         {
             "name": "fedale/metadata-driven-package-format",
