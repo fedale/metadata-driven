@@ -168,8 +168,8 @@ final class FileControllerTest extends WebTestCase
         $product = $this->product();
 
         $crawler = $this->client->request('GET', \sprintf('/o/product/%s/edit', $product->id));
-        self::assertSame('/files/'.$this->fileOf($product, 'manual'), $crawler->filter('[data-gv-field="manual"] a.md-file__name')->attr('href'));
-        self::assertSame(\sprintf('/files/%s/thumbnail/medium', $this->fileOf($product, 'photo')), $crawler->filter('[data-gv-field="photo"] img.md-file__preview')->attr('src'));
+        self::assertSame('/files/'.$this->fileOf($product, 'manual'), $crawler->filter('[data-gv-field="manual"] a.gv-media__name')->attr('href'));
+        self::assertSame(\sprintf('/files/%s/thumbnail/medium', $this->fileOf($product, 'photo')), $crawler->filter('[data-gv-field="photo"] img.gv-media__preview')->attr('src'));
         self::assertCount(0, $crawler->filter('[data-gv-field="manual"] img'));
     }
 

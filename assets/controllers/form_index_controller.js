@@ -60,7 +60,7 @@ export default class extends Controller {
                 return;
             }
             // A file field is one entry, its file input: its "Remove" box is part of it.
-            if ('file' !== input.type && input.closest('.md-file, .md-file-list')) {
+            if ('file' !== input.type && input.closest('.gv-media, .gv-media-list')) {
                 return;
             }
             const group = groups.get(input.name) ?? { required: false, filled: false };
@@ -94,15 +94,15 @@ export default class extends Controller {
     }
 
     // A file field keeps its stored files: one file unless "Remove" is checked, a list while an
-    // item is left (the file-list controller takes the removed ones out of the page).
+    // item is left (the gridview-media-list controller takes the removed ones out of the page).
     holdsFiles(input) {
-        const list = input.closest('.md-file-list');
+        const list = input.closest('.gv-media-list');
         if (list) {
-            return null !== list.querySelector('[data-file-list-target="item"]');
+            return null !== list.querySelector('[data-gridview-media-list-target="item"]');
         }
-        const field = input.closest('.md-file');
+        const field = input.closest('.gv-media');
 
-        return null !== field?.querySelector('.md-file__current')
+        return null !== field?.querySelector('.gv-media__current')
             && true !== field.querySelector('input[type="checkbox"]')?.checked;
     }
 

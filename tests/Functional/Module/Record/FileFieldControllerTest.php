@@ -83,7 +83,7 @@ final class FileFieldControllerTest extends WebTestCase
 
         // The edit page shows the file; saved without a new one, it keeps it.
         $crawler = $this->client->request('GET', \sprintf('/o/product/%s/edit', $product->id));
-        self::assertSelectorTextContains('.md-file__name', 'oslo-manual.pdf');
+        self::assertSelectorTextContains('.gv-media__name', 'oslo-manual.pdf');
         self::assertStringContainsString('replace the current one', $crawler->filter('[data-gv-field="manual"]')->text());
         $this->client->submitForm('Save', ['record[name]' => 'Oslo armchair']);
         self::assertResponseRedirects('/o/product');

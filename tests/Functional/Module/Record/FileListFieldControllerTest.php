@@ -19,7 +19,7 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
  * Uploads several files through the record form, as a browser would, then keeps, reorders and
- * removes them through the hidden list the file-list controller fills in.
+ * removes them through the hidden list the gridview-media-list controller fills in.
  */
 final class FileListFieldControllerTest extends WebTestCase
 {
@@ -66,9 +66,9 @@ final class FileListFieldControllerTest extends WebTestCase
         self::assertSame('multiple', $input->attr('multiple'));
         self::assertSame('application/pdf', $input->attr('accept'));
         self::assertSame($input->attr('id'), $crawler->filter('label:contains("Manuals")')->attr('for'));
-        self::assertSame('file-list', $crawler->filter('[data-gv-field="manuals"] .md-file-list')->attr('data-controller'));
+        self::assertSame('gridview-media-list', $crawler->filter('[data-gv-field="manuals"] .gv-media-list')->attr('data-controller'));
         self::assertSelectorTextContains('[data-gv-field="manuals"] .gv-form-help', 'Up to 4 files, 2 MB each');
-        self::assertCount(0, $crawler->filter('.md-file-list__item'));
+        self::assertCount(0, $crawler->filter('.gv-media-list__item'));
     }
 
     public function testUploadsReordersAndRemovesFiles(): void
@@ -81,11 +81,11 @@ final class FileListFieldControllerTest extends WebTestCase
 
         // The edit page lists the files in order, with the buttons the controller shows.
         $crawler = $this->client->request('GET', \sprintf('/o/product/%s/edit', $product->id));
-        self::assertSame(['assembly.pdf', 'care.pdf'], $crawler->filter('.md-file-list__name')->each(static fn (Crawler $name): string => $name->text()));
-        self::assertSame('/files/'.$assembly, $crawler->filter('.md-file-list__name')->attr('href'));
+        self::assertSame(['assembly.pdf', 'care.pdf'], $crawler->filter('.gv-media-list__name')->each(static fn (Crawler $name): string => $name->text()));
+        self::assertSame('/files/'.$assembly, $crawler->filter('.gv-media-list__name')->attr('href'));
         self::assertSame($assembly.','.$care, $crawler->filter('input[name="record[manuals][kept]"]')->attr('value'));
-        self::assertSame('Move care.pdf up', $crawler->filter('.md-file-list__item')->eq(1)->filter('[data-action="file-list#up"]')->attr('aria-label'));
-        self::assertSame('', $crawler->filter('.md-file-list__actions')->attr('hidden'));
+        self::assertSame('Move care.pdf up', $crawler->filter('.gv-media-list__item')->eq(1)->filter('[data-action="gridview-media-list#up"]')->attr('aria-label'));
+        self::assertSame('', $crawler->filter('.gv-media-list__actions')->attr('hidden'));
 
         // Saved untouched, the list stays.
         $this->submit($crawler, ['record[name]' => 'Oslo armchair']);

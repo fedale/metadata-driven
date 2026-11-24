@@ -101,7 +101,7 @@ final class FormFilesTest extends WebTestCase
         $photos = $crawler->filter('input[name="form[sections][sheet][values][photos][upload][]"]');
         self::assertSame('multiple', $photos->attr('multiple'));
         self::assertSame('image/*', $photos->attr('accept'));
-        self::assertSame('file-list', $crawler->filter('[data-gv-field="photos"] .md-file-list')->attr('data-controller'));
+        self::assertSame('gridview-media-list', $crawler->filter('[data-gv-field="photos"] .gv-media-list')->attr('data-controller'));
         // A row added with "+" brings its own inputs, from the prototype of the section.
         $prototype = (string) $crawler->filter('[data-gridview-collection-prototype-name-value="__parts__"]')->attr('data-gridview-collection-prototype-value');
         self::assertStringContainsString('name="form[sections][parts][__parts__][values][drawing][upload]"', $prototype);
@@ -143,9 +143,9 @@ final class FormFilesTest extends WebTestCase
 
         // The edit page shows the files of each node.
         $crawler = $this->client->request('GET', '/f/catalogue/'.$product->id.'/edit');
-        self::assertSame(['front.png', 'back.png'], $crawler->filter('[data-gv-field="photos"] .md-file-list__name')->each(static fn (Crawler $name): string => $name->text()));
+        self::assertSame(['front.png', 'back.png'], $crawler->filter('[data-gv-field="photos"] .gv-media-list__name')->each(static fn (Crawler $name): string => $name->text()));
         $seatKey = $this->rowKey($crawler, 'Seat');
-        self::assertSame(['fabric.pdf', 'foam.pdf'], $this->partField($crawler, $seatKey, 'attachments')->filter('.md-file-list__name')->each(static fn (Crawler $name): string => $name->text()));
+        self::assertSame(['fabric.pdf', 'foam.pdf'], $this->partField($crawler, $seatKey, 'attachments')->filter('.gv-media-list__name')->each(static fn (Crawler $name): string => $name->text()));
         self::assertStringContainsString('seat.pdf', $this->partField($crawler, $seatKey, 'drawing')->text());
 
         // Saved untouched, every file stays.

@@ -140,15 +140,15 @@ Both in the morning.</textarea>
 </div>
 <div data-gv-field="manual" class="gv-form-row">
 <label for="record_manual_upload" class="gv-form-label">Manual</label>
-<div id="record_manual" class="md-file" aria-describedby="record_manual_help">
+<div id="record_manual" class="gv-media" aria-describedby="record_manual_help">
 <input type="file" id="record_manual_upload" name="record[manual][upload]" accept="application/pdf" class="gv-form-control">
 </div>
 <div id="record_manual_help" class="gv-form-help help-text">Up to 2 MB.</div>
 </div>
 <div data-gv-field="photos" class="gv-form-row">
 <label for="record_photos_upload" class="gv-form-label">Photos</label>
-<div id="record_photos" class="md-file-list" data-controller="file-list" aria-describedby="record_photos_help">
-<input type="hidden" id="record_photos_kept" name="record[photos][kept]" data-file-list-target="kept">
+<div id="record_photos" class="gv-media-list" data-controller="gridview-media-list" aria-describedby="record_photos_help">
+<input type="hidden" id="record_photos_kept" name="record[photos][kept]" data-gridview-media-list-target="kept">
 <input type="file" id="record_photos_upload" name="record[photos][upload][]" accept="image/*" multiple class="gv-form-control">
 </div>
 <div id="record_photos_help" class="gv-form-help help-text">Up to 4 files, 10 MB each; new files go to the end of the list.</div>

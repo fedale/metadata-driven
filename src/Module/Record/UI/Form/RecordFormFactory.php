@@ -6,9 +6,11 @@ namespace App\Module\Record\UI\Form;
 
 use App\Module\Access\Contract\AccessCheckerInterface;
 use App\Module\Access\Contract\RecordAction;
+use App\Module\FieldType\Contract\Dto\FileUpload;
 use App\Module\FieldType\Contract\Dto\Widget;
 use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\FieldTypeRegistryInterface;
+use App\Module\File\Contract\Dto\StoredFile;
 use App\Module\File\Contract\FileStorageInterface;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ManyToManySettings;
@@ -23,7 +25,9 @@ use Fedale\GridviewBundle\Form\Control\BooleanDisplay;
 use Fedale\GridviewBundle\Form\Control\ChoiceDisplay;
 use Fedale\GridviewBundle\Form\Control\ControlBuilder;
 use Fedale\GridviewBundle\Form\Control\ControlType;
+use Fedale\GridviewBundle\Form\Control\MediaFile;
 use Symfony\Component\DependencyInjection\Attribute\Target;
+use Symfony\Component\Form\CallbackTransformer;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -31,6 +35,7 @@ use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormTypeInterface;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
@@ -113,6 +118,9 @@ final class RecordFormFactory
                 continue;
             }
             $builder->add($name, $type, $options);
+            if (WidgetKind::File === $widget->kind) {
+                self::fileUploads($builder->get($name));
+            }
         }
     }
 
@@ -207,6 +215,9 @@ final class RecordFormFactory
         // Named like a record field's row (data-gv-field), but apart: no condition or cascade
         // may take a service field for a field of the record.
         $builder->add($field->name, $type, $options + ['label' => $field->label, 'row_attr' => ['data-md-name' => $field->name]]);
+        if (WidgetKind::File === $widget->kind) {
+            self::fileUploads($builder->get($field->name));
+        }
     }
 
     /**
@@ -318,7 +329,7 @@ final class RecordFormFactory
             // The label goes on the first input of a password asked twice, so gridview needs it.
             WidgetKind::Password => $this->controls->field($this->gridviewControl($field, $widget, $isNew), $field->label),
             WidgetKind::Relation, WidgetKind::ManyToMany => $this->controls->field($this->gridviewControl($field, $widget, $isNew, $parentValue)),
-            WidgetKind::File => $this->file($field, $widget, $value),
+            WidgetKind::File => $this->controls->field($this->fileControl($field, $widget, $value)),
         };
     }
 
@@ -367,38 +378,75 @@ final class RecordFormFactory
 
     /**
      * The current file is looked up here, from the stored value: the form never takes a file id
-     * from the request. The same for the current files of a file list, in their order.
+     * from the request. The same for the current files of a file list, in their order. Gridview
+     * draws them and binds the ids kept and the uploads (see fileUploads()).
      *
-     * @return array{class-string<RecordFileType|RecordFileListType>, array<string, mixed>}
+     * @return array<string, mixed>
      */
-    private function file(FieldDefinitionDto $field, Widget $widget, mixed $value): array
+    private function fileControl(FieldDefinitionDto $field, Widget $widget, mixed $value): array
     {
+        $control = [
+            'type' => ControlType::Media,
+            'required' => $field->isRequired,
+            'validate' => false,
+            'accept' => \is_string($widget->options['accept'] ?? null) ? $widget->options['accept'] : '',
+        ];
+        $maxSize = \is_int($widget->options['maxSize'] ?? null) ? $widget->options['maxSize'] : 0;
         $list = $field->fileList();
         if (null !== $list) {
             $ids = \is_array($value) ? array_values(array_filter($value, \is_string(...))) : [];
             $found = [] !== $ids ? $this->files->findMany($ids) : [];
             $current = array_values(array_filter(array_map(static fn (string $id) => $found[strtolower($id)] ?? null, $ids)));
 
-            return [RecordFileListType::class, [
-                'required' => $field->isRequired,
-                'current' => $current,
-                'accept' => \is_string($widget->options['accept'] ?? null) ? $widget->options['accept'] : '',
-                'help' => null !== $list->max ? 'form.file_list_max' : 'form.file_list',
-                'help_translation_parameters' => [
-                    '%size%' => \is_int($widget->options['maxSize'] ?? null) ? $widget->options['maxSize'] : 0,
-                    '%max%' => $list->max ?? 0,
+            return $control + [
+                'multiple' => true,
+                'current' => array_map(fn (StoredFile $file): MediaFile => $this->mediaFile($file, 'small'), $current),
+                'options' => [
+                    'help' => null !== $list->max ? 'form.file_list_max' : 'form.file_list',
+                    'help_translation_parameters' => ['%size%' => $maxSize, '%max%' => $list->max ?? 0],
                 ],
-            ]];
+            ];
         }
         $current = \is_string($value) ? $this->files->find($value) : null;
 
-        return [RecordFileType::class, [
-            'required' => $field->isRequired,
-            'current' => $current,
-            'accept' => \is_string($widget->options['accept'] ?? null) ? $widget->options['accept'] : '',
-            'help' => null !== $current ? 'form.file_replace' : 'form.file_max_size',
-            'help_translation_parameters' => ['%size%' => \is_int($widget->options['maxSize'] ?? null) ? $widget->options['maxSize'] : 0],
-        ]];
+        return $control + [
+            'current' => null !== $current ? $this->mediaFile($current, 'medium') : null,
+            'options' => [
+                'help' => null !== $current ? 'form.file_replace' : 'form.file_max_size',
+                'help_translation_parameters' => ['%size%' => $maxSize],
+            ],
+        ];
+    }
+
+    /**
+     * A stored file as gridview shows it: its download link, and a thumbnail of an image.
+     */
+    private function mediaFile(StoredFile $file, string $thumbnail): MediaFile
+    {
+        return new MediaFile(
+            $file->id,
+            $file->originalName,
+            $file->size,
+            $this->urls->generate('file_download', ['id' => $file->id]),
+            $file->isImage() ? $this->urls->generate('file_thumbnail', ['id' => $file->id, 'size' => $thumbnail]) : null,
+        );
+    }
+
+    /**
+     * Gridview binds a new file as the UploadedFile; the record pipeline takes a FileUpload. A
+     * model transformer is prepended, next to the model: it sees gridview's data.
+     *
+     * @template T
+     *
+     * @param FormBuilderInterface<T> $field
+     */
+    private static function fileUploads(FormBuilderInterface $field): void
+    {
+        $toUpload = static fn (mixed $file): mixed => $file instanceof UploadedFile ? new FileUpload($file->getPathname(), $file->getClientOriginalName()) : $file;
+        $field->addModelTransformer(new CallbackTransformer(
+            static fn (mixed $data): mixed => $data,
+            static fn (mixed $data): mixed => \is_array($data) ? array_map($toUpload, $data) : $toUpload($data),
+        ));
     }
 
     /**
