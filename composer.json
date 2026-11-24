@@ -11,7 +11,7 @@
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.7",
         "dragonmantank/cron-expression": "^3.6",
-        "fedale/gridview-bundle": "^1.7",
+        "fedale/gridview-bundle": "^1.8",
         "fedale/metadata-driven-package-format": "^2.4",
         "fedale/rbac-bundle": "^1.2.2",
         "fedale/setting-bundle": "^1.1",
