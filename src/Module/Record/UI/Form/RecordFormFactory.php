@@ -28,8 +28,6 @@ use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Form\Event\PreSubmitEvent;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
-use Symfony\Component\Form\Extension\Core\Type\PasswordType;
-use Symfony\Component\Form\Extension\Core\Type\RepeatedType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormEvents;
@@ -318,8 +316,9 @@ final class RecordFormFactory
         return match ($widget->kind) {
             WidgetKind::Text, WidgetKind::Textarea, WidgetKind::Email, WidgetKind::Url, WidgetKind::Tel,
             WidgetKind::Integer, WidgetKind::Decimal, WidgetKind::Checkbox, WidgetKind::Date,
-            WidgetKind::DateTime, WidgetKind::Choice => $this->controls->field($this->gridviewControl($field, $widget)),
-            WidgetKind::Password => $this->password($field, $widget, $isNew),
+            WidgetKind::DateTime, WidgetKind::Choice => $this->controls->field($this->gridviewControl($field, $widget, $isNew)),
+            // The label goes on the first input of a password asked twice, so gridview needs it.
+            WidgetKind::Password => $this->controls->field($this->gridviewControl($field, $widget, $isNew), $field->label),
             WidgetKind::Relation => [ChoiceType::class, $required + [
                 'choices' => \is_string($value) ? array_flip($this->lookup->labels($this->target($widget), [$value])) : [],
                 'placeholder' => $field->isRequired ? 'form.choose_record' : '—',
@@ -347,7 +346,7 @@ final class RecordFormFactory
      *
      * @return array<string, mixed>
      */
-    private function gridviewControl(FieldDefinitionDto $field, Widget $widget): array
+    private function gridviewControl(FieldDefinitionDto $field, Widget $widget, bool $isNew): array
     {
         $maxLength = \is_int($widget->options['maxLength'] ?? null) ? $widget->options['maxLength'] : null;
         $min = \is_int($widget->options['min'] ?? null) ? $widget->options['min'] : null;
@@ -371,6 +370,10 @@ final class RecordFormFactory
             // The "radio" display of a select is drawn as buttons side by side; an empty group
             // already means "no value", so only the dropdown has a placeholder.
             WidgetKind::Choice => ['type' => ControlType::Choice, 'display' => $radio ? ChoiceDisplay::Segmented : ChoiceDisplay::Dropdown, 'options' => ['choices' => array_flip($widget->choices())] + ($radio ? [] : ['placeholder' => $field->isRequired ? 'form.choose_option' : '—'])],
+            // A password is never prefilled: left empty on an existing record, it keeps the
+            // stored one, so only a new record needs it. Asked twice, the second input is a
+            // form-only field, not stored.
+            WidgetKind::Password => $this->passwordControl($field, $widget, $isNew),
             default => throw new \LogicException(\sprintf('Widget "%s" has no gridview control of its own yet.', $widget->kind->value)),
         } + ['required' => $field->isRequired, 'validate' => false];
     }
@@ -412,44 +415,28 @@ final class RecordFormFactory
     }
 
     /**
-     * A password is never prefilled. Left empty on an existing record, it keeps the stored one;
-     * asked twice, the two inputs must match (the second one is a form-only field, not stored).
-     *
-     * @return array{class-string<PasswordType|RepeatedType>, array<string, mixed>}
+     * @return array<string, mixed>
      */
-    private function password(FieldDefinitionDto $field, Widget $widget, bool $isNew): array
+    private function passwordControl(FieldDefinitionDto $field, Widget $widget, bool $isNew): array
     {
-        $required = ['required' => $isNew && $field->isRequired];
-        $help = $isNew ? [] : ['help' => 'form.keep_password'];
-        $attr = ['autocomplete' => 'new-password'];
-        // The meter and the eye go on the password typed first, never on its confirmation.
-        $controllers = [];
-        $first = $attr;
-        // The meter and the eye are fedale/gridview-bundle components (19_form-components.md).
-        if (true === ($widget->options['strengthMeter'] ?? false)) {
-            $controllers[] = 'gridview-password-strength';
-            $first['data-action'] = 'gridview-password-strength#update';
-            $first['data-gridview-password-strength-min-length-value'] = \is_int($widget->options['minLength'] ?? null) ? $widget->options['minLength'] : 8;
-        }
-        if (true === ($widget->options['revealToggle'] ?? false)) {
-            $controllers[] = 'gridview-password-reveal';
-        }
-        if ([] !== $controllers) {
-            $first['data-controller'] = implode(' ', $controllers);
-        }
-        if (true !== ($widget->options['confirm'] ?? false)) {
-            return [PasswordType::class, $required + $help + ['attr' => $first]];
+        $confirm = true === ($widget->options['confirm'] ?? false);
+        $options = $isNew ? [] : ['help' => 'form.keep_password'];
+        if ($confirm) {
+            $options += [
+                'invalid_message' => 'The two passwords do not match.',
+                'second_options' => ['label' => 'form.repeat', 'label_translation_parameters' => ['%label%' => mb_strtolower($field->label)]],
+            ];
         }
 
-        // The two inputs carry the labels and the help; the group has none of its own.
-        return [RepeatedType::class, $required + [
-            'label' => false,
-            'type' => PasswordType::class,
-            'invalid_message' => 'The two passwords do not match.',
-            'options' => ['attr' => $attr],
-            'first_options' => ['label' => $field->label, 'attr' => $first] + $help,
-            'second_options' => ['label' => 'form.repeat', 'label_translation_parameters' => ['%label%' => mb_strtolower($field->label)]],
-        ]];
+        return [
+            'type' => ControlType::Password,
+            'required' => $isNew && $field->isRequired,
+            'confirm' => $confirm,
+            'strengthMeter' => true === ($widget->options['strengthMeter'] ?? false),
+            'revealToggle' => true === ($widget->options['revealToggle'] ?? false),
+            'minLength' => \is_int($widget->options['minLength'] ?? null) ? $widget->options['minLength'] : null,
+            'options' => $options,
+        ];
     }
 
     /**
