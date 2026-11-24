@@ -1,13 +1,12 @@
 # Plan: the record form controls are gridview's controls
 
-Status: **phases 0 and 1 done on branches** (2026-11-24), waiting for the gridview release.
+Status: **phases 0 and 1 done and merged** (2026-11-24); gridview released as v1.4.0.
 Written on 2026-11-23, decisions taken the same day.
 
 - Phase 0: `GoldenRecordFormsTest`, stored copies in `tests/Fixtures/golden-forms/`.
-- Phase 1: gridview branch `control_builder` (`ControlBuilder`, the control settings, `textarea`,
-  `Length` and `Range` when the form validates), metadata-driven branch `control_alignment`
-  (`RecordFormFactory::gridviewControl()`). The golden forms are unchanged. metadata-driven still
-  requires gridview `^1.3`: raise it once the branch is released.
+- Phase 1: gridview v1.4.0 (`ControlBuilder`, the control settings, `textarea`, `Length` and
+  `Range` when the form validates); metadata-driven requires gridview `^1.4` and builds the simple
+  record controls in `RecordFormFactory::gridviewControl()`. The golden forms are unchanged.
 - Not as planned: the date controls keep Symfony's default `widget` in gridview (changing it would
   change every host on Symfony 6.4); metadata-driven passes `single_text` itself. The control
   settings sit beside `options`, not inside it (NumberType has a `scale` option of its own).
