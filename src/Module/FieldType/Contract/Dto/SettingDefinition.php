@@ -12,7 +12,9 @@ final readonly class SettingDefinition
 {
     /**
      * @param array<string, mixed> $options "choices" (array<string, string>, value => label) for SettingKind::Choice;
-     *                                      "min" / "max" (int) for SettingKind::Integer
+     *                                      "min" / "max" (int) for SettingKind::Integer;
+     *                                      "example" (list<string>) for SettingKind::StringList, the
+     *                                      placeholder of its editor: a few values of the right shape
      * @param bool                 $fixed   the setting shapes the column (or the foreign key): it cannot
      *                                      change once the field exists
      */

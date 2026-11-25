@@ -46,7 +46,7 @@ final class TagsFieldType extends AbstractFieldType
     public function settingDefinitions(): array
     {
         return [
-            new SettingDefinition('options', SettingKind::StringList, 'Suggestions', 'The labels the input suggests, in this order.'),
+            new SettingDefinition('options', SettingKind::StringList, 'Suggestions', 'The labels the input suggests, in this order.', options: ['example' => ['urgent', 'later']]),
             new SettingDefinition('restrict', SettingKind::Boolean, 'Only the suggestions', 'No other label is allowed.'),
             new SettingDefinition('max', SettingKind::Integer, 'Maximum', 'How many labels a record may hold. Empty: no limit.', options: ['min' => 1, 'max' => self::MAX_LABELS]),
             new SettingDefinition('maxLength', SettingKind::Integer, 'Longest label', 'In characters.', true, ['min' => 1, 'max' => self::MAX_LABEL_LENGTH]),

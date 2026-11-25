@@ -39,10 +39,18 @@ abstract class AbstractCodeFieldType extends AbstractFieldType
 
     abstract protected function widgetKind(): WidgetKind;
 
+    /**
+     * Two codes of the list, as an example in the settings editor: the case to write them in
+     * differs from one list to the other.
+     *
+     * @return list<string>
+     */
+    abstract protected static function examples(): array;
+
     public function settingDefinitions(): array
     {
         return [
-            new SettingDefinition('preferred', SettingKind::StringList, 'Listed first', 'Codes the form lists first, in this order.'),
+            new SettingDefinition('preferred', SettingKind::StringList, 'Listed first', 'Codes the form lists first, in this order.', options: ['example' => static::examples()]),
             new SettingDefinition('default', SettingKind::String, 'Default value', 'The code new records start with. Empty: none.'),
         ];
     }

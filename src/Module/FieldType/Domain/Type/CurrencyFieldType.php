@@ -44,6 +44,11 @@ final class CurrencyFieldType extends AbstractCodeFieldType
         return 3;
     }
 
+    protected static function examples(): array
+    {
+        return ['EUR', 'USD'];
+    }
+
     protected function constraint(): Constraint
     {
         return new Assert\Currency();

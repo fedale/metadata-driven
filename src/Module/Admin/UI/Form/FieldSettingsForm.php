@@ -123,7 +123,10 @@ final class FieldSettingsForm
                 'placeholder' => 'admin.field.choose_object',
             ]],
             SettingKind::OptionList => [TextareaType::class, ['attr' => ['rows' => 6, 'placeholder' => "dog | Dog\ncat | Cat"]]],
-            SettingKind::StringList => [TextareaType::class, ['attr' => ['rows' => 6, 'placeholder' => "urgent\nlater"]]],
+            SettingKind::StringList => [TextareaType::class, ['attr' => array_filter([
+                'rows' => 6,
+                'placeholder' => implode("\n", array_filter((array) ($definition->options['example'] ?? []), \is_string(...))),
+            ])]],
             SettingKind::TransitionList => [TextareaType::class, ['attr' => ['rows' => 6, 'placeholder' => "send | Send | draft | sent | ROLE_CLERK\npay | Mark as paid | sent | paid"]]],
         };
     }

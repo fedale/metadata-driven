@@ -44,6 +44,11 @@ final class CountryFieldType extends AbstractCodeFieldType
         return 2;
     }
 
+    protected static function examples(): array
+    {
+        return ['IT', 'FR'];
+    }
+
     protected function constraint(): Constraint
     {
         return new Assert\Country();

@@ -66,4 +66,14 @@ final class CodeFieldTypesTest extends TestCase
         // Written as the list writes it: "it" is no country code, "IT" is.
         self::assertNotSame([], (new CountryFieldType())->validateSettings(['default' => 'it']));
     }
+
+    #[DataProvider('types')]
+    public function testTheSettingsEditorShowsCodesOfTheListAsAnExample(AbstractCodeFieldType $type, WidgetKind $kind, int $length, string $raw, string $code, string $unknown): void
+    {
+        $example = $type->settingDefinitions()[0]->options['example'] ?? null;
+
+        self::assertIsArray($example);
+        self::assertNotSame([], $example);
+        self::assertSame([], $type->validateSettings(['preferred' => $example]));
+    }
 }

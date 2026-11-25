@@ -44,6 +44,11 @@ final class LanguageFieldType extends AbstractCodeFieldType
         return 3;
     }
 
+    protected static function examples(): array
+    {
+        return ['it', 'fr'];
+    }
+
     protected function constraint(): Constraint
     {
         return new Assert\Language();
