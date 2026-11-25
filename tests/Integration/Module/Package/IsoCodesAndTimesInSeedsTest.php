@@ -28,7 +28,9 @@ final class IsoCodesAndTimesInSeedsTest extends KernelTestCase
 
         $tickets = [];
         foreach (self::getContainer()->get(RecordFinderInterface::class)->each('ticket') as $record) {
-            $tickets[$record->get('code')] = $record;
+            $code = $record->get('code');
+            self::assertIsString($code);
+            $tickets[$code] = $record;
         }
         self::assertSame(['IT', 'GB'], [$tickets['T-1']->get('country'), $tickets['T-2']->get('country')]);
         $callback = $tickets['T-1']->get('callback');

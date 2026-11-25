@@ -50,7 +50,9 @@ final class IsoCodesInImportsTest extends KernelTestCase
         self::assertSame(3, $report->created);
         $suppliers = [];
         foreach (self::getContainer()->get(RecordFinderInterface::class)->each('supplier') as $record) {
-            $suppliers[$record->get('name')] = [$record->get('country'), $record->get('language'), $record->get('currency')];
+            $name = $record->get('name');
+            self::assertIsString($name);
+            $suppliers[$name] = [$record->get('country'), $record->get('language'), $record->get('currency')];
         }
         ksort($suppliers);
         self::assertSame(['Dupont' => ['FR', null, 'EUR'], 'Rossi' => ['IT', 'it', 'EUR'], 'Smith' => ['GB', 'en', 'GBP']], $suppliers);
