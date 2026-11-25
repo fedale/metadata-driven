@@ -1,0 +1,13 @@
+format: metadata-driven/v2
+kind: Package
+id: acme/helpdesk
+spec:
+  version: 1.0.0
+  label: Helpdesk
+  description: Tickets and their labels.
+  license: MIT
+  requires:
+    format: metadata-driven/v2
+  resources:
+    - objects/*.yaml
+    - seeds/*.yaml

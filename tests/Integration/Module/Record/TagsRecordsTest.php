@@ -19,6 +19,7 @@ use App\Module\Metadata\Application\Handler\CreateObjectHandler;
 use App\Module\Metadata\Contract\Exception\MetadataException;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Application\Grid\RecordGridSourceInterface;
+use App\Module\Record\Application\Import\RecordImporter;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordFinderInterface;
@@ -144,6 +145,29 @@ final class TagsRecordsTest extends KernelTestCase
         // One spelling of "client x"; nothing of the deleted record.
         self::assertSame(['Client X', 'Later', 'Urgent'], $source->labelsInUse($object, 'labels', 10));
         self::assertSame(['Client X'], $source->labelsInUse($object, 'labels', 1));
+    }
+
+    public function testACsvImportSeparatesTheLabelsWithBars(): void
+    {
+        $file = sys_get_temp_dir().'/md-tags-'.bin2hex(random_bytes(4)).'.csv';
+        file_put_contents($file, "subject,labels\nPrinter,urgent| client x |\nScreen,\n");
+
+        try {
+            $report = self::getContainer()->get(RecordImporter::class)->import('ticket', $file, null, []);
+        } finally {
+            unlink($file);
+        }
+
+        self::assertSame(2, $report->created);
+        self::assertSame([['Urgent', 'client x'], null], array_column($this->sortedBySubject(), 'labels'));
+    }
+
+    /**
+     * @return list<mixed>
+     */
+    private function sortedBySubject(): array
+    {
+        return array_values([...self::getContainer()->get(RecordGridSourceInterface::class)->fetch(new GridQuery(source: ['object' => 'ticket'], sort: [new SortOrder('subject', SortDirection::Asc)]))]);
     }
 
     private function tickets(): void

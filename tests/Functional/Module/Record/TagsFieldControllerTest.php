@@ -48,6 +48,7 @@ final class TagsFieldControllerTest extends WebTestCase
         self::assertSame('["Urgent","Later"]', $input->attr('data-gridview-tags-suggestions-value'));
         self::assertSame('3', $input->attr('data-gridview-tags-max-value'));
         self::assertSame('20', $input->attr('data-gridview-tags-max-length-value'));
+        self::assertSame('/o/ticket/tags/labels', $input->attr('data-gridview-tags-url-value'));
 
         $form = $crawler->selectButton('Save')->form(['record[subject]' => 'Printer', 'record[labels]' => 'urgent, client x, Urgent']);
         $this->client->submit($form);
@@ -58,6 +59,39 @@ final class TagsFieldControllerTest extends WebTestCase
 
         $crawler = $this->client->request('GET', \sprintf('/o/ticket/%s/edit', $ticket->id));
         self::assertSame('Urgent, client x', $crawler->filter('input[name="record[labels]"]')->attr('value'));
+    }
+
+    public function testSuggestsTheLabelsTheRecordsHold(): void
+    {
+        $records = self::getContainer()->get(RecordManagerInterface::class);
+        $records->create(new RecordInput('ticket', ['subject' => 'Printer', 'labels' => ['Urgent', 'client x']]));
+        $records->create(new RecordInput('ticket', ['subject' => 'Copier', 'labels' => ['Client X', 'paper']]));
+        $gone = $records->create(new RecordInput('ticket', ['subject' => 'Fax', 'labels' => ['clients']]));
+        $records->delete('ticket', $gone->id);
+
+        $this->client->request('GET', '/o/ticket/tags/labels', ['query' => 'CLI']);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['Client X'], json_decode((string) $this->client->getResponse()->getContent(), true));
+        $this->client->request('GET', '/o/ticket/tags/labels');
+        self::assertSame(['Client X', 'paper', 'Urgent'], json_decode((string) $this->client->getResponse()->getContent(), true));
+        // A LIKE wildcard is a character like any other.
+        $this->client->request('GET', '/o/ticket/tags/labels', ['query' => '%']);
+        self::assertSame([], json_decode((string) $this->client->getResponse()->getContent(), true));
+
+        $this->client->request('GET', '/o/ticket/tags/subject');
+        self::assertResponseStatusCodeSame(404);
+        $this->client->request('GET', '/o/ticket/tags/nothing');
+        self::assertResponseStatusCodeSame(404);
+    }
+
+    public function testWithRestrictTheInputAsksForNoOtherLabels(): void
+    {
+        ($this->client->getContainer()->get(CreateFieldHandler::class))(new CreateFieldCommand('ticket', 'kind', 'tags', 'Kind', settings: ['options' => ['Bug', 'Feature'], 'restrict' => true]));
+
+        $crawler = $this->client->request('GET', '/o/ticket/new');
+        $input = $crawler->filter('input[name="record[kind]"]');
+        self::assertSame('true', $input->attr('data-gridview-tags-restrict-value'));
+        self::assertNull($input->attr('data-gridview-tags-url-value'));
     }
 
     public function testShowsTheFieldTypesErrorsOnTheField(): void

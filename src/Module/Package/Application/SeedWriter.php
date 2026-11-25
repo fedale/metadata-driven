@@ -131,6 +131,11 @@ final class SeedWriter
                 $values[$name] = 'many_to_many' === $type ? $ids : $ids[0];
                 continue;
             }
+            // Labels: a YAML list, or separated by "|" in a CSV cell.
+            if ('tags' === $type) {
+                $values[$name] = SeedRecords::list($value);
+                continue;
+            }
             if ('file' === $type) {
                 $uploads = array_map(fn (string $path): FileUpload => new FileUpload($package->file($path) ?? throw new \LogicException(\sprintf('No file "%s" in the package.', $path)), basename($path)), SeedRecords::list($value));
                 $values[$name] = true === ($settings['multiple'] ?? false) ? $uploads : $uploads[0];

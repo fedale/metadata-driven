@@ -10,9 +10,11 @@ use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ViewKind;
+use App\Module\Metadata\Contract\Exception\FieldDefinitionNotFound;
 use App\Module\Metadata\Contract\Exception\ObjectDefinitionNotFound;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Application\CascadeTargets;
+use App\Module\Record\Application\Grid\RecordGridSourceInterface;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordLabel;
 use App\Module\Record\Contract\Dto\RecordOutput;
@@ -46,6 +48,8 @@ final class RecordController extends AbstractController
     private const int LOOKUP_LIMIT = 20;
     // The gridview relation filter loads its options once, without a search term.
     private const int FILTER_OPTIONS_LIMIT = 200;
+    /** The labels in use a tags input is offered at a time. */
+    private const int TAG_SUGGESTIONS_LIMIT = 20;
 
     public function __construct(
         // The labels in the user's language.
@@ -152,6 +156,22 @@ final class RecordController extends AbstractController
         $records = $lookup->search($definition->name, '', self::FILTER_OPTIONS_LIMIT);
 
         return $this->json(array_map(static fn (RecordLabel $record): array => ['id' => $record->id, 'label' => $record->label], $records));
+    }
+
+    /**
+     * The labels the records hold in a tags field, containing the text typed (`?query=`): the
+     * suggestions of its input (the gridview-tags controller), a JSON list of strings.
+     */
+    #[Route('/tags/{field}', name: 'tags', requirements: ['field' => '[a-z][a-z0-9_]*'], methods: ['GET'])]
+    public function tags(string $object, string $field, Request $request, RecordGridSourceInterface $source): JsonResponse
+    {
+        $definition = $this->objectFor($object, RecordAction::Read);
+        try {
+            return $this->json($source->labelsInUse($definition, $field, self::TAG_SUGGESTIONS_LIMIT, $request->query->getString('query')));
+        } catch (FieldDefinitionNotFound|\InvalidArgumentException $e) {
+            // No such field, or none holding labels.
+            throw $this->createNotFoundException($e->getMessage(), $e);
+        }
     }
 
     #[Route('/new', name: 'new', methods: ['GET', 'POST'])]

@@ -159,6 +159,16 @@ final class SeedExporter
 
             return [] === $references ? null : implode(SeedRecords::LIST_SEPARATOR, $references);
         }
+        if ('tags' === $field->type) {
+            $labels = \is_array($value) ? array_values(array_filter($value, \is_string(...))) : [];
+            foreach ($labels as $label) {
+                if (str_contains($label, SeedRecords::LIST_SEPARATOR)) {
+                    throw InvalidExport::labelWithSeparator($object->name, $field->name, $label);
+                }
+            }
+
+            return [] === $labels ? null : implode(SeedRecords::LIST_SEPARATOR, $labels);
+        }
         if ('file' === $field->type) {
             $paths = [];
             foreach (\is_array($value) ? $value : [$value] as $id) {

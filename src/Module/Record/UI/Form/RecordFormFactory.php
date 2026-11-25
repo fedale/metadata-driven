@@ -99,6 +99,11 @@ final class RecordFormFactory
             $widget = $this->fieldTypes->get($field->type)->widget($field->settings);
             $dependsOn = $field->relation()?->dependsOn;
             [$type, $options] = $this->control($field, $widget, $current[$name] ?? null, $isNew, null === $dependsOn ? null : ($current[$dependsOn] ?? null));
+            // Free labels suggest those the other records hold too, asked as the user types;
+            // with "restrict" only the field's own suggestions are allowed.
+            if (WidgetKind::Tags === $widget->kind && true !== ($widget->options['restrict'] ?? false)) {
+                $options['suggestions_url'] = $this->urls->generate('record_tags', ['object' => $object->name, 'field' => $name]);
+            }
             // A Status: its transitions change it, the buttons of the record's page.
             if (true === ($widget->options['locked'] ?? false)) {
                 $options = ['disabled' => true, 'required' => false, 'help' => 'form.changed_by_transitions'] + $options;

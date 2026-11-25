@@ -35,7 +35,8 @@ whoever may create the records of the object (`record.<object>.create`).
      row creates a record. Updating records needs `record.<object>.update` too.
    - **Relations**: for each relation or many-to-many field, what its cells hold: the ids of the
      records, or the values of a unique field of the related object (a code, an email). Several
-     values in one cell of a many-to-many field are separated by `|`.
+     values in one cell of a many-to-many field are separated by `|`, and so are the labels of a
+     `tags` field (`urgent|client x`).
 3. **Check**: the import runs, then is rolled back: "12 record(s) will be created, 3 updated",
    with the first rows as they will be imported, or the list of the rows refused. Nothing is
    written yet. Go **Back to the columns** to change them, or fix the file and start again.

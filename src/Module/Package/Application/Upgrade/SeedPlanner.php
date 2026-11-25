@@ -154,7 +154,7 @@ final class SeedPlanner
             }
             $field = $fields[$name] ?? [];
             $settings = \is_array($field['settings'] ?? null) ? $field['settings'] : [];
-            if ('many_to_many' === ($field['type'] ?? null) || ('file' === ($field['type'] ?? null) && true === ($settings['multiple'] ?? false))) {
+            if (\in_array($field['type'] ?? null, ['many_to_many', 'tags'], true) || ('file' === ($field['type'] ?? null) && true === ($settings['multiple'] ?? false))) {
                 $list = SeedRecords::list($value);
                 sort($list);
                 $normalized[$name] = $list;

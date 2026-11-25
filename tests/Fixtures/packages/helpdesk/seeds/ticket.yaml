@@ -1,0 +1,8 @@
+format: metadata-driven/v2
+kind: Seed
+id: acme.seed.ticket
+spec:
+  object: acme.ticket
+  key: code
+  mode: managed
+  source: seeds/tickets.csv
