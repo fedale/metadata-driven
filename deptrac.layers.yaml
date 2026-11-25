@@ -51,7 +51,8 @@ deptrac:
 
     # Framework code that Contract and Domain must not touch.
     # Uid, Collections and Validator constraints are tolerated as plain value objects:
-    # field types describe their rules with standard Symfony constraints.
+    # field types describe their rules with standard Symfony constraints. Intl too, as data:
+    # the ISO lists of countries, languages and currencies those constraints read.
     - name: Framework
       collectors:
         - type: bool
@@ -63,6 +64,8 @@ deptrac:
               value: '#^(Symfony\\Component\\Uid|Doctrine\\Common\\Collections)\\#'
             - type: classNameRegex
               value: '#^Symfony\\Component\\Validator\\Constraints?(\\|$)#'
+            - type: classNameRegex
+              value: '#^Symfony\\Component\\Intl\\#'
 
   ruleset:
     Shared: ~

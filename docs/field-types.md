@@ -15,6 +15,7 @@ missing keys take their default, unknown keys are refused.
 | `tel` | none | `varchar(30)` | phone input | text |
 | `url` | none | `varchar(2048)` | URL input | text (shown as a link) |
 | `color` | none | `varchar(7)` | colour picker; "No color" beside it when not required | text (shown as a swatch) |
+| `country`, `language`, `currency` | `preferred` (none), `default` | `varchar(2)` / `varchar(3)`, the ISO code | select of the names, the preferred codes first | choice of names (any of them) |
 | `select` | `options` (required), `default`, `display` (`dropdown`) | `varchar(100)` | select or buttons side by side | choice |
 | `tags` | `options` (none), `restrict` (false), `max`, `maxLength` (50) | `jsonb`, an array of strings | labels typed or picked among the suggestions, drawn as chips | choice of labels (any of them) |
 | `status` | `states` (required), `initial` (the first), `transitions` | `varchar(100)` | read-only; its transitions as buttons on the record's page | choice |
@@ -87,6 +88,7 @@ The settings of an existing field can change, from its admin page (section **Set
 | `number` | `decimals` | `min`, `max` |
 | `date` | `includeTime` | — |
 | `time` | — | `seconds` |
+| `country`, `language`, `currency` | — | `preferred`, `default` |
 | `boolean` | — | `default`, `display` |
 | `select` | — | `options`, `default`, `display` |
 | `tags` | — | every setting (they check the labels saved from then on) |
@@ -227,6 +229,31 @@ A colour as `#rrggbb`, the one format the browser's colour picker edits.
 - The browser's colour input always holds a colour, so a field that isn't required shows a
   "No color" checkbox beside it: checked, the field is empty.
 - The grid shows a swatch and the code, and filters on the code as text.
+
+## `country`, `language`, `currency`
+
+A code from an ISO list, shown by its name in the user's language: a country (`IT`, ISO
+3166-1 alpha-2, "Italia" in Italian, with its flag in the grid), a language (`it`, `fur`: the
+ISO 639 codes the Symfony Intl component lists, "italiano") or a currency (`EUR`, ISO 4217,
+"euro (EUR)").
+
+| Setting | Type | Rule |
+|---|---|---|
+| `preferred` | list of codes | listed first in the form, in this order; each a code of the list, written as there (`IT`, not `it`), not twice |
+| `default` | string or null | a code of the list; new records start with it |
+
+```json
+{"preferred": ["IT", "FR", "DE"], "default": "IT"}
+```
+
+- The value is the code. It's given in any case and trimmed, then written in the list's case: upper case for a
+  country and a currency (`" it "` becomes `IT`), lower case for a language. A code the list
+  doesn't have is refused with Symfony's message ("This value is not a valid country.").
+- The form lists every name of the list, in the page's language, the preferred codes first.
+- The grid and the exports show the name; its filter picks names (any of those picked). The sort
+  is on the code, so it doesn't follow the names. The search box matches the code, and only when
+  the field is listed among the object's search fields: it isn't searched by default.
+- A closed subset ("the countries we ship to") is a [`select`](#select) field.
 
 ## `email`
 

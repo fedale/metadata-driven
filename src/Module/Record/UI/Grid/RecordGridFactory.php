@@ -22,9 +22,12 @@ use Fedale\GridviewBundle\Column\Config\ActionColumn;
 use Fedale\GridviewBundle\Column\Config\BooleanColumn;
 use Fedale\GridviewBundle\Column\Config\CheckboxColumn;
 use Fedale\GridviewBundle\Column\Config\ColorColumn;
+use Fedale\GridviewBundle\Column\Config\CountryColumn;
+use Fedale\GridviewBundle\Column\Config\CurrencyColumn;
 use Fedale\GridviewBundle\Column\Config\DateColumn;
 use Fedale\GridviewBundle\Column\Config\DatetimeColumn;
 use Fedale\GridviewBundle\Column\Config\EmailColumn;
+use Fedale\GridviewBundle\Column\Config\LanguageColumn;
 use Fedale\GridviewBundle\Column\Config\NumberColumn;
 use Fedale\GridviewBundle\Column\Config\SelectColumn;
 use Fedale\GridviewBundle\Column\Config\TelColumn;
@@ -37,6 +40,10 @@ use Fedale\GridviewBundle\Export\GridExporterRegistry;
 use Fedale\GridviewBundle\Filter\FilterType;
 use Fedale\GridviewBundle\Grid\Gridview;
 use Fedale\GridviewBundle\Grid\GridviewBuilderFactory;
+use Symfony\Component\Intl\Countries;
+use Symfony\Component\Intl\Currencies;
+use Symfony\Component\Intl\Exception\MissingResourceException;
+use Symfony\Component\Intl\Languages;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Markup;
 
@@ -257,6 +264,7 @@ final class RecordGridFactory
             WidgetKind::Relation === $widget->kind => \is_string($label = $row[$field->name.RecordGridSourceInterface::LABEL_SUFFIX] ?? null) ? $label : (\is_string($value) ? RecordLabels::fallback($value) : ''),
             WidgetKind::Choice === $widget->kind && \is_scalar($value) => $widget->choices()[(string) $value] ?? (string) $value,
             WidgetKind::Tags === $widget->kind => self::tags($value),
+            \is_string($value) && \in_array($widget->kind, [WidgetKind::Country, WidgetKind::Language, WidgetKind::Currency], true) => self::codeName($widget->kind, $value),
             \is_bool($value) => $value ? '✓' : '✗',
             $value instanceof \DateTimeInterface => $value->format(match ($widget->kind) {
                 WidgetKind::DateTime => 'Y-m-d H:i',
@@ -279,6 +287,22 @@ final class RecordGridFactory
         $labels = $row[$name.RecordGridSourceInterface::LABEL_SUFFIX] ?? null;
 
         return \is_string($labels) ? $labels : '';
+    }
+
+    /**
+     * The name of a code in the user's language; the code itself when the list lacks it.
+     */
+    private static function codeName(WidgetKind $kind, string $code): string
+    {
+        try {
+            return match ($kind) {
+                WidgetKind::Country => Countries::getName($code),
+                WidgetKind::Language => Languages::getName($code),
+                default => Currencies::getName($code),
+            };
+        } catch (MissingResourceException) {
+            return $code;
+        }
     }
 
     /**
@@ -340,6 +364,11 @@ final class RecordGridFactory
             WidgetKind::DateTime => DatetimeColumn::new($name)->filterDate(),
             WidgetKind::Time => TimeColumn::new($name)->pattern(true === ($widget->options['seconds'] ?? false) ? 'H:i:s' : 'H:i')->filterTime(),
             WidgetKind::Color => ColorColumn::new($name)->filterText(),
+            // Named in the user's language (a country with its flag); filtered by picking
+            // names, not by typing a code. Sorted on the code.
+            WidgetKind::Country => CountryColumn::new($name)->filterRelation(choices: array_flip(Countries::getNames()), multiple: true, searchable: true),
+            WidgetKind::Language => LanguageColumn::new($name)->filterRelation(choices: array_flip(Languages::getNames()), multiple: true, searchable: true),
+            WidgetKind::Currency => CurrencyColumn::new($name)->filterRelation(choices: array_flip(Currencies::getNames()), multiple: true, searchable: true),
             // Shows the option label, filters and sorts on the stored value.
             WidgetKind::Choice => SelectColumn::new($name)->choices(array_flip($widget->choices())),
             // A many-to-many link shows the labels of the linked records and filters on their ids

@@ -5,7 +5,10 @@ Status: **in progress**. Phase 0 done on 2026-11-25 (gridview 1.10.0, the date f
 `color`; the colour's empty value needed gridview first (`nullable` on the `color` control,
 `NullableColorType`, a "No color" checkbox), and the time inputs of 1.10.0 were drawn as text
 (the form theme reads the widget's `type` variable): both in gridview 1.11.0. The package format
-has the two types on its branch, released as 2.6.0 with phase 2. Written on 2026-11-25; the user took the four recommended
+has the two types on its branch, released as 2.6.0 with phase 2. Phase 2 done on 2026-11-25:
+`country`, `language`, `currency` on a shared `AbstractCodeFieldType`; `symfony/intl` required,
+and tolerated in the Domain layer by Deptrac as data (like the Validator constraints that read
+it); the code shown by its name also in virtual columns and renderers. Written on 2026-11-25; the user took the four recommended
 options the same day.
 
 Five field types for values `fedale/gridview-bundle` already knows how to edit and show: each one

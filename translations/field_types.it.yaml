@@ -18,6 +18,26 @@ boolean:
 color:
     label: Colore
     description: Un colore, scelto o scritto come #rrggbb.
+country:
+    label: Paese
+    description: Un paese, salvato come codice ISO e mostrato con il suo nome.
+    settings:
+        preferred:
+            label: In cima alla lista
+            help: I codici che il form elenca per primi, in quest'ordine.
+        default:
+            label: Valore predefinito
+            help: 'Il codice con cui partono i nuovi record. Vuoto: nessuno.'
+currency:
+    label: Valuta
+    description: Una valuta, salvata come codice ISO e mostrata con il suo nome.
+    settings:
+        preferred:
+            label: In cima alla lista
+            help: I codici che il form elenca per primi, in quest'ordine.
+        default:
+            label: Valore predefinito
+            help: 'Il codice con cui partono i nuovi record. Vuoto: nessuno.'
 date:
     label: Data
     description: Una data, con l'ora se serve.
@@ -46,6 +66,16 @@ file:
         max:
             label: Numero massimo di file
             help: 'Con più file: quanti ne può contenere il campo, da 1 a 100. Vuoto: nessun limite.'
+language:
+    label: Lingua
+    description: Una lingua, salvata come codice ISO e mostrata con il suo nome.
+    settings:
+        preferred:
+            label: In cima alla lista
+            help: I codici che il form elenca per primi, in quest'ordine.
+        default:
+            label: Valore predefinito
+            help: 'Il codice con cui partono i nuovi record. Vuoto: nessuno.'
 many_to_many:
     label: Molti-a-molti
     description: Collega un numero qualsiasi di record di un altro oggetto (molti-a-molti).

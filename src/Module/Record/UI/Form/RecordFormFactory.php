@@ -330,7 +330,8 @@ final class RecordFormFactory
         return match ($widget->kind) {
             WidgetKind::Text, WidgetKind::Textarea, WidgetKind::Email, WidgetKind::Url, WidgetKind::Tel,
             WidgetKind::Integer, WidgetKind::Number, WidgetKind::Boolean, WidgetKind::Date,
-            WidgetKind::DateTime, WidgetKind::Time, WidgetKind::Color, WidgetKind::Choice, WidgetKind::Tags => $this->controls->field($this->gridviewControl($field, $widget, $isNew)),
+            WidgetKind::DateTime, WidgetKind::Time, WidgetKind::Color, WidgetKind::Country, WidgetKind::Language,
+            WidgetKind::Currency, WidgetKind::Choice, WidgetKind::Tags => $this->controls->field($this->gridviewControl($field, $widget, $isNew)),
             // The label goes on the first input of a password asked twice, so gridview needs it.
             WidgetKind::Password => $this->controls->field($this->gridviewControl($field, $widget, $isNew), $field->label),
             WidgetKind::Relation => $this->controls->field($this->gridviewControl($field, $widget, $isNew, $parentValue)),
@@ -367,6 +368,11 @@ final class RecordFormFactory
             // The browser's colour input always holds a colour: one that may be empty gets
             // gridview's "No color" beside it.
             WidgetKind::Color => ['nullable' => !$field->isRequired],
+            // Symfony's lists, named in the request's language; the preferred codes first.
+            WidgetKind::Country, WidgetKind::Language, WidgetKind::Currency => ['options' => [
+                'preferred_choices' => \is_array($widget->options['preferred'] ?? null) ? $widget->options['preferred'] : [],
+                'placeholder' => $field->isRequired ? 'form.choose_option' : '—',
+            ]],
             // The "radio" display of a select is drawn as buttons side by side; an empty group
             // already means "no value", so only the dropdown has a placeholder.
             WidgetKind::Choice => ['display' => $radio ? ChoiceDisplay::Segmented : ChoiceDisplay::Dropdown, 'options' => ['choices' => array_flip($widget->choices())] + ($radio ? [] : ['placeholder' => $field->isRequired ? 'form.choose_option' : '—'])],

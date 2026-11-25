@@ -24,6 +24,10 @@ enum WidgetKind: string
     case Time = 'time';
     /** A colour as #rrggbb. */
     case Color = 'color';
+    /** A country, a language, a currency: an ISO code; option "preferred" (codes listed first). */
+    case Country = 'country';
+    case Language = 'language';
+    case Currency = 'currency';
     case Email = 'email';
     /** A secret typed twice when option "confirm" is true; never prefilled. */
     case Password = 'password';

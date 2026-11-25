@@ -1,4 +1,8 @@
 field_type:
+    code:
+        preferred_invalid: 'L''impostazione "preferred" deve essere una lista di codici.'
+        twice: 'Impostazione "preferred": "%code%" è elencato due volte.'
+        unknown: 'Impostazione "%setting%": "%code%" non è un codice dell''elenco, scritto come lì.'
     display_invalid: 'L''impostazione "display" deve essere una tra: %values%.'
     file:
         accept_not_image_type: 'Impostazione "accept": "%type%" non è un tipo di immagine, e il campo accetta solo immagini.'
