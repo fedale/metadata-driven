@@ -108,6 +108,10 @@
             "tags": {
                 "enabled": true,
                 "fetch": "lazy"
+            },
+            "color": {
+                "enabled": true,
+                "fetch": "lazy"
             }
         },
         "@symfony/ux-autocomplete": {
