@@ -90,9 +90,9 @@ final class MetadataLifecycleTest extends KernelTestCase
         ($this->createObject)(new CreateObjectCommand('pet', 'Pet', 'Pets'));
 
         $this->expectException(InvalidMetadataDefinition::class);
-        $this->expectExceptionMessage('Unknown field type "color"');
+        $this->expectExceptionMessage('Unknown field type "colour"');
 
-        ($this->createField)(new CreateFieldCommand('pet', 'fur', 'color', 'Fur'));
+        ($this->createField)(new CreateFieldCommand('pet', 'fur', 'colour', 'Fur'));
     }
 
     public function testRejectsInvalidSettings(): void

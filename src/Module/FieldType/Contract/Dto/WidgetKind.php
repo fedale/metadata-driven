@@ -20,6 +20,10 @@ enum WidgetKind: string
     case Boolean = 'boolean';
     case Date = 'date';
     case DateTime = 'datetime';
+    /** A time of day; option "seconds". */
+    case Time = 'time';
+    /** A colour as #rrggbb. */
+    case Color = 'color';
     case Email = 'email';
     /** A secret typed twice when option "confirm" is true; never prefilled. */
     case Password = 'password';

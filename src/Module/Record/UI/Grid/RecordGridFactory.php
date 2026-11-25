@@ -21,6 +21,7 @@ use Fedale\GridviewBundle\Column\Config\AbstractColumnConfig;
 use Fedale\GridviewBundle\Column\Config\ActionColumn;
 use Fedale\GridviewBundle\Column\Config\BooleanColumn;
 use Fedale\GridviewBundle\Column\Config\CheckboxColumn;
+use Fedale\GridviewBundle\Column\Config\ColorColumn;
 use Fedale\GridviewBundle\Column\Config\DateColumn;
 use Fedale\GridviewBundle\Column\Config\DatetimeColumn;
 use Fedale\GridviewBundle\Column\Config\EmailColumn;
@@ -28,6 +29,7 @@ use Fedale\GridviewBundle\Column\Config\NumberColumn;
 use Fedale\GridviewBundle\Column\Config\SelectColumn;
 use Fedale\GridviewBundle\Column\Config\TelColumn;
 use Fedale\GridviewBundle\Column\Config\TextColumn;
+use Fedale\GridviewBundle\Column\Config\TimeColumn;
 use Fedale\GridviewBundle\Column\Config\UrlColumn;
 use Fedale\GridviewBundle\Contract\SearchModelInterface;
 use Fedale\GridviewBundle\Export\ExporterInterface;
@@ -256,7 +258,11 @@ final class RecordGridFactory
             WidgetKind::Choice === $widget->kind && \is_scalar($value) => $widget->choices()[(string) $value] ?? (string) $value,
             WidgetKind::Tags === $widget->kind => self::tags($value),
             \is_bool($value) => $value ? '✓' : '✗',
-            $value instanceof \DateTimeInterface => $value->format(WidgetKind::DateTime === $widget->kind ? 'Y-m-d H:i' : 'Y-m-d'),
+            $value instanceof \DateTimeInterface => $value->format(match ($widget->kind) {
+                WidgetKind::DateTime => 'Y-m-d H:i',
+                WidgetKind::Time => true === ($widget->options['seconds'] ?? false) ? 'H:i:s' : 'H:i',
+                default => 'Y-m-d',
+            }),
             \is_scalar($value) => (string) $value,
             default => '',
         };
@@ -332,6 +338,8 @@ final class RecordGridFactory
             WidgetKind::Boolean => BooleanColumn::new($name)->filterBoolean(),
             WidgetKind::Date => DateColumn::new($name)->filterDate(),
             WidgetKind::DateTime => DatetimeColumn::new($name)->filterDate(),
+            WidgetKind::Time => TimeColumn::new($name)->pattern(true === ($widget->options['seconds'] ?? false) ? 'H:i:s' : 'H:i')->filterTime(),
+            WidgetKind::Color => ColorColumn::new($name)->filterText(),
             // Shows the option label, filters and sorts on the stored value.
             WidgetKind::Choice => SelectColumn::new($name)->choices(array_flip($widget->choices())),
             // A many-to-many link shows the labels of the linked records and filters on their ids

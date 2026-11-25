@@ -55,7 +55,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 #[Route('/admin', name: 'admin_')]
 final class AdminController extends AbstractController
 {
-    private const array TYPE_ORDER = ['text', 'number', 'date', 'boolean', 'select', 'tags', 'email', 'tel', 'url', 'password', 'file', 'relation'];
+    private const array TYPE_ORDER = ['text', 'number', 'date', 'time', 'boolean', 'select', 'tags', 'email', 'tel', 'url', 'color', 'password', 'file', 'relation'];
     private const string GRID_VIEW_EXAMPLE = <<<'YAML'
         columns:
           - title

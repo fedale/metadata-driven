@@ -330,7 +330,7 @@ final class RecordFormFactory
         return match ($widget->kind) {
             WidgetKind::Text, WidgetKind::Textarea, WidgetKind::Email, WidgetKind::Url, WidgetKind::Tel,
             WidgetKind::Integer, WidgetKind::Number, WidgetKind::Boolean, WidgetKind::Date,
-            WidgetKind::DateTime, WidgetKind::Choice, WidgetKind::Tags => $this->controls->field($this->gridviewControl($field, $widget, $isNew)),
+            WidgetKind::DateTime, WidgetKind::Time, WidgetKind::Color, WidgetKind::Choice, WidgetKind::Tags => $this->controls->field($this->gridviewControl($field, $widget, $isNew)),
             // The label goes on the first input of a password asked twice, so gridview needs it.
             WidgetKind::Password => $this->controls->field($this->gridviewControl($field, $widget, $isNew), $field->label),
             WidgetKind::Relation => $this->controls->field($this->gridviewControl($field, $widget, $isNew, $parentValue)),
@@ -363,6 +363,10 @@ final class RecordFormFactory
             // A required checkbox would have to be checked: "required" only means "not null" here.
             WidgetKind::Boolean => ['required' => false, 'display' => 'switch' === ($widget->options['display'] ?? null) ? BooleanDisplay::Switch : BooleanDisplay::Checkbox],
             WidgetKind::Date, WidgetKind::DateTime => ['options' => $dates],
+            WidgetKind::Time => ['options' => $dates + ['with_seconds' => true === ($widget->options['seconds'] ?? false)]],
+            // The browser's colour input always holds a colour: one that may be empty gets
+            // gridview's "No color" beside it.
+            WidgetKind::Color => ['nullable' => !$field->isRequired],
             // The "radio" display of a select is drawn as buttons side by side; an empty group
             // already means "no value", so only the dropdown has a placeholder.
             WidgetKind::Choice => ['display' => $radio ? ChoiceDisplay::Segmented : ChoiceDisplay::Dropdown, 'options' => ['choices' => array_flip($widget->choices())] + ($radio ? [] : ['placeholder' => $field->isRequired ? 'form.choose_option' : '—'])],

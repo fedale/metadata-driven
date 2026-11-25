@@ -565,6 +565,7 @@ final class DbalRecordStore implements RecordStore
             Types::BOOLEAN => 'BOOLEAN',
             Types::DATE_IMMUTABLE => 'DATE',
             Types::DATETIME_IMMUTABLE => 'TIMESTAMPTZ',
+            Types::TIME_IMMUTABLE => 'TIME',
             Types::GUID => 'UUID',
             default => 'TEXT',
         };
@@ -581,7 +582,11 @@ final class DbalRecordStore implements RecordStore
     private function searchValue(string $field, mixed $value, string $cast): string|bool
     {
         if ($value instanceof \DateTimeInterface) {
-            $value = 'DATE' === $cast ? $value->format('Y-m-d') : $value->format(\DateTimeInterface::ATOM);
+            $value = match ($cast) {
+                'DATE' => $value->format('Y-m-d'),
+                'TIME' => $value->format('H:i:s'),
+                default => $value->format(\DateTimeInterface::ATOM),
+            };
         }
         $wrong = static fn (string $what): InvalidRecordSearch => new InvalidRecordSearch(\sprintf('%s is no %s, for "%s".', json_encode($value), $what, $field));
         if (!\is_scalar($value)) {
@@ -594,6 +599,7 @@ final class DbalRecordStore implements RecordStore
             'BOOLEAN' => filter_var($value, \FILTER_VALIDATE_BOOLEAN, \FILTER_NULL_ON_FAILURE) ?? throw $wrong('boolean'),
             'DATE' => false !== ($date = \DateTimeImmutable::createFromFormat('!Y-m-d', $text)) && $date->format('Y-m-d') === $text ? $text : throw $wrong('date (2026-12-31)'),
             'TIMESTAMPTZ' => self::timestamp($text) ?? throw $wrong('date and time'),
+            'TIME' => 1 === preg_match('/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/', $text) ? $text : throw $wrong('time (14:30)'),
             'UUID' => Uuid::isValid($text) ? $text : throw $wrong('id'),
             default => $text,
         };

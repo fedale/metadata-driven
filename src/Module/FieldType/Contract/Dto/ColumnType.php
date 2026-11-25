@@ -16,6 +16,7 @@ enum ColumnType: string
     case Boolean = 'boolean';
     case Date = 'date_immutable';
     case DateTime = 'datetime_immutable';
+    case Time = 'time_immutable';
     case Guid = 'guid';
     /** PostgreSQL's jsonb: a document the database can look into (containment, GIN indexes). */
     case Json = 'jsonb';

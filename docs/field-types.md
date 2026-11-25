@@ -10,9 +10,11 @@ missing keys take their default, unknown keys are refused.
 | `number` | `decimals` (0), `min`, `max` | `integer`, or `numeric(18, decimals)` | number input | number |
 | `boolean` | `default` (false), `display` (`checkbox`) | `boolean` | checkbox or switch | yes / no |
 | `date` | `includeTime` (false) | `date`, or `timestamp(0)` | date / date-time input | date range |
+| `time` | `seconds` (false) | `time(0)` | time input | time range |
 | `email` | none | `varchar(254)` | email input | text |
 | `tel` | none | `varchar(30)` | phone input | text |
 | `url` | none | `varchar(2048)` | URL input | text (shown as a link) |
+| `color` | none | `varchar(7)` | colour picker; "No color" beside it when not required | text (shown as a swatch) |
 | `select` | `options` (required), `default`, `display` (`dropdown`) | `varchar(100)` | select or buttons side by side | choice |
 | `tags` | `options` (none), `restrict` (false), `max`, `maxLength` (50) | `jsonb`, an array of strings | labels typed or picked among the suggestions, drawn as chips | choice of labels (any of them) |
 | `status` | `states` (required), `initial` (the first), `transitions` | `varchar(100)` | read-only; its transitions as buttons on the record's page | choice |
@@ -84,6 +86,7 @@ The settings of an existing field can change, from its admin page (section **Set
 | `text` | `maxLength`, `multiline` | `pattern`, `patternMessage` |
 | `number` | `decimals` | `min`, `max` |
 | `date` | `includeTime` | — |
+| `time` | — | `seconds` |
 | `boolean` | — | `default`, `display` |
 | `select` | — | `options`, `default`, `display` |
 | `tags` | — | every setting (they check the labels saved from then on) |
@@ -200,6 +203,30 @@ A postal code is a text with a pattern, not a number: a number would drop the le
 - With time: `"2024-02-29T13:45"` (HTML input), `"2024-02-29 13:45[:00]"` or ISO 8601 with offset.
 - Impossible dates are refused ("2026-02-31" is not rolled over to March).
 - Grid filter: a date range picker (flatpickr); the upper bound includes the whole day.
+
+## `time`
+
+A time of day without a date: an opening hour, a slot.
+
+| Setting | Type | Rule |
+|---|---|---|
+| `seconds` | bool | the input asks for the seconds too; without it they're zero |
+
+- The value is a `DateTimeImmutable` dated 1970-01-01 in the record arrays, written `14:30`
+  (`14:30:15` with `seconds`) in grids, exports and imports. It's given as `14:30`, `14:30:15`
+  or a date-time (its time); `25:00` is refused: "This value is not a valid time.".
+- The grid sorts on it and filters a range of times ("from 09:00 to 12:30"; `to` reaches the end
+  of its minute).
+
+## `color`
+
+A colour as `#rrggbb`, the one format the browser's colour picker edits.
+
+- Stored in lower case; `#ABC` is read as `#aabbcc`, and the `#` may be left out. Colour names,
+  `rgb()` and transparency are refused: "This value is not a valid color (#rrggbb).".
+- The browser's colour input always holds a colour, so a field that isn't required shows a
+  "No color" checkbox beside it: checked, the field is empty.
+- The grid shows a swatch and the code, and filters on the code as text.
 
 ## `email`
 

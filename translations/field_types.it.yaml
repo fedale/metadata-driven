@@ -15,6 +15,9 @@ boolean:
             choices:
                 checkbox: Casella di spunta
                 switch: Interruttore
+color:
+    label: Colore
+    description: Un colore, scelto o scritto come #rrggbb.
 date:
     label: Data
     description: Una data, con l'ora se serve.
@@ -195,6 +198,13 @@ text:
         patternMessage:
             label: Messaggio del pattern
             help: 'Mostrato quando il valore non corrisponde. Predefinito: "This value is not valid."'
+time:
+    label: Ora
+    description: Un'ora del giorno, senza data.
+    settings:
+        seconds:
+            label: Con i secondi
+            help: Il campo chiede anche i secondi.
 url:
     label: Link
     description: Un indirizzo web (http o https), mostrato come link.
