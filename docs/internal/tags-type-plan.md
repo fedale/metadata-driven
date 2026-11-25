@@ -1,6 +1,6 @@
 # Plan: the `tags` field type
 
-Status: **in progress**. Phase 1 done on 2026-11-24, with the form of phase 3 (gridview's tags
+Status: **done**. Phase 1 done on 2026-11-24, with the form of phase 3 (gridview's tags
 control, released in gridview 1.9.0) and the `tags` entry of the package format (released in 2.5.0, its kind
 `strings` for `options`), which the app's catalog test requires. Phase 2 done the same day: the
 cell is a badge per label (drawn by `RecordGridFactory`, as gridview's `badge` column renders one
@@ -11,7 +11,10 @@ on static choices, a text filter past 200 labels in use; a tags field is searcha
 object's read permission), given to the control as its `url` unless `restrict`. Phase 4 done the
 same day: the CSV import and seeds split the labels on `|`, an upgrade compares them as a set,
 the seed export joins them and refuses a label holding `|` (the format and its README were done
-with phase 1). Left: phase 5, the adoption of JSON columns (optional). Written and decided on 2026-11-23, after comparing the package format with
+with phase 1). Phase 5 done on 2026-11-25: `ColumnProposer` proposes `tags` for a JSON column
+whose values are all lists of strings (checked on the whole column, not a sample), `text`
+otherwise; adopting one as tags is refused while a value is not, and its empty lists become null.
+The plan is complete. Written and decided on 2026-11-23, after comparing the package format with
 a Directus schema snapshot: Directus has a `json` field with the `tags` interface (free labels on
 a record, `["urgent", "client-x"]`), and metadata-driven has nothing to map it to.
 
