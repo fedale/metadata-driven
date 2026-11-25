@@ -268,7 +268,9 @@ labels to manage, and a new one is typed right in the form. For a vocabulary wit
   Backspace on an empty input removes the last one. As you type, it suggests the field's
   `options`, then the labels the other records hold that contain the text typed (unless
   `restrict`). Without JavaScript it's a text input of labels separated by commas.
-- The grid shows a badge per label, and the exports the labels joined with `", "`.
+- The grid shows a badge per label, and the exports the labels joined with `", "`. A CSV import
+  or a package seed separates them with `|` (see [Importing records](import.md) and
+  [Packages](packages.md)).
 - The grid's filter offers the suggestions, or without them the labels the records hold (up to
   200; past them, a text matched against each label). It finds the records holding any of the
   labels picked, ignoring case.

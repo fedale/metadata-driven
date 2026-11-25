@@ -166,6 +166,9 @@ BRG-02,Bergen table,table,,Tables,wood,
 - **Files from the package.** A file field holds a path inside the package
   (`files/products/oslo.png`); a field of several files, paths separated by `|`. Each file is
   checked and stored as an upload is: its content decides its type.
+- **Labels.** A `tags` field holds a YAML list (`labels: [urgent, client x]`), or labels
+  separated by `|` in a CSV cell. An upgrade compares them as a set: another order changes
+  nothing. An export refuses a label holding `|`, which would read back as two.
 - **`mode`**: `once` (the default) or `managed`. Both are written at install. A `managed` seed
   is kept in line with new versions of the package; the records of a `once` seed belong to the
   user from then on (see [Upgrading the records](#upgrading-the-records)).

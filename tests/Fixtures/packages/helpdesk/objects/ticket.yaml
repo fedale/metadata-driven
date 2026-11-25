@@ -1,0 +1,19 @@
+format: metadata-driven/v2
+kind: Object
+id: acme.ticket
+spec:
+  name: ticket
+  label: Ticket
+  plural: Tickets
+  fields:
+    - id: acme.ticket.code
+      name: code
+      type: text
+      label: Code
+      required: true
+      unique: true
+    - id: acme.ticket.labels
+      name: labels
+      type: tags
+      label: Labels
+      settings: { options: [Urgent, Later], max: 5 }

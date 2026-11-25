@@ -93,6 +93,11 @@ final class InvalidExport extends PackageException
         return new self(\sprintf('The key "%s" of a record of "%s" holds "|", which separates the keys of a many-to-many field.', $key, $object));
     }
 
+    public static function labelWithSeparator(string $object, string $field, string $label): self
+    {
+        return new self(\sprintf('A record of "%s" holds the label "%s" in "%s": "|" separates the labels in a seed, so it cannot be exported.', $object, $label, $field));
+    }
+
     /**
      * @param list<string> $problems
      */

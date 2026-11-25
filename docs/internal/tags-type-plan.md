@@ -8,8 +8,10 @@ value), with a hidden ", " between them for the export; the filter is a multiple
 on static choices, a text filter past 200 labels in use; a tags field is searchable
 (`FieldTypeInterface::isSearchable()`). Phase 3 done on 2026-11-25: `GET
 /o/{object}/tags/{field}?query=` lists the labels in use containing the text (20 at most, the
-object's read permission), given to the control as its `url` unless `restrict`. Next: the CSV
-import and seeds of phase 4. Written and decided on 2026-11-23, after comparing the package format with
+object's read permission), given to the control as its `url` unless `restrict`. Phase 4 done the
+same day: the CSV import and seeds split the labels on `|`, an upgrade compares them as a set,
+the seed export joins them and refuses a label holding `|` (the format and its README were done
+with phase 1). Left: phase 5, the adoption of JSON columns (optional). Written and decided on 2026-11-23, after comparing the package format with
 a Directus schema snapshot: Directus has a `json` field with the `tags` interface (free labels on
 a record, `["urgent", "client-x"]`), and metadata-driven has nothing to map it to.
 

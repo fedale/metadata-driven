@@ -254,7 +254,7 @@ final class RecordImporter
                 $input[$name] = true === ($field->settings['multiple'] ?? false) ? $uploads : ($uploads[0] ?? null);
                 continue;
             }
-            $input[$name] = null !== $field->manyToMany() ? $this->list($field, $value) : $value;
+            $input[$name] = null !== $field->manyToMany() || 'tags' === $field->type ? $this->list($field, $value) : $value;
         }
 
         return [new RecordInput($object->name, $input), $problems];
@@ -323,7 +323,8 @@ final class RecordImporter
     }
 
     /**
-     * The values of a cell: several for a many-to-many field or a list of files, one otherwise.
+     * The values of a cell: several for a many-to-many field, a list of files or the labels of
+     * a tags field, one otherwise.
      *
      * @return list<string>
      */
@@ -332,7 +333,7 @@ final class RecordImporter
         if (null === $value) {
             return [];
         }
-        $several = null !== $field->manyToMany() || ('file' === $field->type && true === ($field->settings['multiple'] ?? false));
+        $several = null !== $field->manyToMany() || 'tags' === $field->type || ('file' === $field->type && true === ($field->settings['multiple'] ?? false));
         $items = $several ? explode(self::LIST_SEPARATOR, $value) : [$value];
 
         return array_values(array_filter(array_map(trim(...), $items), static fn (string $item): bool => '' !== $item));
