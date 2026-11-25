@@ -42,9 +42,10 @@ interface RecordGridSourceInterface extends GridDataSourceInterface
 
     /**
      * The labels the live records hold in a tags field, each once ignoring case (one of its
-     * spellings), in alphabetical order, $limit at most: the choices of its filter.
+     * spellings), in alphabetical order, $limit at most: the choices of its filter, or with
+     * $containing (ignoring case) the suggestions of its input.
      *
      * @return list<string>
      */
-    public function labelsInUse(ObjectDefinitionDto $object, string $fieldName, int $limit): array;
+    public function labelsInUse(ObjectDefinitionDto $object, string $fieldName, int $limit, ?string $containing = null): array;
 }

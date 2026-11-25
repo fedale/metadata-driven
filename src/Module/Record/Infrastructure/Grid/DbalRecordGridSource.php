@@ -246,22 +246,24 @@ final class DbalRecordGridSource implements RecordGridSourceInterface
         return WidgetKind::Tags === $this->fieldTypes->get($field->type)->widget($field->settings)->kind;
     }
 
-    public function labelsInUse(ObjectDefinitionDto $object, string $fieldName, int $limit): array
+    public function labelsInUse(ObjectDefinitionDto $object, string $fieldName, int $limit, ?string $containing = null): array
     {
         $field = $this->readableField($object, $fieldName);
         if (!$this->isTags($field)) {
             throw new \InvalidArgumentException(\sprintf('Field "%s" of "%s" holds no labels.', $fieldName, $object->name));
         }
         // One spelling per label ignoring case, the first in the order of the code points.
+        $term = null === $containing ? '' : trim($containing);
         $labels = $this->connection->fetchFirstColumn(\sprintf(
-            'SELECT MIN(%1$s) FROM %2$s %3$s CROSS JOIN LATERAL jsonb_array_elements_text(%4$s) %1$s WHERE %5$s IS NULL GROUP BY LOWER(%1$s) ORDER BY LOWER(%1$s) LIMIT %6$d',
+            'SELECT MIN(%1$s) FROM %2$s %3$s CROSS JOIN LATERAL jsonb_array_elements_text(%4$s) %1$s WHERE %5$s IS NULL%7$s GROUP BY LOWER(%1$s) ORDER BY LOWER(%1$s) LIMIT %6$d',
             $this->table->quote(self::LABEL_ALIAS),
             $this->table->table($object),
             $this->table->quote(self::ALIAS),
             $this->table->column($field->columnName, self::ALIAS),
             $this->table->column('deleted_at', self::ALIAS),
             max(0, $limit),
-        ));
+            '' === $term ? '' : ' AND LOWER('.$this->table->quote(self::LABEL_ALIAS).') LIKE :term',
+        ), '' === $term ? [] : ['term' => '%'.RecordTable::escapeLike(mb_strtolower($term)).'%']);
 
         return array_values(array_filter($labels, \is_string(...)));
     }

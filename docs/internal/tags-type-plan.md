@@ -6,8 +6,10 @@ control, released in gridview 1.9.0) and the `tags` entry of the package format 
 cell is a badge per label (drawn by `RecordGridFactory`, as gridview's `badge` column renders one
 value), with a hidden ", " between them for the export; the filter is a multiple relation filter
 on static choices, a text filter past 200 labels in use; a tags field is searchable
-(`FieldTypeInterface::isSearchable()`). Next: the suggestions endpoint of phase 3, the CSV import
-and seeds of phase 4. Written and decided on 2026-11-23, after comparing the package format with
+(`FieldTypeInterface::isSearchable()`). Phase 3 done on 2026-11-25: `GET
+/o/{object}/tags/{field}?query=` lists the labels in use containing the text (20 at most, the
+object's read permission), given to the control as its `url` unless `restrict`. Next: the CSV
+import and seeds of phase 4. Written and decided on 2026-11-23, after comparing the package format with
 a Directus schema snapshot: Directus has a `json` field with the `tags` interface (free labels on
 a record, `["urgent", "client-x"]`), and metadata-driven has nothing to map it to.
 

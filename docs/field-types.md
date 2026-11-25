@@ -265,8 +265,9 @@ labels to manage, and a new one is typed right in the form. For a vocabulary wit
   label, the first spelling wins, and a label matching a suggestion takes its spelling. A label
   can't hold a comma. No label at all is null, so a required tags field needs one.
 - The form shows the labels as chips, with an input adding them: Enter or a comma adds one,
-  Backspace on an empty input removes the last one, and the suggestions are offered as you
-  type. Without JavaScript it's a text input of labels separated by commas.
+  Backspace on an empty input removes the last one. As you type, it suggests the field's
+  `options`, then the labels the other records hold that contain the text typed (unless
+  `restrict`). Without JavaScript it's a text input of labels separated by commas.
 - The grid shows a badge per label, and the exports the labels joined with `", "`.
 - The grid's filter offers the suggestions, or without them the labels the records hold (up to
   200; past them, a text matched against each label). It finds the records holding any of the
