@@ -17,3 +17,11 @@ spec:
       type: tags
       label: Labels
       settings: { options: [Urgent, Later], max: 5 }
+    - id: acme.ticket.country
+      name: country
+      type: country
+      label: Country
+    - id: acme.ticket.callback
+      name: callback
+      type: time
+      label: Call back at

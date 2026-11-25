@@ -197,6 +197,8 @@ final class SeedExporter
         return match (true) {
             null === $value => null,
             \is_bool($value) => $value ? 'true' : 'false',
+            // A time of day is written as a time, as the CSV import reads it.
+            $value instanceof \DateTimeInterface && 'time' === $field->type => $value->format(true === ($field->settings['seconds'] ?? false) ? 'H:i:s' : 'H:i'),
             $value instanceof \DateTimeInterface => $value->format(true === ($field->settings['includeTime'] ?? false) ? 'Y-m-d H:i:s' : 'Y-m-d'),
             \is_scalar($value) => (string) $value,
             default => throw new \LogicException(\sprintf('Field "%s" holds a value a seed cannot write.', $field->name)),

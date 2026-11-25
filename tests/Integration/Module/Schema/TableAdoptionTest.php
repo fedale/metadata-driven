@@ -189,6 +189,32 @@ final class TableAdoptionTest extends KernelTestCase
         self::assertSame('jsonb', $this->connection()->fetchOne("SELECT data_type FROM information_schema.columns WHERE table_schema = 'data' AND table_name = 'c_ticket' AND column_name = 'keywords'"));
     }
 
+    public function testProposesTheTypesTheNameAndLengthOfAColumnTell(): void
+    {
+        $this->sql('CREATE TABLE data.supplier (id serial PRIMARY KEY, country char(2), lang varchar(2), currency_code varchar(3), brand_colour varchar(7), opens time, notes varchar(2))');
+        $this->sql("INSERT INTO data.supplier (country, lang, currency_code, brand_colour, opens) VALUES ('it', 'IT', 'eur', '#1F6FEB', '09:30:15')");
+
+        $proposal = $this->adopter()->propose('supplier');
+        $types = array_map(static fn ($column): array => array_keys($column->options), $proposal->columns);
+        self::assertSame([
+            'country' => ['country', 'text', 'email', 'url', 'tel'],
+            'lang' => ['language', 'text', 'email', 'url', 'tel'],
+            'currency_code' => ['currency', 'text', 'email', 'url', 'tel'],
+            'brand_colour' => ['color', 'text', 'email', 'url', 'tel'],
+            'opens' => ['time'],
+            // Two characters, but not named as a code.
+            'notes' => ['text', 'email', 'url', 'tel'],
+        ], $types);
+
+        $this->adopter()->adopt($proposal->request());
+        $supplier = self::getContainer()->get(RecordFinderInterface::class)->latest('supplier')[0];
+        // Brought to the case a record is written in.
+        self::assertSame(['IT', 'it', 'EUR', '#1f6feb'], [$supplier->get('country'), $supplier->get('lang'), $supplier->get('currency_code'), $supplier->get('brand_colour')]);
+        $opens = $supplier->get('opens');
+        self::assertInstanceOf(\DateTimeImmutable::class, $opens);
+        self::assertSame('09:30:15', $opens->format('H:i:s'));
+    }
+
     public function testADryRunChangesNothing(): void
     {
         $this->sql('CREATE TABLE data.project (id serial PRIMARY KEY, name text)');

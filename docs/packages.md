@@ -166,6 +166,9 @@ BRG-02,Bergen table,table,,Tables,wood,
 - **Files from the package.** A file field holds a path inside the package
   (`files/products/oslo.png`); a field of several files, paths separated by `|`. Each file is
   checked and stored as an upload is: its content decides its type.
+- **Codes and times.** A `country`, `language` or `currency` field holds its code (`IT`), or
+  its name in the installing user's language or in English (`Italy`); the export writes codes,
+  which read the same in any language: prefer them. A `time` field holds `14:30`.
 - **Labels.** A `tags` field holds a YAML list (`labels: [urgent, client x]`), or labels
   separated by `|` in a CSV cell. An upgrade compares them as a set: another order changes
   nothing. An export refuses a label holding `|`, which would read back as two.

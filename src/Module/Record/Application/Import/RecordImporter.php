@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Record\Application\Import;
 
 use App\Module\FieldType\Contract\Dto\FileUpload;
+use App\Module\FieldType\Contract\IsoCodesInterface;
 use App\Module\Metadata\Contract\Dto\FieldDefinitionDto;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\Exception\MetadataException;
@@ -37,6 +38,7 @@ final class RecordImporter
         private readonly RecordManagerInterface $records,
         private readonly RecordStore $store,
         private readonly TransactionRunner $transactions,
+        private readonly IsoCodesInterface $isoCodes,
     ) {
     }
 
@@ -254,7 +256,11 @@ final class RecordImporter
                 $input[$name] = true === ($field->settings['multiple'] ?? false) ? $uploads : ($uploads[0] ?? null);
                 continue;
             }
-            $input[$name] = null !== $field->manyToMany() || 'tags' === $field->type ? $this->list($field, $value) : $value;
+            $input[$name] = match (true) {
+                null !== $field->manyToMany(), 'tags' === $field->type => $this->list($field, $value),
+                // A country, a language, a currency: its code, or its name as a person writes it.
+                default => $this->isoCodes->code($field->type, $value) ?? $value,
+            };
         }
 
         return [new RecordInput($object->name, $input), $problems];

@@ -165,6 +165,11 @@ The field proposed for each column, and the others it may become:
 | `boolean` | `boolean` | |
 | `date` | `date` | |
 | `timestamp`, `timestamptz` | `date` with its time | |
+| `time`, `timetz` | `time` with its seconds | |
+| `char(2)` / `varchar(2)` named `country…` / `nation…` | `country`; its codes upper-cased | `text`, `email`, `url`, `tel` |
+| up to 3 characters named `lang…` / `language…` | `language`; its codes lower-cased | `text`, `email`, `url`, `tel` |
+| 3 characters named `currency…` / `curr…` | `currency`; its codes upper-cased | `text`, `email`, `url`, `tel` |
+| `varchar(7)` named `color…` / `colour…` | `color`; lower-cased | `text`, `email`, `url`, `tel` |
 | a foreign key alone to the key of an object | `relation` to that object, its `ON DELETE` as the field's rule | `number` |
 | `json`, `jsonb` whose values are all lists of strings (or empty) | `tags`, labels of 100 characters at most; an empty list becomes no label | `text`, long |
 | any other `json`, `jsonb` | `text`, long: the document as its text | `tags`, refused while a value is no list of strings |

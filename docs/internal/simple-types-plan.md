@@ -1,6 +1,6 @@
 # Plan: the `time`, `color`, `country`, `language` and `currency` field types
 
-Status: **in progress**. Phase 0 done on 2026-11-25 (gridview 1.10.0, the date filter's
+Status: **done**. Phase 0 done on 2026-11-25 (gridview 1.10.0, the date filter's
 `input: time`). Phase 1 done the same day: `time` (its `seconds` left free to change) and
 `color`; the colour's empty value needed gridview first (`nullable` on the `color` control,
 `NullableColorType`, a "No color" checkbox), and the time inputs of 1.10.0 were drawn as text
@@ -8,7 +8,11 @@ Status: **in progress**. Phase 0 done on 2026-11-25 (gridview 1.10.0, the date f
 has the two types on its branch, released as 2.6.0 with phase 2. Phase 2 done on 2026-11-25:
 `country`, `language`, `currency` on a shared `AbstractCodeFieldType`; `symfony/intl` required,
 and tolerated in the Domain layer by Deptrac as data (like the Validator constraints that read
-it); the code shown by its name also in virtual columns and renderers. Written on 2026-11-25; the user took the four recommended
+it); the code shown by its name also in virtual columns and renderers. Package format 2.6.0 released and
+required. Phase 3 done the same day: `IsoCodesInterface` (FieldType Contract) reads a code or a
+name, in the current language or in English, for the CSV import and the seeds; the seed export
+writes codes and a time as `H:i`; `ColumnProposer` proposes the five types from a column's type,
+name and length, and the adoption brings codes and colours to their case. The plan is complete. Written on 2026-11-25; the user took the four recommended
 options the same day.
 
 Five field types for values `fedale/gridview-bundle` already knows how to edit and show: each one

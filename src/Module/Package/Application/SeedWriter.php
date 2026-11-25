@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Package\Application;
 
 use App\Module\FieldType\Contract\Dto\FileUpload;
+use App\Module\FieldType\Contract\IsoCodesInterface;
 use App\Module\Package\Domain\Exception\InstallRefused;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
@@ -33,6 +34,7 @@ final class SeedWriter
         private readonly RecordManagerInterface $records,
         private readonly SeedRecords $seedRecords,
         private readonly RecordEventScopeInterface $events,
+        private readonly IsoCodesInterface $isoCodes,
     ) {
     }
 
@@ -141,7 +143,8 @@ final class SeedWriter
                 $values[$name] = true === ($settings['multiple'] ?? false) ? $uploads : $uploads[0];
                 continue;
             }
-            $values[$name] = $value;
+            // A country, a language, a currency: its code, or its name (the export writes codes).
+            $values[$name] = \is_string($value) && \is_string($type) ? $this->isoCodes->code($type, $value) ?? $value : $value;
         }
 
         return [$values, $later];

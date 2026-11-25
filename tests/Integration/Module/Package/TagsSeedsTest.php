@@ -45,10 +45,10 @@ final class TagsSeedsTest extends KernelTestCase
     public function testAnUpgradeComparesTheLabelsAsASet(): void
     {
         // The same labels, in another order and another case: nothing to do.
-        $report = $this->upgrade('1.1.0', [['code' => 'T-1', 'labels' => ['client x', 'urgent']], ['code' => 'T-2']]);
+        $report = $this->upgrade('1.1.0', [['code' => 'T-1', 'labels' => ['client x', 'urgent'], 'country' => 'Italy', 'callback' => '09:30'], ['code' => 'T-2', 'country' => 'gb']]);
         self::assertSame([], $report->applied);
 
-        $report = $this->upgrade('1.2.0', [['code' => 'T-1', 'labels' => ['later']], ['code' => 'T-2']]);
+        $report = $this->upgrade('1.2.0', [['code' => 'T-1', 'labels' => ['later'], 'country' => 'Italy', 'callback' => '09:30'], ['code' => 'T-2', 'country' => 'gb']]);
         self::assertSame(['seeds/ticket.yaml: update record T-1'], array_map(strval(...), $report->applied));
         self::assertSame(['Later'], $this->tickets()['T-1']->values['labels']);
     }

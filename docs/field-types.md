@@ -254,6 +254,8 @@ ISO 639 codes the Symfony Intl component lists, "italiano") or a currency (`EUR`
   is on the code, so it doesn't follow the names. The search box matches the code, and only when
   the field is listed among the object's search fields: it isn't searched by default.
 - A closed subset ("the countries we ship to") is a [`select`](#select) field.
+- A CSV import and a package seed may also give the name, in the current language or in English
+  (`Italia`, `United Kingdom`); the API and the forms take the code only.
 
 ## `email`
 

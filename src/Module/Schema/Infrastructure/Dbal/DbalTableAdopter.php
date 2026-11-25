@@ -572,6 +572,16 @@ final class DbalTableAdopter implements TableAdopterInterface
             if ('tags' === $mapping->type) {
                 $run(\sprintf("UPDATE %s SET %s = NULL WHERE %s = '[]'::jsonb", $t, $c, $c));
             }
+            // A code in its list's case and a colour in lower case, as when a record is written:
+            // "it" would be refused at the record's next save.
+            $case = match ($mapping->type) {
+                'country', 'currency' => 'UPPER',
+                'language', 'color' => 'LOWER',
+                default => null,
+            };
+            if (null !== $case) {
+                $run(\sprintf('UPDATE %1$s SET %2$s = %3$s(TRIM(%2$s)) WHERE %2$s <> %3$s(TRIM(%2$s))', $t, $c, $case));
+            }
         }
 
         // 4. The key.

@@ -54,11 +54,16 @@ final class ColumnProposer
                 $text = null === $length || $length > self::TEXT_VARCHAR_LIMIT
                     ? $field('text', ['maxLength' => min($length ?? self::TEXT_MAX_LENGTH, self::TEXT_MAX_LENGTH), 'multiline' => true])
                     : $field('text', ['maxLength' => $length]);
-                // The name tells better than the type: "email", "website", "phone".
+                // The name tells better than the type: "email", "website", "phone"; a code as
+                // short as one of its list's: "country", "currency", "lang"; a colour.
                 $named = match (true) {
                     1 === preg_match('/(^|_)e?mail($|_)/', $name) => 'email',
                     1 === preg_match('/(^|_)(url|website|site|link)($|_)/', $name) => 'url',
                     1 === preg_match('/(^|_)(phone|tel|telephone|mobile|fax)($|_)/', $name) => 'tel',
+                    2 === $length && 1 === preg_match('/(^|_)(country|nation)($|_)/', $name) => 'country',
+                    null !== $length && $length <= 3 && 1 === preg_match('/(^|_)(lang|language)($|_)/', $name) => 'language',
+                    3 === $length && 1 === preg_match('/(^|_)(currency|curr)($|_)/', $name) => 'currency',
+                    7 === $length && 1 === preg_match('/(^|_)colou?r($|_)/', $name) => 'color',
                     default => null,
                 };
                 if (null !== $named) {
@@ -89,6 +94,11 @@ final class ColumnProposer
             case 'timestamp without time zone':
             case 'timestamp with time zone':
                 $options['date'] = $field('date', ['includeTime' => true]);
+                break;
+            case 'time without time zone':
+            case 'time with time zone':
+                // A time(0) column: fractions of a second are dropped, seconds kept.
+                $options['time'] = $field('time', ['seconds' => true]);
                 break;
             case 'json':
             case 'jsonb':
