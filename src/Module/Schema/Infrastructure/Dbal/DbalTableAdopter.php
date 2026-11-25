@@ -108,7 +108,7 @@ final class DbalTableAdopter implements TableAdopterInterface
                 if (\in_array($column->name, self::keyColumns($table), true) || $this->isSystemColumn($column)) {
                     continue;
                 }
-                $proposal = ColumnProposer::propose($column, isset($uniques[$column->name]), $targets[$column->name] ?? null);
+                $proposal = ColumnProposer::propose($column, isset($uniques[$column->name]), $targets[$column->name] ?? null, self::isJson($column) && $this->holdsStringLists($table, $column->name));
                 // Field names: unique in the object, never a system column's.
                 $field = $this->free(ProposedNames::machineName($column->name) ?? 'column', $names);
                 $names[$field] = true;
@@ -451,6 +451,11 @@ final class DbalTableAdopter implements TableAdopterInterface
             if (null !== $mapping->targetTable && !isset($set[$mapping->targetTable])) {
                 $reasons[] = new Message('schema.adopt.target_not_adopted', 'Column %column% is a relation to table %table%, which is not adopted with it: adopt both together, or make it no relation.', ['column' => $column, 'table' => $mapping->targetTable]);
             }
+            // A tags field reads lists of strings: anything else would reach the records as is.
+            $database = $table->column($column);
+            if ('tags' === $mapping->type && null !== $database && (!self::isJson($database) || !$this->holdsStringLists($table, $column))) {
+                $reasons[] = new Message('schema.adopt.tags_not_string_lists', 'Column %column% becomes tags only if it is a JSON column whose values are all lists of strings: make it a text.', ['column' => $column]);
+            }
         }
         if (ProposedNames::machineName($request->objectName) !== $request->objectName) {
             $reasons[] = new Message('schema.adopt.name_invalid', 'The object\'s name "%name%" is not a machine name: lowercase letters, digits and single underscores, starting with a letter.', ['name' => $request->objectName]);
@@ -562,6 +567,10 @@ final class DbalTableAdopter implements TableAdopterInterface
             }
             if ($database->identity) {
                 $run(\sprintf('ALTER TABLE %s ALTER COLUMN %s DROP IDENTITY', $t, $c));
+            }
+            // No label at all is null for a tags field, as when a record is written.
+            if ('tags' === $mapping->type) {
+                $run(\sprintf("UPDATE %s SET %s = NULL WHERE %s = '[]'::jsonb", $t, $c, $c));
             }
         }
 
@@ -723,6 +732,28 @@ final class DbalTableAdopter implements TableAdopterInterface
     /**
      * A column of a system column's name and type: reused as that system column.
      */
+    private static function isJson(DatabaseColumn $column): bool
+    {
+        return \in_array(ColumnProposer::parse($column->type)[0], ['json', 'jsonb'], true);
+    }
+
+    /**
+     * Whether every value of a JSON column is a list of strings (true when it holds none).
+     */
+    private function holdsStringLists(DatabaseTable $table, string $column): bool
+    {
+        $c = $this->connection->quoteSingleIdentifier($column);
+        // CASE, not OR: the elements of a value are read only once it is known to be a list.
+        $mismatch = $this->connection->fetchOne(\sprintf(
+            "SELECT EXISTS (SELECT 1 FROM %s.%s WHERE %s IS NOT NULL AND CASE WHEN jsonb_typeof(%s::jsonb) = 'array' THEN EXISTS (SELECT 1 FROM jsonb_array_elements(%s::jsonb) e WHERE jsonb_typeof(e) <> 'string') ELSE TRUE END)",
+            $this->connection->quoteSingleIdentifier($this->workspace->dataSchema()),
+            $this->connection->quoteSingleIdentifier($table->name),
+            $c, $c, $c,
+        ));
+
+        return false === $mismatch;
+    }
+
     private function isSystemColumn(DatabaseColumn $column): bool
     {
         $spec = self::SYSTEM_COLUMNS[$column->name] ?? null;

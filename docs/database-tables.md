@@ -166,7 +166,9 @@ The field proposed for each column, and the others it may become:
 | `date` | `date` | |
 | `timestamp`, `timestamptz` | `date` with its time | |
 | a foreign key alone to the key of an object | `relation` to that object, its `ON DELETE` as the field's rule | `number` |
-| anything else (`json`, arrays, `uuid` not pointing at an object, enums…) | left out | |
+| `json`, `jsonb` whose values are all lists of strings (or empty) | `tags`, labels of 100 characters at most; an empty list becomes no label | `text`, long |
+| any other `json`, `jsonb` | `text`, long: the document as its text | `tags`, refused while a value is no list of strings |
+| anything else (arrays, `uuid` not pointing at an object, enums…) | left out | |
 
 A value the field's column cannot hold stops the adoption, and says which (`The database refused
 it: integer out of range` for a `bigint` too large for a `number`): leave the column out, or

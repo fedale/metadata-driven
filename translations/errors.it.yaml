@@ -368,6 +368,7 @@ schema:
         name_taken: 'Un oggetto si chiama già "%name%": scegli un altro nome.'
         no_table: 'Lo schema dati non ha una tabella "%table%" che nessun oggetto possiede.'
         required_left_out: 'La colonna %column% non può essere lasciata fuori: non può essere vuota e non ha un valore predefinito, quindi nessun record potrebbe essere scritto.'
+        tags_not_string_lists: 'La colonna %column% diventa un campo etichette solo se è una colonna JSON i cui valori sono tutti liste di testi: fanne un testo.'
         target_not_adopted: 'La colonna %column% è una relazione verso la tabella %table%, che non viene adottata con lei: adottale insieme, o non farne una relazione.'
         unknown_column: 'La tabella non ha una colonna %column%.'
     table:

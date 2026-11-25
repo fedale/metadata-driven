@@ -41,7 +41,7 @@ final class TableAdoptionTest extends KernelTestCase
             done boolean,
             due date,
             started_at timestamptz,
-            raw jsonb,
+            raw bytea,
             created_at timestamp,
             sort text
         )');
@@ -78,7 +78,7 @@ final class TableAdoptionTest extends KernelTestCase
             budget numeric(12,2) DEFAULT 0,
             starts date,
             created_at timestamp,
-            raw jsonb
+            raw bytea
         )');
         $this->sql("INSERT INTO data.project (name, budget, starts, created_at) VALUES ('Alpha', 10.5, '2026-01-01', '2026-01-02 03:04:05'), ('Beta', NULL, NULL, NULL)");
         $this->sql('DELETE FROM data.project WHERE name = \'Beta\'');
@@ -156,6 +156,39 @@ final class TableAdoptionTest extends KernelTestCase
         self::assertSame([], self::getContainer()->get(SchemaSynchronizerInterface::class)->plan('member')->statements);
     }
 
+    public function testAJsonColumnOfListsOfStringsBecomesTags(): void
+    {
+        $this->sql('CREATE TABLE data.ticket (id serial PRIMARY KEY, labels jsonb, keywords json, meta jsonb)');
+        $this->sql(<<<'SQL'
+            INSERT INTO data.ticket (labels, keywords, meta) VALUES
+                ('["urgent", "client x"]', '["paper"]', '{"priority": 1}'),
+                ('[]', NULL, '[1, 2]'),
+                (NULL, NULL, NULL)
+            SQL);
+
+        $proposal = $this->adopter()->propose('ticket');
+        $types = array_map(static fn ($column): array => array_keys($column->options), $proposal->columns);
+        // Lists of strings: tags first. Any other document: its text first, tags refused.
+        self::assertSame(['labels' => ['tags', 'text'], 'keywords' => ['tags', 'text'], 'meta' => ['text', 'tags']], $types);
+        self::assertSame(['maxLength' => 100], $proposal->columns['labels']->mapping()?->settings);
+
+        $request = $proposal->request();
+        $columns = ['meta' => $proposal->columns['meta']->options['tags']] + $request->columns;
+        self::assertSame(
+            ['Column meta becomes tags only if it is a JSON column whose values are all lists of strings: make it a text.'],
+            $this->reasons(fn () => $this->adopter()->adopt(new AdoptionRequest('ticket', 'ticket', 'Ticket', 'Tickets', $columns))),
+        );
+
+        $this->adopter()->adopt($request);
+        $labels = array_column(array_map(static fn ($record): array => $record->values, self::getContainer()->get(RecordFinderInterface::class)->latest('ticket')), null, 'meta');
+        ksort($labels);
+        self::assertSame(['urgent', 'client x'], $labels['{"priority": 1}']['labels']);
+        self::assertSame(['paper'], $labels['{"priority": 1}']['keywords']);
+        // An empty list is no label, as for a record written.
+        self::assertNull($labels['[1, 2]']['labels']);
+        self::assertSame('jsonb', $this->connection()->fetchOne("SELECT data_type FROM information_schema.columns WHERE table_schema = 'data' AND table_name = 'c_ticket' AND column_name = 'keywords'"));
+    }
+
     public function testADryRunChangesNothing(): void
     {
         $this->sql('CREATE TABLE data.project (id serial PRIMARY KEY, name text)');
@@ -171,8 +204,8 @@ final class TableAdoptionTest extends KernelTestCase
     public function testRefusesWhatItCannotDo(): void
     {
         $this->sql('CREATE TABLE data.loose (name text)');
-        $this->sql('CREATE TABLE data.project (id serial PRIMARY KEY, name text NOT NULL, big bigint, raw jsonb NOT NULL)');
-        $this->sql('INSERT INTO data.project (name, big, raw) VALUES (\'A\', 9999999999, \'{}\')');
+        $this->sql('CREATE TABLE data.project (id serial PRIMARY KEY, name text NOT NULL, big bigint, raw bytea NOT NULL)');
+        $this->sql('INSERT INTO data.project (name, big, raw) VALUES (\'A\', 9999999999, \'\\x7b7d\')');
         self::getContainer()->get(MetadataManagerInterface::class)->createObject('taken', 'Taken', 'Takens');
 
         self::assertSame(['It has no primary key: give it one first.'], $this->reasons(fn () => $this->adopter()->propose('loose')));

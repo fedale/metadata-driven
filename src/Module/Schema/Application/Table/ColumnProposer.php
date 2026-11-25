@@ -23,14 +23,18 @@ final class ColumnProposer
     private const int MAX_DECIMALS = 10;
     // Decimals proposed for a number written without a scale (a float, a bare numeric).
     private const int FLOAT_DECIMALS = 2;
+    // The longest label a tags field takes (TagsFieldType): the labels already there may be long.
+    private const int TAGS_MAX_LENGTH = 100;
 
     /**
-     * @param array{object: string, label: string, onDelete: string, table: string|null}|null $target the object a foreign key on
-     *                                                                                                the column alone points at (its key),
-     *                                                                                                its rule on delete, and the table
-     *                                                                                                adopted with this one it is, if so
+     * @param array{object: string, label: string, onDelete: string, table: string|null}|null $target      the object a foreign key on
+     *                                                                                                     the column alone points at (its key),
+     *                                                                                                     its rule on delete, and the table
+     *                                                                                                     adopted with this one it is, if so
+     * @param bool                                                                            $stringLists a JSON column's values are all lists of strings
+     *                                                                                                     (or it holds none): tags are proposed
      */
-    public static function propose(DatabaseColumn $column, bool $unique, ?array $target): ColumnProposal
+    public static function propose(DatabaseColumn $column, bool $unique, ?array $target, bool $stringLists = false): ColumnProposal
     {
         $name = ProposedNames::machineName($column->name) ?? 'column';
         $label = self::label($name);
@@ -85,6 +89,13 @@ final class ColumnProposer
             case 'timestamp without time zone':
             case 'timestamp with time zone':
                 $options['date'] = $field('date', ['includeTime' => true]);
+                break;
+            case 'json':
+            case 'jsonb':
+                // Lists of strings are labels; any other document is kept as its text.
+                $tags = $field('tags', ['maxLength' => self::TAGS_MAX_LENGTH]);
+                $text = $field('text', ['maxLength' => self::TEXT_MAX_LENGTH, 'multiline' => true]);
+                $options += $stringLists ? ['tags' => $tags, 'text' => $text] : ['text' => $text, 'tags' => $tags];
                 break;
         }
 
