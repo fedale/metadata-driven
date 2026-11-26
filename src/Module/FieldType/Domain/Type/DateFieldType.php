@@ -83,7 +83,7 @@ final class DateFieldType extends AbstractFieldType
             }
         }
 
-        throw new InvalidFieldValue($includeTime ? 'This value is not a valid date and time.' : 'This value is not a valid date.');
+        throw new InvalidFieldValue($includeTime ? new Message('field_type.value.not_date_time', 'This value is not a valid date and time.') : new Message('field_type.value.not_date', 'This value is not a valid date.'));
     }
 
     public function widget(array $settings): Widget

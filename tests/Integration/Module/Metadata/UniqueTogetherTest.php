@@ -217,7 +217,7 @@ final class UniqueTogetherTest extends KernelTestCase
             $write();
             self::fail('The write was not refused.');
         } catch (RecordValidationFailed $e) {
-            self::assertSame($errors, $e->errors);
+            self::assertSame($errors, array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors));
         }
     }
 

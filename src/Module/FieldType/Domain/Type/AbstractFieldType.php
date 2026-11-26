@@ -132,7 +132,7 @@ abstract class AbstractFieldType implements FieldTypeInterface
             return null;
         }
         if (!\is_scalar($value) && !$value instanceof \Stringable) {
-            throw new InvalidFieldValue('This value should be a string.');
+            throw new InvalidFieldValue(new Message('field_type.value.not_string', 'This value should be a string.'));
         }
 
         $string = \is_bool($value) ? ($value ? '1' : '0') : (string) $value;

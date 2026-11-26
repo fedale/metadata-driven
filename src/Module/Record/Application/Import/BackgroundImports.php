@@ -19,6 +19,9 @@ use App\Module\Record\Domain\Repository\ImportJobRepository;
 use App\Module\User\Contract\ActingUserInterface;
 use App\Module\User\Contract\Exception\NotAMember;
 use App\Shared\Csv\CsvFile;
+use App\Shared\Csv\CsvFileUnreadable;
+use App\Shared\Message\Message;
+use App\Shared\Message\MessageList;
 use App\Shared\Workspace\CurrentWorkspace;
 use App\Shared\Workspace\Workspaces;
 use App\Shared\Workspace\WorkspaceSessions;
@@ -26,6 +29,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Translation\LocaleSwitcher;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -58,6 +62,7 @@ final class BackgroundImports
         private readonly Workspaces $workspaces,
         private readonly WorkspaceSessions $sessions,
         private readonly TranslatorInterface $translator,
+        private readonly LocaleSwitcher $locales,
         private readonly UrlGeneratorInterface $urls,
         private readonly LoggerInterface $logger,
         #[Autowire('%app.import.drafts_dir%/jobs')]
@@ -177,9 +182,9 @@ final class BackgroundImports
                 }
             } catch (ImportRefused $e) {
                 $job->addReasons($e->reasons);
-            } catch (\UnexpectedValueException $e) {
+            } catch (CsvFileUnreadable $e) {
                 // The file: a line that does not fit, or is not UTF-8.
-                $job->addReasons([$e->getMessage()]);
+                $job->addReasons([$e->text]);
             }
             $this->finish($job, $job->reasonCount > 0 ? ImportJobStatus::Refused : ImportJobStatus::Checked);
         });
@@ -223,9 +228,9 @@ final class BackgroundImports
                 }
             } catch (ImportRefused $e) {
                 $job->addReasons($e->reasons);
-            } catch (\UnexpectedValueException $e) {
+            } catch (CsvFileUnreadable $e) {
                 // The file changed since its check.
-                $job->addReasons([$e->getMessage()]);
+                $job->addReasons([$e->text]);
             }
             $this->finish($job, $job->reasonCount > 0 ? ImportJobStatus::Stopped : ImportJobStatus::Imported);
         });
@@ -243,7 +248,7 @@ final class BackgroundImports
             if (null === $job || !$job->status->isRunning()) {
                 return;
             }
-            $job->addReasons(['An error stopped it: the details are in the log of the application.']);
+            $job->addReasons([new Message('record.import.error', 'An error stopped it: the details are in the log of the application.')]);
             $this->finish($job, ImportJobStatus::Failed);
         });
     }
@@ -291,7 +296,7 @@ final class BackgroundImports
 
             return false;
         }
-        $problem = !$this->hasFile($job) ? \sprintf('The file "%s" is gone: upload it again.', $job->originalName) : $this->permissionProblem($job);
+        $problem = !$this->hasFile($job) ? new Message('record.import.file_gone', 'The file "%file%" is gone: upload it again.', ['file' => $job->originalName]) : $this->permissionProblem($job);
         if (null !== $problem) {
             $job->addReasons([$problem]);
             $this->finish($job, ImportJobStatus::Failed);
@@ -306,23 +311,23 @@ final class BackgroundImports
      * The permissions the wizard checked when the job was queued, checked again: they may have
      * changed since.
      */
-    private function permissionProblem(ImportJob $job): ?string
+    private function permissionProblem(ImportJob $job): string|Message|MessageList|null
     {
         try {
             $object = $this->metadata->getObject($job->object);
         } catch (MetadataException $e) {
-            return $e->getMessage();
+            return $e->text();
         }
         if (!$this->access->canRecords($object->name, RecordAction::Create)) {
-            return \sprintf('No permission to create the records of "%s".', $object->name);
+            return new Message('record.import.cannot_create', 'No permission to create the records of "%object%".', ['object' => $object->name]);
         }
         if (null !== $job->key && !$this->access->canRecords($object->name, RecordAction::Update)) {
-            return \sprintf('No permission to update the records of "%s": import without a key.', $object->name);
+            return new Message('record.import.cannot_update', 'No permission to update the records of "%object%": import without a key.', ['object' => $object->name]);
         }
         foreach ($job->fields() as $name) {
             $target = ($object->fields[$name] ?? null)?->target();
             if (null !== $target && !$this->access->canRecords($target, RecordAction::Read)) {
-                return \sprintf('No permission to read the records of "%s", which %s links to.', $target, $name);
+                return new Message('record.import.cannot_read_target', 'No permission to read the records of "%object%", which %field% links to.', ['object' => $target, 'field' => $name]);
             }
         }
 
@@ -385,9 +390,11 @@ final class BackgroundImports
                 return;
             }
             try {
-                $this->actingUser->actAs($job->createdBy, static fn () => $work($job));
+                // In the creator's language: the validators' messages are translated as they
+                // are raised, and stored so with the job.
+                $this->locales->runWithLocale($job->locale, fn () => $this->actingUser->actAs($job->createdBy, static fn () => $work($job)));
             } catch (NotAMember $e) {
-                $job->addReasons([$e->getMessage()]);
+                $job->addReasons([new Message('record.import.not_a_member', '%email% is no active member of this workspace.', ['email' => $e->email])]);
                 $this->finish($job, ImportJobStatus::Failed);
             }
         });

@@ -30,6 +30,17 @@ final readonly class Message implements \Stringable
     ) {
     }
 
+    /**
+     * A message read back from where it was stored (see MessageJson): its key and text are no
+     * literals there; ErrorCatalogsTest checks them where the message was raised.
+     *
+     * @param array<string, string|int|float|Message|MessageList> $parameters
+     */
+    public static function restored(string $key, string $text, array $parameters = []): self
+    {
+        return new self($key, $text, $parameters);
+    }
+
     public function __toString(): string
     {
         return strtr($this->text, self::placeholders(array_map(strval(...), $this->parameters)));

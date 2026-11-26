@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "bf0134655cc20fe44816a73b798575a5",
+    "content-hash": "87501d69350e0ccadb8b75352d7a78a9",
     "packages": [
         {
             "name": "composer/semver",
@@ -1333,16 +1333,16 @@
         },
         {
             "name": "fedale/gridview-bundle",
-            "version": "v1.11.1",
+            "version": "v1.11.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/fedale/gridview-bundle.git",
-                "reference": "fecac9bd77df3e0438b576b93f3e4646cb6039e1"
+                "reference": "2d0c28f1f8cd549fc821cd95ab1975f497264e04"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/fedale/gridview-bundle/zipball/fecac9bd77df3e0438b576b93f3e4646cb6039e1",
-                "reference": "fecac9bd77df3e0438b576b93f3e4646cb6039e1",
+                "url": "https://api.github.com/repos/fedale/gridview-bundle/zipball/2d0c28f1f8cd549fc821cd95ab1975f497264e04",
+                "reference": "2d0c28f1f8cd549fc821cd95ab1975f497264e04",
                 "shasum": ""
             },
             "require": {
@@ -1367,7 +1367,8 @@
                 "symfony/intl": "^8.1",
                 "symfony/maker-bundle": "^1.50",
                 "symfony/ux-autocomplete": "^2.13 || ^3.0",
-                "symfony/validator": "^6.4 || ^7.0 || ^8.0"
+                "symfony/validator": "^6.4 || ^7.0 || ^8.0",
+                "symfony/yaml": "^6.4 || ^7.0 || ^8.0"
             },
             "suggest": {
                 "ext-intl": "Enables full ICU-based locale-aware number/date/currency formatting; a reduced fallback is used without it.",
@@ -1413,9 +1414,9 @@
             ],
             "support": {
                 "issues": "https://github.com/fedale/gridview-bundle/issues",
-                "source": "https://github.com/fedale/gridview-bundle/tree/v1.11.1"
+                "source": "https://github.com/fedale/gridview-bundle/tree/v1.11.2"
             },
-            "time": "2026-11-25T11:55:23+00:00"
+            "time": "2026-11-26T11:19:35+00:00"
         },
         {
             "name": "fedale/metadata-driven-package-format",

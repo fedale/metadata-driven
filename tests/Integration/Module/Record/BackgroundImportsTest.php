@@ -11,6 +11,7 @@ use App\Module\Record\Domain\Model\ImportJob;
 use App\Module\Record\Domain\Model\ImportJobStatus;
 use App\Module\Record\Domain\Repository\ImportJobRepository;
 use App\Module\User\Contract\UserManagerInterface;
+use App\Shared\Message\MessageTranslator;
 use App\Shared\Workspace\CurrentWorkspace;
 use App\Tests\Support\CreatesPetObject;
 use App\Tests\Support\RemovesDirectories;
@@ -81,7 +82,7 @@ final class BackgroundImportsTest extends KernelTestCase
 
         $failed = $this->reload($job);
         self::assertSame(ImportJobStatus::Failed, $failed->status);
-        self::assertSame(['No permission to update the records of "pet": import without a key.'], $failed->reasons);
+        self::assertSame(['No permission to update the records of "pet": import without a key.'], array_map(strval(...), $failed->reasons));
         self::assertSame([], $this->names());
     }
 
@@ -94,7 +95,7 @@ final class BackgroundImportsTest extends KernelTestCase
 
         $failed = $this->reload($job);
         self::assertSame(ImportJobStatus::Failed, $failed->status);
-        self::assertSame(['An error stopped it: the details are in the log of the application.'], $failed->reasons);
+        self::assertSame(['An error stopped it: the details are in the log of the application.'], array_map(strval(...), $failed->reasons));
         // A job no longer running is left as it is.
         self::getContainer()->get(BackgroundImports::class)->fail($this->workspace(), $job->id, new \RuntimeException('Again.'));
         self::assertCount(1, $this->reload($job)->reasons);
@@ -110,13 +111,34 @@ final class BackgroundImportsTest extends KernelTestCase
         self::assertSame('Line 200', $job->reasons[199]);
     }
 
+    public function testTheReasonsAreReadInTheLanguageOfTheirReader(): void
+    {
+        file_put_contents($this->directory.'/pets.csv', "name,weight\nRex,1.234\nA name far too long for a pet,2\n");
+        $job = self::getContainer()->get(BackgroundImports::class)->queueCheck('pet', $this->directory.'/pets.csv', 'pets.csv', ',', ['name' => 'name', 'weight' => 'weight'], null, [], 2, self::CLERK, 'it');
+
+        $refused = $this->reload($job);
+        self::assertSame(ImportJobStatus::Refused, $refused->status);
+        $messages = self::getContainer()->get(MessageTranslator::class);
+        // A field type's reason is a message, stored with its key: read in any language.
+        self::assertSame('Line 2: weight: This value should have at most 2 decimal places.', (string) $refused->reasons[0]);
+        self::assertSame('Riga 2: weight: Il valore deve avere al massimo 2 decimali.', $messages->trans($refused->reasons[0], 'it'));
+        // A validator's comes translated as it is raised: in the language of the job.
+        self::assertStringContainsString('troppo lung', $messages->trans($refused->reasons[1], 'it'));
+        self::assertSame('en', self::getContainer()->get('translator')->getLocale());
+
+        // A reason stored before reasons were messages reads back as it was written.
+        $refused->addReasons(['Line 9: name: This value is required.']);
+        self::getContainer()->get(ImportJobRepository::class)->save($refused);
+        self::assertSame('Line 9: name: This value is required.', $this->reload($refused)->reasons[2]);
+    }
+
     private function checkedJob(): ImportJob
     {
         $file = $this->directory.'/pets.csv';
         file_put_contents($file, "name,chip_code\nRex,A1\nTom,B2\nFido,C3\nLuna,D4\nMax,E5\n");
         $job = self::getContainer()->get(BackgroundImports::class)->queueCheck('pet', $file, 'pets.csv', ',', ['name' => 'name', 'chip_code' => 'chip_code'], 'chip_code', [], 5, self::CLERK, 'en');
         $checked = $this->reload($job);
-        self::assertSame([ImportJobStatus::Checked, 5, 5], [$checked->status, $checked->processed, $checked->created], implode("\n", $checked->reasons));
+        self::assertSame([ImportJobStatus::Checked, 5, 5], [$checked->status, $checked->processed, $checked->created], implode("\n", array_map(strval(...), $checked->reasons)));
 
         return $checked;
     }

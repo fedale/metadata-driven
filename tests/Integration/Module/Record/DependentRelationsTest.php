@@ -70,8 +70,8 @@ final class DependentRelationsTest extends KernelTestCase
             ]));
             self::fail('Roma is not in Lombardia, Milano is not in Roma.');
         } catch (RecordValidationFailed $e) {
-            self::assertSame(['The selected record does not belong to the chosen region.'], $e->errors['province']);
-            self::assertSame(['The selected record does not belong to the chosen province.'], $e->errors['municipality']);
+            self::assertSame(['The selected record does not belong to the chosen region.'], array_map(strval(...), $e->errors['province']));
+            self::assertSame(['The selected record does not belong to the chosen province.'], array_map(strval(...), $e->errors['municipality']));
         }
     }
 
@@ -81,7 +81,7 @@ final class DependentRelationsTest extends KernelTestCase
             $this->records->create(new RecordInput('venue', ['name' => 'Teatro', 'municipality' => $this->ids['roma']]));
             self::fail('A municipality without its province must be refused.');
         } catch (RecordValidationFailed $e) {
-            self::assertSame(['Choose the province first.'], $e->errors['municipality']);
+            self::assertSame(['Choose the province first.'], array_map(strval(...), $e->errors['municipality']));
         }
     }
 

@@ -40,7 +40,7 @@
     {% if job.reasonCount > 0 %}
         <div class="md-flash md-flash--error" role="alert">
             <p>{{ (status == 'refused' ? 'import.refused' : 'import.job.problems')|trans({'%count%': job.reasonCount}) }}</p>
-            <ul class="md-import__reasons">{% for reason in job.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>
+            <ul class="md-import__reasons">{% for reason in job.reasons %}<li>{{ reason|message }}</li>{% endfor %}</ul>
             {% if job.reasonCount > job.reasons|length %}
                 <p>{{ 'import.job.more_reasons'|trans({'%count%': job.reasonCount - job.reasons|length}) }}</p>
             {% endif %}

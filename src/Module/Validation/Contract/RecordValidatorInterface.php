@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Validation\Contract;
 
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
+use App\Shared\Message\Message;
 
 /**
  * Single source of validation rules for records: every form, API or import goes through it.
@@ -16,7 +17,9 @@ interface RecordValidatorInterface
      *                                       provided fields, on create every field (null when not provided)
      * @param string|null          $recordId id of the record being updated, null on create
      *
-     * @return array<string, list<string>> error messages keyed by field name, empty when valid
+     * @return array<string, list<string|Message>> error messages keyed by field name, empty when valid: a
+     *                                             violation's translated already, the others messages
+     *                                             (see MessageTranslator)
      */
     public function validate(ObjectDefinitionDto $object, array $values, ?string $recordId = null): array;
 }

@@ -80,11 +80,11 @@ final class FormRecordManagerTest extends KernelTestCase
             $this->forms->save('registration', null, $input);
             self::fail('The form must be refused.');
         } catch (FormValidationFailed $e) {
-            self::assertSame(['This value is not a valid email address.'], $e->errors['values.email']);
-            self::assertSame(['This value is required.'], $e->errors['values.firstname']);
-            self::assertSame(['This box must be checked.'], $e->errors['service.terms']);
-            self::assertSame(['This value is not valid.'], $e->errors['sections.profile.values.zipcode']);
-            self::assertSame(['Add at least one row.'], $e->errors['sections.profile.sections.phones']);
+            self::assertSame(['This value is not a valid email address.'], array_map(strval(...), $e->errors['values.email']));
+            self::assertSame(['This value is required.'], array_map(strval(...), $e->errors['values.firstname']));
+            self::assertSame(['This box must be checked.'], array_map(strval(...), $e->errors['service.terms']));
+            self::assertSame(['This value is not valid.'], array_map(strval(...), $e->errors['sections.profile.values.zipcode']));
+            self::assertSame(['Add at least one row.'], array_map(strval(...), $e->errors['sections.profile.sections.phones']));
         }
         self::assertSame([], $this->finder->latest('account'));
         self::assertSame([], $this->finder->latest('profile'));
@@ -96,7 +96,7 @@ final class FormRecordManagerTest extends KernelTestCase
             $this->forms->save('registration', null, $this->registration(profile: ['city' => '']));
             self::fail('The city is required by the form.');
         } catch (FormValidationFailed $e) {
-            self::assertSame(['This value is required.'], $e->errors['sections.profile.values.city']);
+            self::assertSame(['This value is required.'], array_map(strval(...), $e->errors['sections.profile.values.city']));
         }
 
         // The object itself does not require it: a plain record of it saves without a city.
@@ -160,8 +160,8 @@ final class FormRecordManagerTest extends KernelTestCase
             $this->forms->save('registration', null, $this->registration(terms: false));
             self::fail('The form must be refused.');
         } catch (FormValidationFailed $e) {
-            self::assertSame(['This box must be checked.'], $e->errors['service.terms']);
-            self::assertSame(['This value is required.'], $e->errors['sections.qualifications.0.service.earned']);
+            self::assertSame(['This box must be checked.'], array_map(strval(...), $e->errors['service.terms']));
+            self::assertSame(['This value is required.'], array_map(strval(...), $e->errors['sections.qualifications.0.service.earned']));
         }
         $input = $this->registration();
         $qualifications = $input->sections['qualifications'];

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Module\Record\Domain\Model;
 
+use App\Shared\Message\Message;
+use App\Shared\Message\MessageList;
+
 /**
  * A CSV import checked and run by the worker, batch by batch: its file (a file of its own, named
  * after its id), the columns, key and matches its creator chose in the wizard, and how far it went.
@@ -16,9 +19,10 @@ final class ImportJob
     public const int MAX_REASONS = 200;
 
     /**
-     * @param array<string, string|null> $mapping column of the file => the field it fills; null: ignored
-     * @param array<string, string>      $matches relation field => the unique field of its target its cells hold
-     * @param list<string>               $reasons
+     * @param array<string, string|null>       $mapping column of the file => the field it fills; null: ignored
+     * @param array<string, string>            $matches relation field => the unique field of its target its cells hold
+     * @param list<string|Message|MessageList> $reasons shown in the reader's language; a string: stored
+     *                                                  before reasons were messages, English
      */
     public function __construct(
         public readonly string $id,
@@ -58,7 +62,7 @@ final class ImportJob
     }
 
     /**
-     * @param list<string> $reasons
+     * @param list<string|Message|MessageList> $reasons
      */
     public function addReasons(array $reasons): void
     {

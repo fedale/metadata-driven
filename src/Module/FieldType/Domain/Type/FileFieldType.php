@@ -131,11 +131,11 @@ final class FileFieldType extends AbstractFieldType
             return $value;
         }
         if (!\is_string($value)) {
-            throw new InvalidFieldValue('This value should be a file.');
+            throw new InvalidFieldValue(new Message('field_type.value.not_file', 'This value should be a file.'));
         }
 
         // The id of a file stored before: the value the record already holds.
-        return null !== $this->files->find($value) ? $value : throw new InvalidFieldValue('This file does not exist.');
+        return null !== $this->files->find($value) ? $value : throw new InvalidFieldValue(new Message('field_type.value.file_missing', 'This file does not exist.'));
     }
 
     public function constraints(array $settings): array
@@ -237,7 +237,7 @@ final class FileFieldType extends AbstractFieldType
                 continue;
             }
             if (!\is_string($item) || !Uuid::isValid($item)) {
-                throw new InvalidFieldValue('This value should be a list of files.');
+                throw new InvalidFieldValue(new Message('field_type.value.not_files', 'This value should be a list of files.'));
             }
             $id = strtolower($item);
             if (!isset($ids[$id])) {

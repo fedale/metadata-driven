@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Module\Record\Contract\Exception;
 
+use App\Shared\Message\Message;
+
 /**
  * A form was refused; nothing was written.
  *
@@ -15,7 +17,7 @@ namespace App\Module\Record\Contract\Exception;
 final class FormValidationFailed extends \DomainException
 {
     /**
-     * @param array<string, list<string>> $errors
+     * @param array<string, list<string|Message>> $errors as RecordValidationFailed's
      */
     public function __construct(
         public readonly array $errors,

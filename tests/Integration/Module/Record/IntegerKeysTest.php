@@ -10,7 +10,6 @@ use App\Module\Metadata\Application\Handler\CreateFieldHandler;
 use App\Module\Metadata\Application\Handler\CreateObjectHandler;
 use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
-use App\Module\Record\Application\RecordInputDenormalizer;
 use App\Module\Record\Contract\Dto\RecordFilter;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Exception\RecordNotFound;
@@ -18,7 +17,6 @@ use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordLookupInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
-use App\Module\Validation\Application\MetadataRecordValidator;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
@@ -145,9 +143,9 @@ final class IntegerKeysTest extends KernelTestCase
     {
         $speed = $this->records->create(new RecordInput('skill', ['name' => 'Speed']));
 
-        self::assertSame(['team' => [RecordInputDenormalizer::REFERENCE_MESSAGE]], $this->errors(['name' => 'Ada', 'team' => $speed->id]));
-        self::assertSame(['team' => [MetadataRecordValidator::REFERENCE_MESSAGE]], $this->errors(['name' => 'Ada', 'team' => '999999']));
-        self::assertSame(['skills' => [RecordInputDenormalizer::REFERENCE_MESSAGE]], $this->errors(['name' => 'Ada', 'skills' => ['42']]));
+        self::assertSame(['team' => ['This value is not a valid record reference.']], $this->errors(['name' => 'Ada', 'team' => $speed->id]));
+        self::assertSame(['team' => ['The selected record does not exist.']], $this->errors(['name' => 'Ada', 'team' => '999999']));
+        self::assertSame(['skills' => ['This value is not a valid record reference.']], $this->errors(['name' => 'Ada', 'skills' => ['42']]));
     }
 
     /**
@@ -160,7 +158,8 @@ final class IntegerKeysTest extends KernelTestCase
         try {
             $this->records->create(new RecordInput('player', $values));
         } catch (RecordValidationFailed $e) {
-            return $e->errors;
+            // In English: a field type's errors are messages.
+            return array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors);
         }
         self::fail('The record was written.');
     }

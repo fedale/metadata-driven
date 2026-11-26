@@ -10,6 +10,7 @@ use App\Module\Record\Application\Import\RecordImporter;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Domain\Exception\ImportRefused;
+use App\Shared\Message\Message;
 use App\Tests\Support\RemovesDirectories;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -74,10 +75,11 @@ final class RecordImporterTest extends KernelTestCase
             $this->import('province', "code,name,region\nTOR,Torino,01\nMI,,03\nRM,Roma,12\nNA,Napoli,03\n", key: 'code', matches: ['region' => 'code']);
             self::fail('The rows refused must refuse the file.');
         } catch (ImportRefused $e) {
-            self::assertCount(3, $e->reasons, implode("\n", $e->reasons));
-            self::assertStringStartsWith('Line 2: code: ', $e->reasons[0]);
-            self::assertSame('Line 3: name: This value is required.', $e->reasons[1]);
-            self::assertSame('Line 4: region: no record matches "12".', $e->reasons[2]);
+            $reasons = self::english($e->reasons);
+            self::assertCount(3, $reasons, implode("\n", $reasons));
+            self::assertStringStartsWith('Line 2: code: ', $reasons[0]);
+            self::assertSame('Line 3: name: This value is required.', $reasons[1]);
+            self::assertSame('Line 4: region: No record matches "12".', $reasons[2]);
         }
         // Napoli, valid, was not written either.
         self::assertSame([], $this->byCode('province'));
@@ -92,7 +94,7 @@ final class RecordImporterTest extends KernelTestCase
             self::assertSame([
                 'Column "capital": "province" has no such field.',
                 'Line 3: code: line 2 has the same key.',
-            ], $e->reasons);
+            ], self::english($e->reasons));
         }
     }
 
@@ -116,7 +118,7 @@ final class RecordImporterTest extends KernelTestCase
             $this->import('province', "code,name,region,coat\nMI,Milano,03,../../etc/hostname\n", matches: ['region' => 'code']);
             self::fail('A file outside the directory of the CSV file must be refused.');
         } catch (ImportRefused $e) {
-            self::assertSame(['Line 2: coat: no file "../../etc/hostname" next to the CSV file.'], $e->reasons);
+            self::assertSame(['Line 2: coat: No file "../../etc/hostname" next to the CSV file.'], self::english($e->reasons));
         }
     }
 
@@ -133,7 +135,7 @@ final class RecordImporterTest extends KernelTestCase
             $importer->importRows('province', [['line' => 2, 'values' => ['code' => 'MI', 'name' => 'Milano', 'region' => '03', 'coat' => 'milano.png']]], matches: ['region' => 'code']);
             self::fail('A file column needs a directory.');
         } catch (ImportRefused $e) {
-            self::assertSame(['Column "coat": a file field is imported from the console only (record:import), with its files next to the CSV file.'], $e->reasons);
+            self::assertSame(['Column "coat": a file field is imported from the console only (record:import), with its files next to the CSV file.'], self::english($e->reasons));
         }
         self::assertSame(['TO'], array_keys($this->byCode('province')));
     }
@@ -168,7 +170,7 @@ final class RecordImporterTest extends KernelTestCase
 
         // A refused batch rolls back alone: the batch before it stays.
         $second = $importer->importBatch($plan, [$rows[2]]);
-        self::assertSame(['Line 4: region: no record matches "12".'], $second->reasons);
+        self::assertSame(['Line 4: region: No record matches "12".'], self::english($second->reasons));
         self::assertSame(['MI', 'TO'], $this->sortedCodes());
     }
 
@@ -179,13 +181,13 @@ final class RecordImporterTest extends KernelTestCase
 
         self::assertSame(
             ['Line 3: code: the key is missing.', 'Line 9: code: line 2 has the same key.'],
-            $importer->keyProblems($plan, [
+            self::english($importer->keyProblems($plan, [
                 ['line' => 2, 'values' => ['code' => 'TO', 'name' => 'Torino']],
                 ['line' => 3, 'values' => ['code' => ' ', 'name' => 'Milano']],
                 ['line' => 9, 'values' => ['code' => 'TO', 'name' => 'Turin']],
-            ]),
+            ])),
         );
-        self::assertSame(['Column "coat": a file field is imported from the console only (record:import), with its files next to the CSV file.'], $importer->prepare('province', ['code', 'coat'])->problems);
+        self::assertSame(['Column "coat": a file field is imported from the console only (record:import), with its files next to the CSV file.'], self::english($importer->prepare('province', ['code', 'coat'])->problems));
     }
 
     public function testImportsFromTheConsole(): void
@@ -234,5 +236,17 @@ final class RecordImporterTest extends KernelTestCase
         }
 
         return $records;
+    }
+
+    /**
+     * The reasons in English, as the console shows them.
+     *
+     * @param list<Message> $reasons
+     *
+     * @return list<string>
+     */
+    private static function english(array $reasons): array
+    {
+        return array_map(strval(...), $reasons);
     }
 }
