@@ -60,8 +60,11 @@ Some fields are not offered, by the same rules as the record form:
 - relation and many-to-many fields whose related records you may not read: the form would not
   let you pick them either.
 
-The reasons of a refused row are in English, in every language (see
-[Languages](i18n.md#not-yet)).
+The reasons of a refused row are in the language of the page. A background import stores them
+as messages, so its page shows them in the language of whoever opens it; the messages of a
+validator (a text too long, an invalid email address) are translated as the check runs, in the
+language of the user who started the import. The reasons of an import refused before the
+reasons were translated stay in English.
 
 ## Large files, in the background
 

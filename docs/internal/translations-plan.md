@@ -1,6 +1,7 @@
 # Plan: the texts still in English
 
-Status: **accepted** (2026-11-26), phase 0 done (gridview 1.11.2). Picks up i18n.md, "Not yet": the error messages still in
+Status: **accepted** (2026-11-26); phase 0 done (gridview 1.11.2), phase 1 done (branch
+`translate_import`). Picks up i18n.md, "Not yet": the error messages still in
 English in every language. The rest of that list (the options of a service field of type
 choice, exporting and importing the translations) is out of scope.
 
@@ -30,6 +31,15 @@ texts, shown by the record form and the API too). A violation of a validator con
 already in the language of the request; a background import runs in the job's `locale` (stored
 since 2026-11-20). `core.record_import.reasons` stores each reason as `{key, text, parameters}`;
 a reason stored before, a string, is shown as it is.
+
+Done, with more than planned: the record's own errors went the same way, since they reach the
+import's reasons and the record form through the same `RecordValidationFailed`. They were English
+in every language: the required value, the unique value, the missing reference, the cascade's
+parent, the junction rows, a form's row counts, a state changed by its transitions only. They
+are messages now (`record.value.*`, `record.state.*`), except the required value of the
+validator's `NotNull`, which the validator translates (`record.required` in the validators
+catalog). The CSV reader's errors (`csv.*`, `CsvFileUnreadable`) too. `MessageJson` stores a
+message as JSON and reads it back; `Message::restored()` builds one whose key is no literal.
 
 **Phase 2: workflows.** The definition's errors (parser, validator, the visual editor's), the
 uses an archive is refused for, the definitions a rename rewrote.

@@ -10,6 +10,7 @@ use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\Exception\RecordDeleteRestricted;
 use App\Module\Record\Contract\Exception\RecordNotFound;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
+use App\Shared\Message\Message;
 
 /**
  * Write side of records: converts, validates and persists them.
@@ -34,7 +35,7 @@ interface RecordManagerInterface
     /**
      * The errors create() ($id null) or update() would report, without writing anything.
      *
-     * @return array<string, list<string>> error messages keyed by field name; empty when valid
+     * @return array<string, list<string|Message>> error messages keyed by field name (see RecordValidationFailed); empty when valid
      *
      * @throws ObjectDefinitionNotFound
      */

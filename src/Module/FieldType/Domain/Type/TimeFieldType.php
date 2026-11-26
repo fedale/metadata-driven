@@ -85,7 +85,7 @@ final class TimeFieldType extends AbstractFieldType
             }
         }
 
-        throw new InvalidFieldValue('This value is not a valid time.');
+        throw new InvalidFieldValue(new Message('field_type.value.not_time', 'This value is not a valid time.'));
     }
 
     public function widget(array $settings): Widget

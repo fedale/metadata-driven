@@ -13,6 +13,7 @@ use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\Exception\InvalidFieldValue;
 use App\Module\Metadata\Contract\Dto\OnDelete;
 use App\Module\Metadata\Contract\Dto\RelationSettings;
+use App\Shared\Message\Message;
 
 /**
  * Many-to-one link: stores the id of a record of the target object.
@@ -79,7 +80,7 @@ final class RelationFieldType extends AbstractFieldType
         // The id of a record of the target, checked against the type of its key by the record
         // module, which knows the target.
         if (\strlen($id) > self::MAX_ID_LENGTH) {
-            throw new InvalidFieldValue('This value is not a valid record reference.');
+            throw new InvalidFieldValue(new Message('field_type.value.not_reference', 'This value is not a valid record reference.'));
         }
 
         return $id;

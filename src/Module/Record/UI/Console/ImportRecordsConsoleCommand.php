@@ -41,7 +41,7 @@ final class ImportRecordsConsoleCommand
             $report = $this->importer->import($object, $file, $key, $matches, $dryRun);
         } catch (ImportRefused $e) {
             $io->error(\sprintf('Nothing was imported: %d problem(s).', \count($e->reasons)));
-            $io->listing($e->reasons);
+            $io->listing(array_map(strval(...), $e->reasons));
 
             return Command::FAILURE;
         } catch (MetadataException $e) {

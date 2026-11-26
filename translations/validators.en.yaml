@@ -1,3 +1,5 @@
 # The application's own validation messages, in English (Symfony's are in its own catalogue).
 password_reset:
     mismatch: 'The two passwords differ.'
+record:
+    required: 'This value is required.'

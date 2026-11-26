@@ -8,6 +8,7 @@ use App\Module\Record\Domain\Model\ImportJob;
 use App\Module\Record\Domain\Model\ImportJobStatus;
 use App\Module\Record\Domain\Repository\ImportJobRepository;
 use App\Shared\Database\WorkspaceScope;
+use App\Shared\Message\MessageJson;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
 use Symfony\Component\Uid\Uuid;
@@ -73,7 +74,8 @@ final class DbalImportJobStore implements ImportJobRepository
             'processed' => $job->processed,
             'created' => $job->created,
             'updated' => $job->updated,
-            'reasons' => json_encode($job->reasons, \JSON_THROW_ON_ERROR),
+            // Each reason as a message, to show in the language of whoever reads the job.
+            'reasons' => json_encode(array_map(MessageJson::encode(...), $job->reasons), \JSON_THROW_ON_ERROR),
             'reason_count' => $job->reasonCount,
             'stopped_at_line' => $job->stoppedAtLine,
             'updated_at' => $job->updatedAt,
@@ -149,7 +151,7 @@ final class DbalImportJobStore implements ImportJobRepository
             self::int($row['processed']),
             self::int($row['created']),
             self::int($row['updated']),
-            array_values(array_filter($json($row['reasons']), is_string(...))),
+            array_values(array_filter(array_map(MessageJson::decode(...), $json($row['reasons'])), static fn (mixed $reason): bool => null !== $reason)),
             self::int($row['reason_count']),
             null === $row['stopped_at_line'] ? null : self::int($row['stopped_at_line']),
             new \DateTimeImmutable(self::text($row['updated_at'])),

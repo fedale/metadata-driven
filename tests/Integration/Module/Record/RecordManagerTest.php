@@ -182,7 +182,8 @@ final class RecordManagerTest extends KernelTestCase
         try {
             $this->records->create($input);
         } catch (RecordValidationFailed $e) {
-            return $e->errors;
+            // In English: a field type's errors are messages.
+            return array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors);
         }
 
         self::fail('RecordValidationFailed expected.');

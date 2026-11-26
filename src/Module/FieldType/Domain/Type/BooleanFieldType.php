@@ -94,7 +94,7 @@ final class BooleanFieldType extends AbstractFieldType
             }
         }
 
-        throw new InvalidFieldValue('This value should be true or false.');
+        throw new InvalidFieldValue(new Message('field_type.value.not_boolean', 'This value should be true or false.'));
     }
 
     public function widget(array $settings): Widget

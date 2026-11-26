@@ -10,6 +10,7 @@ use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Validation\Contract\RecordValidatorInterface;
 use App\Module\Validation\Contract\ReferenceCheckerInterface;
 use App\Module\Validation\Contract\UniqueValueCheckerInterface;
+use App\Shared\Message\Message;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -19,13 +20,8 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  */
 final class MetadataRecordValidator implements RecordValidatorInterface
 {
-    public const string REQUIRED_MESSAGE = 'This value is required.';
-    public const string UNIQUE_MESSAGE = 'This value is already used.';
-    public const string UNIQUE_TOGETHER_MESSAGE = 'Another record already has the same %s.';
-    public const string REFERENCE_MESSAGE = 'The selected record does not exist.';
-    public const string REFERENCES_MESSAGE = 'One of the selected records does not exist.';
-    public const string PARENT_MISSING_MESSAGE = 'Choose the %s first.';
-    public const string PARENT_MISMATCH_MESSAGE = 'The selected record does not belong to the chosen %s.';
+    /** A key of the validators catalog: the validator translates it as it is raised. */
+    private const string REQUIRED_MESSAGE = 'record.required';
 
     public function __construct(
         private readonly ValidatorInterface $validator,
@@ -53,19 +49,19 @@ final class MetadataRecordValidator implements RecordValidatorInterface
                 continue;
             }
             if ($field->isUnique && $this->uniqueValues->isTaken($object, $field, $value, $recordId)) {
-                $errors[$name][] = self::UNIQUE_MESSAGE;
+                $errors[$name][] = new Message('record.value.unique', 'This value is already used.');
             }
             $manyToMany = $field->manyToMany();
             // The rows of a junction object are checked as its records, by the record manager.
             if (null !== $manyToMany && !$manyToMany->goesThrough() && \is_array($value)
                 && [] !== $this->references->missing($this->metadata->getObject($manyToMany->target), array_values(array_filter($value, \is_string(...))))) {
-                $errors[$name][] = self::REFERENCES_MESSAGE;
+                $errors[$name][] = new Message('record.value.references_missing', 'One of the selected records does not exist.');
                 continue;
             }
             $relation = $field->relation();
             if (null !== $relation && \is_string($value)
                 && !$this->references->exists($this->metadata->getObject($relation->target), $value)) {
-                $errors[$name][] = self::REFERENCE_MESSAGE;
+                $errors[$name][] = new Message('record.value.reference_missing', 'The selected record does not exist.');
                 continue;
             }
             // A cascade: the municipality must belong to the province chosen in the same record.
@@ -73,9 +69,9 @@ final class MetadataRecordValidator implements RecordValidatorInterface
                 $parentLabel = mb_strtolower($object->field($relation->dependsOn)->label);
                 $parent = $values[$relation->dependsOn] ?? null;
                 if (!\is_string($parent)) {
-                    $errors[$name][] = \sprintf(self::PARENT_MISSING_MESSAGE, $parentLabel);
+                    $errors[$name][] = new Message('record.value.parent_missing', 'Choose the %parent% first.', ['parent' => $parentLabel]);
                 } elseif (!$this->references->pointsAt($this->metadata->getObject($relation->target), $value, $relation->dependsVia, $parent)) {
-                    $errors[$name][] = \sprintf(self::PARENT_MISMATCH_MESSAGE, $parentLabel);
+                    $errors[$name][] = new Message('record.value.parent_mismatch', 'The selected record does not belong to the chosen %parent%.', ['parent' => $parentLabel]);
                 }
             }
         }
@@ -87,10 +83,10 @@ final class MetadataRecordValidator implements RecordValidatorInterface
      * Each set unique together that the write touches is checked once; its error goes to the
      * first of its fields the write carries. A set with a field already in error is skipped.
      *
-     * @param array<string, mixed>        $values
-     * @param array<string, list<string>> $errors
+     * @param array<string, mixed>                $values
+     * @param array<string, list<string|Message>> $errors
      *
-     * @return array<string, list<string>>
+     * @return array<string, list<string|Message>>
      */
     private function checkUniqueTogether(ObjectDefinitionDto $object, array $values, ?string $recordId, array $errors): array
     {
@@ -102,7 +98,7 @@ final class MetadataRecordValidator implements RecordValidatorInterface
             if ($this->uniqueValues->isTakenTogether($object, $set, $values, $recordId)) {
                 $labels = array_map(static fn (string $name): string => mb_strtolower($object->field($name)->label), $set);
                 $last = array_pop($labels);
-                $errors[$carried[0]][] = \sprintf(self::UNIQUE_TOGETHER_MESSAGE, implode(', ', $labels).' and '.$last);
+                $errors[$carried[0]][] = new Message('record.value.unique_together', 'Another record already has the same %fields% and %last%.', ['fields' => implode(', ', $labels), 'last' => $last ?? '']);
             }
         }
 

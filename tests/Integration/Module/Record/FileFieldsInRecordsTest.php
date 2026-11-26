@@ -123,7 +123,7 @@ final class FileFieldsInRecordsTest extends KernelTestCase
             $this->records->update($sofa->id, new RecordInput('product', ['manual' => $chairManual]));
             self::fail('The file of another record must be refused.');
         } catch (RecordValidationFailed $e) {
-            self::assertSame(['manual' => ['This file is not the file of this record.']], $e->errors);
+            self::assertSame(['manual' => ['This file is not the file of this record.']], array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors));
         }
         // Its own, in any case, is kept.
         self::assertSame($chairManual, $this->records->update($chair->id, new RecordInput('product', ['manual' => strtoupper($chairManual)]))->values['manual']);
@@ -157,7 +157,7 @@ final class FileFieldsInRecordsTest extends KernelTestCase
             $this->records->create(new RecordInput('product', ['name' => 'Oslo chair'] + $values));
             self::fail(\sprintf('The value of "%s" must be refused.', $field));
         } catch (RecordValidationFailed $e) {
-            self::assertStringContainsString($message, implode(' ', $e->errors[$field] ?? []));
+            self::assertStringContainsString($message, implode(' ', array_map(strval(...), $e->errors[$field] ?? [])));
         }
     }
 

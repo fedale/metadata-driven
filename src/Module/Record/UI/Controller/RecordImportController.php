@@ -17,6 +17,9 @@ use App\Module\Record\UI\Import\ImportColumns;
 use App\Module\Record\UI\Import\ImportDraft;
 use App\Module\Record\UI\Import\ImportDrafts;
 use App\Shared\Csv\CsvFile;
+use App\Shared\Csv\CsvFileUnreadable;
+use App\Shared\Message\Message;
+use App\Shared\Message\MessageTranslator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\Target;
@@ -61,6 +64,7 @@ final class RecordImportController extends AbstractController
         private readonly RecordImporter $importer,
         private readonly FormFactoryInterface $forms,
         private readonly TranslatorInterface $translator,
+        private readonly MessageTranslator $messages,
         private readonly BackgroundImports $background,
         #[Autowire('%app.import.max_rows%')]
         private readonly int $maxRows,
@@ -277,7 +281,7 @@ final class RecordImportController extends AbstractController
     }
 
     /**
-     * @param list<string> $reasons
+     * @param list<Message> $reasons
      */
     private function checkPage(ObjectDefinitionDto $object, ImportDraft $draft, ?ImportReport $report, array $reasons): Response
     {
@@ -413,9 +417,9 @@ final class RecordImportController extends AbstractController
             foreach (CsvFile::rows($path, $draft->separator) as $ignored) {
                 ++$rows;
             }
-        } catch (\UnexpectedValueException $e) {
+        } catch (CsvFileUnreadable $e) {
             $this->drafts->delete($draft);
-            $input->addError(new FormError($e->getMessage()));
+            $input->addError(new FormError($this->messages->trans($e->text)));
 
             return null;
         }

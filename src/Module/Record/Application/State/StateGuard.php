@@ -11,6 +11,7 @@ use App\Module\Record\Contract\Event\RecordWriteAction;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordEventScopeInterface;
 use App\Module\Record\Domain\Repository\RecordStore;
+use App\Shared\Message\Message;
 
 /**
  * A Status changes by its transitions only: a new record starts in the initial state (none
@@ -61,7 +62,7 @@ final class StateGuard
                 continue;
             }
             if (!$this->context->allows($object->name, $id, $name, $given)) {
-                $errors[$name][] = 'Changed by its transitions only.';
+                $errors[$name][] = new Message('record.state.transitions_only', 'Changed by its transitions only.');
                 continue;
             }
             // Its state read again, locked until the write commits: two transitions at once,
@@ -69,7 +70,7 @@ final class StateGuard
             $transition = $this->context->of($object->name, $id);
             $now = null === $id ? null : self::text($this->store->lockedValue($object, $id, $field));
             if (null !== $transition && $now !== $transition->from) {
-                $errors[$name][] = 'Its state changed meanwhile: try again.';
+                $errors[$name][] = new Message('record.state.changed_meanwhile', 'Its state changed meanwhile: try again.');
             }
         }
         if ([] !== $errors) {

@@ -11,6 +11,7 @@ use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Contract\Dto\FormNodeInput;
 use App\Module\Record\Contract\Dto\FormRecord;
 use App\Module\Record\Contract\Exception\FormValidationFailed;
+use App\Shared\Message\MessageTranslator;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormFactoryInterface;
@@ -27,6 +28,7 @@ final class FormDefinitionFormFactory
 {
     public function __construct(
         private readonly FormFactoryInterface $formFactory,
+        private readonly MessageTranslator $messages,
         // The labels in the user's language.
         #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
@@ -128,7 +130,7 @@ final class FormDefinitionFormFactory
         foreach ($failure->errors as $path => $messages) {
             $target = RecordFormFactory::errorTarget($form, $path);
             foreach ($messages as $message) {
-                $target->addError(new FormError($message));
+                $target->addError(new FormError($this->messages->trans($message)));
             }
         }
     }

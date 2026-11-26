@@ -13,6 +13,7 @@ use App\Module\FieldType\Contract\Dto\WidgetKind;
 use App\Module\FieldType\Contract\Exception\InvalidFieldValue;
 use App\Module\Metadata\Contract\Dto\ManyToManyOnDelete;
 use App\Module\Metadata\Contract\Dto\ManyToManySettings;
+use App\Shared\Message\Message;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -98,7 +99,7 @@ final class ManyToManyFieldType extends AbstractFieldType
             }
             // Checked against the type of the target's key by the record module.
             if (\strlen($id) > RelationFieldType::MAX_ID_LENGTH) {
-                throw new InvalidFieldValue('This value is not a valid record reference.');
+                throw new InvalidFieldValue(new Message('field_type.value.not_reference', 'This value is not a valid record reference.'));
             }
             $ids[$id] = true;
         }

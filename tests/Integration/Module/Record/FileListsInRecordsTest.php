@@ -10,13 +10,11 @@ use App\Module\Metadata\Application\Command\CreateFieldCommand;
 use App\Module\Metadata\Application\Command\CreateObjectCommand;
 use App\Module\Metadata\Application\Handler\CreateFieldHandler;
 use App\Module\Metadata\Application\Handler\CreateObjectHandler;
-use App\Module\Record\Application\RecordManager;
 use App\Module\Record\Contract\Dto\RecordInput;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
-use App\Module\Validation\Application\MetadataRecordValidator;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
@@ -94,19 +92,19 @@ final class FileListsInRecordsTest extends KernelTestCase
         $foreign = $this->ids($other, 'manuals')[0];
         $product = $this->create(['name' => 'Bergen table']);
 
-        $this->assertRefused(fn () => $this->update($product, ['manuals' => [$foreign]]), 'manuals', RecordManager::FOREIGN_FILE_MESSAGE);
+        $this->assertRefused(fn () => $this->update($product, ['manuals' => [$foreign]]), 'manuals', 'One of the files is not a file of this record.');
         // A new record holds no file yet.
-        $this->assertRefused(fn () => $this->create(['manuals' => [$foreign]]), 'manuals', RecordManager::FOREIGN_FILE_MESSAGE);
+        $this->assertRefused(fn () => $this->create(['manuals' => [$foreign]]), 'manuals', 'One of the files is not a file of this record.');
         // Nor does a field of the same record attach the files of another one.
-        $this->assertRefused(fn () => $this->update($product, ['manuals' => [$this->ids($product, 'gallery')[0]]]), 'manuals', RecordManager::FOREIGN_FILE_MESSAGE);
+        $this->assertRefused(fn () => $this->update($product, ['manuals' => [$this->ids($product, 'gallery')[0]]]), 'manuals', 'One of the files is not a file of this record.');
         self::assertSame([], self::getContainer()->get(RecordFinderInterface::class)->find('product', $product->id)?->values['manuals']);
     }
 
     public function testARequiredListNeedsOneFile(): void
     {
-        $this->assertRefused(fn () => $this->records->create(new RecordInput('product', ['name' => 'Oslo chair'])), 'gallery', MetadataRecordValidator::REQUIRED_MESSAGE);
+        $this->assertRefused(fn () => $this->records->create(new RecordInput('product', ['name' => 'Oslo chair'])), 'gallery', 'This value is required.');
         $product = $this->create();
-        $this->assertRefused(fn () => $this->update($product, ['gallery' => []]), 'gallery', MetadataRecordValidator::REQUIRED_MESSAGE);
+        $this->assertRefused(fn () => $this->update($product, ['gallery' => []]), 'gallery', 'This value is required.');
     }
 
     public function testEveryNewFileIsCheckedAndTheCountIsBounded(): void

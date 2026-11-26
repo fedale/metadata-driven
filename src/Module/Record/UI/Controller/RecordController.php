@@ -30,6 +30,7 @@ use App\Module\Record\Contract\RecordManagerInterface;
 use App\Module\Record\Contract\RecordTransitionsInterface;
 use App\Module\Record\UI\Form\RecordFormFactory;
 use App\Module\Record\UI\Grid\RecordGridFactory;
+use App\Shared\Message\MessageTranslator;
 use Fedale\GridviewBundle\Export\GridExporterRegistry;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
@@ -62,6 +63,7 @@ final class RecordController extends AbstractController
         private readonly AccessCheckerInterface $access,
         private readonly CascadeTargets $cascadeTargets,
         private readonly TranslatorInterface $translator,
+        private readonly MessageTranslator $messages,
         /** @var iterable<RecordActionsInterface> */
         #[AutowireIterator('app.record_actions')]
         private readonly iterable $actions,
@@ -263,7 +265,7 @@ final class RecordController extends AbstractController
             $this->addFlash('error', $e->getMessage());
         } catch (RecordValidationFailed $failure) {
             // A workflow before the write refused it, or a field the new state needs.
-            $this->addFlash('error', implode(' ', array_merge(...array_values($failure->errors))));
+            $this->addFlash('error', implode(' ', $this->messages->transAll(array_merge(...array_values($failure->errors)))));
         }
 
         return $this->redirectToRoute('record_edit', ['object' => $definition->name, 'id' => $id], Response::HTTP_SEE_OTHER);

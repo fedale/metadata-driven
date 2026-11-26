@@ -92,15 +92,15 @@ final class NumberFieldType extends AbstractFieldType
             \is_int($value) => (string) $value,
             \is_float($value) && is_finite($value) => rtrim(rtrim(\sprintf('%.'.self::MAX_DECIMALS.'F', $value), '0'), '.'),
             \is_string($value) => trim($value),
-            default => throw new InvalidFieldValue('This value should be a number.'),
+            default => throw new InvalidFieldValue(new Message('field_type.value.not_number', 'This value should be a number.')),
         };
 
         if (1 !== preg_match('/^-?\d+(?:\.(\d+))?$/', $number, $matches)) {
-            throw new InvalidFieldValue('This value should be a number.');
+            throw new InvalidFieldValue(new Message('field_type.value.not_number', 'This value should be a number.'));
         }
         $fraction = rtrim($matches[1] ?? '', '0');
         if (\strlen($fraction) > $decimals) {
-            throw new InvalidFieldValue(0 === $decimals ? 'This value should be a whole number.' : \sprintf('This value should have at most %d decimal places.', $decimals));
+            throw new InvalidFieldValue(0 === $decimals ? new Message('field_type.value.not_whole_number', 'This value should be a whole number.') : new Message('field_type.value.too_many_decimals', 'This value should have at most %decimals% decimal places.', ['decimals' => $decimals]));
         }
 
         if (0 === $decimals) {

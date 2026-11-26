@@ -86,7 +86,7 @@ final class StatusFieldTest extends KernelTestCase
             $this->records->update($invoice->id, new RecordInput('invoice', ['state' => 'paid']));
             self::fail('Refused.');
         } catch (RecordValidationFailed $e) {
-            self::assertSame(['state' => ['Changed by its transitions only.']], $e->errors);
+            self::assertSame(['state' => ['Changed by its transitions only.']], array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors));
         }
         // The same state, or another field: no change of state, no refusal.
         self::assertSame('A9', $this->records->update($invoice->id, new RecordInput('invoice', ['number' => 'A9', 'state' => 'draft']))->get('number'));
@@ -129,7 +129,7 @@ final class StatusFieldTest extends KernelTestCase
             self::getContainer()->get(TransitionContext::class)->run('invoice', $invoice->id, new RecordTransition('state', 'send', 'draft', 'sent'), fn () => $this->records->update($invoice->id, new RecordInput('invoice', ['state' => 'sent'])));
             self::fail('Refused.');
         } catch (RecordValidationFailed $e) {
-            self::assertSame(['state' => ['Its state changed meanwhile: try again.']], $e->errors);
+            self::assertSame(['state' => ['Its state changed meanwhile: try again.']], array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors));
         }
     }
 

@@ -22,6 +22,7 @@ use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\FormRecordManagerInterface;
 use App\Module\Record\Contract\RecordFinderInterface;
 use App\Module\Record\Contract\RecordManagerInterface;
+use App\Shared\Message\Message;
 use App\Shared\Transaction\TransactionRunner;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -36,12 +37,6 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  */
 final class FormRecordManager implements FormRecordManagerInterface
 {
-    public const string NOT_IN_FORM_MESSAGE = 'This field is not part of the form.';
-    public const string UNKNOWN_ROW_MESSAGE = 'This row does not belong to the record.';
-    public const string CHECKED_MESSAGE = 'This box must be checked.';
-    // The same message as a required field of a record.
-    public const string REQUIRED_MESSAGE = 'This value is required.';
-
     public function __construct(
         // The labels in the user's language.
         #[Target('localizedMetadata')]
@@ -95,7 +90,7 @@ final class FormRecordManager implements FormRecordManagerInterface
     }
 
     /**
-     * @param array<string, list<string>> $errors collects the errors, keyed by path
+     * @param array<string, list<string|Message>> $errors collects the errors, keyed by path
      *
      * @return Plan
      */
@@ -108,7 +103,7 @@ final class FormRecordManager implements FormRecordManagerInterface
             if (isset($allowed[$name])) {
                 $values[$name] = $value;
             } else {
-                $errors[$path.'values.'.$name][] = self::NOT_IN_FORM_MESSAGE;
+                $errors[$path.'values.'.$name][] = new Message('record.value.not_in_form', 'This field is not part of the form.');
             }
         }
 
@@ -145,7 +140,7 @@ final class FormRecordManager implements FormRecordManagerInterface
 
     /**
      * @param FormNodeInput|array<int|string, FormNodeInput>|null $input
-     * @param array<string, list<string>>                         $errors
+     * @param array<string, list<string|Message>>                 $errors
      *
      * @return SectionPlan
      */
@@ -172,7 +167,7 @@ final class FormRecordManager implements FormRecordManagerInterface
             $rowPath = $path.'.'.$key.'.';
             if (null !== $row->id) {
                 if (!\in_array($row->id, $existing, true)) {
-                    $errors[rtrim($rowPath, '.')][] = self::UNKNOWN_ROW_MESSAGE;
+                    $errors[rtrim($rowPath, '.')][] = new Message('record.value.unknown_row', 'This row does not belong to the record.');
                     continue;
                 }
                 $kept[] = $row->id;
@@ -183,10 +178,10 @@ final class FormRecordManager implements FormRecordManagerInterface
         }
 
         if (\count($rows) < $section->min) {
-            $errors[$path][] = 1 === $section->min ? 'Add at least one row.' : \sprintf('Add at least %d rows.', $section->min);
+            $errors[$path][] = 1 === $section->min ? new Message('record.value.min_one_row', 'Add at least one row.') : new Message('record.value.min_rows', 'Add at least %min% rows.', ['min' => $section->min]);
         }
         if (null !== $section->max && \count($rows) > $section->max) {
-            $errors[$path][] = \sprintf('At most %d rows.', $section->max);
+            $errors[$path][] = new Message('record.value.max_rows', 'At most %max% rows.', ['max' => $section->max]);
         }
 
         return ['section' => $section, 'path' => $path, 'rows' => $rows, 'deletes' => array_values(array_diff($existing, $kept))];
@@ -274,7 +269,7 @@ final class FormRecordManager implements FormRecordManagerInterface
     /**
      * @param array<string, mixed> $values the node's values, for the field's condition
      */
-    private function checkRequiredHere(ObjectDefinitionDto $object, string $field, mixed $value, bool $isNew, array $values): ?string
+    private function checkRequiredHere(ObjectDefinitionDto $object, string $field, mixed $value, bool $isNew, array $values): ?Message
     {
         $definition = $object->field($field);
         $type = $this->fieldTypes->get($definition->type);
@@ -282,14 +277,14 @@ final class FormRecordManager implements FormRecordManagerInterface
             return null;
         }
         if (false === $value) {
-            return self::CHECKED_MESSAGE;
+            return new Message('record.value.checked', 'This box must be checked.');
         }
 
-        return self::isBlank($value) ? self::REQUIRED_MESSAGE : null;
+        return self::isBlank($value) ? new Message('record.value.required', 'This value is required.') : null;
     }
 
     /**
-     * @return list<string>
+     * @return list<string|Message>
      */
     private function checkServiceField(ServiceFieldDto $field, mixed $raw): array
     {
@@ -297,14 +292,14 @@ final class FormRecordManager implements FormRecordManagerInterface
         try {
             $value = $type->denormalize($raw, $field->settings);
         } catch (InvalidFieldValue $e) {
-            return [$e->getMessage()];
+            return [$e->text];
         }
         if (null === $value || false === $value) {
             if (!$field->isRequired) {
                 return [];
             }
 
-            return [false === $value ? self::CHECKED_MESSAGE : self::REQUIRED_MESSAGE];
+            return [false === $value ? new Message('record.value.checked', 'This box must be checked.') : new Message('record.value.required', 'This value is required.')];
         }
 
         $messages = [];

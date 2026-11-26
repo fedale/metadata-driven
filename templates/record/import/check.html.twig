@@ -12,7 +12,7 @@
     {% if reasons is not empty %}
         <div class="md-flash md-flash--error" role="alert">
             <p>{{ 'import.refused'|trans({'%count%': reasons|length}) }}</p>
-            <ul class="md-import__reasons">{% for reason in reasons %}<li>{{ reason }}</li>{% endfor %}</ul>
+            <ul class="md-import__reasons">{% for reason in reasons %}<li>{{ reason|message }}</li>{% endfor %}</ul>
         </div>
     {% elseif report %}
         <p class="md-flash md-flash--success">{{ 'import.would'|trans({'%created%': report.created, '%updated%': report.updated}) }}</p>

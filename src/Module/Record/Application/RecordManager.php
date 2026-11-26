@@ -32,6 +32,7 @@ use App\Module\Record\Contract\RecordManagerInterface;
 use App\Module\Record\Domain\Exception\UniqueValueConflict;
 use App\Module\Record\Domain\Repository\RecordStore;
 use App\Module\Validation\Contract\RecordValidatorInterface;
+use App\Shared\Message\Message;
 use App\Shared\Transaction\TransactionRunner;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Uid\Uuid;
@@ -50,14 +51,6 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
  */
 final class RecordManager implements RecordManagerInterface, RecordFinderInterface
 {
-    public const string CONFLICT_MESSAGE = 'This record conflicts with an existing one, please try again.';
-    public const string FOREIGN_FILE_MESSAGE = 'One of the files is not a file of this record.';
-    public const string FOREIGN_SINGLE_FILE_MESSAGE = 'This file is not the file of this record.';
-    // The same message as an unknown row of a form.
-    public const string UNKNOWN_ROW_MESSAGE = 'This row does not belong to the record.';
-    public const string SET_BY_RECORD_MESSAGE = 'This field is set by the record.';
-    public const string LINKED_TWICE_MESSAGE = 'This record is already linked.';
-
     public function __construct(
         private readonly StateGuard $states,
         private readonly TransitionContext $transitions,
@@ -377,7 +370,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
      *
      * @param array<string, mixed> $values denormalized
      *
-     * @return array<string, list<string>> keyed by field, row and junction field
+     * @return array<string, list<string|Message>> keyed by field, row and junction field
      */
     private function checkRows(ObjectDefinitionDto $object, array $values, ?string $recordId): array
     {
@@ -398,11 +391,11 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
                 $rowId = \is_string($row['id'] ?? null) ? $row['id'] : null;
                 $row = self::rowValues($row);
                 if (null !== $rowId && !\in_array($rowId, $existing, true)) {
-                    $errors[$path][] = self::UNKNOWN_ROW_MESSAGE;
+                    $errors[$path][] = new Message('record.value.unknown_row', 'This row does not belong to the record.');
                     continue;
                 }
                 if (\array_key_exists($source, $row)) {
-                    $errors[$path.'.'.$source][] = self::SET_BY_RECORD_MESSAGE;
+                    $errors[$path.'.'.$source][] = new Message('record.value.set_by_record', 'This field is set by the record.');
                     unset($row[$source]);
                 }
                 foreach ($this->check(new RecordInput($junction->name, $row), $rowId) as $field => $messages) {
@@ -417,7 +410,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
                 if (null !== $targetId && '' !== trim($targetId)) {
                     $targetId = strtolower(trim($targetId));
                     if (isset($linked[$targetId])) {
-                        $errors[$path.'.'.$target][] = self::LINKED_TWICE_MESSAGE;
+                        $errors[$path.'.'.$target][] = new Message('record.value.linked_twice', 'This record is already linked.');
                     }
                     $linked[$targetId] = true;
                 }
@@ -555,7 +548,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
      *
      * @param array<string, mixed> $values denormalized
      *
-     * @return array<string, list<string>> errors by field
+     * @return array<string, list<string|Message>> errors by field
      */
     private function checkHeldFiles(ObjectDefinitionDto $object, array $values, ?string $recordId): array
     {
@@ -579,7 +572,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
             $current = $held[$name] ?? null;
             $current = array_map(strtolower(...), array_filter(\is_array($current) ? $current : [$current], \is_string(...)));
             if ([] !== array_diff($ids, $current)) {
-                $errors[$name][] = null !== $object->field($name)->fileList() ? self::FOREIGN_FILE_MESSAGE : self::FOREIGN_SINGLE_FILE_MESSAGE;
+                $errors[$name][] = null !== $object->field($name)->fileList() ? new Message('record.value.foreign_file', 'One of the files is not a file of this record.') : new Message('record.value.foreign_single_file', 'This file is not the file of this record.');
             }
         }
 
@@ -604,7 +597,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
         } catch (UniqueValueConflict) {
             $errors = $this->validator->validate($object, $values, $recordId);
 
-            throw new RecordValidationFailed($object->name, [] !== $errors ? $errors : [RecordValidationFailed::GLOBAL_ERRORS => [self::CONFLICT_MESSAGE]]);
+            throw new RecordValidationFailed($object->name, [] !== $errors ? $errors : [RecordValidationFailed::GLOBAL_ERRORS => [new Message('record.value.conflict', 'This record conflicts with an existing one, please try again.')]]);
         }
     }
 

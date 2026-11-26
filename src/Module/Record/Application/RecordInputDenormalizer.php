@@ -11,17 +11,13 @@ use App\Module\Metadata\Contract\Dto\KeyType;
 use App\Module\Metadata\Contract\Dto\ObjectDefinitionDto;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Contract\Dto\RecordInput;
+use App\Shared\Message\Message;
 
 /**
  * Converts the raw values of a RecordInput to typed PHP values, field by field.
  */
 final class RecordInputDenormalizer
 {
-    public const string UNKNOWN_FIELD_MESSAGE = 'This field does not exist.';
-    public const string ROWS_MESSAGE = 'This value should be a list of rows.';
-    public const string ROW_ID_MESSAGE = 'This row has no valid id.';
-    public const string REFERENCE_MESSAGE = 'This value is not a valid record reference.';
-
     public function __construct(
         private readonly FieldTypeRegistryInterface $fieldTypes,
         private readonly MetadataRegistryInterface $metadata,
@@ -31,7 +27,7 @@ final class RecordInputDenormalizer
     /**
      * @param bool $complete true on create: fields that were not provided take their default value, or null
      *
-     * @return array{values: array<string, mixed>, errors: array<string, list<string>>}
+     * @return array{values: array<string, mixed>, errors: array<string, list<string|Message>>}
      */
     public function denormalize(ObjectDefinitionDto $object, RecordInput $input, bool $complete): array
     {
@@ -39,7 +35,7 @@ final class RecordInputDenormalizer
         $errors = [];
 
         foreach (array_keys(array_diff_key($input->values, $object->fields)) as $unknown) {
-            $errors[(string) $unknown][] = self::UNKNOWN_FIELD_MESSAGE;
+            $errors[(string) $unknown][] = new Message('record.value.unknown_field', 'This field does not exist.');
         }
 
         foreach ($object->fields as $name => $field) {
@@ -68,7 +64,7 @@ final class RecordInputDenormalizer
             try {
                 $value = $this->keys($field, $type->denormalize($input->values[$name], $field->settings));
             } catch (InvalidFieldValue $e) {
-                $errors[$name][] = $e->getMessage();
+                $errors[$name][] = $e->text;
                 continue;
             }
             // An empty write-only field (a password left blank) keeps the stored value.
@@ -85,7 +81,7 @@ final class RecordInputDenormalizer
      * The rows of a field going through a junction object, keys kept: a map each, with a valid
      * "id" or none. Null (and errors) when the shape is wrong.
      *
-     * @param array<string, list<string>> $errors
+     * @param array<string, list<string|Message>> $errors
      *
      * @return array<int|string, array<string, mixed>>|null
      */
@@ -95,14 +91,14 @@ final class RecordInputDenormalizer
             return [];
         }
         if (!\is_array($raw)) {
-            $errors[$name][] = self::ROWS_MESSAGE;
+            $errors[$name][] = new Message('record.value.not_rows', 'This value should be a list of rows.');
 
             return null;
         }
         $rows = [];
         foreach ($raw as $key => $row) {
             if (!\is_array($row) || ([] !== $row && array_is_list($row))) {
-                $errors[$name][] = self::ROWS_MESSAGE;
+                $errors[$name][] = new Message('record.value.not_rows', 'This value should be a list of rows.');
 
                 return null;
             }
@@ -110,7 +106,7 @@ final class RecordInputDenormalizer
             $id = $row['id'] ?? null;
             $row['id'] = null === $id || '' === $id ? null : $keyType->normalize($id);
             if (null !== $id && '' !== $id && null === $row['id']) {
-                $errors[$name.'.'.$key][] = self::ROW_ID_MESSAGE;
+                $errors[$name.'.'.$key][] = new Message('record.value.row_without_id', 'This row has no valid id.');
                 continue;
             }
             $rows[$key] = $row;
@@ -132,7 +128,7 @@ final class RecordInputDenormalizer
             return $value;
         }
         $keyType = $this->keyType($target);
-        $normalize = static fn (mixed $id): string => $keyType->normalize($id) ?? throw new InvalidFieldValue(self::REFERENCE_MESSAGE);
+        $normalize = static fn (mixed $id): string => $keyType->normalize($id) ?? throw new InvalidFieldValue(new Message('field_type.value.not_reference', 'This value is not a valid record reference.'));
 
         return \is_array($value) ? array_values(array_unique(array_map($normalize, $value))) : $normalize($value);
     }

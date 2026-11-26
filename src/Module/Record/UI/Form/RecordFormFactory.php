@@ -21,6 +21,7 @@ use App\Module\Record\Application\CascadeTargets;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\RecordLookupInterface;
+use App\Shared\Message\MessageTranslator;
 use Fedale\GridviewBundle\Form\Control\BooleanDisplay;
 use Fedale\GridviewBundle\Form\Control\ChoiceDisplay;
 use Fedale\GridviewBundle\Form\Control\ControlBuilder;
@@ -50,6 +51,7 @@ final class RecordFormFactory
 {
     public function __construct(
         private readonly FormFactoryInterface $formFactory,
+        private readonly MessageTranslator $messages,
         private readonly FieldTypeRegistryInterface $fieldTypes,
         private readonly RecordLookupInterface $lookup,
         private readonly UrlGeneratorInterface $urls,
@@ -233,7 +235,7 @@ final class RecordFormFactory
         foreach ($failure->errors as $path => $messages) {
             $target = self::errorTarget($form, $path);
             foreach ($messages as $message) {
-                $target->addError(new FormError($message));
+                $target->addError(new FormError($this->messages->trans($message)));
             }
         }
     }

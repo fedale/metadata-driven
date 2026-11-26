@@ -16,6 +16,9 @@ use App\Module\Record\Contract\RecordManagerInterface;
 use App\Module\Record\Domain\Exception\ImportRefused;
 use App\Module\Record\Domain\Repository\RecordStore;
 use App\Shared\Csv\CsvFile;
+use App\Shared\Csv\CsvFileUnreadable;
+use App\Shared\Message\Message;
+use App\Shared\Message\MessageList;
 use App\Shared\Transaction\TransactionRunner;
 
 /**
@@ -55,8 +58,8 @@ final class RecordImporter
         $this->metadata->getObject($objectName);
         try {
             $rows = CsvFile::read($file);
-        } catch (\UnexpectedValueException $e) {
-            throw new ImportRefused([$e->getMessage()]);
+        } catch (CsvFileUnreadable $e) {
+            throw new ImportRefused([$e->text]);
         }
 
         return $this->importRows($objectName, $rows, $key, $matches, $dryRun, \dirname($file));
@@ -110,7 +113,7 @@ final class RecordImporter
             $field = $object->fields[$fieldName] ?? null;
             $target = $field?->target();
             if (null === $field || null === $target) {
-                $problems[] = \sprintf('--match: "%s" is no relation or many-to-many field of "%s".', $fieldName, $object->name);
+                $problems[] = new Message('record.import.match_not_relation', '--match: "%field%" is no relation or many-to-many field of "%object%".', ['field' => $fieldName, 'object' => $object->name]);
                 continue;
             }
             $targets[$fieldName] = [$this->metadata->getObject($target), $this->uniqueField($this->metadata->getObject($target), $targetFieldName, '--match')];
@@ -125,7 +128,7 @@ final class RecordImporter
      *
      * @param iterable<array{line: int, values: array<string, string|null>}> $rows
      *
-     * @return list<string>
+     * @return list<Message>
      */
     public function keyProblems(ImportPlan $plan, iterable $rows): array
     {
@@ -138,9 +141,9 @@ final class RecordImporter
         foreach ($rows as ['line' => $line, 'values' => $values]) {
             $value = trim((string) ($values[$key] ?? ''));
             if ('' === $value) {
-                $problems[] = \sprintf('Line %d: %s: the key is missing.', $line, $key);
+                $problems[] = new Message('record.import.key_missing', 'Line %line%: %field%: the key is missing.', ['line' => $line, 'field' => $key]);
             } elseif (isset($seen[$value])) {
-                $problems[] = \sprintf('Line %d: %s: line %d has the same key.', $line, $key, $seen[$value]);
+                $problems[] = new Message('record.import.key_twice', 'Line %line%: %field%: line %first% has the same key.', ['line' => $line, 'field' => $key, 'first' => $seen[$value]]);
             }
             $seen[$value] ??= $line;
         }
@@ -176,7 +179,7 @@ final class RecordImporter
                     $id = null === $keyField ? null : ($existing[trim((string) $values[$keyField->name])] ?? null);
                     [$input, $problems] = $this->input($object, $values, $references, (string) $filesDirectory, null === $id);
                     if ([] !== $problems) {
-                        $reasons = [...$reasons, ...array_map(static fn (string $problem): string => \sprintf('Line %d: %s', $line, $problem), $problems)];
+                        $reasons = [...$reasons, ...array_map(static fn (Message $problem): Message => self::atLine($line, $problem), $problems)];
                         continue;
                     }
                     try {
@@ -189,7 +192,8 @@ final class RecordImporter
                         }
                     } catch (RecordValidationFailed $e) {
                         foreach ($e->errors as $field => $messages) {
-                            $reasons[] = \sprintf('Line %d: %s: %s', $line, '' === $field ? 'record' : $field, implode(' ', $messages));
+                            $reason = new MessageList($messages, ' ');
+                            $reasons[] = self::atLine($line, RecordValidationFailed::GLOBAL_ERRORS === $field ? $reason : self::inField($field, $reason));
                         }
                     }
                 }
@@ -215,7 +219,7 @@ final class RecordImporter
      * @param array<string, array<string, string|null>> $references field => cell value => record id (null: no record)
      * @param bool                                      $isNew      the row creates a record (no key, or a key no record holds)
      *
-     * @return array{RecordInput, list<string>}
+     * @return array{RecordInput, list<Message>}
      */
     private function input(ObjectDefinitionDto $object, array $values, array $references, string $directory, bool $isNew): array
     {
@@ -235,7 +239,7 @@ final class RecordImporter
                 foreach ($this->list($field, $value) as $item) {
                     $id = $references[$name][$item] ?? null;
                     if (null === $id) {
-                        $problems[] = \sprintf('%s: no record matches "%s".', $name, $item);
+                        $problems[] = self::inField($name, new Message('record.import.no_match', 'No record matches "%value%".', ['value' => $item]));
                     } else {
                         $ids[] = $id;
                     }
@@ -248,7 +252,7 @@ final class RecordImporter
                 foreach ($this->list($field, $value) as $path) {
                     $real = self::inside($directory, $path);
                     if (null === $real) {
-                        $problems[] = \sprintf('%s: no file "%s" next to the CSV file.', $name, $path);
+                        $problems[] = self::inField($name, new Message('record.import.no_file', 'No file "%path%" next to the CSV file.', ['path' => $path]));
                     } else {
                         $uploads[] = new FileUpload($real, basename($path));
                     }
@@ -302,16 +306,16 @@ final class RecordImporter
      * @param list<string> $header
      * @param bool         $files  the file cells may name files (the rows come with a directory)
      *
-     * @return list<string>
+     * @return list<Message>
      */
     private function headerProblems(ObjectDefinitionDto $object, array $header, bool $files): array
     {
         $problems = [];
         foreach ($header as $name) {
             if (!isset($object->fields[$name])) {
-                $problems[] = \sprintf('Column "%s": "%s" has no such field.', $name, $object->name);
+                $problems[] = new Message('record.import.no_such_field', 'Column "%column%": "%object%" has no such field.', ['column' => $name, 'object' => $object->name]);
             } elseif (!$files && 'file' === $object->fields[$name]->type) {
-                $problems[] = \sprintf('Column "%s": a file field is imported from the console only (record:import), with its files next to the CSV file.', $name);
+                $problems[] = new Message('record.import.file_column', 'Column "%column%": a file field is imported from the console only (record:import), with its files next to the CSV file.', ['column' => $name]);
             }
         }
 
@@ -322,10 +326,26 @@ final class RecordImporter
     {
         $field = $object->fields[$name] ?? null;
         if (null === $field || !$field->isUnique) {
-            throw new ImportRefused([\sprintf('%s: "%s" is no unique field of "%s".', $option, $name, $object->name)]);
+            throw new ImportRefused([new Message('record.import.not_unique', '%option%: "%field%" is no unique field of "%object%".', ['option' => $option, 'field' => $name, 'object' => $object->name])]);
         }
 
         return $field;
+    }
+
+    /**
+     * A reason of a row: the line of the file first.
+     */
+    private static function atLine(int $line, Message|MessageList $reason): Message
+    {
+        return new Message('record.import.line', 'Line %line%: %reason%', ['line' => $line, 'reason' => $reason]);
+    }
+
+    /**
+     * A reason of a cell: the field it fills first.
+     */
+    private static function inField(string $field, Message|MessageList $reason): Message
+    {
+        return new Message('record.import.field', '%field%: %reason%', ['field' => $field, 'reason' => $reason]);
     }
 
     /**

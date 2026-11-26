@@ -125,7 +125,7 @@ final class TagsFieldType extends AbstractFieldType
                 continue;
             }
             if (!\is_string($item)) {
-                throw new InvalidFieldValue('This value should be a list of labels.');
+                throw new InvalidFieldValue(new Message('field_type.value.not_labels', 'This value should be a list of labels.'));
             }
             foreach (explode(',', $item) as $label) {
                 $label = self::clean($label);
