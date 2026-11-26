@@ -4,7 +4,7 @@ Internal notes for whoever (human or agent) picks the work up, on any machine. R
 starting a task; update it in the same branch whenever a decision is taken, a feature lands or the
 work queue changes. The user-facing documentation is in [../README.md](../README.md).
 
-Last updated: 2026-11-22.
+Last updated: 2026-11-26.
 
 ## Setting up on a new machine
 
@@ -100,6 +100,17 @@ Things that are not obvious from a single file, and that are easy to break.
 - **Field types** (`FieldTypeInterface`): `defaultValue()`, `isWriteOnly()`, `toStorage()`; the
   snapshot loader merges each type's default settings. Passwords are hashed through
   `SecretHasherInterface` ("record_secret" hasher), write-only, blank on update keeps the value.
+  `isSearchable()` (defaults to `isSortable()`) decides whether the search reads a field: `tags`
+  is searchable though not sortable. A `WidgetKind` value must be a gridview `ControlType` name
+  (`WidgetKindTest`). A `SettingKind::StringList` setting gives its editor's placeholder in the
+  definition's `example` option.
+- **ISO codes** (`country`, `language`, `currency`, on `AbstractCodeFieldType`): `symfony/intl` is
+  data, allowed in the Domain layer by Deptrac. A code is written in its list's case: settings
+  refuse `it` for a country. Reading a name instead of a code (imports, seeds) goes through
+  `IsoCodesInterface` (FieldType Contract, `IntlIsoCodes`), never in the type's `denormalize()`:
+  the API and the forms take codes only.
+- **Times** (`time`): a `DateTimeImmutable` dated 1970-01-01, a `time` column; the seed export
+  writes `H:i` or `H:i:s`, not a date.
 - **Keys** (`KeyType`, since 2026-11-22): an object's `id` is a UUID or an integer, and so is
   every column holding one of its ids. PDO returns an integer as a PHP int: every id read from
   SQL goes through `KeyType::fromDatabase()`, and every id given goes through the object's
@@ -274,6 +285,21 @@ revision bumped by triggers, see `architecture.md`).
   `Version20261121192317`; the user asked for it to follow the account) and in the `md_theme`
   cookie for the pages before signing in; **My account** > **Appearance** goes back to the
   system's. See architecture.md, "Light and dark theme". Run the migrations (`make db`).
+- **The `tags` field type** (merged 2026-11-24 to 2026-11-25), plan in
+  [tags-type-plan.md](tags-type-plan.md): free text labels stored as one JSONB array; gridview's
+  `tags` control (gridview 1.9.0) with the labels in use as suggestions
+  (`/o/<object>/tags/<field>`); a badge per label in the grid, a multiple relation filter (a text
+  filter past 200 labels in use); searchable; the CSV import and seeds split on `|`; adopting a
+  JSON column of string lists. Package format 2.5.0 (the type, and the setting kind `strings`).
+- **The `time`, `color`, `country`, `language` and `currency` field types** (merged 2026-11-25),
+  plan in [simple-types-plan.md](simple-types-plan.md). Gridview 1.10.0 (the date filter's
+  `input: time`, a range of times), 1.11.0 (a colour that may be none, `nullable` on the `color`
+  control; time inputs drawn as such), 1.11.1 (the colour input drawn as a swatch); package
+  format 2.6.0. The codes are stored as ISO codes in their case (`IT`, `it`, `EUR`) and shown by
+  name in the user's language; the CSV import and seeds take a code or a name (current language,
+  then English); adoption proposes the types from a column's type, length and name. Tried in the
+  browser on 2026-11-25 (form, grid, time and country filters, edit, Italian, dark theme): the
+  colour swatch and the example of the `preferred` setting fixed then, merged the same day.
 
 ## Open
 
@@ -515,7 +541,10 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   the plan is complete. Then discovery of the unmanaged tables of the workspace's data schema,
   adoption of one table and of a set (the system columns added, the table renamed), junctions;
   then exporting packages and installing them from a file in the admin (today the console only).
-- Relation filters in grids keep `multiple: true` by choice.
+- Relation filters in grids keep `multiple: true` by choice. Seen in the browser on 2026-11-25:
+  the filter applies on a click outside its panel, `Esc` closes it without applying; in Italian
+  the grid's "Columns" and "Export" are not translated (gridview's keys, or the app's labels:
+  not looked into yet).
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`
   x4 mocked an ObjectRepository where ORM 3 wants an EntityRepository, `ThemeRegistryTest` missed
