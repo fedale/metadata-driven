@@ -186,7 +186,9 @@ so a view never carries code.
 A developer adds a renderer with a class implementing
 `App\Module\Record\UI\Grid\Renderer\CellRendererInterface` (`name()`, `optionErrors()`,
 `render()`): it is registered by itself, and accepted by the views from then on. `render()`
-returns HTML, so it escapes what it prints.
+returns HTML, so it escapes what it prints. `optionErrors()` returns texts or messages
+(`App\Shared\Message\Message`, translated in `translations/errors.<locale>.yaml`): a message
+is shown in the user's language, a text as it is written.
 
 ### One grid per view
 

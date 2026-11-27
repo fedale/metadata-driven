@@ -84,3 +84,10 @@ relation refuses (`RecordDeleteRestricted::text()`). A manual run's refusals and
 answers (`ManualRunRefused::text()`, `InvalidAnswer`) are messages too (`workflow.manual.*`,
 `workflow.answer.*`). Left as written: a refuse step's own message, the outside's errors (an
 HTTP client's, a database's) inside a message, the webhook's JSON answers, the console.
+
+## The grid column renderers' options
+
+Asked for on 2026-11-27. `CellRendererInterface::optionErrors()` (and the catalog's) give
+`string|Message`: the three renderers' errors are messages (`metadata.grid_view.*`), shown by
+the grid view's editor in the user's language. A renderer of a host application may go on
+returning strings, shown as they are.

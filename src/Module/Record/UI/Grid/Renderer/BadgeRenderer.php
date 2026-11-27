@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Module\Record\UI\Grid\Renderer;
 
+use App\Shared\Message\Message;
+
 /**
  * Shows the value as a badge (gv-badge of fedale/gridview-bundle), its tone chosen by value:
  * "tones: { active: success, suspended: danger }". Values without a tone stay neutral.
@@ -19,14 +21,14 @@ final class BadgeRenderer implements CellRendererInterface
 
     public function optionErrors(array $options): array
     {
-        $errors = array_map(static fn (string $key): string => \sprintf('unknown option "%s" of renderer badge (allowed: tones).', $key), array_values(array_diff(array_keys($options), ['tones'])));
+        $errors = array_map(static fn (string $key): Message => new Message('metadata.grid_view.renderer_option_unknown', 'unknown option "%option%" of renderer %renderer% (allowed: %allowed%).', ['option' => $key, 'renderer' => 'badge', 'allowed' => 'tones']), array_values(array_diff(array_keys($options), ['tones'])));
         $tones = $options['tones'] ?? [];
         if (!\is_array($tones) || ([] !== $tones && array_is_list($tones))) {
-            return [...$errors, '"tones" must be a map of value => tone.'];
+            return [...$errors, new Message('metadata.grid_view.badge_tones_invalid', '"tones" must be a map of value => tone.')];
         }
         foreach ($tones as $value => $tone) {
             if (!\in_array($tone, self::TONES, true)) {
-                $errors[] = \sprintf('the tone of "%s" must be one of %s.', $value, implode(', ', self::TONES));
+                $errors[] = new Message('metadata.grid_view.badge_tone_invalid', 'the tone of "%value%" must be one of %tones%.', ['value' => (string) $value, 'tones' => implode(', ', self::TONES)]);
             }
         }
 

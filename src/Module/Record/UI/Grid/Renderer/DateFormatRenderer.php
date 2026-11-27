@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Module\Record\UI\Grid\Renderer;
 
+use App\Shared\Message\Message;
+
 /**
  * Formats a date or a date and time with a PHP date "format" ("d/m/Y" by default).
  */
@@ -18,10 +20,10 @@ final class DateFormatRenderer implements CellRendererInterface
 
     public function optionErrors(array $options): array
     {
-        $errors = array_map(static fn (string $key): string => \sprintf('unknown option "%s" of renderer date (allowed: format).', $key), array_values(array_diff(array_keys($options), ['format'])));
+        $errors = array_map(static fn (string $key): Message => new Message('metadata.grid_view.renderer_option_unknown', 'unknown option "%option%" of renderer %renderer% (allowed: %allowed%).', ['option' => $key, 'renderer' => 'date', 'allowed' => 'format']), array_values(array_diff(array_keys($options), ['format'])));
         $format = $options['format'] ?? self::DEFAULT_FORMAT;
         if (!\is_string($format) || '' === trim($format) || \strlen($format) > 50) {
-            $errors[] = '"format" must be a PHP date format, e.g. "d/m/Y H:i".';
+            $errors[] = new Message('metadata.grid_view.date_format_invalid', '"format" must be a PHP date format, e.g. "d/m/Y H:i".');
         }
 
         return $errors;

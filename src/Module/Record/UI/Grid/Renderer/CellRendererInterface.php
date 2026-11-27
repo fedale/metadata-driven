@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Record\UI\Grid\Renderer;
 
+use App\Shared\Message\Message;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 /**
@@ -25,7 +26,8 @@ interface CellRendererInterface
     /**
      * @param array<string, mixed> $options
      *
-     * @return list<string> what is wrong with the options; empty when they are valid
+     * @return list<string|Message> what is wrong with the options, to show in the user's language
+     *                              (see MessageTranslator); empty when they are valid
      */
     public function optionErrors(array $options): array;
 
