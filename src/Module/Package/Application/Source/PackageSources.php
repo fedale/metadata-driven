@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Package\Application\Source;
 
+use App\Module\Package\Application\ProblemMessages;
 use App\Module\Package\Domain\Exception\PackageSourceFailed;
 use App\Module\Package\Domain\Model\PackageSource;
 use App\Module\Package\Domain\Repository\PackageSourceRepository;
@@ -299,8 +300,7 @@ final class PackageSources
         } catch (InvalidPackage $e) {
             $this->discard($directory);
 
-            // The format's problem is English only.
-            throw new PackageSourceFailed(new Message('package.source.invalid_archive', '%name% %version%: %problem%', ['name' => $entry->name, 'version' => $entry->version, 'problem' => $e->getMessage()]), 0, $e);
+            throw new PackageSourceFailed(new Message('package.source.invalid_archive', '%name% %version%: %problem%', ['name' => $entry->name, 'version' => $entry->version, 'problem' => new Message('package.install.invalid', 'The package is invalid: %problems%', ['problems' => ProblemMessages::list($e)])]), 0, $e);
         } finally {
             (new Filesystem())->remove($archive);
         }

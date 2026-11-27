@@ -7,6 +7,7 @@ namespace App\Module\Package\UI\Controller;
 use App\Module\Access\Contract\AccessCheckerInterface;
 use App\Module\Package\Application\InstallReport;
 use App\Module\Package\Application\PackageInstaller;
+use App\Module\Package\Application\ProblemMessages;
 use App\Module\Package\Application\Source\PackageLocator;
 use App\Module\Package\Application\Source\PackageSources;
 use App\Module\Package\Application\Upgrade\ConflictView;
@@ -169,7 +170,7 @@ final class PackageAdminController extends AbstractController
         } catch (PackageSourceFailed $e) {
             $reasons = [$e->text()];
         } catch (InvalidPackage $e) {
-            $reasons = array_map(strval(...), $e->problems);
+            $reasons = ProblemMessages::all($e->problems);
         } catch (InstallRefused $e) {
             $reasons = $e->reasons;
         }
@@ -215,7 +216,7 @@ final class PackageAdminController extends AbstractController
         } catch (PackageSourceFailed $e) {
             $reasons = [$e->text()];
         } catch (InvalidPackage $e) {
-            $reasons = array_map(strval(...), $e->problems);
+            $reasons = ProblemMessages::all($e->problems);
         } catch (UpgradeRefused $e) {
             $reasons = $e->reasons;
         }

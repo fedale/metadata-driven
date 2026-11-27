@@ -38,8 +38,7 @@ final class PackageInstallation implements PackageInstallationInterface
         } catch (PackageSourceFailed $e) {
             throw new PackageInstallFailed($e->text(), 0, $e);
         } catch (InvalidPackage $e) {
-            // The format's problems are English only.
-            throw new PackageInstallFailed(new Message('package.install.invalid', 'The package is invalid: %problems%', ['problems' => implode(' ', array_map(strval(...), $e->problems))]), 0, $e);
+            throw new PackageInstallFailed(new Message('package.install.invalid', 'The package is invalid: %problems%', ['problems' => ProblemMessages::list($e, ' ')]), 0, $e);
         } catch (InstallRefused $e) {
             throw new PackageInstallFailed(new Message('package.install.refused', 'The package cannot be installed: %reason%', ['reason' => new MessageList($e->reasons, ' ')]), 0, $e);
         }

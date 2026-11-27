@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Package\Application\Source;
 
+use App\Module\Package\Application\ProblemMessages;
 use App\Module\Package\Domain\Exception\PackageSourceFailed;
 use App\Shared\Message\Message;
 use App\Shared\Workspace\CurrentWorkspace;
@@ -62,8 +63,7 @@ final class UploadedPackages
         } catch (InvalidPackage $e) {
             $this->discard($token);
 
-            // The format's problems are English only.
-            throw new PackageSourceFailed(new Message('package.upload.invalid', '%file%: %problem%', ['file' => $originalName, 'problem' => $e->getMessage()]), 0, $e);
+            throw new PackageSourceFailed(new Message('package.upload.invalid', '%file%: %problem%', ['file' => $originalName, 'problem' => new Message('package.install.invalid', 'The package is invalid: %problems%', ['problems' => ProblemMessages::list($e)])]), 0, $e);
         }
         file_put_contents($directory.'.name', $originalName);
 
