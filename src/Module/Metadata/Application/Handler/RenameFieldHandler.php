@@ -17,6 +17,7 @@ use App\Module\Metadata\Contract\MetadataDependentInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
 use App\Module\Metadata\Domain\Repository\TranslationRepository;
+use App\Shared\Message\Message;
 use App\Shared\Transaction\TransactionRunner;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
@@ -46,7 +47,7 @@ final class RenameFieldHandler
     }
 
     /**
-     * @return list<string> the definitions written by hand that were rewritten
+     * @return list<string|Message> the definitions written by hand that were rewritten
      */
     public function __invoke(RenameFieldCommand $command): array
     {
@@ -83,7 +84,9 @@ final class RenameFieldHandler
                 }
                 if ($source !== $view->getSource()) {
                     $object->saveView($view->getId(), $view->getKind(), $view->getName(), $source, $view->isDefault(), $definition);
-                    $rewritten[] = \sprintf('%s view "%s"', $view->getKind()->value, $view->getName());
+                    $rewritten[] = ViewKind::Grid === $view->getKind()
+                        ? new Message('metadata.rewritten.grid_view', 'grid view "%view%"', ['view' => $view->getName()])
+                        : new Message('metadata.rewritten.form_view', 'form view "%view%"', ['view' => $view->getName()]);
                 }
             }
             $this->objects->save($object);

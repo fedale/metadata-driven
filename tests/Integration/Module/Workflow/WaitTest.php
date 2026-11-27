@@ -125,7 +125,7 @@ final class WaitTest extends KernelTestCase
                 'steps.0.type' => ['A write waits for no one: no wait in a workflow run before the write.'],
                 'steps.1.branches.0.steps.0.for' => ['A duration: a number and minutes, hours, days or weeks, e.g. 30 minutes.'],
                 'steps.1.branches.0.steps.0.type' => ['A write waits for no one: no wait in a workflow run before the write.', 'A wait is one of the first steps: not inside an if or an iterator, which it would have to resume halfway through.'],
-            ], $e->errors);
+            ], array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors));
         }
     }
 

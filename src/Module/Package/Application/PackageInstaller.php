@@ -25,6 +25,7 @@ use App\Module\Package\Domain\Repository\PersistenceReset;
 use App\Module\Workflow\Contract\Exception\InvalidWorkflowSource;
 use App\Module\Workflow\Contract\PackagedWorkflowsInterface;
 use App\Shared\Message\Message;
+use App\Shared\Message\MessageList;
 use App\Shared\Transaction\TransactionRunner;
 use Fedale\PackageFormat\Document;
 use Fedale\PackageFormat\DocumentKind;
@@ -300,8 +301,7 @@ final class PackageInstaller
             try {
                 $localId = $this->workflows->create($name, \is_string($workflow->spec['description'] ?? null) ? $workflow->spec['description'] : null, $definition);
             } catch (InvalidWorkflowSource $e) {
-                // The workflow module's message is English only.
-                throw InstallRefused::at($workflow->path, 'spec.definition', $e->getMessage());
+                throw InstallRefused::at($workflow->path, 'spec.definition', new MessageList($e->located(), ' '));
             }
             $items[] = $this->item($package, ItemKind::Workflow, $workflow->id, $localId);
             $workflows[] = $name;

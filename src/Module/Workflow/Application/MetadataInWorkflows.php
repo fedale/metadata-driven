@@ -11,6 +11,8 @@ use App\Module\Workflow\Application\Engine\ActiveWorkflows;
 use App\Module\Workflow\Domain\Model\VersionStatus;
 use App\Module\Workflow\Domain\Model\WorkflowVersion;
 use App\Module\Workflow\Domain\Repository\WorkflowRepository;
+use App\Shared\Message\Message;
+use App\Shared\Message\MessageList;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
@@ -59,7 +61,7 @@ final class MetadataInWorkflows implements MetadataDependentInterface
     /**
      * @param callable(array{object: string, field: string|null, at: string}): bool $matches
      *
-     * @return list<string>
+     * @return list<Message>
      */
     private function uses(callable $matches): array
     {
@@ -72,7 +74,7 @@ final class MetadataInWorkflows implements MetadataDependentInterface
                 }
                 $places = array_column(array_values(array_filter(DefinitionNames::references($definition), $matches)), 'at');
                 if ([] !== $places) {
-                    $uses[] = \sprintf('workflow "%s" (%s)', $workflow->getName(), implode(', ', array_unique($places)));
+                    $uses[] = new Message('workflow.uses', 'workflow "%workflow%" (%places%)', ['workflow' => $workflow->getName(), 'places' => implode(', ', array_unique($places))]);
                 }
             }
         }
@@ -83,7 +85,7 @@ final class MetadataInWorkflows implements MetadataDependentInterface
     /**
      * @param callable(array<string, mixed>): array<string, mixed> $rename
      *
-     * @return list<string>
+     * @return list<Message>
      */
     private function rename(callable $rename): array
     {
@@ -102,10 +104,10 @@ final class MetadataInWorkflows implements MetadataDependentInterface
                 }
                 $version->followRename($source, $renamed);
                 $this->workflows->save($version);
-                $statuses[] = $version->getStatus()->value;
+                $statuses[] = self::status($version->getStatus());
             }
             if ([] !== $statuses) {
-                $rewritten[] = \sprintf('workflow "%s" (%s)', $workflow->getName(), implode(', ', $statuses));
+                $rewritten[] = new Message('workflow.rewritten', 'workflow "%workflow%" (%versions%)', ['workflow' => $workflow->getName(), 'versions' => new MessageList($statuses, ', ')]);
             }
         }
         if ([] !== $rewritten) {
@@ -113,6 +115,18 @@ final class MetadataInWorkflows implements MetadataDependentInterface
         }
 
         return $rewritten;
+    }
+
+    /**
+     * The versions a rename rewrites, as the admin's page names them.
+     */
+    private static function status(VersionStatus $status): Message
+    {
+        return match ($status) {
+            VersionStatus::Draft => new Message('workflow.version.draft', 'draft'),
+            VersionStatus::Active => new Message('workflow.version.active', 'active'),
+            default => new Message('workflow.version.deactivated', 'deactivated'),
+        };
     }
 
     /**

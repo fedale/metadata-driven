@@ -34,6 +34,7 @@ use App\Module\Record\Contract\RecordManagerInterface;
 use App\Module\Workflow\Contract\Exception\InvalidWorkflowSource;
 use App\Module\Workflow\Contract\PackagedWorkflowsInterface;
 use App\Shared\Message\Message;
+use App\Shared\Message\MessageList;
 use App\Shared\Transaction\TransactionRunner;
 use Fedale\PackageFormat\Document;
 use Fedale\PackageFormat\DocumentKind;
@@ -266,8 +267,7 @@ final class PackageUpgrader
                 try {
                     $definition = $back($this->workflows->canonical($named));
                 } catch (InvalidWorkflowSource $e) {
-                    // The workflow module's message is English only.
-                    throw UpgradeRefused::at($document->path, 'spec.definition', $e->getMessage());
+                    throw UpgradeRefused::at($document->path, 'spec.definition', new MessageList($e->located(), ' '));
                 }
                 $document = new Document($document->kind, $document->id, ['definition' => $definition] + $document->spec, $document->path);
             }
@@ -683,8 +683,7 @@ final class PackageUpgrader
             }
             $created = $this->workflows->create($name, $description, $definition);
         } catch (InvalidWorkflowSource $e) {
-            // The workflow module's message is English only.
-            throw UpgradeRefused::at($change->state()->document->path, $change->item(), $e->getMessage());
+            throw UpgradeRefused::at($change->state()->document->path, $change->item(), new MessageList($e->located(), ' '));
         }
         // One the user deleted, back: its old record goes.
         $this->forget($theirs->name(), $this->localId(ItemKind::Workflow, $change->state()->id, $theirs->name()));

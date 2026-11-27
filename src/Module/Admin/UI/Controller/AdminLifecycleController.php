@@ -9,6 +9,7 @@ use App\Module\Admin\UI\Form\LifecycleForms;
 use App\Module\Metadata\Contract\Exception\MetadataException;
 use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
+use App\Shared\Message\Message;
 use App\Shared\Message\MessageTranslator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
@@ -151,7 +152,7 @@ final class AdminLifecycleController extends AbstractController
             return false;
         }
         if (\is_array($rewritten) && [] !== $rewritten) {
-            $success .= ' '.$this->translator->trans('admin.rewritten', ['%definitions%' => implode(', ', array_filter($rewritten, is_string(...)))]);
+            $success .= ' '.$this->translator->trans('admin.rewritten', ['%definitions%' => implode(', ', $this->messageTranslator->transAll(array_values(array_filter($rewritten, static fn (mixed $line): bool => \is_string($line) || $line instanceof Message))))]);
         }
         $this->addFlash('success', $success);
 

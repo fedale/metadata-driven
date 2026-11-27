@@ -205,7 +205,7 @@ final class HttpRequestTest extends KernelTestCase
                 'steps.0.type' => ['No call to the outside in a write: no http_request in a workflow run before the write.'],
                 'steps.0.method' => ['One of GET, POST, PUT, PATCH, DELETE.'],
                 'steps.0.timeout' => ['Seconds, from 1 to 30.'],
-            ], $e->errors);
+            ], array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors));
         }
     }
 

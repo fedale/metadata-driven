@@ -205,7 +205,7 @@ final class PlatformWorkflowsTest extends KernelTestCase
             $manager->activate($workflow);
             self::fail('Refused.');
         } catch (InvalidWorkflowDefinition $e) {
-            self::assertSame(['The platform\'s events are the system admin\'s: a workflow on them is defined in the system console.'], $e->errors['trigger.on']);
+            self::assertSame(['The platform\'s events are the system admin\'s: a workflow on them is defined in the system console.'], array_map(strval(...), $e->errors['trigger.on']));
         }
 
         // ...and the console none on a record's.
@@ -215,7 +215,7 @@ final class PlatformWorkflowsTest extends KernelTestCase
                 $manager->activate($workflow);
                 self::fail('Refused.');
             } catch (InvalidWorkflowDefinition $e) {
-                self::assertSame(['The system console\'s workflows run on the platform\'s events: workspace_created, member_added.'], $e->errors['trigger.on']);
+                self::assertSame(['The system console\'s workflows run on the platform\'s events: workspace_created, member_added.'], array_map(strval(...), $e->errors['trigger.on']));
             }
         });
     }

@@ -51,7 +51,7 @@ final class RenameConsoleCommand
             ? \sprintf('Object "%s" is now "%s", with its table.', $object, $newName)
             : \sprintf('Field "%s.%s" is now "%s.%s", with its column.', $object, $field, $object, $newName));
         if ([] !== $rewritten) {
-            $io->note(['Rewritten to name the new one (a YAML definition loses its comments):', ...$rewritten]);
+            $io->note(['Rewritten to name the new one (a YAML definition loses its comments):', ...array_map(strval(...), $rewritten)]);
         }
 
         return Command::SUCCESS;

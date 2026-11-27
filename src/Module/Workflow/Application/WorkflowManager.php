@@ -14,6 +14,7 @@ use App\Module\Workflow\Domain\Model\VersionStatus;
 use App\Module\Workflow\Domain\Model\Workflow;
 use App\Module\Workflow\Domain\Model\WorkflowVersion;
 use App\Module\Workflow\Domain\Repository\WorkflowRepository;
+use App\Shared\Message\Message;
 use App\Shared\Transaction\TransactionRunner;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Uid\Uuid;
@@ -193,11 +194,11 @@ final class WorkflowManager
     private function assertName(string $name, ?Workflow $workflow): void
     {
         if (1 !== preg_match(self::NAME, $name)) {
-            throw new InvalidWorkflowDefinition(['name' => ['Required: at most 100 characters.']]);
+            throw new InvalidWorkflowDefinition(['name' => [new Message('workflow.name_invalid', 'Required: at most 100 characters.')]]);
         }
         $taken = $this->workflows->findByName($name);
         if (null !== $taken && $taken !== $workflow) {
-            throw new InvalidWorkflowDefinition(['name' => [\sprintf('There is a workflow "%s" already.', $name)]]);
+            throw new InvalidWorkflowDefinition(['name' => [new Message('workflow.name_taken', 'There is a workflow "%name%" already.', ['name' => $name])]]);
         }
     }
 

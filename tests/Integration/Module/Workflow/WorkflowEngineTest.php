@@ -104,7 +104,7 @@ final class WorkflowEngineTest extends KernelTestCase
             $this->records->create(new RecordInput('person', ['full_name' => 'Mallory']));
             self::fail('Refused.');
         } catch (RecordValidationFailed $e) {
-            self::assertSame(['' => ['No Mallory here.']], $e->errors);
+            self::assertSame(['' => ['No Mallory here.']], array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors));
         }
 
         self::assertSame(['Ada'], $this->names('person'));
@@ -181,7 +181,7 @@ final class WorkflowEngineTest extends KernelTestCase
             $this->records->create(new RecordInput('invoice', ['number' => 'A2']));
             self::fail('Refused.');
         } catch (RecordValidationFailed $e) {
-            self::assertSame(['' => ['The workflow "Stamp" could not run: owner@example.com, who activated it, no longer holds record.invoice.create.']], $e->errors);
+            self::assertSame(['' => ['The workflow "Stamp" could not run: owner@example.com, who activated it, no longer holds record.invoice.create.']], array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors));
         }
     }
 

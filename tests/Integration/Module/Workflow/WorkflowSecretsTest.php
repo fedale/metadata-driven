@@ -116,8 +116,8 @@ final class WorkflowSecretsTest extends KernelTestCase
                 YAML));
             self::fail('Refused.');
         } catch (InvalidWorkflowDefinition $e) {
-            self::assertSame(['A secret is read in an http_request\'s url, headers and body only: nowhere it could be written down.'], $e->errors['steps.0.values.text']);
-            self::assertSame(['There is no secret "nope": add it on the page of the secrets.'], $e->errors['steps.1.url']);
+            self::assertSame(['A secret is read in an http_request\'s url, headers and body only: nowhere it could be written down.'], array_map(strval(...), $e->errors['steps.0.values.text']));
+            self::assertSame(['There is no secret "nope": add it on the page of the secrets.'], array_map(strval(...), $e->errors['steps.1.url']));
         }
     }
 }

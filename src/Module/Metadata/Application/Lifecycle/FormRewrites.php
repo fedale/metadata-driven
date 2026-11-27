@@ -6,6 +6,7 @@ namespace App\Module\Metadata\Application\Lifecycle;
 
 use App\Module\Metadata\Application\Form\FormDefinitionCompiler;
 use App\Module\Metadata\Domain\Repository\FormDefinitionRepository;
+use App\Shared\Message\Message;
 
 /**
  * Rewrites the forms naming a renamed object or field, inside the transaction of the
@@ -23,7 +24,7 @@ final class FormRewrites
     /**
      * @param callable(string): string $rewrite the source as written => the rewritten source
      *
-     * @return list<string> what was rewritten, one line each
+     * @return list<Message> what was rewritten, one line each
      */
     public function apply(callable $rewrite): array
     {
@@ -36,7 +37,7 @@ final class FormRewrites
             $compiled = $this->compiler->compile($source);
             $form->redefine($compiled['label'], $source, $compiled['root']);
             $this->forms->save($form);
-            $rewritten[] = \sprintf('form "%s"', $form->getName());
+            $rewritten[] = new Message('metadata.rewritten.form', 'form "%form%"', ['form' => $form->getName()]);
         }
 
         return $rewritten;

@@ -16,6 +16,7 @@ use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Metadata\Domain\Exception\InvalidMetadataDefinition;
 use App\Module\Metadata\Domain\Repository\ObjectDefinitionRepository;
 use App\Module\Metadata\Domain\Repository\TranslationRepository;
+use App\Shared\Message\Message;
 use App\Shared\Transaction\TransactionRunner;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
@@ -43,7 +44,7 @@ final class RenameObjectHandler
     }
 
     /**
-     * @return list<string> the definitions written by hand that were rewritten
+     * @return list<string|Message> the definitions written by hand that were rewritten
      */
     public function __invoke(RenameObjectCommand $command): array
     {

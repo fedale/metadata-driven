@@ -22,6 +22,7 @@ use App\Module\Workflow\Domain\Model\VersionStatus;
 use App\Module\Workflow\Domain\Model\Workflow;
 use App\Module\Workflow\Domain\Model\WorkflowVersion;
 use App\Module\Workflow\Domain\Repository\WorkflowRepository;
+use App\Shared\Message\MessageTranslator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
@@ -74,6 +75,7 @@ abstract class AbstractWorkflowController extends AbstractController
         private readonly WorkflowTester $tester,
         protected readonly WebhookTokens $webhooks,
         private readonly WorkflowQuota $quota,
+        private readonly MessageTranslator $messages,
     ) {
     }
 
@@ -400,9 +402,9 @@ abstract class AbstractWorkflowController extends AbstractController
         foreach ($e->errors as $path => $messages) {
             foreach ($messages as $message) {
                 if ('name' === $path && $form->has('name')) {
-                    $form->get('name')->addError(new FormError($message));
+                    $form->get('name')->addError(new FormError($this->messages->trans($message)));
                 } else {
-                    $problems[] = [$path, $message];
+                    $problems[] = [$path, $this->messages->trans($message)];
                 }
             }
         }

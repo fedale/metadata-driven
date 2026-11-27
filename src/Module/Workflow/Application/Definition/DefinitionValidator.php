@@ -15,6 +15,7 @@ use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Workflow\Application\Engine\ActiveWorkflows;
 use App\Module\Workflow\Application\Secrets\WorkflowSecrets;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
+use App\Shared\Message\Message;
 use App\Shared\Workspace\CurrentWorkspace;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
@@ -33,7 +34,7 @@ final class DefinitionValidator
     /** Field types a workflow does not write in phase 1: files come from an upload. */
     private const array UNWRITABLE_TYPES = ['file'];
 
-    /** @var array<string, list<string>> */
+    /** @var array<string, list<Message>> */
     private array $errors = [];
 
     /** Checking an HTTP request's url, headers or body: the only places a secret is read. */
@@ -69,9 +70,9 @@ final class DefinitionValidator
         // The platform's events are the system admin's, in the console; the others a workspace's.
         $inWorkspace = $this->workspace?->isSelected() ?? true;
         if ($trigger->isPlatform() && $inWorkspace) {
-            $this->error('trigger.on', 'The platform\'s events are the system admin\'s: a workflow on them is defined in the system console.');
+            $this->error('trigger.on', new Message('workflow.definition.platform_in_workspace', 'The platform\'s events are the system admin\'s: a workflow on them is defined in the system console.'));
         } elseif (!$trigger->isPlatform() && !$inWorkspace) {
-            $this->error('trigger.on', \sprintf('The system console\'s workflows run on the platform\'s events: %s.', implode(', ', array_column(array_filter(TriggerEvent::cases(), static fn (TriggerEvent $on): bool => $on->isPlatform()), 'value'))));
+            $this->error('trigger.on', new Message('workflow.definition.workspace_in_console', 'The system console\'s workflows run on the platform\'s events: %events%.', ['events' => implode(', ', array_column(array_filter(TriggerEvent::cases(), static fn (TriggerEvent $on): bool => $on->isPlatform()), 'value'))]));
         }
         if ([] !== $this->errors) {
             // In the wrong place: nothing it names is there to check.
@@ -84,7 +85,7 @@ final class DefinitionValidator
         if (null !== $object) {
             foreach ($trigger->fields as $i => $field) {
                 if (!isset($object->fields[$field])) {
-                    $this->error('trigger.fields.'.$i, \sprintf('Object "%s" has no field "%s".', $object->name, $field));
+                    $this->error('trigger.fields.'.$i, new Message('workflow.definition.field_unknown', 'Object "%object%" has no field "%field%".', ['object' => $object->name, 'field' => $field]));
                 }
             }
         }
@@ -134,9 +135,9 @@ final class DefinitionValidator
             if (null !== $target) {
                 $definitionOfField = $target->fields[$field] ?? null;
                 if (null === $definitionOfField) {
-                    $this->error($path.'.values.'.$field, \sprintf('Object "%s" has no field "%s".', $target->name, $field));
+                    $this->error($path.'.values.'.$field, new Message('workflow.definition.field_unknown', 'Object "%object%" has no field "%field%".', ['object' => $target->name, 'field' => $field]));
                 } elseif (\in_array($definitionOfField->type, self::UNWRITABLE_TYPES, true)) {
-                    $this->error($path.'.values.'.$field, \sprintf('A workflow does not write a field of type %s.', $definitionOfField->type));
+                    $this->error($path.'.values.'.$field, new Message('workflow.definition.field_not_written', 'A workflow does not write a field of type %type%.', ['type' => $definitionOfField->type]));
                 }
             }
             $this->paths($value, $path.'.values.'.$field, $definition, $trigger, $before);
@@ -146,11 +147,11 @@ final class DefinitionValidator
             if (null !== $transition && [] !== $transition->roles) {
                 $role = $step->actAs();
                 if (null !== $role && [] === array_filter($transition->roles, fn (string $needed): bool => $needed === $role || $this->access->roleGives($role, $needed))) {
-                    $this->error($path.'.act_as', \sprintf('"%s" is taken by %s only: %s is none of them.', $transition->label, implode(', ', $transition->roles), $role));
+                    $this->error($path.'.act_as', new Message('workflow.definition.transition_role', '"%transition%" is taken by %roles% only: %role% is none of them.', ['transition' => $transition->label, 'roles' => implode(', ', $transition->roles), 'role' => $role]));
                 }
                 if (null === $role && [] === array_filter($transition->roles, $this->access->holds(...))) {
                     // No way to more power: the users who may take it would take it for you.
-                    $this->error($path.'.name', \sprintf('You hold none of %s: a step taking "%s" as whoever triggered the event may not do what you cannot. Give it an act_as.', implode(', ', $transition->roles), $transition->label));
+                    $this->error($path.'.name', new Message('workflow.definition.transition_not_yours', 'You hold none of %roles%: a step taking "%transition%" as whoever triggered the event may not do what you cannot. Give it an act_as.', ['roles' => implode(', ', $transition->roles), 'transition' => $transition->label]));
                 }
             }
         }
@@ -203,10 +204,10 @@ final class DefinitionValidator
         }
         if (StepType::UpsertRecord === $step->type && null !== $target && null !== $match = $step->string('match')) {
             if (true !== ($target->fields[$match] ?? null)?->isUnique) {
-                $this->error($path.'.match', \sprintf('A unique field of "%s": the one that tells the record to update.', $target->name));
+                $this->error($path.'.match', new Message('workflow.definition.match_not_unique', 'A unique field of "%object%": the one that tells the record to update.', ['object' => $target->name]));
             }
             if (!\array_key_exists($match, $step->values())) {
-                $this->error($path.'.values', \sprintf('The value of "%s", the field it matches on, is required.', $match));
+                $this->error($path.'.values', new Message('workflow.definition.match_value_required', 'The value of "%field%", the field it matches on, is required.', ['field' => $match]));
             }
         }
         if (StepType::SetValues === $step->type && null !== $trigger) {
@@ -218,18 +219,18 @@ final class DefinitionValidator
                 TriggerEvent::Deleted, TriggerEvent::Manual, TriggerEvent::WorkspaceCreated, TriggerEvent::MemberAdded, TriggerEvent::Schedule, TriggerEvent::Webhook, TriggerEvent::Called => [],
             };
             if (TriggerEvent::Deleted === $definition->trigger->on) {
-                $this->error($path.'.type', 'set_values changes the values being written: a delete writes none.');
+                $this->error($path.'.type', new Message('workflow.definition.set_values_on_delete', 'set_values changes the values being written: a delete writes none.'));
             }
             foreach ($actions as $action) {
                 $permission = Permissions::record($trigger->name, $action);
                 if (!$this->access->holds($permission)) {
-                    $this->error($path.'.type', \sprintf('You do not hold %s: a workflow of yours may not change what others write there.', $permission));
+                    $this->error($path.'.type', new Message('workflow.definition.set_values_not_yours', 'You do not hold %permission%: a workflow of yours may not change what others write there.', ['permission' => $permission]));
                 }
             }
         }
         if (null === $step->actAs() && ($step->type->writes() || $step->type->reads()) && $definition->trigger->isUnattended()) {
             // No one is behind a time come or a request from outside: no one's permissions.
-            $this->error($path.'.act_as', \sprintf('No one is behind a %s: a step that reads or writes records acts as a role you may give.', $definition->trigger->isScheduled() ? 'schedule' : 'webhook'));
+            $this->error($path.'.act_as', $definition->trigger->isScheduled() ? new Message('workflow.definition.act_as_schedule', 'No one is behind a schedule: a step that reads or writes records acts as a role you may give.') : new Message('workflow.definition.act_as_webhook', 'No one is behind a webhook: a step that reads or writes records acts as a role you may give.'));
         }
         if (null === $step->actAs() && ($step->type->writes() || $step->type->reads()) && null !== $target) {
             // As whoever triggered the event: the person activating must hold it too, or they
@@ -237,16 +238,16 @@ final class DefinitionValidator
             foreach (self::actions($step->type) as $action) {
                 $permission = Permissions::record($target->name, $action);
                 if (!$this->access->holds($permission)) {
-                    $this->error($path.'.type', \sprintf('You do not hold %s: a step acting as whoever triggered the event may not do what you cannot. Give it an act_as, a role you may give.', $permission));
+                    $this->error($path.'.type', new Message('workflow.definition.permission_not_yours', 'You do not hold %permission%: a step acting as whoever triggered the event may not do what you cannot. Give it an act_as, a role you may give.', ['permission' => $permission]));
                 }
             }
         }
         if (null !== $role = $step->actAs()) {
             if (!\array_key_exists($role, $this->roles->roles())) {
-                $this->error($path.'.act_as', \sprintf('"%s" is no role of this workspace.', $role));
+                $this->error($path.'.act_as', new Message('workflow.definition.role_unknown', '"%role%" is no role of this workspace.', ['role' => $role]));
             } elseif (!$this->access->canGrant($role)) {
                 // No way to more power: acting as a role is giving it to the workflow.
-                $this->error($path.'.act_as', \sprintf('You cannot give the role %s: a workflow you activate may not act as it.', $role));
+                $this->error($path.'.act_as', new Message('workflow.definition.role_not_yours', 'You cannot give the role %role%: a workflow you activate may not act as it.', ['role' => $role]));
             }
         }
     }
@@ -295,24 +296,24 @@ final class DefinitionValidator
         $root = $segments[0];
         if ('$secrets' === $root) {
             if (!$this->secretsAllowed) {
-                $this->error($at, 'A secret is read in an http_request\'s url, headers and body only: nowhere it could be written down.');
+                $this->error($at, new Message('workflow.definition.secret_misplaced', 'A secret is read in an http_request\'s url, headers and body only: nowhere it could be written down.'));
             } elseif (!isset($segments[1]) || !\in_array($segments[1], $this->secretNames ??= $this->secrets?->names() ?? [], true)) {
-                $this->error($at, \sprintf('There is no secret "%s": add it on the page of the secrets.', $segments[1] ?? ''));
+                $this->error($at, new Message('workflow.definition.secret_unknown', 'There is no secret "%secret%": add it on the page of the secrets.', ['secret' => $segments[1] ?? '']));
             }
 
             return;
         }
         if (!\in_array($root, self::ROOTS, true) && !\in_array($root, $before, true)) {
             $this->error($at, \in_array($root, array_map(static fn (Step $step): string => $step->key, $definition->allSteps()), true)
-                ? \sprintf('"%s" is not run before this point on every way here: its output cannot be read.', $root)
-                : \sprintf('"%s" is no step and no root of the chain (%s).', $root, implode(', ', self::ROOTS)));
+                ? new Message('workflow.definition.step_not_before', '"%step%" is not run before this point on every way here: its output cannot be read.', ['step' => $root])
+                : new Message('workflow.definition.root_unknown', '"%root%" is no step and no root of the chain (%roots%).', ['root' => $root, 'roots' => implode(', ', self::ROOTS)]));
 
             return;
         }
         if (isset($this->itemObjects[$root], $segments[2]) && 'item' === $segments[1] && 'id' !== $segments[2]) {
             $object = $this->metadata->getObject($this->itemObjects[$root]);
             if (!isset($object->fields[$segments[2]])) {
-                $this->error($at, \sprintf('Object "%s" has no field "%s".', $object->name, $segments[2]));
+                $this->error($at, new Message('workflow.definition.field_unknown', 'Object "%object%" has no field "%field%".', ['object' => $object->name, 'field' => $segments[2]]));
             }
         }
         if ('$trigger' !== $root || !isset($segments[1])) {
@@ -331,31 +332,31 @@ final class DefinitionValidator
             default => ['object', 'action', 'record', 'before', 'changed'],
         };
         if (!\in_array($segments[1], $holds, true)) {
-            $this->error($at, \sprintf('$trigger holds %s: not "%s".', implode(', ', $holds), $segments[1]));
+            $this->error($at, new Message('workflow.definition.trigger_holds', '$trigger holds %holds%: not "%name%".', ['holds' => implode(', ', $holds), 'name' => $segments[1]]));
 
             return;
         }
         $platform = ['workspace' => ['id', 'slug', 'name'], 'member' => ['email']];
         if (isset($platform[$segments[1]])) {
             if (isset($segments[2]) && !\in_array($segments[2], $platform[$segments[1]], true)) {
-                $this->error($at, \sprintf('$trigger.%s holds %s: not "%s".', $segments[1], implode(', ', $platform[$segments[1]]), $segments[2]));
+                $this->error($at, new Message('workflow.definition.trigger_part_holds', '$trigger.%part% holds %holds%: not "%name%".', ['part' => $segments[1], 'holds' => implode(', ', $platform[$segments[1]]), 'name' => $segments[2]]));
             }
 
             return;
         }
         if ('input' === $segments[1]) {
             if (isset($segments[2]) && null === $definition->trigger->input($segments[2])) {
-                $this->error($at, \sprintf($definition->trigger->isCalled() ? 'It takes no input "%s".' : 'The form has no input "%s".', $segments[2]));
+                $this->error($at, $definition->trigger->isCalled() ? new Message('workflow.definition.input_unknown', 'It takes no input "%input%".', ['input' => $segments[2]]) : new Message('workflow.definition.form_input_unknown', 'The form has no input "%input%".', ['input' => $segments[2]]));
             }
 
             return;
         }
         if ('before' === $segments[1] && !\in_array($definition->trigger->on, [TriggerEvent::Updated, TriggerEvent::CreatedOrUpdated, TriggerEvent::Transitioned], true)) {
-            $this->error($at, '$trigger.before is the record as it was before an update: not there for this trigger.');
+            $this->error($at, new Message('workflow.definition.before_unavailable', '$trigger.before is the record as it was before an update: not there for this trigger.'));
         }
         $field = $segments[2] ?? null;
         if (\in_array($segments[1], ['record', 'before'], true) && null !== $field && 'id' !== $field && null !== $trigger && !isset($trigger->fields[$field])) {
-            $this->error($at, \sprintf('Object "%s" has no field "%s".', $trigger->name, $field));
+            $this->error($at, new Message('workflow.definition.field_unknown', 'Object "%object%" has no field "%field%".', ['object' => $trigger->name, 'field' => $field]));
         }
     }
 
@@ -373,22 +374,22 @@ final class DefinitionValidator
         $name = (string) $step->string('workflow');
         $called = $this->workflows?->byName($name);
         if (null === $called || !$called->definition->trigger->isCalled()) {
-            $this->error($path.'.workflow', \sprintf('There is no active workflow "%s" on called.', $name));
+            $this->error($path.'.workflow', new Message('workflow.definition.called_unknown', 'There is no active workflow "%workflow%" on called.', ['workflow' => $name]));
 
             return;
         }
         foreach (array_keys($given) as $input) {
             if (null === $called->definition->trigger->input((string) $input)) {
-                $this->error($path.'.input.'.$input, \sprintf('"%s" takes no input "%s".', $name, $input));
+                $this->error($path.'.input.'.$input, new Message('workflow.definition.called_input_unknown', '"%workflow%" takes no input "%input%".', ['workflow' => $name, 'input' => $input]));
             }
         }
         foreach ($called->definition->trigger->form as $input) {
             if ($input->required && !\array_key_exists($input->name, $given)) {
-                $this->error($path.'.input', \sprintf('"%s" requires the input "%s".', $name, $input->name));
+                $this->error($path.'.input', new Message('workflow.definition.called_input_required', '"%workflow%" requires the input "%input%".', ['workflow' => $name, 'input' => $input->name]));
             }
         }
         if (!$this->access->holds(Permissions::workflowRun($called->workflowId))) {
-            $this->error($path.'.workflow', \sprintf('You may not run "%s": a role of yours must give it, on the roles page.', $name));
+            $this->error($path.'.workflow', new Message('workflow.definition.called_not_yours', 'You may not run "%workflow%": a role of yours must give it, on the roles page.', ['workflow' => $name]));
         }
     }
 
@@ -405,7 +406,7 @@ final class DefinitionValidator
             $at = $path.'.to.'.$i.'.'.$kind;
             if ('role' === $kind) {
                 if (!\array_key_exists($value, $this->roles->roles())) {
-                    $this->error($at, \sprintf('"%s" is no role of this workspace.', $value));
+                    $this->error($at, new Message('workflow.definition.role_unknown', '"%role%" is no role of this workspace.', ['role' => $value]));
                 }
                 continue;
             }
@@ -421,7 +422,7 @@ final class DefinitionValidator
             };
             $field = null === $object || !isset($segments[2]) || isset($segments[3]) ? null : ($object->fields[$segments[2]] ?? null);
             if (null === $field || 'email' !== $field->type) {
-                $this->error($at, 'An email field of a record: $trigger.record.<field>, $trigger.before.<field>, or the item of an iterator over records, <key>.item.<field>.');
+                $this->error($at, new Message('workflow.definition.email_path_invalid', 'An email field of a record: $trigger.record.<field>, $trigger.before.<field>, or the item of an iterator over records, <key>.item.<field>.'));
             }
         }
     }
@@ -444,7 +445,7 @@ final class DefinitionValidator
         }
         $limit = $step->options['limit'] ?? null;
         if (\is_int($limit) && $limit > $this->maxRecords) {
-            $this->error($path.'.limit', \sprintf('At most %d records.', $this->maxRecords));
+            $this->error($path.'.limit', new Message('workflow.definition.too_many_records', 'At most %max% records.', ['max' => $this->maxRecords]));
         }
     }
 
@@ -455,7 +456,7 @@ final class DefinitionValidator
     {
         $definition = $object->fields[$field] ?? null;
         if (null === $definition || 'status' !== $definition->type) {
-            $this->error($fieldPath, \sprintf('Object "%s" has no status field "%s".', $object->name, $field));
+            $this->error($fieldPath, new Message('workflow.definition.status_field_unknown', 'Object "%object%" has no status field "%field%".', ['object' => $object->name, 'field' => $field]));
 
             return null;
         }
@@ -464,7 +465,7 @@ final class DefinitionValidator
         }
         $transition = StatusMachine::fromSettings($definition->settings)->transitions[$name] ?? null;
         if (null === $transition) {
-            $this->error($namePath, \sprintf('The status "%s" has no transition "%s".', $field, $name));
+            $this->error($namePath, new Message('workflow.definition.transition_unknown', 'The status "%field%" has no transition "%transition%".', ['field' => $field, 'transition' => $name]));
         }
 
         return $transition;
@@ -477,9 +478,9 @@ final class DefinitionValidator
         }
         $field = $object->fields[$name] ?? null;
         if (null === $field) {
-            $this->error($path, \sprintf('Object "%s" has no field "%s".', $object->name, $name));
+            $this->error($path, new Message('workflow.definition.field_unknown', 'Object "%object%" has no field "%field%".', ['object' => $object->name, 'field' => $name]));
         } elseif (!$field->storesColumn() || null !== $field->fileList() || \in_array($field->type, ['file', 'password'], true)) {
-            $this->error($path, \sprintf('A search cannot test or sort on "%s": a many-to-many, file or password field.', $name));
+            $this->error($path, new Message('workflow.definition.field_not_searchable', 'A search cannot test or sort on "%field%": a many-to-many, file or password field.', ['field' => $name]));
         }
     }
 
@@ -503,7 +504,7 @@ final class DefinitionValidator
     private function object(string $name, string $path): ?ObjectDefinitionDto
     {
         if (!$this->metadata->hasObject($name)) {
-            $this->error($path, \sprintf('There is no object "%s".', $name));
+            $this->error($path, new Message('workflow.definition.object_unknown', 'There is no object "%object%".', ['object' => $name]));
 
             return null;
         }
@@ -511,7 +512,7 @@ final class DefinitionValidator
         return $this->metadata->getObject($name);
     }
 
-    private function error(string $path, string $message): void
+    private function error(string $path, Message $message): void
     {
         $this->errors[$path][] = $message;
     }
