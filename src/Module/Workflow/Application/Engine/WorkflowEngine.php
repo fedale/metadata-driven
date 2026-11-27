@@ -11,6 +11,7 @@ use App\Module\Access\Contract\WorkspaceRolesInterface;
 use App\Module\FieldType\Contract\Dto\StatusMachine;
 use App\Module\Metadata\Contract\Exception\MetadataException;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Module\Package\Contract\Exception\PackageException;
 use App\Module\Package\Contract\Exception\PackageInstallFailed;
 use App\Module\Package\Contract\PackageInstallationInterface;
 use App\Module\Record\Contract\Dto\RecordFilter;
@@ -21,6 +22,7 @@ use App\Module\Record\Contract\Event\RecordWriteAction;
 use App\Module\Record\Contract\Event\RecordWriting;
 use App\Module\Record\Contract\Event\RecordWritten;
 use App\Module\Record\Contract\Exception\InvalidRecordSearch;
+use App\Module\Record\Contract\Exception\RecordDeleteRestricted;
 use App\Module\Record\Contract\Exception\RecordValidationFailed;
 use App\Module\Record\Contract\Exception\TransitionRefused;
 use App\Module\Record\Contract\RecordEventScopeInterface;
@@ -31,6 +33,7 @@ use App\Module\User\Contract\UserManagerInterface;
 use App\Module\Workflow\Application\Definition\Definition;
 use App\Module\Workflow\Application\Definition\DefinitionParser;
 use App\Module\Workflow\Application\Definition\FormInput;
+use App\Module\Workflow\Application\Definition\InvalidAnswer;
 use App\Module\Workflow\Application\Definition\Step;
 use App\Module\Workflow\Application\Definition\StepType;
 use App\Module\Workflow\Application\Definition\Timing;
@@ -41,6 +44,8 @@ use App\Module\Workflow\Application\Engine\Message\RunWebhook;
 use App\Module\Workflow\Application\Engine\Message\RunWorkflow;
 use App\Module\Workflow\Application\Secrets\SecretsKeyMissing;
 use App\Module\Workflow\Application\Secrets\WorkflowSecrets;
+use App\Shared\Message\Message;
+use App\Shared\Message\MessageList;
 use App\Shared\Transaction\TransactionRunner;
 use App\Shared\Workspace\CurrentWorkspace;
 use App\Shared\Workspace\Workspace;
@@ -153,15 +158,15 @@ final class WorkflowEngine implements ResetInterface
                 $this->steps($workflow->definition->steps, $chain, $run, $event);
                 $run->end($run->status, $run->error);
             } catch (StepFailed $e) {
-                $run->end(RunLog::REFUSED, $e->getMessage());
+                $run->end(RunLog::REFUSED, $e->text());
                 // A workflow run before the write guards it: what could not run refuses it.
-                $event->refuse(\sprintf('The workflow "%s" could not run: %s', $workflow->name, $e->getMessage()));
+                $event->refuse(new Message('workflow.run.could_not_run', 'The workflow "%workflow%" could not run: %reason%', ['workflow' => $workflow->name, 'reason' => $e->text()]));
             } finally {
                 $run->chain = $chain->toArray();
             }
             if (RunLog::REFUSED === $run->status) {
                 if (null === $event->refusal()) {
-                    $event->refuse((string) $run->error);
+                    $event->refuse($run->error ?? '');
                 }
 
                 return;
@@ -235,12 +240,12 @@ final class WorkflowEngine implements ResetInterface
                         $this->steps($workflow->definition->steps, $chain, $run, null);
                         if (RunLog::COMPLETED !== $run->status && RunLog::WAITING !== $run->status) {
                             // A refuse ends the run without throwing: nothing of the run is kept.
-                            throw new StepFailed((string) $run->error);
+                            throw new StepFailed($run->error ?? '');
                         }
                     });
                     $run->end($run->status, $run->error);
                 } catch (StepFailed $e) {
-                    $run->end(RunLog::FAILED, $e->getMessage());
+                    $run->end(RunLog::FAILED, $e->text());
                 } finally {
                     $run->chain = $chain->toArray();
                 }
@@ -309,12 +314,12 @@ final class WorkflowEngine implements ResetInterface
                     $this->transactions->run(function () use ($workflow, $chain, $run): void {
                         $this->steps($workflow->definition->steps, $chain, $run, null);
                         if (RunLog::COMPLETED !== $run->status && RunLog::WAITING !== $run->status) {
-                            throw new StepFailed((string) $run->error);
+                            throw new StepFailed($run->error ?? '');
                         }
                     });
                     $run->end($run->status, $run->error);
                 } catch (StepFailed $e) {
-                    $run->end(RunLog::FAILED, $e->getMessage());
+                    $run->end(RunLog::FAILED, $e->text());
                 } finally {
                     $run->chain = $chain->toArray();
                 }
@@ -381,7 +386,7 @@ final class WorkflowEngine implements ResetInterface
                     $this->steps($definition->steps, $chain, $run, $writing);
                     $run->end($run->status, $run->error);
                 } catch (StepFailed $e) {
-                    $run->end(Timing::Before === $trigger->when ? RunLog::REFUSED : RunLog::FAILED, $e->getMessage());
+                    $run->end(Timing::Before === $trigger->when ? RunLog::REFUSED : RunLog::FAILED, $e->text());
                 }
 
                 throw new DryRunRolledBack();
@@ -429,12 +434,12 @@ final class WorkflowEngine implements ResetInterface
                 $this->steps($workflow->definition->steps, $chain, $run, null);
                 if (RunLog::COMPLETED !== $run->status && RunLog::WAITING !== $run->status) {
                     // A refuse: nothing of the run is kept.
-                    throw new StepFailed((string) $run->error);
+                    throw new StepFailed($run->error ?? '');
                 }
             });
             $run->end($run->status, $run->error);
         } catch (StepFailed $e) {
-            $run->end(RunLog::FAILED, $e->getMessage());
+            $run->end(RunLog::FAILED, $e->text());
         } finally {
             $run->chain = $chain->toArray();
         }
@@ -465,7 +470,7 @@ final class WorkflowEngine implements ResetInterface
                     $this->steps($definition->steps, $chain, $run, null);
                     $run->end($run->status, $run->error);
                 } catch (StepFailed $e) {
-                    $run->end(RunLog::FAILED, $e->getMessage());
+                    $run->end(RunLog::FAILED, $e->text());
                 }
 
                 throw new DryRunRolledBack();
@@ -498,11 +503,11 @@ final class WorkflowEngine implements ResetInterface
             $this->steps($workflow->definition->steps, $chain, $run, null);
             $run->end($run->status, $run->error);
         } catch (StepFailed $e) {
-            $run->end(RunLog::FAILED, $e->getMessage());
+            $run->end(RunLog::FAILED, $e->text());
         } catch (\Throwable $e) {
             // Not a step's own failure (the database, a bug): the run is kept all the same, for
             // the console's pages to show what the steps before it did, then the error goes on.
-            $run->end(RunLog::FAILED, \sprintf('It broke: %s', $e->getMessage()));
+            $run->end(RunLog::FAILED, new Message('workflow.run.broke', 'It broke: %error%', ['error' => $e->getMessage()]));
             $broken = $e;
         } finally {
             $this->platformWorkspace = null;
@@ -617,12 +622,12 @@ final class WorkflowEngine implements ResetInterface
                     $this->transactions->run(function () use ($workflow, $waiting, $chain, $run): void {
                         $this->steps(\array_slice($workflow->definition->steps, $waiting->resumeStep), $chain, $run, null);
                         if (RunLog::COMPLETED !== $run->status && RunLog::WAITING !== $run->status) {
-                            throw new StepFailed((string) $run->error);
+                            throw new StepFailed($run->error ?? '');
                         }
                     });
                     $run->end($run->status, $run->error);
                 } catch (StepFailed $e) {
-                    $run->end(RunLog::FAILED, $e->getMessage());
+                    $run->end(RunLog::FAILED, $e->text());
                 } finally {
                     $run->chain = $chain->toArray();
                 }
@@ -645,15 +650,15 @@ final class WorkflowEngine implements ResetInterface
      * Why the run may not start, if it may not: too deep a chain of runs, too many runs, the
      * month's steps of the workspace's plan spent.
      */
-    private function overLimits(RunLog $run): ?string
+    private function overLimits(RunLog $run): ?Message
     {
         return $this->tooDeep($run) ?? $this->tooMany() ?? $this->quota->refusal();
     }
 
-    private function tooDeep(RunLog $run): ?string
+    private function tooDeep(RunLog $run): ?Message
     {
         return $run->depth > $this->maxDepth
-            ? \sprintf('The workflow "%s" was started by a chain of %d workflows: at most %d.', $run->workflow->name, $run->depth, $this->maxDepth)
+            ? new Message('workflow.run.chain_too_deep', 'The workflow "%workflow%" was started by a chain of %depth% workflows: at most %max%.', ['workflow' => $run->workflow->name, 'depth' => $run->depth, 'max' => $this->maxDepth])
             : null;
     }
 
@@ -666,10 +671,10 @@ final class WorkflowEngine implements ResetInterface
         return max(0, $this->runsPerMinute - $this->runs->countSince(new \DateTimeImmutable('-1 minute')) - $this->pending);
     }
 
-    private function tooMany(): ?string
+    private function tooMany(): ?Message
     {
         return $this->runs->countSince(new \DateTimeImmutable('-1 minute')) + $this->pending > $this->runsPerMinute
-            ? \sprintf('Too many workflow runs in this workspace: at most %d a minute.', $this->runsPerMinute)
+            ? new Message('workflow.run.too_many_runs', 'Too many workflow runs in this workspace: at most %max% a minute.', ['max' => $this->runsPerMinute])
             : null;
     }
 
@@ -761,7 +766,7 @@ final class WorkflowEngine implements ResetInterface
     private function step(Step $step, DataChain $chain, RunLog $run, ?RecordWriting $writing): bool
     {
         if ($run->executed() >= $this->maxExecutedSteps) {
-            throw new StepFailed(\sprintf('More than %d steps executed in one run: stopped.', $this->maxExecutedSteps));
+            throw new StepFailed(new Message('workflow.run.too_many_steps', 'More than %max% steps executed in one run: stopped.', ['max' => $this->maxExecutedSteps]));
         }
         // From its first step (a resumed run's part, from its own): no count of steps bounds
         // the time of slow ones, as requests to a host that answers late, and the run holds a
@@ -769,7 +774,7 @@ final class WorkflowEngine implements ResetInterface
         $now = (float) $this->clock->now()->format('U.u');
         $run->deadline ??= $now + $this->maxRunSeconds;
         if ($now > $run->deadline) {
-            throw new StepFailed(\sprintf('The run took more than %d seconds: stopped.', $this->maxRunSeconds));
+            throw new StepFailed(new Message('workflow.run.too_long', 'The run took more than %max% seconds: stopped.', ['max' => $this->maxRunSeconds]));
         }
         $started = hrtime(true);
         if (StepType::If === $step->type) {
@@ -795,7 +800,7 @@ final class WorkflowEngine implements ResetInterface
                 StepType::InstallPackage, StepType::AssignRole => $this->platform($step, $chain),
                 StepType::Wait => $this->wait($step, $chain, $run),
                 // A called workflow's, in a write: as in a workflow run before it.
-                StepType::HttpRequest => null === $writing ? $this->request($step, $chain) : throw new StepFailed('No call to the outside in a write: no http_request in a workflow called before the write.'),
+                StepType::HttpRequest => null === $writing ? $this->request($step, $chain) : throw new StepFailed(new Message('workflow.run.http_in_write', 'No call to the outside in a write: no http_request in a workflow called before the write.')),
                 StepType::RunWorkflow => $this->call($step, $chain, $run, $writing),
                 StepType::Return => $this->giveBack($step, $chain, $run),
                 StepType::Transition => $this->takeTransition($step, $chain, $run),
@@ -804,12 +809,12 @@ final class WorkflowEngine implements ResetInterface
                 default => $this->write($step, $chain, $run),
             };
         } catch (StepFailed|MetadataException $e) {
-            $run->step($step->key, $step->type->value, 'failed', $chain->render($step->options), null, $e->getMessage(), self::since($started));
+            $run->step($step->key, $step->type->value, 'failed', $chain->render($step->options), null, self::reason($e), self::since($started));
 
             // The metadata's: an object or a field the definition names, checked when it was
             // activated and gone since. The step fails with its reason, as any other; let go,
             // it would break the write a workflow guards, and leave a queued run without its log.
-            throw $e instanceof StepFailed ? $e : new StepFailed($e->getMessage(), 0, $e);
+            throw $e instanceof StepFailed ? $e : new StepFailed(self::reason($e), 0, $e);
         }
         $run->step($step->key, $step->type->value, 'completed', $input, $output, null, self::since($started));
         $chain->set($step->key, $output);
@@ -831,8 +836,8 @@ final class WorkflowEngine implements ResetInterface
         $items = $chain->render((string) $step->string('items'));
         if (!\is_array($items) || !array_is_list($items) || \count($items) > $this->maxRecords) {
             $error = \is_array($items) && array_is_list($items)
-                ? \sprintf('%d items: at most %d.', \count($items), $this->maxRecords)
-                : \sprintf('%s is no list: nothing to run on.', $step->string('items'));
+                ? new Message('workflow.run.too_many_items', '%count% items: at most %max%.', ['count' => \count($items), 'max' => $this->maxRecords])
+                : new Message('workflow.run.items_not_a_list', '%items% is no list: nothing to run on.', ['items' => (string) $step->string('items')]);
             $run->step($step->key, $step->type->value, 'failed', ['items' => $items], null, $error, self::since($started));
 
             throw new StepFailed($error);
@@ -879,7 +884,7 @@ final class WorkflowEngine implements ResetInterface
         try {
             $result = $this->finder->search($object, $filters, $step->string('sort'), 'desc' === $step->string('direction'), $limit);
         } catch (InvalidRecordSearch $e) {
-            throw new StepFailed($e->getMessage(), 0, $e);
+            throw new StepFailed(self::reason($e), 0, $e);
         }
         $records = array_map(fn (RecordOutput $record): array => ['id' => $record->id, ...$this->readable($object, $record->values)], $result->records);
 
@@ -912,10 +917,10 @@ final class WorkflowEngine implements ResetInterface
             }
         }
         if (false === $until) {
-            throw new StepFailed(\sprintf('"%s" is no date to wait until.', $text));
+            throw new StepFailed(new Message('workflow.run.not_a_date', '"%text%" is no date to wait until.', ['text' => $text]));
         }
         if ($until > $now->modify(\sprintf('+%d days', $this->maxWaitDays))) {
-            throw new StepFailed(\sprintf('A run waits %d days at most.', $this->maxWaitDays));
+            throw new StepFailed(new Message('workflow.run.wait_too_long', 'A run waits %max% days at most.', ['max' => $this->maxWaitDays]));
         }
         $output = ['until' => $until->format(\DateTimeInterface::ATOM)];
         if ($this->dryRun || $until <= $now) {
@@ -943,23 +948,23 @@ final class WorkflowEngine implements ResetInterface
         $name = (string) $step->string('workflow');
         $called = $this->workflows->byName($name);
         if (null === $called || !$called->definition->trigger->isCalled()) {
-            throw new StepFailed(\sprintf('There is no active workflow "%s" on called.', $name));
+            throw new StepFailed(new Message('workflow.run.called_unknown', 'There is no active workflow "%workflow%" on called.', ['workflow' => $name]));
         }
         $activator = $run->workflow->activatedBy;
         if (null === $activator || !$this->access->userCanGrant($activator, Permissions::workflowRun($called->workflowId))) {
-            throw new StepFailed(\sprintf('%s, who activated it, may not run "%s".', $activator ?? 'No one', $name));
+            throw new StepFailed(new Message('workflow.run.called_not_allowed', '%user%, who activated it, may not run "%workflow%".', ['user' => $activator ?? 'No one', 'workflow' => $name]));
         }
         $given = $chain->values($step->input());
         $inputs = $called->definition->trigger->form;
         if ([] !== $unknown = array_diff(array_keys($given), array_map(static fn (FormInput $input): string => $input->name, $inputs))) {
-            throw new StepFailed(\sprintf('"%s" takes no input %s.', $name, implode(', ', $unknown)));
+            throw new StepFailed(new Message('workflow.run.called_input_unknown', '"%workflow%" takes no input %inputs%.', ['workflow' => $name, 'inputs' => implode(', ', $unknown)]));
         }
         $input = [];
         foreach ($inputs as $formInput) {
             try {
                 $input[$formInput->name] = $formInput->answer($given[$formInput->name] ?? null);
             } catch (\InvalidArgumentException $e) {
-                throw new StepFailed(\sprintf('The input "%s" of "%s": %s', $formInput->name, $name, $e->getMessage()), 0, $e);
+                throw new StepFailed(new Message('workflow.run.called_input_invalid', 'The input "%input%" of "%workflow%": %error%', ['input' => $formInput->name, 'workflow' => $name, 'error' => $e instanceof InvalidAnswer ? $e->text : $e->getMessage()]), 0, $e);
             }
         }
         $sub = new RunLog($called, '', null, TriggerEvent::Called->value, TriggerEvent::Called->value, $run->triggeredBy, $run->depth + 1, new \DateTimeImmutable());
@@ -987,7 +992,7 @@ final class WorkflowEngine implements ResetInterface
             $this->steps($called->definition->steps, $subChain, $sub, $writing);
             $sub->end($sub->status, $sub->error);
         } catch (StepFailed $e) {
-            $sub->end(RunLog::FAILED, $e->getMessage());
+            $sub->end(RunLog::FAILED, $e->text());
         } finally {
             $sub->chain = $subChain->toArray();
             if (!$this->dryRun) {
@@ -1003,7 +1008,7 @@ final class WorkflowEngine implements ResetInterface
             return [$logged, null, false];
         }
         if (RunLog::COMPLETED !== $sub->status) {
-            throw new StepFailed(\sprintf('"%s" failed: %s', $name, $sub->error ?? 'no reason given.'));
+            throw new StepFailed(new Message('workflow.run.called_failed', '"%workflow%" failed: %reason%', ['workflow' => $name, 'reason' => $sub->error ?? new Message('workflow.run.no_reason', 'no reason given.')]));
         }
 
         return [$logged, $sub->returned ?? [], true];
@@ -1038,13 +1043,13 @@ final class WorkflowEngine implements ResetInterface
         $name = (string) $step->string('name');
         $id = $chain->text($step->string('id'));
         if ('' === $id) {
-            throw new StepFailed('No record to take the transition on: the id is empty.');
+            throw new StepFailed(new Message('workflow.run.transition_without_id', 'No record to take the transition on: the id is empty.'));
         }
         $this->allow($step, $object, RecordAction::Update, $run);
         $definition = $this->metadata->getObject($object)->fields[$field] ?? null;
         $transition = null === $definition ? null : (StatusMachine::fromSettings($definition->settings)->transitions[$name] ?? null);
         if (null === $transition) {
-            throw new StepFailed(\sprintf('The status "%s" of "%s" has no transition "%s".', $field, $object, $name));
+            throw new StepFailed(new Message('workflow.run.transition_unknown', 'The status "%field%" of "%object%" has no transition "%transition%".', ['field' => $field, 'object' => $object, 'transition' => $name]));
         }
         if ([] !== $transition->roles) {
             $role = $step->actAs();
@@ -1052,21 +1057,20 @@ final class WorkflowEngine implements ResetInterface
             if (null !== $role) {
                 // The role stands for the transition's roles (allow() checked its activator may give it).
                 if ([] === array_filter($transition->roles, fn (string $needed): bool => $needed === $role || $this->access->roleGives($role, $needed))) {
-                    throw new StepFailed(\sprintf('"%s" is taken by %s only: %s is none of them.', $transition->label, implode(', ', $transition->roles), $role));
+                    throw new StepFailed(new Message('workflow.run.transition_role', '"%transition%" is taken by %roles% only: %role% is none of them.', ['transition' => $transition->label, 'roles' => implode(', ', $transition->roles), 'role' => $role]));
                 }
             } elseif (!$holdsOne($run->triggeredBy)) {
-                throw new StepFailed(\sprintf('"%s" is taken by %s only.', $transition->label, implode(', ', $transition->roles)));
+                throw new StepFailed(new Message('workflow.run.transition_roles', '"%transition%" is taken by %roles% only.', ['transition' => $transition->label, 'roles' => implode(', ', $transition->roles)]));
             } elseif (!$holdsOne($run->workflow->activatedBy)) {
                 // No way to more power: its activator would take it through the users who may.
-                throw new StepFailed(\sprintf('%s, who activated it, holds none of %s.', $run->workflow->activatedBy ?? 'No one', implode(', ', $transition->roles)));
+                throw new StepFailed(new Message('workflow.run.activator_without_roles', '%user%, who activated it, holds none of %roles%.', ['user' => $run->workflow->activatedBy ?? 'No one', 'roles' => implode(', ', $transition->roles)]));
             }
         }
         $input = ['object' => $object, 'id' => $id, 'field' => $field, 'name' => $name];
         try {
             $record = $this->recordEvents->asRun($run->id, $run->depth, $step->emitsEvents() && !$this->dryRun, fn () => $this->transitions->apply($object, $id, $field, $name, asRole: true));
         } catch (TransitionRefused|RecordValidationFailed|\DomainException $e) {
-            $message = $e instanceof RecordValidationFailed ? implode(' ', array_merge(...array_values($e->errors))) : $e->getMessage();
-            throw new StepFailed($message, 0, $e);
+            throw new StepFailed(self::reason($e), 0, $e);
         }
 
         return [$input, ['id' => $record->id, ...$this->readable($object, $record->values)], true];
@@ -1088,7 +1092,7 @@ final class WorkflowEngine implements ResetInterface
             try {
                 $secrets = array_filter($this->secrets->values(), static fn (string $value): bool => '' !== $value);
             } catch (SecretsKeyMissing|\UnexpectedValueException $e) {
-                throw new StepFailed($e->getMessage(), 0, $e);
+                throw new StepFailed(self::reason($e), 0, $e);
             }
             $chain = clone $chain;
             $chain->set('$secrets', $secrets);
@@ -1102,10 +1106,11 @@ final class WorkflowEngine implements ResetInterface
             }
             // A network's error tells the address as sent, encoded its own way: of a request that
             // read a secret, only its host. Masked, and not chained: what it wraps holds it.
-            $message = $e->getPrevious() instanceof TransportExceptionInterface
-                ? \sprintf('The request to %s got no answer.', parse_url($chain->text($step->string('url')), \PHP_URL_HOST) ?: '?')
-                : $e->getMessage();
-            throw new StepFailed(\is_string($masked = self::maskedValue($message, $forms)) ? $masked : '');
+            if ($e->getPrevious() instanceof TransportExceptionInterface) {
+                throw new StepFailed(new Message('workflow.run.no_answer', 'The request to %host% got no answer.', ['host' => parse_url($chain->text($step->string('url')), \PHP_URL_HOST) ?: '?']));
+            }
+            // Its text masked, in English: a translation would fill in what it masks.
+            throw new StepFailed(\is_string($masked = self::maskedValue($e->getMessage(), $forms)) ? $masked : '');
         }
 
         return [self::masked($input, $forms), self::masked($output, $forms), true];
@@ -1190,7 +1195,7 @@ final class WorkflowEngine implements ResetInterface
         $decoded = str_contains(strtolower($response['type']), 'json') ? json_decode($response['content'], true) : null;
         $output = ['status' => $status, 'headers' => $response['headers'], 'body' => $decoded ?? $response['content']];
         if ($status >= 400 && false !== ($step->options['fail_on_error'] ?? true)) {
-            throw new StepFailed(\sprintf('%s %s answered %d.', $method, $url, $status));
+            throw new StepFailed(new Message('workflow.run.http_status', '%method% %url% answered %status%.', ['method' => $method, 'url' => $url, 'status' => $status]));
         }
 
         return [$input, $output];
@@ -1205,13 +1210,13 @@ final class WorkflowEngine implements ResetInterface
      */
     private function platform(Step $step, DataChain $chain): array
     {
-        $workspace = $this->platformWorkspace ?? throw new StepFailed(\sprintf('%s runs in the system admin\'s workflows only.', $step->type->value));
+        $workspace = $this->platformWorkspace ?? throw new StepFailed(new Message('workflow.run.platform_only', '%type% runs in the system admin\'s workflows only.', ['type' => $step->type->value]));
         if (StepType::InstallPackage === $step->type) {
             [$package, $repo] = [(string) $step->string('package'), $step->string('repo')];
             try {
                 $installed = $this->sessions->within($workspace, fn (): array => $this->packages->install($package, $repo));
             } catch (PackageInstallFailed $e) {
-                throw new StepFailed($e->getMessage(), 0, $e);
+                throw new StepFailed(self::reason($e), 0, $e);
             }
 
             return [['package' => $package, 'repo' => $repo], ['installed' => $installed], true];
@@ -1219,12 +1224,12 @@ final class WorkflowEngine implements ResetInterface
         $email = mb_strtolower(trim($chain->text($step->string('email'))));
         $role = (string) $step->string('role');
         if ('' === $email) {
-            throw new StepFailed('No one to give the role to: the email is empty.');
+            throw new StepFailed(new Message('workflow.run.role_without_email', 'No one to give the role to: the email is empty.'));
         }
         // A role given to an email that is no member would wait for whoever joins with it later,
         // unseen on the members' page until then.
         if (!\in_array($email, array_map(mb_strtolower(...), $this->users->membersOf($workspace->id)), true)) {
-            throw new StepFailed(\sprintf('%s: %s is no member of this workspace.', $workspace->slug, $email));
+            throw new StepFailed(new Message('workflow.run.not_a_member', '%workspace%: %email% is no member of this workspace.', ['workspace' => $workspace->slug, 'email' => $email]));
         }
         try {
             $given = $this->sessions->within($workspace, function () use ($email, $role): bool {
@@ -1237,7 +1242,7 @@ final class WorkflowEngine implements ResetInterface
                 return true;
             });
         } catch (\InvalidArgumentException $e) {
-            throw new StepFailed(\sprintf('%s: %s', $workspace->slug, $e->getMessage()), 0, $e);
+            throw new StepFailed(new Message('workflow.run.in_workspace', '%workspace%: %error%', ['workspace' => $workspace->slug, 'error' => $e->getMessage()]), 0, $e);
         }
 
         return [['email' => $email, 'role' => $role], ['given' => $given], true];
@@ -1265,14 +1270,14 @@ final class WorkflowEngine implements ResetInterface
     private function setValues(Step $step, DataChain $chain, ?RecordWriting $writing, RunLog $run): array
     {
         if (null === $writing || RecordWriteAction::Delete === $writing->action) {
-            throw new StepFailed('set_values runs before a create or an update only.');
+            throw new StepFailed(new Message('workflow.run.set_values_not_here', 'set_values runs before a create or an update only.'));
         }
         // It changes what someone else writes: whoever activated the workflow must still hold
         // that write too (the writer's own permission is checked where they write).
         $permission = Permissions::record($writing->objectName, RecordWriteAction::Create === $writing->action ? RecordAction::Create : RecordAction::Update);
         $activator = $run->workflow->activatedBy;
         if (null === $activator || !$this->access->userCanGrant($activator, $permission)) {
-            throw new StepFailed(\sprintf('%s, who activated it, no longer holds %s.', $activator ?? 'No one', $permission));
+            throw new StepFailed(new Message('workflow.run.activator_lost_permission', '%user%, who activated it, no longer holds %permission%.', ['user' => $activator ?? 'No one', 'permission' => $permission]));
         }
         $values = $chain->values($step->values());
         foreach ($values as $field => $value) {
@@ -1309,7 +1314,7 @@ final class WorkflowEngine implements ResetInterface
         $id = null === $step->string('id') ? null : $chain->text($step->string('id'));
         if (StepType::UpdateRecord === $step->type || StepType::DeleteRecord === $step->type) {
             if (null === $id || '' === $id) {
-                throw new StepFailed(\sprintf('No record to %s: the id is empty.', StepType::UpdateRecord === $step->type ? 'update' : 'delete'));
+                throw new StepFailed(StepType::UpdateRecord === $step->type ? new Message('workflow.run.update_without_id', 'No record to update: the id is empty.') : new Message('workflow.run.delete_without_id', 'No record to delete: the id is empty.'));
             }
         }
         if (StepType::UpsertRecord === $step->type) {
@@ -1340,10 +1345,10 @@ final class WorkflowEngine implements ResetInterface
                 return ['id' => $record->id, ...$this->readable($object, $record->values), ...(StepType::UpsertRecord === $step->type ? ['created' => RecordAction::Create === $action] : [])];
             });
         } catch (RecordValidationFailed $e) {
-            throw new StepFailed(implode(' ', array_map(static fn (string $field, array $messages): string => ('' === $field ? '' : $field.': ').implode(' ', $messages), array_keys($e->errors), $e->errors)), 0, $e);
+            throw new StepFailed(self::reason($e), 0, $e);
         } catch (\DomainException $e) {
             // Not found, a refused delete, an unknown object.
-            throw new StepFailed($e->getMessage(), 0, $e);
+            throw new StepFailed(self::reason($e), 0, $e);
         }
 
         return [$input, $output, true];
@@ -1363,10 +1368,10 @@ final class WorkflowEngine implements ResetInterface
         $activator = $run->workflow->activatedBy;
         if (null !== $role = $step->actAs()) {
             if (null === $activator || !$this->access->userCanGrant($activator, $role)) {
-                throw new StepFailed(\sprintf('It acts as %s, which %s can no longer give.', $role, $activator ?? 'no one'));
+                throw new StepFailed(new Message('workflow.run.role_no_longer_given', 'It acts as %role%, which %user% can no longer give.', ['role' => $role, 'user' => $activator ?? 'no one']));
             }
             if (!$this->access->roleGives($role, $permission)) {
-                throw new StepFailed(\sprintf('%s does not give %s.', $role, $permission));
+                throw new StepFailed(new Message('workflow.run.role_without_permission', '%role% does not give %permission%.', ['role' => $role, 'permission' => $permission]));
             }
 
             return;
@@ -1374,15 +1379,38 @@ final class WorkflowEngine implements ResetInterface
         // Whoever triggered it: in the worker as in a request, from their assignments.
         $triggeredBy = $run->triggeredBy;
         if (null === $triggeredBy) {
-            throw new StepFailed('No one triggered this event: choose a role for the step to act as.');
+            throw new StepFailed(new Message('workflow.run.no_one_triggered', 'No one triggered this event: choose a role for the step to act as.'));
         }
         if (!$this->access->userCanGrant($triggeredBy, $permission)) {
-            throw new StepFailed(\sprintf('%s does not hold %s.', $triggeredBy, $permission));
+            throw new StepFailed(new Message('workflow.run.triggerer_without_permission', '%user% does not hold %permission%.', ['user' => $triggeredBy, 'permission' => $permission]));
         }
         // For a permission, canGrant is holding it.
         if (null === $activator || !$this->access->userCanGrant($activator, $permission)) {
-            throw new StepFailed(\sprintf('%s, who activated it, no longer holds %s.', $activator ?? 'No one', $permission));
+            throw new StepFailed(new Message('workflow.run.activator_lost_permission', '%user%, who activated it, no longer holds %permission%.', ['user' => $activator ?? 'No one', 'permission' => $permission]));
         }
+    }
+
+    /**
+     * Why a step failed, as the run's log keeps it: the message of what refused it, to read in
+     * the reader's language; the English of an exception that has none.
+     */
+    private static function reason(\Throwable $e): string|Message
+    {
+        $text = match (true) {
+            $e instanceof StepFailed, $e instanceof RecordDeleteRestricted => $e->text(),
+            $e instanceof MetadataException, $e instanceof PackageException => $e->text(),
+            $e instanceof RecordValidationFailed => new MessageList(array_map(
+                static fn (string $field, array $messages): Message => RecordValidationFailed::GLOBAL_ERRORS === $field
+                    ? new Message('workflow.run.reasons', '%reasons%', ['reasons' => new MessageList($messages, ' ')])
+                    : new Message('workflow.run.field_error', '%field%: %errors%', ['field' => $field, 'errors' => new MessageList($messages, ' ')]),
+                array_keys($e->errors),
+                $e->errors,
+            ), ' '),
+            default => $e->getMessage(),
+        };
+
+        // A list (a record's errors, a package's reasons) goes in a message of its own.
+        return $text instanceof MessageList ? new Message('workflow.run.reasons', '%reasons%', ['reasons' => $text]) : $text;
     }
 
     private static function since(int|float $started): int

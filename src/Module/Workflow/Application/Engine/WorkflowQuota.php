@@ -6,6 +6,7 @@ namespace App\Module\Workflow\Application\Engine;
 
 use App\Module\Workflow\Contract\Dto\WorkflowUsage;
 use App\Module\Workflow\Contract\WorkflowUsageInterface;
+use App\Shared\Message\Message;
 use App\Shared\Workspace\CurrentWorkspace;
 use App\Shared\Workspace\Plans;
 use App\Shared\Workspace\Workspaces;
@@ -74,7 +75,7 @@ final class WorkflowQuota implements WorkflowUsageInterface
      * Why no run may start, if none may: the month's steps spent. None outside a workspace (the
      * system admin's workflows).
      */
-    public function refusal(): ?string
+    public function refusal(): ?Message
     {
         if (!$this->workspace->isSelected()) {
             return null;
@@ -82,7 +83,7 @@ final class WorkflowQuota implements WorkflowUsageInterface
         $usage = $this->thisMonth();
 
         return $usage->exhausted()
-            ? \sprintf('This workspace ran the %d workflow steps its plan (%s) allows a month: no run starts until next month.', $usage->limit, $usage->plan)
+            ? new Message('workflow.run.quota_exhausted', 'This workspace ran the %limit% workflow steps its plan (%plan%) allows a month: no run starts until next month.', ['limit' => $usage->limit ?? 0, 'plan' => $usage->plan])
             : null;
     }
 }

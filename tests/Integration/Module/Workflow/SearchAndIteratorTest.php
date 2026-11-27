@@ -22,6 +22,7 @@ use App\Module\Workflow\Application\ManualRuns;
 use App\Module\Workflow\Application\WorkflowManager;
 use App\Shared\Transaction\TransactionRunner;
 use App\Tests\Support\CreatesRelatedObjects;
+use App\Tests\Support\RunErrors;
 use Doctrine\DBAL\Connection;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -100,7 +101,7 @@ final class SearchAndIteratorTest extends KernelTestCase
         // The clerk may not read pets: the search, as the clerk, may not either.
         $run = $this->runAs('clerk@example.com', self::RENAME_PETS);
 
-        self::assertSame([RunLog::FAILED, 'clerk@example.com does not hold record.pet.read.'], [$run->status, $run->error]);
+        self::assertSame([RunLog::FAILED, 'clerk@example.com does not hold record.pet.read.'], [$run->status, RunErrors::english($run->error)]);
         self::assertSame(['Fido', 'Max', 'Rex', 'Tom'], $this->pets());
     }
 
@@ -108,7 +109,7 @@ final class SearchAndIteratorTest extends KernelTestCase
     {
         $run = $this->runAs('owner@example.com', str_replace('{ key: not_tom, type: filter, when: { field: each.item.name, op: neq, value: Tom } }', "{ key: no_tom, type: if, branches: [{ when: { field: each.item.name, op: eq, value: Tom }, steps: [{ key: stop, type: refuse, message: 'Not {{ each.item.name }}.' }] }] }", self::RENAME_PETS));
 
-        self::assertSame([RunLog::FAILED, 'Not Tom.'], [$run->status, $run->error]);
+        self::assertSame([RunLog::FAILED, 'Not Tom.'], [$run->status, RunErrors::english($run->error)]);
         self::assertSame(['Fido', 'Max', 'Rex', 'Tom'], $this->pets());
     }
 
@@ -119,7 +120,7 @@ final class SearchAndIteratorTest extends KernelTestCase
             steps:
               - { key: none, type: iterator, items: '{{ \$trigger.record.city }}', steps: [{ key: a, type: filter, when: { field: none.item, op: empty } }] }
             YAML);
-        self::assertSame([RunLog::FAILED, '{{ $trigger.record.city }} is no list: nothing to run on.'], [$run->status, $run->error]);
+        self::assertSame([RunLog::FAILED, '{{ $trigger.record.city }} is no list: nothing to run on.'], [$run->status, RunErrors::english($run->error)]);
     }
 
     public function testAnObjectGoneSinceTheActivationFailsTheStep(): void
@@ -153,7 +154,7 @@ final class SearchAndIteratorTest extends KernelTestCase
         $this->signIn('owner@example.com');
         $runs = self::getContainer()->get(ManualRuns::class);
         $run = $runs->run($runs->get($manual->getId()->toRfc4122()), $this->ada->id, []);
-        self::assertSame([RunLog::FAILED, 'Object "visit" does not exist.'], [$run->status, $run->error]);
+        self::assertSame([RunLog::FAILED, 'Object "visit" does not exist.'], [$run->status, RunErrors::english($run->error)]);
         self::assertSame(['refused', 'failed'], self::getContainer()->get(Connection::class)->fetchFirstColumn('SELECT status FROM core.workflow_run ORDER BY started_at'));
     }
 

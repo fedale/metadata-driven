@@ -291,7 +291,7 @@ final class RecordController extends AbstractController
             } catch (RecordNotFound $e) {
                 throw $this->createNotFoundException($e->getMessage(), $e);
             } catch (RecordDeleteRestricted $e) {
-                $this->addFlash('error', $e->getMessage());
+                $this->addFlash('error', $this->messages->trans($e->text()));
 
                 return $this->redirectToRoute('record_edit', ['object' => $definition->name, 'id' => $id], Response::HTTP_SEE_OTHER);
             }

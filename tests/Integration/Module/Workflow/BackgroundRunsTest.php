@@ -20,6 +20,7 @@ use App\Module\Workflow\Application\WorkflowManager;
 use App\Module\Workflow\Domain\Model\Workflow;
 use App\Shared\Workspace\CurrentWorkspace;
 use App\Tests\Support\CreatesRelatedObjects;
+use App\Tests\Support\RunErrors;
 use Doctrine\DBAL\Connection;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -68,7 +69,7 @@ final class BackgroundRunsTest extends KernelTestCase
 
         // The clerk may not create pets: neither may the step, as the clerk.
         $run = $this->engine()->runQueued($this->message('clerk@example.com'));
-        self::assertSame([RunLog::FAILED, 'clerk@example.com does not hold record.pet.create.'], [$run?->status, $run?->error]);
+        self::assertSame([RunLog::FAILED, 'clerk@example.com does not hold record.pet.create.'], [$run?->status, RunErrors::english($run?->error)]);
     }
 
     public function testARefuseKeepsNothingOfTheRun(): void
@@ -85,7 +86,7 @@ final class BackgroundRunsTest extends KernelTestCase
         $run = $this->engine()->runQueued($this->message('owner@example.com', $strict));
 
         // The pet was written before the refuse: rolled back with the run, which is kept as failed.
-        self::assertSame([RunLog::FAILED, 'No pet for Ada.'], [$run?->status, $run?->error]);
+        self::assertSame([RunLog::FAILED, 'No pet for Ada.'], [$run?->status, RunErrors::english($run?->error)]);
         self::assertSame([], $this->pets());
         self::assertSame(['failed'], self::getContainer()->get(Connection::class)->fetchFirstColumn('SELECT status FROM core.workflow_run'));
     }
@@ -128,7 +129,7 @@ final class BackgroundRunsTest extends KernelTestCase
         self::assertNull($this->engine()->runQueued($this->message('owner@example.com')));
 
         $failed = self::getContainer()->get(Connection::class)->fetchAllAssociative("SELECT error FROM core.workflow_run WHERE status = 'failed'");
-        self::assertSame([['error' => 'Too many workflow runs in this workspace: at most '.$limit.' a minute.']], $failed);
+        self::assertSame(['Too many workflow runs in this workspace: at most '.$limit.' a minute.'], array_map(static fn (array $row): ?string => RunErrors::english($row['error']), $failed));
         self::assertSame([], $this->pets());
     }
 

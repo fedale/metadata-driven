@@ -476,8 +476,7 @@ final class PackageUpgrader
                 // A package's records are installed, not written by anyone: no workflow runs on them.
                 $this->recordEvents->withoutEvents(fn () => $this->records->delete($names->object($object), $id));
             } catch (RecordDeleteRestricted $e) {
-                // The record module's message is English only.
-                throw UpgradeRefused::at('seeds', self::record($id, $names->object($object)), $e->getMessage());
+                throw UpgradeRefused::at('seeds', self::record($id, $names->object($object)), $e->text());
             }
         }
     }

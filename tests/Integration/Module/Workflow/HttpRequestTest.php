@@ -19,6 +19,7 @@ use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
 use App\Module\Workflow\Domain\Repository\WorkflowRepository;
 use App\Tests\Support\CreatesRelatedObjects;
 use App\Tests\Support\FakePackageServer;
+use App\Tests\Support\RunErrors;
 use Doctrine\DBAL\Connection;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -233,6 +234,6 @@ final class HttpRequestTest extends KernelTestCase
 
     private function runError(): mixed
     {
-        return self::getContainer()->get(Connection::class)->fetchOne('SELECT error FROM core.workflow_run ORDER BY started_at DESC LIMIT 1');
+        return RunErrors::english(self::getContainer()->get(Connection::class)->fetchOne('SELECT error FROM core.workflow_run ORDER BY started_at DESC LIMIT 1'));
     }
 }

@@ -19,6 +19,7 @@ use App\Module\Workflow\Application\ManualRunRefused;
 use App\Module\Workflow\Application\ManualRuns;
 use App\Module\Workflow\Application\WorkflowManager;
 use App\Tests\Support\CreatesRelatedObjects;
+use App\Tests\Support\RunErrors;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -71,7 +72,7 @@ final class SelectionRunsTest extends KernelTestCase
         $runs = $this->runs()->runOnSelection($workflow, array_values($this->people), []);
 
         self::assertSame([RunLog::COMPLETED, RunLog::FAILED, RunLog::COMPLETED], array_map(static fn (RunLog $run): string => $run->status, $runs));
-        self::assertSame('Not in Roma.', $runs[1]->error);
+        self::assertSame('Not in Roma.', RunErrors::english($runs[1]->error));
         self::assertSame(['Pet of Ada', 'Pet of Carla'], $this->pets());
         // On a record's page too.
         self::assertSame(['Give a pet'], array_map(static fn (ActiveWorkflow $active): ?string => $active->definition->trigger->label, $this->runs()->runnableOnRecord('person')));

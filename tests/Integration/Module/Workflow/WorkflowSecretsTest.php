@@ -17,6 +17,7 @@ use App\Module\Workflow\Application\Secrets\WorkflowSecrets;
 use App\Module\Workflow\Application\WorkflowManager;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
 use App\Tests\Support\FakePackageServer;
+use App\Tests\Support\RunErrors;
 use Doctrine\DBAL\Connection;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -101,7 +102,7 @@ final class WorkflowSecretsTest extends KernelTestCase
 
         self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('note', ['text' => 'Hi']));
 
-        self::assertSame('The request to crm.example.test got no answer.', self::getContainer()->get(Connection::class)->fetchOne('SELECT error FROM core.workflow_run'));
+        self::assertSame('The request to crm.example.test got no answer.', RunErrors::english(self::getContainer()->get(Connection::class)->fetchOne('SELECT error FROM core.workflow_run')));
     }
 
     public function testReadInAnHttpRequestOnly(): void

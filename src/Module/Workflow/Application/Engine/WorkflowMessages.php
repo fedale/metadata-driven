@@ -14,6 +14,7 @@ use App\Module\Workflow\Application\Definition\Step;
 use App\Shared\Mail\Mail;
 use App\Shared\Mail\Mailer;
 use App\Shared\Mail\MailNotSent;
+use App\Shared\Message\Message;
 use App\Shared\Transaction\TransactionRunner;
 use App\Shared\Workspace\CurrentWorkspace;
 use App\Shared\Workspace\Workspace;
@@ -65,7 +66,7 @@ final class WorkflowMessages
     {
         $subject = mb_substr(trim((string) preg_replace('/\s+/u', ' ', $chain->text($step->string('subject')))), 0, self::MAX_SUBJECT);
         if ('' === $subject) {
-            throw new StepFailed('The subject is empty.');
+            throw new StepFailed(new Message('workflow.run.subject_empty', 'The subject is empty.'));
         }
         $body = mb_substr($chain->text($step->string('body')), 0, self::MAX_BODY);
         $workspace = $platform ?? $this->current();
@@ -78,7 +79,7 @@ final class WorkflowMessages
         // Taken now, in the run's transaction, not counted once sent: the steps after this one
         // and the runs at the same time would all see the same emails left.
         if (null === $platform && !$this->quota->reserveEmails(\count($recipients))) {
-            throw new StepFailed(\sprintf('The plan of this workspace allows %d more emails this month: this step sends %d.', $this->quota->emailsLeft() ?? 0, \count($recipients)));
+            throw new StepFailed(new Message('workflow.run.emails_over_plan', 'The plan of this workspace allows %left% more emails this month: this step sends %count%.', ['left' => $this->quota->emailsLeft() ?? 0, 'count' => \count($recipients)]));
         }
         $this->transactions->whenDone(function (bool $committed) use ($recipients, $subject, $body, $workspace, $platform): void {
             if (!$committed) {
@@ -114,13 +115,13 @@ final class WorkflowMessages
     {
         $title = trim((string) preg_replace('/\s+/u', ' ', $chain->text($step->string('title'))));
         if ('' === $title) {
-            throw new StepFailed('The title is empty.');
+            throw new StepFailed(new Message('workflow.run.title_empty', 'The title is empty.'));
         }
         $text = null === $step->string('text') ? null : $chain->text($step->string('text'));
         $link = null;
         if (null !== $target = $step->link()) {
             $named = trim($chain->text($target['id']));
-            $id = KeyType::canonical($named) ?? throw new StepFailed(\sprintf('The link names no record of %s: "%s" is no id.', $target['object'], $named));
+            $id = KeyType::canonical($named) ?? throw new StepFailed(new Message('workflow.run.link_not_an_id', 'The link names no record of %object%: "%id%" is no id.', ['object' => $target['object'], 'id' => $named]));
             $link = \sprintf('/o/%s/%s/edit', $target['object'], $id);
         }
         $message = new NotificationMessage($title, $text, $link, \sprintf('Workflow %s', $run->workflow->name));
@@ -190,7 +191,7 @@ final class WorkflowMessages
             }
         }
         if (\count($recipients) > self::MAX_RECIPIENTS) {
-            throw new StepFailed(\sprintf('%d recipients: one step reaches %d at most.', \count($recipients), self::MAX_RECIPIENTS));
+            throw new StepFailed(new Message('workflow.run.too_many_recipients', '%count% recipients: one step reaches %max% at most.', ['count' => \count($recipients), 'max' => self::MAX_RECIPIENTS]));
         }
 
         $byEmail = \count(array_filter(array_keys($recipients), static fn (string $email): bool => true === ($members[$email] ?? null)?->notifyByEmail));
@@ -200,6 +201,6 @@ final class WorkflowMessages
 
     private function current(): Workspace
     {
-        return $this->workspaces->byId($this->workspace->id()) ?? throw new StepFailed('The workspace of this run is gone.');
+        return $this->workspaces->byId($this->workspace->id()) ?? throw new StepFailed(new Message('workflow.run.workspace_gone', 'The workspace of this run is gone.'));
     }
 }

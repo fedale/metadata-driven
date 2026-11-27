@@ -443,7 +443,7 @@ final class RecordManager implements RecordManagerInterface, RecordFinderInterfa
             try {
                 $this->delete($junction->name, $removed);
             } catch (RecordDeleteRestricted $e) {
-                throw new RecordValidationFailed($object->name, [$name => [$e->getMessage()]]);
+                throw new RecordValidationFailed($object->name, [$name => [$e->text()]]);
             }
         }
         foreach ($rows as $key => $row) {

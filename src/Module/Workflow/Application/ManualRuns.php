@@ -11,10 +11,12 @@ use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Record\Contract\Dto\RecordFilter;
 use App\Module\Record\Contract\Dto\RecordOutput;
 use App\Module\Record\Contract\RecordFinderInterface;
+use App\Module\Workflow\Application\Definition\InvalidAnswer;
 use App\Module\Workflow\Application\Engine\ActiveWorkflow;
 use App\Module\Workflow\Application\Engine\ActiveWorkflows;
 use App\Module\Workflow\Application\Engine\RunLog;
 use App\Module\Workflow\Application\Engine\WorkflowEngine;
+use App\Shared\Message\Message;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
@@ -71,13 +73,13 @@ final class ManualRuns
     {
         $trigger = $workflow->definition->trigger;
         if (null === $trigger->selection) {
-            throw new ManualRunRefused(\sprintf('The workflow "%s" runs on one record at a time, not on a selection.', $workflow->name), ManualRunRefused::INVALID);
+            throw new ManualRunRefused(new Message('workflow.manual.not_on_selection', 'The workflow "%workflow%" runs on one record at a time, not on a selection.', ['workflow' => $workflow->name]), ManualRunRefused::INVALID);
         }
         if ($asSomeone && !$this->mayRun($workflow)) {
-            throw new ManualRunRefused(\sprintf('You may not run the workflow "%s".', $workflow->name), ManualRunRefused::FORBIDDEN);
+            throw new ManualRunRefused(new Message('workflow.manual.not_yours', 'You may not run the workflow "%workflow%".', ['workflow' => $workflow->name]), ManualRunRefused::FORBIDDEN);
         }
         if ($asSomeone && !$this->access->canRecords($trigger->object, RecordAction::Read)) {
-            throw new ManualRunRefused(\sprintf('You may not read the records of "%s".', $trigger->object), ManualRunRefused::FORBIDDEN);
+            throw new ManualRunRefused(new Message('workflow.manual.cannot_read', 'You may not read the records of "%object%".', ['object' => $trigger->object]), ManualRunRefused::FORBIDDEN);
         }
         $records = $this->selection($trigger->object, $recordIds);
         $answers = $this->answers($workflow, $answers);
@@ -87,7 +89,7 @@ final class ManualRuns
         // A run each: refused whole when the minute's runs would end halfway through them (and
         // the workspace's other writes be refused with them, until the minute is over).
         if (\count($records) > $left = $this->engine->runsLeftThisMinute()) {
-            throw new ManualRunRefused(\sprintf('%d records selected, a run each: the workspace may start %d more this minute. Select fewer, or run it again in a minute.', \count($records), $left), ManualRunRefused::INVALID);
+            throw new ManualRunRefused(new Message('workflow.manual.too_many_runs', '%count% records selected, a run each: the workspace may start %left% more this minute. Select fewer, or run it again in a minute.', ['count' => \count($records), 'left' => $left]), ManualRunRefused::INVALID);
         }
 
         return array_map(fn (RecordOutput $record): RunLog => $this->engine->runManual($workflow, $record, $answers), $records);
@@ -108,21 +110,21 @@ final class ManualRuns
         $canonical = [];
         foreach ($recordIds as $id) {
             // As the database writes them: an id in capitals is the same record.
-            $canonical[] = $keyType->normalize($id) ?? throw new ManualRunRefused(\sprintf('"%s" is no record id.', $id), ManualRunRefused::INVALID);
+            $canonical[] = $keyType->normalize($id) ?? throw new ManualRunRefused(new Message('workflow.manual.not_an_id', '"%id%" is no record id.', ['id' => $id]), ManualRunRefused::INVALID);
         }
         $recordIds = array_values(array_unique($canonical));
         if ([] === $recordIds) {
-            throw new ManualRunRefused('No record selected.', ManualRunRefused::INVALID);
+            throw new ManualRunRefused(new Message('workflow.manual.none_selected', 'No record selected.'), ManualRunRefused::INVALID);
         }
         if (\count($recordIds) > $this->maxRecords) {
-            throw new ManualRunRefused(\sprintf('%d records selected: at most %d at a time.', \count($recordIds), $this->maxRecords), ManualRunRefused::INVALID);
+            throw new ManualRunRefused(new Message('workflow.manual.too_many_records', '%count% records selected: at most %max% at a time.', ['count' => \count($recordIds), 'max' => $this->maxRecords]), ManualRunRefused::INVALID);
         }
         $found = [];
         foreach ($this->finder->search($object, [new RecordFilter('id', 'in', $recordIds)], null, false, $this->maxRecords)->records as $record) {
             $found[$record->id] = $record;
         }
         if (\count($found) !== \count($recordIds)) {
-            throw new ManualRunRefused(\sprintf('%d of the records selected are no more: run it again on the others.', \count($recordIds) - \count($found)), ManualRunRefused::NOT_FOUND);
+            throw new ManualRunRefused(new Message('workflow.manual.records_gone', '%count% of the records selected are no more: run it again on the others.', ['count' => \count($recordIds) - \count($found)]), ManualRunRefused::NOT_FOUND);
         }
 
         return array_map(static fn (string $id): RecordOutput => $found[$id], $recordIds);
@@ -145,7 +147,7 @@ final class ManualRuns
     {
         $workflow = $this->workflows->byId($workflowId);
         if (null === $workflow || !$workflow->definition->trigger->isManual()) {
-            throw new ManualRunRefused('There is no active manual workflow by that id.', ManualRunRefused::NOT_FOUND);
+            throw new ManualRunRefused(new Message('workflow.manual.unknown', 'There is no active manual workflow by that id.'), ManualRunRefused::NOT_FOUND);
         }
 
         return $workflow;
@@ -176,10 +178,10 @@ final class ManualRuns
     public function run(ActiveWorkflow $workflow, ?string $recordId, array $answers, bool $asSomeone = true): RunLog
     {
         if ($workflow->definition->trigger->runsOnAll()) {
-            throw new ManualRunRefused(\sprintf('The workflow "%s" runs on a selection of records, all at once.', $workflow->name), ManualRunRefused::INVALID);
+            throw new ManualRunRefused(new Message('workflow.manual.on_selection_only', 'The workflow "%workflow%" runs on a selection of records, all at once.', ['workflow' => $workflow->name]), ManualRunRefused::INVALID);
         }
         if ($asSomeone && !$this->mayRun($workflow)) {
-            throw new ManualRunRefused(\sprintf('You may not run the workflow "%s".', $workflow->name), ManualRunRefused::FORBIDDEN);
+            throw new ManualRunRefused(new Message('workflow.manual.not_yours', 'You may not run the workflow "%workflow%".', ['workflow' => $workflow->name]), ManualRunRefused::FORBIDDEN);
         }
         $record = null === $recordId ? null : $this->record($workflow, $recordId, $asSomeone);
 
@@ -196,13 +198,13 @@ final class ManualRuns
     {
         $object = $workflow->definition->trigger->object;
         if ($asSomeone && !$this->access->canRecords($object, RecordAction::Read)) {
-            throw new ManualRunRefused(\sprintf('You may not read the records of "%s".', $object), ManualRunRefused::FORBIDDEN);
+            throw new ManualRunRefused(new Message('workflow.manual.cannot_read', 'You may not read the records of "%object%".', ['object' => $object]), ManualRunRefused::FORBIDDEN);
         }
 
         $record = $this->finder->find($object, $recordId);
 
         return $record
-            ?? throw new ManualRunRefused(\sprintf('There is no record %s of "%s".', $recordId, $object), ManualRunRefused::NOT_FOUND);
+            ?? throw new ManualRunRefused(new Message('workflow.manual.record_unknown', 'There is no record %id% of "%object%".', ['id' => $recordId, 'object' => $object]), ManualRunRefused::NOT_FOUND);
     }
 
     /**
@@ -218,15 +220,15 @@ final class ManualRuns
         foreach ($workflow->definition->trigger->form as $input) {
             try {
                 $checked[$input->name] = $input->answer($answers[$input->name] ?? null);
-            } catch (\InvalidArgumentException $e) {
-                $errors[$input->name] = $e->getMessage();
+            } catch (InvalidAnswer $e) {
+                $errors[$input->name] = $e->text;
             }
         }
         foreach (array_diff(array_keys($answers), array_keys($checked), array_keys($errors)) as $unknown) {
-            $errors[(string) $unknown] = 'The form has no such input.';
+            $errors[(string) $unknown] = new Message('workflow.answer.unknown_input', 'The form has no such input.');
         }
         if ([] !== $errors) {
-            throw new ManualRunRefused('Some answers will not do.', ManualRunRefused::INVALID, $errors);
+            throw new ManualRunRefused(new Message('workflow.manual.answers_invalid', 'Some answers will not do.'), ManualRunRefused::INVALID, $errors);
         }
 
         return $checked;

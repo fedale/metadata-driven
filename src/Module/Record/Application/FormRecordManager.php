@@ -214,7 +214,7 @@ final class FormRecordManager implements FormRecordManagerInterface
                 try {
                     $this->records->delete($section['section']->object, $deleted);
                 } catch (RecordDeleteRestricted $e) {
-                    throw new FormValidationFailed([$section['path'] => [$e->getMessage()]]);
+                    throw new FormValidationFailed([$section['path'] => [$e->text()]]);
                 }
             }
             /** @var list<Plan> $rows the plans of the section's records */

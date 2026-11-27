@@ -33,7 +33,7 @@
                         <td>{{ ('admin.workflow.run_' ~ run.status)|trans }}</td>
                         <td><code>{{ run.object }}</code> {{ run.action }}, {{ run.timing }}{% if run.depth > 1 %} · {{ 'admin.workflow.depth'|trans({'%depth%': run.depth}) }}{% endif %}</td>
                         <td>{{ run.triggered_by ?? '—' }}</td>
-                        <td>{{ run.error }}</td>
+                        <td>{% if run.error %}{{ run.error|message }}{% endif %}</td>
                     </tr>
                 {% endfor %}
             </tbody>

@@ -19,6 +19,7 @@ use App\Module\Workflow\Application\Engine\RunLog;
 use App\Module\Workflow\Application\ManualRuns;
 use App\Module\Workflow\Application\WorkflowManager;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
+use App\Tests\Support\RunErrors;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
 use Fedale\RbacBundle\Enum\AuthItemType;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -120,7 +121,7 @@ final class TransitionWorkflowsTest extends KernelTestCase
         // As the clerk: send is anyone's, reopen the boss's; all or nothing.
         $this->signIn('clerk@example.com');
         $run = $runs->run($runs->get($this->workflowId('As clerk')), $this->invoice->id, [], asSomeone: false);
-        self::assertSame([RunLog::FAILED, '"Reopen" is taken by ROLE_BOSS only.'], [$run->status, $run->error]);
+        self::assertSame([RunLog::FAILED, '"Reopen" is taken by ROLE_BOSS only.'], [$run->status, RunErrors::english($run->error)]);
         self::assertSame('draft', $this->state());
 
         // As the boss's role: both taken.
@@ -173,7 +174,7 @@ final class TransitionWorkflowsTest extends KernelTestCase
 
         $run = $runs->run($runs->get($this->workflowId('Back')), $this->invoice->id, [], asSomeone: false);
 
-        self::assertSame([RunLog::FAILED, 'boss@example.com, who activated it, holds none of ROLE_BOSS.'], [$run->status, $run->error]);
+        self::assertSame([RunLog::FAILED, 'boss@example.com, who activated it, holds none of ROLE_BOSS.'], [$run->status, RunErrors::english($run->error)]);
         self::assertSame('draft', $this->state());
     }
 

@@ -72,3 +72,15 @@ stay English, as everywhere.
 2. The translations of the format's problems live in the app, not in the library: the library
    stays free of Symfony's translator, and its other user, the catalog, writes English.
 3. One phase per branch, the user's review between phases, phase 0 released before phase 1.
+
+## Phase 4: what a workflow reports as it runs
+
+Asked for on 2026-11-27, after phase 3. `StepFailed` carries a message (`text()`); a run's error
+and its steps' are messages (`workflow.run.*`), stored as jsonb (migration
+`Version20261127100000`: an error written before becomes a JSON string, read as it was) and
+read in the language of whoever opens the run, the runs list or the editor's test. A write a
+"before" workflow refuses reaches the record form as a message; so does a delete a "restrict"
+relation refuses (`RecordDeleteRestricted::text()`). A manual run's refusals and its form's
+answers (`ManualRunRefused::text()`, `InvalidAnswer`) are messages too (`workflow.manual.*`,
+`workflow.answer.*`). Left as written: a refuse step's own message, the outside's errors (an
+HTTP client's, a database's) inside a message, the webhook's JSON answers, the console.

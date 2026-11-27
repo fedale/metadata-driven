@@ -13,6 +13,7 @@ use App\Module\Workflow\Application\Engine\ActiveWorkflow;
 use App\Module\Workflow\Application\Engine\RunLog;
 use App\Module\Workflow\Application\ManualRunRefused;
 use App\Module\Workflow\Application\ManualRuns;
+use App\Shared\Message\MessageTranslator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\Target;
@@ -48,6 +49,7 @@ final class ManualRunController extends AbstractController
         private readonly ManualRuns $runs,
         private readonly FormFactoryInterface $forms,
         private readonly TranslatorInterface $translator,
+        private readonly MessageTranslator $messages,
         #[Target('localizedMetadata')]
         private readonly MetadataRegistryInterface $metadata,
         private readonly RecordSelectionInterface $selection,
@@ -83,7 +85,7 @@ final class ManualRunController extends AbstractController
                     throw $this->createAccessDeniedException($e->getMessage(), $e);
                 }
                 foreach ($e->errors as $name => $error) {
-                    ($form->has($name) ? $form->get($name) : $form)->addError(new FormError($error));
+                    ($form->has($name) ? $form->get($name) : $form)->addError(new FormError($this->messages->trans($error)));
                 }
             }
         }
@@ -135,8 +137,8 @@ final class ManualRunController extends AbstractController
                 if (ManualRunRefused::FORBIDDEN === $e->getCode()) {
                     throw $this->createAccessDeniedException($e->getMessage(), $e);
                 }
-                foreach ([] === $e->errors ? ['' => $e->getMessage()] : $e->errors as $name => $error) {
-                    ($form->has($name) ? $form->get($name) : $form)->addError(new FormError($error));
+                foreach ([] === $e->errors ? ['' => $e->text()] : $e->errors as $name => $error) {
+                    ($form->has($name) ? $form->get($name) : $form)->addError(new FormError($this->messages->trans($error)));
                 }
             }
         }
