@@ -4,7 +4,7 @@ Internal notes for whoever (human or agent) picks the work up, on any machine. R
 starting a task; update it in the same branch whenever a decision is taken, a feature lands or the
 work queue changes. The user-facing documentation is in [../README.md](../README.md).
 
-Last updated: 2026-11-26.
+Last updated: 2026-11-27.
 
 ## Setting up on a new machine
 
@@ -303,6 +303,22 @@ revision bumped by triggers, see `architecture.md`).
 
 ## Open
 
+### Proposed next (2026-11-27, the user has not chosen yet)
+
+The translations are done (see "Other open items"). What is left, from the items below:
+
+- **Computed fields**, the last part of "an app in a package" (point 2 of the next list: roles
+  and permissions shipped in a package, its navigation, declarative rules); the agent's
+  suggestion, as the most useful to whoever builds an app out of packages.
+- **Field-level permissions**, from the roadmap ideas (with audit/timeline, a REST API).
+- The system console's finishing touches (renaming a workspace, its pending invitations,
+  deactivating an account everywhere), then a domain per workspace, a second factor, the system
+  admins' log.
+- `HostWorkspaceUrls`: the scheme and port of a link from `DEFAULT_URI` or
+  `framework.trusted_hosts` rather than the request (the user's call).
+- Never tried by hand by the user: the members and roles pages, the invitations, the workflows'
+  visual editor.
+
 ### Next, in the order proposed (2026-11-08; the smaller items first, the user decided on 2026-11-11)
 
 1. **Templates requiring other templates** — done (phase 8 of
@@ -338,9 +354,8 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   commands and URLs. Phase 1 (composite form → form) merged into `main` on 2026-11-15. Phase 2
   (landlord / operator → system / system admin: `system:admin`, `ROLE_SYSTEM_ADMIN`,
   `is_system_admin`, the session setting `app.system` the row-level security policies read,
-  migration `Version20261115100000`): done on branch `system_rename` (2026-11-15), waiting for
-  the user's review. Run the migrations on an existing database (`make db`).
-  Phase 2 merged into `main` on 2026-11-15. Phase 3 (tenant → workspace: `core.workspace*`,
+  migration `Version20261115100000`): done on branch `system_rename` (2026-11-15), merged into
+  `main` the same day. Run the migrations on an existing database (`make db`). Phase 3 (tenant → workspace: `core.workspace*`,
   the `workspace_id` columns, `app.workspace_id`, `no_workspace_rbac`, the `workspace:*` commands
   and `--workspace`, `/console/workspaces/...`, the env vars `WORKSPACE_BASE_HOST` and
   `WORKSPACE_DEFAULT`, the guide workspaces.md; migration `Version20261115110000`): merged into
@@ -401,7 +416,7 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   usage per tenant; then manual workflows, the system admin's (an app installed with every new
   workspace), the background with Messenger, states. Agreed on 2026-11-13. Phase 1 detailed in
   [workflow-phase1-plan.md](workflow-phase1-plan.md) (2026-11-15), agreed the same day. Phase 1
-  done on branch `workflow_phase1_design` (2026-11-15), waiting for the user's review: the Record
+  done on branch `workflow_phase1_design` (2026-11-15): the Record
   events (`RecordWriting`, `RecordWritten`, `TransactionRunner::whenDone()`), the Workflow module
   (`core.workflow*`, migration `Version20261115160000`), `admin.workflows` (run `access:sync`),
   `/admin/workflows`, `workflow:runs:gc`; the guide [../workflows.md](../workflows.md); merged
@@ -491,8 +506,8 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   branch `workflow_missing_object`, merged into `main` on 2026-11-17: a step naming an object
   archived since the activation fails with its reason (it broke the write a before-workflow
   guards, and left a queued run without its log), and `assign_role` gives a role to a member of
-  the workspace only. The two points left to decide, done on branch `workflow_metadata_names`
-  (2026-11-19), waiting for the user's review: by the user's choice, archiving an object or a
+  the workspace only. The two points left to decide, done on branch `workflow_metadata_names`,
+  merged into `main` on 2026-11-19: by the user's choice, archiving an object or a
   field an active workflow names is refused, the places listed, and a rename rewrites the
   workflows (the active version, the draft and a deactivated one; source and compiled
   definition; an archived version stays as it ran), as for forms and views. Through the Metadata
@@ -517,8 +532,8 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   `emails_per_month`; migration `Version20261119120000`, run `doctrine:migrations:migrate`) done
   on branch `workflow_email_notify`, merged into `main` on 2026-11-19: the plan is complete
   with it. The emails' quota taken in the run's transaction (a security review's finding: the
-  steps of one run saw the same emails left) on branch `email_quota_reserve` (2026-11-19),
-  waiting for the user's review. Open: `HostWorkspaceUrls` takes the scheme and port of a link from the request
+  steps of one run saw the same emails left) on branch `email_quota_reserve`, merged into `main`
+  on 2026-11-19. Open, the user's call: `HostWorkspaceUrls` takes the scheme and port of a link from the request
   (the host from the configuration); from `DEFAULT_URI` only, or `framework.trusted_hosts`, is
   the user's call (a security review's remark on part C).
 - **Tables loaded into the database** (as Directus's "database only" collections): proposed in
@@ -544,9 +559,8 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   adoption of one table and of a set (the system columns added, the table renamed), junctions;
   then exporting packages and installing them from a file in the admin (today the console only).
 - Relation filters in grids keep `multiple: true` by choice. Seen in the browser on 2026-11-25:
-  the filter applies on a click outside its panel, `Esc` closes it without applying; in Italian
-  the grid's "Columns" and "Export" are not translated (gridview's keys, or the app's labels:
-  not looked into yet).
+  the filter applies on a click outside its panel, `Esc` closes it without applying. (The grid's
+  "Columns" and "Export", untranslated in Italian then, are translated since gridview 1.11.2.)
 - gridview-bundle: `composer cs`, `composer phpstan` and `composer test` are all clean on its
   `main` (merged and pushed 2026-11-12). The failing tests are fixed (`DoctrineChildRowResolverTest`
   x4 mocked an ObjectRepository where ORM 3 wants an EntityRepository, `ThemeRegistryTest` missed
