@@ -21,6 +21,7 @@ use App\Module\Workflow\Application\WorkflowManager;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
 use App\Module\Workflow\Domain\Model\Workflow;
 use App\Tests\Support\CreatesRelatedObjects;
+use App\Tests\Support\RunErrors;
 use Doctrine\DBAL\Connection;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
 use Fedale\RbacBundle\Enum\AuthItemType;
@@ -134,7 +135,7 @@ final class SubWorkflowsTest extends KernelTestCase
 
         // After a write, its refuse fails it: all of the run or nothing.
         self::assertSame(RunLog::FAILED, $run->status);
-        self::assertSame('"Naming" failed: No pet for Rex.', $run->error);
+        self::assertSame('"Naming" failed: No pet for Rex.', RunErrors::english($run->error));
         self::assertSame([], $this->pets());
         self::assertSame(['failed', 'failed'], self::getContainer()->get(Connection::class)->fetchFirstColumn('SELECT status FROM core.workflow_run ORDER BY depth'));
     }
@@ -174,7 +175,7 @@ final class SubWorkflowsTest extends KernelTestCase
         $runs = self::getContainer()->get(ManualRuns::class);
         $run = $runs->run($runs->get($caller->getId()->toRfc4122()), $this->records->create(new RecordInput('person', ['full_name' => 'Ada']))->id, []);
         self::assertSame(RunLog::FAILED, $run->status);
-        self::assertSame('owner@example.com, who activated it, may not run "Naming".', $run->error);
+        self::assertSame('owner@example.com, who activated it, may not run "Naming".', RunErrors::english($run->error));
     }
 
     public function testWhatItNamesIsChecked(): void
@@ -211,7 +212,7 @@ final class SubWorkflowsTest extends KernelTestCase
         $run = $runs->run($runs->get($caller->getId()->toRfc4122()), $this->records->create(new RecordInput('person', ['full_name' => 'Ada']))->id, []);
 
         self::assertSame(RunLog::FAILED, $run->status);
-        self::assertSame('The input "count" of "Naming": A number.', $run->error);
+        self::assertSame('The input "count" of "Naming": A number.', RunErrors::english($run->error));
     }
 
     public function testACallerCallingItselfStopsAtTheDepthAllowed(): void

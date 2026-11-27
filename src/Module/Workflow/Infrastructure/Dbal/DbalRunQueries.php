@@ -6,6 +6,9 @@ namespace App\Module\Workflow\Infrastructure\Dbal;
 
 use App\Module\Workflow\Application\RunQueries;
 use App\Shared\Database\WorkspaceScope;
+use App\Shared\Message\Message;
+use App\Shared\Message\MessageJson;
+use App\Shared\Message\MessageList;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 
@@ -59,7 +62,7 @@ final class DbalRunQueries implements RunQueries
             'status' => self::string($step['status']),
             'input' => self::json($step['input']),
             'output' => self::json($step['output']),
-            'error' => self::nullableString($step['error']),
+            'error' => self::error($step['error']),
             'duration_ms' => self::int($step['duration_ms']),
         ], $this->connection->fetchAllAssociative('SELECT key, type, status, input, output, error, duration_ms FROM core.workflow_run_step WHERE run_id = ? ORDER BY position', [$id]));
 
@@ -75,7 +78,7 @@ final class DbalRunQueries implements RunQueries
     /**
      * @param array<string, mixed> $row
      *
-     * @return array{id: string, status: string, object: string, record_id: ?string, action: string, timing: string, triggered_by: ?string, depth: int, error: ?string, started_at: string}
+     * @return array{id: string, status: string, object: string, record_id: ?string, action: string, timing: string, triggered_by: ?string, depth: int, error: string|Message|MessageList|null, started_at: string}
      */
     private static function row(array $row): array
     {
@@ -88,9 +91,17 @@ final class DbalRunQueries implements RunQueries
             'timing' => self::string($row['timing']),
             'triggered_by' => self::nullableString($row['triggered_by']),
             'depth' => self::int($row['depth']),
-            'error' => self::nullableString($row['error']),
+            'error' => self::error($row['error']),
             'started_at' => self::string($row['started_at']),
         ];
+    }
+
+    /**
+     * An error stored as jsonb: a message, or a text written before errors were messages.
+     */
+    private static function error(mixed $value): string|Message|MessageList|null
+    {
+        return \is_string($value) ? MessageJson::decode(json_decode($value, true, 512, \JSON_THROW_ON_ERROR)) : null;
     }
 
     private static function string(mixed $value): string

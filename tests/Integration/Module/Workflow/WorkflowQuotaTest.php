@@ -17,6 +17,7 @@ use App\Module\Workflow\Application\WorkflowManager;
 use App\Module\Workflow\Contract\WorkflowUsageInterface;
 use App\Shared\Workspace\CurrentWorkspace;
 use App\Tests\Support\CreatesRelatedObjects;
+use App\Tests\Support\RunErrors;
 use Doctrine\DBAL\Connection;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -74,7 +75,7 @@ final class WorkflowQuotaTest extends KernelTestCase
 
         $run = $runs->run($runs->get($manual->getId()->toRfc4122()), $ada->id, []);
         self::assertSame(RunLog::FAILED, $run->status);
-        self::assertSame('This workspace ran the 5000 workflow steps its plan (Starter) allows a month: no run starts until next month.', $run->error);
+        self::assertSame('This workspace ran the 5000 workflow steps its plan (Starter) allows a month: no run starts until next month.', RunErrors::english($run->error));
         // A workflow guarding a write before it: the write is refused.
         try {
             $records->create(new RecordInput('person', ['full_name' => 'Bea']));

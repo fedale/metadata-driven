@@ -8,6 +8,8 @@ use App\Module\Workflow\Application\Engine\RunLog;
 use App\Module\Workflow\Application\Engine\RunStore;
 use App\Module\Workflow\Application\Engine\WaitingRun;
 use App\Shared\Database\WorkspaceScope;
+use App\Shared\Message\Message;
+use App\Shared\Message\MessageJson;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 use Symfony\Component\Uid\Uuid;
@@ -33,7 +35,7 @@ final class DbalRunStore implements RunStore
             $state = [
                 'status' => $run->status,
                 'chain' => self::json($run->chain),
-                'error' => $run->error,
+                'error' => self::error($run->error),
                 'finished_at' => ($run->finishedAt ?? new \DateTimeImmutable())->format(self::TIMESTAMP),
                 'resume_at' => $run->resumeAt?->format(self::TIMESTAMP),
                 'resume_step' => $run->resumeStep,
@@ -66,7 +68,7 @@ final class DbalRunStore implements RunStore
                     'status' => $step['status'],
                     'input' => self::json($step['input']),
                     'output' => null === $step['output'] ? null : self::json($step['output']),
-                    'error' => $step['error'],
+                    'error' => self::error($step['error']),
                     'duration_ms' => $step['duration_ms'],
                 ]);
             }
@@ -164,6 +166,15 @@ final class DbalRunStore implements RunStore
     private static function text(mixed $value): string
     {
         return \is_scalar($value) ? (string) $value : '';
+    }
+
+    /**
+     * An error as jsonb holds it: a message with its key and parameters, to read in the reader's
+     * language; a plain text as a JSON string.
+     */
+    private static function error(string|Message|null $error): ?string
+    {
+        return null === $error ? null : json_encode(MessageJson::encode($error), \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES);
     }
 
     private static function json(mixed $value): string

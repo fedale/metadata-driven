@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Workflow\Application\Engine;
 
+use App\Shared\Message\Message;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -23,7 +24,8 @@ final class RunLog
 
     public string $status = self::COMPLETED;
 
-    public ?string $error = null;
+    /** Why it failed or was refused: a message, read in the language of whoever reads the log. */
+    public string|Message|null $error = null;
 
     /** @var array<string, mixed> */
     public array $chain = [];
@@ -44,7 +46,7 @@ final class RunLog
     /** The steps logged before this part of the run (a resumed run's), already stored. */
     public int $stepOffset = 0;
 
-    /** @var list<array{key: string, type: string, status: string, input: mixed, output: mixed, error: ?string, duration_ms: int}> */
+    /** @var list<array{key: string, type: string, status: string, input: mixed, output: mixed, error: string|Message|null, duration_ms: int}> */
     public array $steps = [];
 
     public function __construct(
@@ -79,12 +81,12 @@ final class RunLog
         return $this->stepOffset + \count($this->steps);
     }
 
-    public function step(string $key, string $type, string $status, mixed $input, mixed $output, ?string $error, int $durationMs): void
+    public function step(string $key, string $type, string $status, mixed $input, mixed $output, string|Message|null $error, int $durationMs): void
     {
         $this->steps[] = ['key' => $key, 'type' => $type, 'status' => $status, 'input' => $input, 'output' => $output, 'error' => $error, 'duration_ms' => $durationMs];
     }
 
-    public function end(string $status, ?string $error = null): void
+    public function end(string $status, string|Message|null $error = null): void
     {
         $this->status = $status;
         $this->error = $error;

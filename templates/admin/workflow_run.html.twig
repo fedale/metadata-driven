@@ -6,7 +6,7 @@
     {% if workflow %}<p><a href="{{ path(wf ~ 'runs', {id: workflow.id.toRfc4122}) }}">&larr; {{ 'admin.workflow.runs'|trans }} · {{ workflow.name }}</a></p>{% endif %}
     <h1>{{ 'admin.workflow.run'|trans }}</h1>
     <dl class="md-facts">
-        <dt>{{ 'admin.workflow.status'|trans }}</dt><dd>{{ ('admin.workflow.run_' ~ run.status)|trans }}{% if run.error %}: {{ run.error }}{% endif %}</dd>
+        <dt>{{ 'admin.workflow.status'|trans }}</dt><dd>{{ ('admin.workflow.run_' ~ run.status)|trans }}{% if run.error %}: {{ run.error|message }}{% endif %}</dd>
         <dt>{{ 'admin.workflow.record'|trans }}</dt><dd><code>{{ run.object }}</code> {{ run.record_id ?? '—' }} · {{ run.action }}, {{ run.timing }}</dd>
         <dt>{{ 'admin.workflow.triggered_by'|trans }}</dt><dd>{{ run.triggered_by ?? '—' }}</dd>
         <dt>{{ 'admin.workflow.started'|trans }}</dt><dd>{{ run.started_at }} → {{ run.finished_at }}</dd>
@@ -27,7 +27,7 @@
             {% for step in run.steps %}
                 <tr>
                     <td><code>{{ step.key }}</code> <span class="gv-muted">{{ step.type }}</span></td>
-                    <td>{{ step.status }}{% if step.error %}: {{ step.error }}{% endif %}</td>
+                    <td>{{ step.status }}{% if step.error %}: {{ step.error|message }}{% endif %}</td>
                     <td><pre class="md-code">{{ step.input is null ? '' : step.input|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_UNICODE') b-or constant('JSON_UNESCAPED_SLASHES')) }}</pre></td>
                     <td><pre class="md-code">{{ step.output is null ? '' : step.output|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_UNICODE') b-or constant('JSON_UNESCAPED_SLASHES')) }}</pre></td>
                     <td>{{ step.duration_ms }}</td>

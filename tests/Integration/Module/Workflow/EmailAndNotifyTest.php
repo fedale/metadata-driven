@@ -20,6 +20,7 @@ use App\Module\Workflow\Application\WorkflowTester;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
 use App\Shared\Workspace\CurrentWorkspace;
 use App\Tests\Support\CreatesRelatedObjects;
+use App\Tests\Support\RunErrors;
 use Doctrine\DBAL\Connection;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
 use Fedale\RbacBundle\Enum\AuthItemType;
@@ -122,7 +123,7 @@ final class EmailAndNotifyTest extends KernelTestCase
         self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('person', ['full_name' => 'Ada']));
 
         self::assertSame('failed', $this->lastRun('status'));
-        self::assertSame('The plan of this workspace allows 2 more emails this month: this step sends 4.', $this->lastRun('error'));
+        self::assertSame('The plan of this workspace allows 2 more emails this month: this step sends 4.', RunErrors::english($this->lastRun('error')));
         self::assertEmailCount(0);
     }
 
@@ -146,7 +147,7 @@ final class EmailAndNotifyTest extends KernelTestCase
         self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('person', ['full_name' => 'Ada']));
 
         self::assertSame('failed', $this->lastRun('status'));
-        self::assertSame('The plan of this workspace allows 2 more emails this month: this step sends 4.', $this->lastRun('error'));
+        self::assertSame('The plan of this workspace allows 2 more emails this month: this step sends 4.', RunErrors::english($this->lastRun('error')));
         self::assertEmailCount(0);
         self::assertEquals(994, $connection->fetchOne('SELECT emails FROM core.workflow_usage'));
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Record\Contract\Event;
 
 use App\Module\Record\Contract\Dto\RecordOutput;
+use App\Shared\Message\Message;
 
 /**
  * A record is about to be written, inside the write's transaction. A listener may change the
@@ -16,7 +17,7 @@ use App\Module\Record\Contract\Dto\RecordOutput;
  */
 final class RecordWriting
 {
-    private ?string $refusal = null;
+    private string|Message|null $refusal = null;
 
     /**
      * @param array<string, mixed> $values  what is about to be written, as given (raw: before validation); empty on delete
@@ -53,12 +54,12 @@ final class RecordWriting
     /**
      * Refuses the write; the first refusal's message is the one shown.
      */
-    public function refuse(string $message): void
+    public function refuse(string|Message $message): void
     {
         $this->refusal ??= $message;
     }
 
-    public function refusal(): ?string
+    public function refusal(): string|Message|null
     {
         return $this->refusal;
     }

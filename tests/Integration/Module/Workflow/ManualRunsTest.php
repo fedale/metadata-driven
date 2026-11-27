@@ -18,6 +18,7 @@ use App\Module\Workflow\Application\ManualRuns;
 use App\Module\Workflow\Application\WorkflowManager;
 use App\Module\Workflow\Domain\Model\Workflow;
 use App\Tests\Support\CreatesRelatedObjects;
+use App\Tests\Support\RunErrors;
 use Doctrine\DBAL\Connection;
 use Fedale\RbacBundle\Contract\ItemStorageInterface;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
@@ -128,7 +129,7 @@ final class ManualRunsTest extends KernelTestCase
 
         $this->give('clerk@example.com', $workflow);
         $refused = $this->refusal(fn () => $this->runs->run($active, $this->ada->id, ['count' => 'two', 'evil' => 'x']));
-        self::assertSame(['name' => 'Required.', 'count' => 'A number.', 'evil' => 'The form has no such input.'], $refused->errors);
+        self::assertSame(['name' => 'Required.', 'count' => 'A number.', 'evil' => 'The form has no such input.'], array_map(strval(...), $refused->errors));
         self::assertSame(ManualRunRefused::NOT_FOUND, $this->refusal(fn () => $this->runs->run($active, 'not-an-id', ['name' => 'Cat']))->getCode());
         self::assertSame([], $this->pets());
     }
@@ -147,7 +148,7 @@ final class ManualRunsTest extends KernelTestCase
 
         $run = $this->runs->run($this->runs->get($workflow->getId()->toRfc4122()), $this->ada->id, []);
 
-        self::assertSame([RunLog::FAILED, 'clerk@example.com does not hold record.person.delete.'], [$run->status, $run->error]);
+        self::assertSame([RunLog::FAILED, 'clerk@example.com does not hold record.person.delete.'], [$run->status, RunErrors::english($run->error)]);
         // The pet created first went with the run.
         self::assertSame([], $this->pets());
         self::assertNotNull(self::getContainer()->get(RecordFinderInterface::class)->find('person', $this->ada->id));
@@ -165,7 +166,7 @@ final class ManualRunsTest extends KernelTestCase
 
         $run = $this->runs->run($this->runs->get($workflow->getId()->toRfc4122()), $this->ada->id, []);
 
-        self::assertSame([RunLog::FAILED, 'Not Ada.'], [$run->status, $run->error]);
+        self::assertSame([RunLog::FAILED, 'Not Ada.'], [$run->status, RunErrors::english($run->error)]);
         self::assertSame([], $this->pets());
     }
 

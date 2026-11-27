@@ -16,10 +16,13 @@ use App\Module\Workflow\Application\Definition\DefinitionParser;
 use App\Module\Workflow\Application\Engine\Message\ResumeRun;
 use App\Module\Workflow\Application\Engine\RunLog;
 use App\Module\Workflow\Application\Engine\WorkflowEngine;
+use App\Module\Workflow\Application\RunQueries;
 use App\Module\Workflow\Application\WorkflowManager;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
 use App\Module\Workflow\Domain\Model\Workflow;
+use App\Shared\Message\MessageTranslator;
 use App\Tests\Support\CreatesRelatedObjects;
+use App\Tests\Support\RunErrors;
 use Doctrine\DBAL\Connection;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -93,8 +96,27 @@ final class WaitTest extends KernelTestCase
 
         $run = $this->resume();
 
-        self::assertSame([RunLog::CANCELLED, 'The version it ran is no longer active.'], [$run?->status, $run?->error]);
+        self::assertSame([RunLog::CANCELLED, 'The version it ran is no longer active.'], [$run?->status, RunErrors::english($run?->error)]);
         self::assertSame(['Pet of Ada'], $this->pets());
+    }
+
+    public function testWhyARunFailedIsReadInTheLanguageOfItsReader(): void
+    {
+        $this->activate(str_replace('for: 2 days', "until: '{{ \$trigger.record.city }}'", self::LATER), 'Bad');
+        self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('person', ['full_name' => 'Bob', 'city' => 'Pisa']));
+        $connection = self::getContainer()->get(Connection::class);
+        $id = $connection->fetchOne("SELECT id FROM core.workflow_run WHERE status = 'failed'");
+        self::assertIsString($id);
+
+        $run = self::getContainer()->get(RunQueries::class)->run($id);
+        self::assertNotNull($run);
+        $messages = self::getContainer()->get(MessageTranslator::class);
+        self::assertSame('"Pisa" non è una data fino a cui aspettare.', $messages->trans($run['error'] ?? '', 'it'));
+        self::assertSame('"Pisa" non è una data fino a cui aspettare.', $messages->trans(end($run['steps'])['error'] ?? '', 'it'));
+
+        // An error stored before errors were messages: read as it was written.
+        $connection->executeStatement("UPDATE core.workflow_run SET error = to_jsonb('\"Pisa\" is no date to wait until.'::text) WHERE id = ?", [$id]);
+        self::assertSame('"Pisa" is no date to wait until.', self::getContainer()->get(RunQueries::class)->run($id)['error'] ?? null);
     }
 
     public function testADatePassedWaitsNotAndAWrongOneFails(): void
@@ -106,7 +128,7 @@ final class WaitTest extends KernelTestCase
 
         $this->activate(str_replace('for: 2 days', "until: '{{ \$trigger.record.city }}'", self::LATER), 'Bad');
         self::getContainer()->get(RecordManagerInterface::class)->create(new RecordInput('person', ['full_name' => 'Bob', 'city' => 'Pisa']));
-        self::assertSame('"Pisa" is no date to wait until.', self::getContainer()->get(Connection::class)->fetchOne("SELECT error FROM core.workflow_run WHERE status = 'failed'"));
+        self::assertSame('"Pisa" is no date to wait until.', RunErrors::english(self::getContainer()->get(Connection::class)->fetchOne("SELECT error FROM core.workflow_run WHERE status = 'failed'")));
     }
 
     public function testAWaitIsAFirstStepOfAnAfterRun(): void

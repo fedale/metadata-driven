@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Workflow\Application\Engine;
 
+use App\Shared\Message\Message;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpClient\NoPrivateNetworkHttpClient;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
@@ -43,7 +44,7 @@ final class WorkflowHttp
     {
         $scheme = parse_url($url, \PHP_URL_SCHEME);
         if (!\in_array(\is_string($scheme) ? strtolower($scheme) : null, ['http', 'https'], true)) {
-            throw new StepFailed(\sprintf('"%s" is no http or https address.', $url));
+            throw new StepFailed(new Message('workflow.run.url_invalid', '"%url%" is no http or https address.', ['url' => $url]));
         }
         for ($try = 0;; ++$try) {
             try {
@@ -56,7 +57,7 @@ final class WorkflowHttp
                 $headers = $response->getHeaders(false);
                 $length = $headers['content-length'][0] ?? null;
                 if (is_numeric($length) && (int) $length > self::MAX_RESPONSE_BYTES) {
-                    throw new StepFailed(\sprintf('The response of %s is over 1 MB.', $url));
+                    throw new StepFailed(new Message('workflow.run.response_too_large', 'The response of %url% is over 1 MB.', ['url' => $url]));
                 }
                 // Read a chunk at a time: a body with no length (or a false one) stops at the cap.
                 $content = '';
@@ -65,7 +66,7 @@ final class WorkflowHttp
                     if (\strlen($content) > self::MAX_RESPONSE_BYTES) {
                         $response->cancel();
 
-                        throw new StepFailed(\sprintf('The response of %s is over 1 MB.', $url));
+                        throw new StepFailed(new Message('workflow.run.response_too_large', 'The response of %url% is over 1 MB.', ['url' => $url]));
                     }
                 }
 
@@ -80,7 +81,7 @@ final class WorkflowHttp
                     $this->pause($try);
                     continue;
                 }
-                throw new StepFailed(\sprintf('%s %s: %s', $method, $url, $e->getMessage()), 0, $e);
+                throw new StepFailed(new Message('workflow.run.request_failed', '%method% %url%: %error%', ['method' => $method, 'url' => $url, 'error' => $e->getMessage()]), 0, $e);
             }
         }
     }

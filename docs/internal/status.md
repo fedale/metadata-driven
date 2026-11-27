@@ -368,11 +368,12 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   the job's page and the bell). Merged into `main` on 2026-11-20: `core.record_import` (migration `Version20261120100000`; run `make db`),
   `BackgroundImports`, `CheckImport` / `RunImport` on `async`, the pages at
   `/o/<object>/imports`, guide import.md. (A) and (B) are done (see "Done").
-- Still English in every language (see i18n.md, "Not yet"): what a workflow reports as it runs
-  (`StepFailed`, `ManualRunRefused`, the run limits); the package format's schema violations.
-  Plan in [translations-plan.md](translations-plan.md): phase 0 (gridview 1.11.2) and phase 1
-  (the CSV import, the record's errors) done on 2026-11-26, phases 2 (the workflow definitions)
-  and 3 (the package format's problems, format 2.7.0) on 2026-11-27.
+- Still English in every language (see i18n.md, "Not yet"): the package format's schema
+  violations, a grid column renderer's options. Plan in
+  [translations-plan.md](translations-plan.md): phase 0 (gridview 1.11.2) and phase 1 (the CSV
+  import, the record's errors) done on 2026-11-26, phases 2 (the workflow definitions), 3 (the
+  package format's problems, format 2.7.0) and 4 (what a workflow reports as it runs; migration
+  `Version20261127100000`, run `make db`) on 2026-11-27.
 - Remaining roadmap ideas (phase 9+): audit/timeline, REST API, YAML export/import of metadata
   (now part of the template plan), roles/users admin UI, field-level permissions.
 - **Multi-tenancy**: done, see [multi-tenancy-plan.md](multi-tenancy-plan.md) and the guide

@@ -8,6 +8,7 @@ use App\Module\Workflow\Application\Engine\RunLog;
 use App\Module\Workflow\Application\ManualRunRefused;
 use App\Module\Workflow\Application\ManualRuns;
 use App\Module\Workflow\Domain\Repository\WorkflowRepository;
+use App\Shared\Message\Message;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
@@ -62,7 +63,7 @@ final class RunWorkflowConsoleCommand
                 ? [$this->runs->run($active, $record[0] ?? null, $answers, asSomeone: false)]
                 : $this->runs->runOnSelection($active, $record, $answers, asSomeone: false);
         } catch (ManualRunRefused $e) {
-            $io->error([$e->getMessage(), ...array_map(static fn (string $name, string $error): string => $name.': '.$error, array_keys($e->errors), $e->errors)]);
+            $io->error([$e->getMessage(), ...array_map(static fn (string $name, string|Message $error): string => $name.': '.$error, array_keys($e->errors), $e->errors)]);
 
             return Command::FAILURE;
         }

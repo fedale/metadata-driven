@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Module\Workflow\Application\Definition;
 
+use App\Shared\Message\Message;
+
 /**
  * One input of a manual workflow's form, asked before it runs: read as $trigger.input.<name>.
  */
@@ -27,7 +29,7 @@ final readonly class FormInput
      * An answer as the run reads it: a text, a number, true or false, a date (Y-m-d), one of the
      * options; null when there is none. From a form or a command, where everything is a text.
      *
-     * @throws \InvalidArgumentException why the answer will not do
+     * @throws InvalidAnswer why the answer will not do
      */
     public function answer(mixed $answer): string|int|float|bool|null
     {
@@ -36,21 +38,21 @@ final readonly class FormInput
         }
         if (null === $answer || '' === $answer) {
             if ($this->required) {
-                throw new \InvalidArgumentException('Required.');
+                throw new InvalidAnswer(new Message('workflow.answer.required', 'Required.'));
             }
 
             return 'boolean' === $this->type ? false : null;
         }
         if (!\is_scalar($answer)) {
-            throw new \InvalidArgumentException('A single value.');
+            throw new InvalidAnswer(new Message('workflow.answer.not_single', 'A single value.'));
         }
         $text = (string) $answer;
 
         return match ($this->type) {
-            'number' => is_numeric($text) ? (1 === preg_match('/^-?\d+$/', $text) ? (int) $text : (float) $text) : throw new \InvalidArgumentException('A number.'),
-            'date' => self::isDate($text) ? $text : throw new \InvalidArgumentException('A date, as 2026-12-31.'),
+            'number' => is_numeric($text) ? (1 === preg_match('/^-?\d+$/', $text) ? (int) $text : (float) $text) : throw new InvalidAnswer(new Message('workflow.answer.not_number', 'A number.')),
+            'date' => self::isDate($text) ? $text : throw new InvalidAnswer(new Message('workflow.answer.not_date', 'A date, as 2026-12-31.')),
             'boolean' => $this->bool($answer),
-            'select' => \in_array($text, $this->options, true) ? $text : throw new \InvalidArgumentException(\sprintf('One of %s.', implode(', ', $this->options))),
+            'select' => \in_array($text, $this->options, true) ? $text : throw new InvalidAnswer(new Message('workflow.answer.not_an_option', 'One of %options%.', ['options' => implode(', ', $this->options)])),
             default => $text,
         };
     }
@@ -70,10 +72,10 @@ final readonly class FormInput
     {
         $value = \is_bool($answer) ? $answer : filter_var($answer, \FILTER_VALIDATE_BOOLEAN, \FILTER_NULL_ON_FAILURE);
         if (null === $value) {
-            throw new \InvalidArgumentException('true or false.');
+            throw new InvalidAnswer(new Message('workflow.answer.not_boolean', 'true or false.'));
         }
         if ($this->required && !$value) {
-            throw new \InvalidArgumentException('Required.');
+            throw new InvalidAnswer(new Message('workflow.answer.required', 'Required.'));
         }
 
         return $value;

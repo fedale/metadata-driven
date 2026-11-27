@@ -19,6 +19,7 @@ use App\Shared\Workspace\CurrentWorkspace;
 use App\Shared\Workspace\Workspaces;
 use App\Tests\Support\CreatesRelatedObjects;
 use App\Tests\Support\CreatesWorkspaces;
+use App\Tests\Support\RunErrors;
 use Doctrine\DBAL\Connection;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
 use Fedale\RbacBundle\Enum\AuthItemType;
@@ -130,7 +131,7 @@ final class WorkflowEngineTest extends KernelTestCase
         self::assertSame('Milano', $this->find('person', $customer->id)?->get('city'));
         self::assertSame([], $this->names('invoice'));
         self::assertSame('failed', $this->runs()[0]['status']);
-        self::assertSame('clerk@example.com does not hold record.invoice.create.', $this->runs()[0]['error']);
+        self::assertSame('clerk@example.com does not hold record.invoice.create.', RunErrors::english($this->runs()[0]['error']));
     }
 
     public function testItsActivatorMayNotWriteThroughWhoeverTriggersIt(): void
@@ -163,7 +164,7 @@ final class WorkflowEngineTest extends KernelTestCase
         $this->records->update($customer->id, new RecordInput('person', ['city' => 'Milano']));
 
         self::assertSame([], $this->names('invoice', 'number'));
-        self::assertSame('owner@example.com, who activated it, no longer holds record.invoice.create.', $this->runs()[0]['error']);
+        self::assertSame('owner@example.com, who activated it, no longer holds record.invoice.create.', RunErrors::english($this->runs()[0]['error']));
     }
 
     public function testSetValuesStopsOnceItsActivatorMayNoLongerWriteThere(): void
@@ -204,7 +205,7 @@ final class WorkflowEngineTest extends KernelTestCase
         self::getContainer()->get(RbacManagerInterface::class)->revoke('owner@example.com', 'ROLE_OWNER');
         $this->records->update($customer->id, new RecordInput('person', ['city' => 'Torino']));
         self::assertSame(['X1'], $this->names('invoice', 'number'));
-        self::assertSame('It acts as ROLE_OWNER, which owner@example.com can no longer give.', $this->runs()[1]['error']);
+        self::assertSame('It acts as ROLE_OWNER, which owner@example.com can no longer give.', RunErrors::english($this->runs()[1]['error']));
     }
 
     public function testAChainOfRunsStopsAtItsDepth(): void
@@ -253,7 +254,7 @@ final class WorkflowEngineTest extends KernelTestCase
         $this->records->create(new RecordInput('person', ['full_name' => 'Ada']));
 
         self::assertSame([], $this->names('pet'));
-        self::assertSame('No one triggered this event: choose a role for the step to act as.', $this->runs()[0]['error']);
+        self::assertSame('No one triggered this event: choose a role for the step to act as.', RunErrors::english($this->runs()[0]['error']));
         self::assertNull($this->runs()[0]['triggered_by']);
     }
 
@@ -365,7 +366,7 @@ final class WorkflowEngineTest extends KernelTestCase
 
         $run = self::getContainer()->get(\App\Module\Workflow\Application\Engine\WorkflowEngine::class)->dryRun($definition, 'Test', $ada->id);
 
-        self::assertSame(['refused', 'No Ada.'], [$run->status, $run->error]);
+        self::assertSame(['refused', 'No Ada.'], [$run->status, RunErrors::english($run->error)]);
         self::assertSame(['city' => 'Torino'], $run->steps[0]['output']);
         self::assertSame([], $this->runs());
     }

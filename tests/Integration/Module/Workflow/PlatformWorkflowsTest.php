@@ -23,6 +23,7 @@ use App\Tests\Support\CreatesWorkspaces;
 use App\Tests\Support\FakePackageServer;
 use App\Tests\Support\PublishesPackages;
 use App\Tests\Support\RemovesDirectories;
+use App\Tests\Support\RunErrors;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Mime\Email;
@@ -152,7 +153,7 @@ final class PlatformWorkflowsTest extends KernelTestCase
 
         $runs = self::getContainer()->get(PlatformWorkflows::class)->runPending();
 
-        self::assertSame([RunLog::FAILED, 'beta: "ROLE_BOSS" is no role of this workspace.'], [$runs[0]->status, $runs[0]->error]);
+        self::assertSame([RunLog::FAILED, 'beta: "ROLE_BOSS" is no role of this workspace.'], [$runs[0]->status, RunErrors::english($runs[0]->error)]);
     }
 
     public function testARoleIsGivenToAMemberOnly(): void
@@ -166,7 +167,7 @@ final class PlatformWorkflowsTest extends KernelTestCase
 
         $runs = self::getContainer()->get(PlatformWorkflows::class)->runPending();
 
-        self::assertSame([RunLog::FAILED, 'beta: friend@example.com is no member of this workspace.'], [$runs[0]->status, $runs[0]->error]);
+        self::assertSame([RunLog::FAILED, 'beta: friend@example.com is no member of this workspace.'], [$runs[0]->status, RunErrors::english($runs[0]->error)]);
         // Nothing waits for whoever joins with that email later.
         self::assertSame([], $this->sessions()->within($this->beta, static fn (): array => self::getContainer()->get(WorkspaceRolesInterface::class)->rolesOf('friend@example.com')));
     }
@@ -191,9 +192,10 @@ final class PlatformWorkflowsTest extends KernelTestCase
         $run = $this->sessions()->asSystem(static fn (): array|false => $connection->fetchAssociative('SELECT r.status, r.error, (SELECT COUNT(*) FROM core.workflow_run_step s WHERE s.run_id = r.id) AS steps FROM core.workflow_run r WHERE r.workspace_id IS NULL'));
         self::assertIsArray($run);
         self::assertSame(['failed', 1], [$run['status'], $run['steps']]);
-        self::assertIsString($run['error']);
-        self::assertStringStartsWith('It broke: ', $run['error']);
-        self::assertStringContainsString('The disk is full.', $run['error']);
+        $error = RunErrors::english($run['error']);
+        self::assertIsString($error);
+        self::assertStringStartsWith('It broke: ', $error);
+        self::assertStringContainsString('The disk is full.', $error);
     }
 
     public function testEachSideDefinesItsOwn(): void
