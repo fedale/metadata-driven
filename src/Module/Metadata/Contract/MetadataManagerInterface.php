@@ -9,6 +9,7 @@ use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\Exception\InvalidFieldSettings;
 use App\Module\Metadata\Contract\Exception\MetadataException;
 use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
+use App\Shared\Message\Message;
 
 /**
  * Changes to the definitions, for the modules that edit them (the admin UI). Every change
@@ -40,7 +41,7 @@ interface MetadataManagerInterface
      * Gives an object a new machine name: its table, the relations pointing at it, the
      * forms naming it, its translations and its permissions follow.
      *
-     * @return list<string> the definitions written by hand that were rewritten (forms)
+     * @return list<string|Message> the definitions written by hand that were rewritten (forms)
      */
     public function renameObject(string $objectName, string $newName): array;
 
@@ -49,7 +50,7 @@ interface MetadataManagerInterface
      * searched fields, conditions, cascades), the views of its object, the forms and
      * its translations follow.
      *
-     * @return list<string> the definitions written by hand that were rewritten (views, forms)
+     * @return list<string|Message> the definitions written by hand that were rewritten (views, forms)
      */
     public function renameField(string $objectName, string $fieldName, string $newName): array;
 

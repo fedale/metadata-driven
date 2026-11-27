@@ -15,6 +15,7 @@ use App\Module\Workflow\Application\WorkflowManager;
 use App\Module\Workflow\Domain\Model\VersionStatus;
 use App\Module\Workflow\Domain\Model\Workflow;
 use App\Module\Workflow\Domain\Repository\WorkflowRepository;
+use App\Shared\Message\MessageTranslator;
 use App\Tests\Support\CreatesRelatedObjects;
 use Fedale\RbacBundle\Contract\RbacManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -95,7 +96,10 @@ final class MetadataInWorkflowsTest extends KernelTestCase
         $other = $this->workflows->create('Other', null, "trigger: { on: created, object: person, when: after }\nsteps: [{ key: no, type: filter, when: { field: \$trigger.record.full_name, op: not_empty } }]");
         $this->workflows->activate($other);
 
-        self::assertSame(['workflow "Stamp" (draft, active)'], $this->metadata->renameField('person', 'city', 'town'));
+        $rewritten = $this->metadata->renameField('person', 'city', 'town');
+        self::assertSame(['workflow "Stamp" (draft, active)'], array_map(strval(...), $rewritten));
+        // Its versions named in the language of the page.
+        self::assertSame(['workflow "Stamp" (bozza, attiva)'], self::getContainer()->get(MessageTranslator::class)->transAll($rewritten, 'it'));
 
         $active = $this->workflows->activeVersion($stamp);
         self::assertNotNull($active);
@@ -119,7 +123,7 @@ final class MetadataInWorkflowsTest extends KernelTestCase
         $this->workflows->saveDraft($stamp, str_replace('Has ', 'Owns ', self::STAMP));
         $this->workflows->activate($stamp);
 
-        self::assertSame(['workflow "Stamp" (active)'], $this->metadata->renameObject('pet', 'animal'));
+        self::assertSame(['workflow "Stamp" (active)'], array_map(strval(...), $this->metadata->renameObject('pet', 'animal')));
 
         $versions = self::getContainer()->get(WorkflowRepository::class)->versionsOf($stamp);
         $sources = array_combine(array_map(static fn ($version): string => $version->getStatus()->value, $versions), array_map(static fn ($version): string => $version->getSource(), $versions));

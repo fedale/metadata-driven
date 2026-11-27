@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Workflow\Application\Definition;
 
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
+use App\Shared\Message\Message;
 use Cron\CronExpression;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
@@ -38,7 +39,7 @@ final class DefinitionParser
 
     private const string ROLE = '/^ROLE_[A-Z0-9_]{1,59}$/';
 
-    /** @var array<string, list<string>> */
+    /** @var array<string, list<Message>> */
     private array $errors = [];
 
     /** @var array<string, true> */
@@ -63,7 +64,7 @@ final class DefinitionParser
         try {
             $data = WorkflowYaml::parse($yaml, Yaml::PARSE_EXCEPTION_ON_INVALID_TYPE);
         } catch (ParseException $e) {
-            throw new InvalidWorkflowDefinition(['' => [\sprintf('Not valid YAML: %s', $e->getMessage())]]);
+            throw new InvalidWorkflowDefinition(['' => [new Message('workflow.definition.yaml_invalid', 'Not valid YAML: %error%', ['error' => $e->getMessage()])]]);
         }
 
         return $this->fromArray(\is_array($data) ? $data : []);
@@ -86,7 +87,7 @@ final class DefinitionParser
         $trigger = $this->trigger($data['trigger'] ?? null);
         $steps = $this->steps($data['steps'] ?? null, 'steps', $trigger?->when);
         if ($this->count > self::MAX_STEPS) {
-            $this->error('steps', \sprintf('At most %d steps, branches included: there are %d.', self::MAX_STEPS, $this->count));
+            $this->error('steps', new Message('workflow.definition.too_many_steps', 'At most %max% steps, branches included: there are %count%.', ['max' => self::MAX_STEPS, 'count' => $this->count]));
         }
 
         if ([] !== $this->errors || null === $trigger) {
@@ -99,13 +100,13 @@ final class DefinitionParser
     private function trigger(mixed $trigger): ?Trigger
     {
         if (!\is_array($trigger)) {
-            $this->error('trigger', 'Required: a map with on, object and when.');
+            $this->error('trigger', new Message('workflow.definition.trigger_required', 'Required: a map with on, object and when.'));
 
             return null;
         }
         $on = \is_string($trigger['on'] ?? null) ? TriggerEvent::tryFrom($trigger['on']) : null;
         if (null === $on) {
-            $this->error('trigger.on', \sprintf('One of %s.', implode(', ', array_column(TriggerEvent::cases(), 'value'))));
+            $this->error('trigger.on', new Message('workflow.definition.one_of', 'One of %values%.', ['values' => implode(', ', array_column(TriggerEvent::cases(), 'value'))]));
         }
         if (true === $on?->isPlatform()) {
             // The platform's: nothing to name but the event.
@@ -130,7 +131,7 @@ final class DefinitionParser
             $this->unknownKeys($trigger, ['on', 'cron'], 'trigger');
             $cron = $trigger['cron'] ?? null;
             if (!\is_string($cron) || !CronExpression::isValidExpression($cron)) {
-                $this->error('trigger.cron', 'A cron expression, in UTC: minute hour day month weekday, e.g. "0 8 * * 1" (Mondays at 8).');
+                $this->error('trigger.cron', new Message('workflow.definition.cron_invalid', 'A cron expression, in UTC: minute hour day month weekday, e.g. "0 8 * * 1" (Mondays at 8).'));
 
                 return null;
             }
@@ -145,12 +146,12 @@ final class DefinitionParser
         $transition = $transitioned && \array_key_exists('transition', $trigger) ? $this->name($trigger['transition'], 'trigger.transition') : null;
         $when = \is_string($trigger['when'] ?? null) ? Timing::tryFrom($trigger['when']) : null;
         if (null === $when) {
-            $this->error('trigger.when', 'before or after.');
+            $this->error('trigger.when', new Message('workflow.definition.when_invalid', 'before or after.'));
         }
         $fields = [];
         if (\array_key_exists('fields', $trigger)) {
             if (!\in_array($on, [TriggerEvent::Updated, TriggerEvent::CreatedOrUpdated], true)) {
-                $this->error('trigger.fields', 'Only for a trigger on updated or created_or_updated: the fields whose change runs it.');
+                $this->error('trigger.fields', new Message('workflow.definition.fields_not_here', 'Only for a trigger on updated or created_or_updated: the fields whose change runs it.'));
             }
             $fields = $this->names($trigger['fields'], 'trigger.fields');
         }
@@ -168,24 +169,24 @@ final class DefinitionParser
         $this->unknownKeys($trigger, ['on', 'object', 'label', 'selection', 'form'], 'trigger');
         $selection = $trigger['selection'] ?? null;
         if (null !== $selection && !\in_array($selection, ['each', 'all'], true)) {
-            $this->error('trigger.selection', 'each (a run per record) or all (one run on them all).');
+            $this->error('trigger.selection', new Message('workflow.definition.selection_invalid', 'each (a run per record) or all (one run on them all).'));
             $selection = null;
         }
         $object = $this->name($trigger['object'] ?? null, 'trigger.object');
         $label = \is_string($trigger['label'] ?? null) && '' !== trim($trigger['label']) && mb_strlen($trigger['label']) <= 100 ? trim($trigger['label']) : null;
         if (null === $label) {
-            $this->error('trigger.label', 'Required: the text of its button, at most 100 characters.');
+            $this->error('trigger.label', new Message('workflow.definition.label_required', 'Required: the text of its button, at most 100 characters.'));
         }
         $form = [];
         if (\array_key_exists('form', $trigger)) {
             if (!\is_array($trigger['form']) || !array_is_list($trigger['form'])) {
-                $this->error('trigger.form', 'A list of inputs, each with name, label and type.');
+                $this->error('trigger.form', new Message('workflow.definition.form_invalid', 'A list of inputs, each with name, label and type.'));
             } else {
                 $names = [];
                 foreach ($trigger['form'] as $i => $input) {
                     $input = $this->formInput($input, 'trigger.form.'.$i);
                     if (null !== $input && isset($names[$input->name])) {
-                        $this->error('trigger.form.'.$i.'.name', \sprintf('"%s" names another input already.', $input->name));
+                        $this->error('trigger.form.'.$i.'.name', new Message('workflow.definition.input_twice', '"%name%" names another input already.', ['name' => $input->name]));
                     } elseif (null !== $input) {
                         $names[$input->name] = true;
                         $form[] = $input;
@@ -209,13 +210,13 @@ final class DefinitionParser
         $inputs = [];
         if (\array_key_exists('input', $trigger)) {
             if (!\is_array($trigger['input']) || !array_is_list($trigger['input'])) {
-                $this->error('trigger.input', 'A list of inputs, each with name and type.');
+                $this->error('trigger.input', new Message('workflow.definition.inputs_invalid', 'A list of inputs, each with name and type.'));
             } else {
                 $names = [];
                 foreach ($trigger['input'] as $i => $input) {
                     $input = $this->formInput($input, 'trigger.input.'.$i, false);
                     if (null !== $input && isset($names[$input->name])) {
-                        $this->error('trigger.input.'.$i.'.name', \sprintf('"%s" names another input already.', $input->name));
+                        $this->error('trigger.input.'.$i.'.name', new Message('workflow.definition.input_twice', '"%name%" names another input already.', ['name' => $input->name]));
                     } elseif (null !== $input) {
                         $names[$input->name] = true;
                         $inputs[] = $input;
@@ -230,7 +231,7 @@ final class DefinitionParser
     private function formInput(mixed $input, string $path, bool $labelled = true): ?FormInput
     {
         if (!\is_array($input)) {
-            $this->error($path, 'An input is a map with name, label and type.');
+            $this->error($path, new Message('workflow.definition.input_invalid', 'An input is a map with name, label and type.'));
 
             return null;
         }
@@ -241,27 +242,27 @@ final class DefinitionParser
             $label = $name;
         }
         if (null === $label) {
-            $this->error($path.'.label', 'Required: the text shown next to it.');
+            $this->error($path.'.label', new Message('workflow.definition.input_label_required', 'Required: the text shown next to it.'));
         }
         $type = $input['type'] ?? null;
         if (!\is_string($type) || !\in_array($type, FormInput::TYPES, true)) {
-            $this->error($path.'.type', \sprintf('One of %s.', implode(', ', FormInput::TYPES)));
+            $this->error($path.'.type', new Message('workflow.definition.one_of', 'One of %values%.', ['values' => implode(', ', FormInput::TYPES)]));
             $type = null;
         }
         $options = [];
         if ('select' === $type) {
             $raw = $input['options'] ?? null;
             if (!\is_array($raw) || !array_is_list($raw) || [] === $raw || [] !== array_filter($raw, static fn (mixed $option): bool => !\is_scalar($option))) {
-                $this->error($path.'.options', 'A select takes a list of options, one at least.');
+                $this->error($path.'.options', new Message('workflow.definition.select_options_required', 'A select takes a list of options, one at least.'));
             } else {
                 $options = array_map(static fn (mixed $option): string => \is_scalar($option) ? (string) $option : '', $raw);
             }
         } elseif (\array_key_exists('options', $input)) {
-            $this->error($path.'.options', 'Only a select takes options.');
+            $this->error($path.'.options', new Message('workflow.definition.options_select_only', 'Only a select takes options.'));
         }
         $required = $input['required'] ?? false;
         if (!\is_bool($required)) {
-            $this->error($path.'.required', 'true or false.');
+            $this->error($path.'.required', new Message('workflow.definition.boolean', 'true or false.'));
         }
 
         return null === $name || null === $label || null === $type ? null : new FormInput($name, $label, $type, true === $required, $options);
@@ -273,7 +274,7 @@ final class DefinitionParser
     private function steps(mixed $steps, string $path, ?Timing $timing): array
     {
         if (!\is_array($steps) || !array_is_list($steps) || [] === $steps) {
-            $this->error($path, 'Required: a list of steps, one at least.');
+            $this->error($path, new Message('workflow.definition.steps_required', 'Required: a list of steps, one at least.'));
 
             return [];
         }
@@ -292,58 +293,58 @@ final class DefinitionParser
     {
         ++$this->count;
         if (!\is_array($step)) {
-            $this->error($path, 'A step is a map with key, type and its options.');
+            $this->error($path, new Message('workflow.definition.step_invalid', 'A step is a map with key, type and its options.'));
 
             return null;
         }
         $key = \is_string($step['key'] ?? null) ? $step['key'] : null;
         if (null === $key || 1 !== preg_match(self::KEY, $key)) {
-            $this->error($path.'.key', 'Required: lowercase letters, digits and underscores, starting with a letter; it names the step\'s output.');
+            $this->error($path.'.key', new Message('workflow.definition.step_key_required', 'Required: lowercase letters, digits and underscores, starting with a letter; it names the step\'s output.'));
             $key = null;
         } elseif (isset($this->keys[$key])) {
-            $this->error($path.'.key', \sprintf('"%s" names another step already.', $key));
+            $this->error($path.'.key', new Message('workflow.definition.step_key_twice', '"%key%" names another step already.', ['key' => $key]));
         } else {
             $this->keys[$key] = true;
         }
         $type = \is_string($step['type'] ?? null) ? StepType::tryFrom($step['type']) : null;
         if (null === $type) {
-            $this->error($path.'.type', \sprintf('One of %s.', implode(', ', array_column(StepType::cases(), 'value'))));
+            $this->error($path.'.type', new Message('workflow.definition.one_of', 'One of %values%.', ['values' => implode(', ', array_column(StepType::cases(), 'value'))]));
 
             return null;
         }
         $this->unknownKeys($step, ['key', 'type', ...array_keys($type->options())], $path);
         foreach ($type->options() as $option => $required) {
             if ($required && !\array_key_exists($option, $step)) {
-                $this->error($path.'.'.$option, 'Required.');
+                $this->error($path.'.'.$option, new Message('workflow.definition.required', 'Required.'));
             }
         }
         if ($this->platform && !$type->forPlatform()) {
-            $this->error($path.'.type', 'A workflow on the platform\'s events takes if, filter, refuse, http_request, send_email, install_package and assign_role only.');
+            $this->error($path.'.type', new Message('workflow.definition.platform_step', 'A workflow on the platform\'s events takes if, filter, refuse, http_request, send_email, install_package and assign_role only.'));
         } elseif (!$this->platform && $type->isPlatform()) {
-            $this->error($path.'.type', \sprintf('%s is a step of the system admin\'s workflows, on the platform\'s events.', $type->value));
+            $this->error($path.'.type', new Message('workflow.definition.system_step', '%type% is a step of the system admin\'s workflows, on the platform\'s events.', ['type' => $type->value]));
         }
         if (StepType::HttpRequest === $type && Timing::Before === $timing && !$this->manual) {
-            $this->error($path.'.type', 'No call to the outside in a write: no http_request in a workflow run before the write.');
+            $this->error($path.'.type', new Message('workflow.definition.http_before_write', 'No call to the outside in a write: no http_request in a workflow run before the write.'));
         }
         if (StepType::Wait === $type) {
             if (\array_key_exists('for', $step) === \array_key_exists('until', $step)) {
-                $this->error($path, 'A wait takes for (a duration) or until (a date), one of them.');
+                $this->error($path, new Message('workflow.definition.wait_invalid', 'A wait takes for (a duration) or until (a date), one of them.'));
             }
             if (Timing::Before === $timing && !$this->manual) {
-                $this->error($path.'.type', 'A write waits for no one: no wait in a workflow run before the write.');
+                $this->error($path.'.type', new Message('workflow.definition.wait_before_write', 'A write waits for no one: no wait in a workflow run before the write.'));
             }
             if ($this->called) {
-                $this->error($path.'.type', 'A called workflow runs inside its caller\'s run, which waits for no one: no wait.');
+                $this->error($path.'.type', new Message('workflow.definition.wait_when_called', 'A called workflow runs inside its caller\'s run, which waits for no one: no wait.'));
             }
             if (1 !== preg_match('/^steps\.\d+$/', $path)) {
-                $this->error($path.'.type', 'A wait is one of the first steps: not inside an if or an iterator, which it would have to resume halfway through.');
+                $this->error($path.'.type', new Message('workflow.definition.wait_nested', 'A wait is one of the first steps: not inside an if or an iterator, which it would have to resume halfway through.'));
             }
         }
         if (StepType::Return === $type && !$this->called) {
-            $this->error($path.'.type', 'return gives a called workflow\'s values to its caller: only in a workflow on called.');
+            $this->error($path.'.type', new Message('workflow.definition.return_not_called', 'return gives a called workflow\'s values to its caller: only in a workflow on called.'));
         }
         if ((Timing::After === $timing || $this->manual) && StepType::SetValues === $type) {
-            $this->error($path.'.type', 'set_values changes the values being written: only in a workflow run before the write.');
+            $this->error($path.'.type', new Message('workflow.definition.set_values_not_before', 'set_values changes the values being written: only in a workflow run before the write.'));
         }
 
         $options = [];
@@ -363,10 +364,10 @@ final class DefinitionParser
                 'id', 'message' => $options[$option] = $this->text($value, $at),
                 'values' => $options[$option] = $this->values($value, $at),
                 'act_as', 'role' => $options[$option] = $this->role($value, $at),
-                'package' => $options[$option] = \is_string($value) && 1 === preg_match('/^[a-z0-9][a-z0-9_.-]*\/[a-z0-9][a-z0-9_.-]*(@[0-9A-Za-z.+-]+)?$/', $value) ? $value : $this->error($at, 'A package of the indexes: vendor/name, or vendor/name@1.0.0.'),
-                'repo' => $options[$option] = \is_string($value) && '' !== trim($value) ? trim($value) : $this->error($at, 'The name of an index (metadata:package:repo list).'),
+                'package' => $options[$option] = \is_string($value) && 1 === preg_match('/^[a-z0-9][a-z0-9_.-]*\/[a-z0-9][a-z0-9_.-]*(@[0-9A-Za-z.+-]+)?$/', $value) ? $value : $this->error($at, new Message('workflow.definition.package_invalid', 'A package of the indexes: vendor/name, or vendor/name@1.0.0.')),
+                'repo' => $options[$option] = \is_string($value) && '' !== trim($value) ? trim($value) : $this->error($at, new Message('workflow.definition.repo_invalid', 'The name of an index (metadata:package:repo list).')),
                 'email', 'until', 'url' => $options[$option] = $this->text($value, $at),
-                'method' => $options[$option] = \is_string($value) && \in_array(strtoupper($value), self::METHODS, true) ? strtoupper($value) : $this->error($at, \sprintf('One of %s.', implode(', ', self::METHODS))),
+                'method' => $options[$option] = \is_string($value) && \in_array(strtoupper($value), self::METHODS, true) ? strtoupper($value) : $this->error($at, new Message('workflow.definition.one_of', 'One of %values%.', ['values' => implode(', ', self::METHODS)])),
                 'headers' => $options[$option] = $this->headers($value, $at),
                 // An email's body is a text; a request's, a text or YAML sent as JSON.
                 'body' => $options[$option] = StepType::SendEmail === $type ? $this->text($value, $at) : $this->body($value, $at),
@@ -374,18 +375,18 @@ final class DefinitionParser
                 'text' => $options[$option] = $this->text($value, $at),
                 'to' => $options[$option] = $this->recipients($value, $at, $type),
                 'link' => $options[$option] = $this->link($value, $at),
-                'timeout' => $options[$option] = \is_int($value) && $value >= 1 && $value <= 30 ? $value : $this->error($at, 'Seconds, from 1 to 30.'),
-                'retries' => $options[$option] = \is_int($value) && $value >= 0 && $value <= 3 ? $value : $this->error($at, 'From 0 to 3.'),
+                'timeout' => $options[$option] = \is_int($value) && $value >= 1 && $value <= 30 ? $value : $this->error($at, new Message('workflow.definition.timeout_invalid', 'Seconds, from 1 to 30.')),
+                'retries' => $options[$option] = \is_int($value) && $value >= 0 && $value <= 3 ? $value : $this->error($at, new Message('workflow.definition.retries_invalid', 'From 0 to 3.')),
                 'fail_on_error' => $options[$option] = $this->flag($value, $at),
-                'for' => $options[$option] = \is_string($value) && 1 === preg_match(self::DURATION, $value) ? $value : $this->error($at, 'A duration: a number and minutes, hours, days or weeks, e.g. 30 minutes.'),
+                'for' => $options[$option] = \is_string($value) && 1 === preg_match(self::DURATION, $value) ? $value : $this->error($at, new Message('workflow.definition.duration_invalid', 'A duration: a number and minutes, hours, days or weeks, e.g. 30 minutes.')),
                 'emit_events' => $options[$option] = $this->flag($value, $at),
                 'where' => $options[$option] = $this->where($value, $at),
                 'sort' => $options[$option] = 'id' === $value ? 'id' : $this->name($value, $at),
-                'direction' => $options[$option] = \in_array($value, ['asc', 'desc'], true) ? $value : $this->error($at, 'asc or desc.'),
-                'limit' => $options[$option] = \is_int($value) && $value > 0 ? $value : $this->error($at, 'A number of records, one at least.'),
-                'items' => $options[$option] = \is_string($value) && 1 === preg_match('/^\{\{\s*'.self::PATH.'\s*\}\}$/', $value) ? $value : $this->error($at, 'One {{ path }} to a list, e.g. {{ open.records }}.'),
+                'direction' => $options[$option] = \in_array($value, ['asc', 'desc'], true) ? $value : $this->error($at, new Message('workflow.definition.direction_invalid', 'asc or desc.')),
+                'limit' => $options[$option] = \is_int($value) && $value > 0 ? $value : $this->error($at, new Message('workflow.definition.limit_invalid', 'A number of records, one at least.')),
+                'items' => $options[$option] = \is_string($value) && 1 === preg_match('/^\{\{\s*'.self::PATH.'\s*\}\}$/', $value) ? $value : $this->error($at, new Message('workflow.definition.items_invalid', 'One {{ path }} to a list, e.g. {{ open.records }}.')),
                 'steps' => $steps = $this->steps($value, $at, $timing),
-                'workflow' => $options[$option] = \is_string($value) && 1 === preg_match('/^\S(.{0,98}\S)?$/u', $value) && !str_contains($value, '{{') ? $value : $this->error($at, 'The name of a workflow on called, as written: no {{ … }}.'),
+                'workflow' => $options[$option] = \is_string($value) && 1 === preg_match('/^\S(.{0,98}\S)?$/u', $value) && !str_contains($value, '{{') ? $value : $this->error($at, new Message('workflow.definition.workflow_name_invalid', 'The name of a workflow on called, as written: no {{ … }}.')),
                 'input' => $options[$option] = $this->inputs($value, $at),
                 default => null,
             };
@@ -400,7 +401,7 @@ final class DefinitionParser
     private function branches(mixed $branches, string $path, ?Timing $timing): array
     {
         if (!\is_array($branches) || !array_is_list($branches) || [] === $branches) {
-            $this->error($path, 'Required: a list of branches, each with when (none for the last, the else) and steps.');
+            $this->error($path, new Message('workflow.definition.branches_required', 'Required: a list of branches, each with when (none for the last, the else) and steps.'));
 
             return [];
         }
@@ -409,7 +410,7 @@ final class DefinitionParser
         foreach ($branches as $i => $branch) {
             $at = $path.'.'.$i;
             if (!\is_array($branch)) {
-                $this->error($at, 'A branch is a map with when and steps.');
+                $this->error($at, new Message('workflow.definition.branch_invalid', 'A branch is a map with when and steps.'));
                 continue;
             }
             $this->unknownKeys($branch, ['when', 'steps'], $at);
@@ -417,7 +418,7 @@ final class DefinitionParser
             if (\array_key_exists('when', $branch)) {
                 $when = $this->condition($branch['when'], $at.'.when');
             } elseif ($i !== $last) {
-                $this->error($at.'.when', 'Required: only the last branch, the else, goes without.');
+                $this->error($at.'.when', new Message('workflow.definition.when_required', 'Required: only the last branch, the else, goes without.'));
             }
             $parsed[] = new Branch($when, $this->steps($branch['steps'] ?? null, $at.'.steps', $timing));
         }
@@ -428,7 +429,7 @@ final class DefinitionParser
     private function condition(mixed $condition, string $path): ?Condition
     {
         if (!\is_array($condition)) {
-            $this->error($path, 'A condition: { field, op, value }, or { all: [...] } or { any: [...] }.');
+            $this->error($path, new Message('workflow.definition.condition_invalid', 'A condition: { field, op, value }, or { all: [...] } or { any: [...] }.'));
 
             return null;
         }
@@ -437,7 +438,7 @@ final class DefinitionParser
                 $this->unknownKeys($condition, [$group], $path);
                 $conditions = $condition[$group];
                 if (!\is_array($conditions) || !array_is_list($conditions) || [] === $conditions) {
-                    $this->error($path.'.'.$group, 'A list of conditions, one at least.');
+                    $this->error($path.'.'.$group, new Message('workflow.definition.conditions_invalid', 'A list of conditions, one at least.'));
 
                     return null;
                 }
@@ -454,24 +455,24 @@ final class DefinitionParser
         $this->unknownKeys($condition, ['field', 'op', 'value'], $path);
         $field = $condition['field'] ?? null;
         if (!\is_string($field) || 1 !== preg_match('/^'.self::PATH.'$/', $field)) {
-            $this->error($path.'.field', 'Required: a path on the data chain, e.g. $trigger.record.status.');
+            $this->error($path.'.field', new Message('workflow.definition.condition_field_required', 'Required: a path on the data chain, e.g. $trigger.record.status.'));
             $field = null;
         }
         $operator = $condition['op'] ?? null;
         if (!\is_string($operator) || !\in_array($operator, Condition::OPERATORS, true)) {
-            $this->error($path.'.op', \sprintf('One of %s.', implode(', ', Condition::OPERATORS)));
+            $this->error($path.'.op', new Message('workflow.definition.one_of', 'One of %values%.', ['values' => implode(', ', Condition::OPERATORS)]));
 
             return null;
         }
         $value = $condition['value'] ?? null;
         if (\in_array($operator, Condition::UNARY, true)) {
             if (\array_key_exists('value', $condition)) {
-                $this->error($path.'.value', \sprintf('%s takes no value.', $operator));
+                $this->error($path.'.value', new Message('workflow.definition.operator_without_value', '%operator% takes no value.', ['operator' => $operator]));
             }
         } elseif (!\array_key_exists('value', $condition)) {
-            $this->error($path.'.value', 'Required.');
+            $this->error($path.'.value', new Message('workflow.definition.required', 'Required.'));
         } elseif (\in_array($operator, ['in', 'between'], true) && (!\is_array($value) || !array_is_list($value) || ('between' === $operator && 2 !== \count($value)))) {
-            $this->error($path.'.value', 'between' === $operator ? 'A list of two values: the lowest and the highest.' : 'A list of values.');
+            $this->error($path.'.value', 'between' === $operator ? new Message('workflow.definition.between_invalid', 'A list of two values: the lowest and the highest.') : new Message('workflow.definition.values_invalid', 'A list of values.'));
         } else {
             $this->templates($value, $path.'.value');
         }
@@ -487,14 +488,14 @@ final class DefinitionParser
     private function headers(mixed $headers, string $path): array
     {
         if (!\is_array($headers) || (array_is_list($headers) && [] !== $headers)) {
-            $this->error($path, 'A map of header names to texts.');
+            $this->error($path, new Message('workflow.definition.headers_invalid', 'A map of header names to texts.'));
 
             return [];
         }
         $parsed = [];
         foreach ($headers as $name => $value) {
             if (1 !== preg_match('/^[A-Za-z0-9-]+$/', (string) $name) || !\is_scalar($value)) {
-                $this->error($path.'.'.$name, 'A header: a name of letters, digits and dashes, and a text.');
+                $this->error($path.'.'.$name, new Message('workflow.definition.header_invalid', 'A header: a name of letters, digits and dashes, and a text.'));
                 continue;
             }
             $this->templates((string) $value, $path.'.'.$name);
@@ -510,7 +511,7 @@ final class DefinitionParser
     private function body(mixed $body, string $path): mixed
     {
         if (!\is_array($body) && !\is_string($body)) {
-            return $this->error($path, 'A map (sent as JSON) or a text.');
+            return $this->error($path, new Message('workflow.definition.body_invalid', 'A map (sent as JSON) or a text.'));
         }
         $this->templates($body, $path);
 
@@ -525,7 +526,7 @@ final class DefinitionParser
     private function where(mixed $where, string $path): array
     {
         if (!\is_array($where) || !array_is_list($where) || [] === $where) {
-            $this->error($path, 'A list of tests, { field, op, value }, all of which must hold.');
+            $this->error($path, new Message('workflow.definition.tests_invalid', 'A list of tests, { field, op, value }, all of which must hold.'));
 
             return [];
         }
@@ -533,28 +534,28 @@ final class DefinitionParser
         foreach ($where as $i => $test) {
             $at = $path.'.'.$i;
             if (!\is_array($test)) {
-                $this->error($at, 'A test: { field, op, value }.');
+                $this->error($at, new Message('workflow.definition.test_invalid', 'A test: { field, op, value }.'));
                 continue;
             }
             $this->unknownKeys($test, ['field', 'op', 'value'], $at);
             $field = 'id' === ($test['field'] ?? null) ? 'id' : $this->name($test['field'] ?? null, $at.'.field');
             $operator = $test['op'] ?? null;
             if (!\is_string($operator) || !\in_array($operator, Condition::OPERATORS, true)) {
-                $this->error($at.'.op', \sprintf('One of %s.', implode(', ', Condition::OPERATORS)));
+                $this->error($at.'.op', new Message('workflow.definition.one_of', 'One of %values%.', ['values' => implode(', ', Condition::OPERATORS)]));
                 continue;
             }
             if (\in_array($operator, Condition::UNARY, true)) {
                 if (\array_key_exists('value', $test)) {
-                    $this->error($at.'.value', \sprintf('%s takes no value.', $operator));
+                    $this->error($at.'.value', new Message('workflow.definition.operator_without_value', '%operator% takes no value.', ['operator' => $operator]));
                 }
                 null === $field ?: $tests[] = ['field' => $field, 'op' => $operator];
                 continue;
             }
             $value = $test['value'] ?? null;
             if (!\array_key_exists('value', $test)) {
-                $this->error($at.'.value', 'Required.');
+                $this->error($at.'.value', new Message('workflow.definition.required', 'Required.'));
             } elseif (\in_array($operator, ['in', 'between'], true) && (!\is_array($value) || !array_is_list($value) || ('between' === $operator && 2 !== \count($value)))) {
-                $this->error($at.'.value', 'between' === $operator ? 'A list of two values: the lowest and the highest.' : 'A list of values.');
+                $this->error($at.'.value', 'between' === $operator ? new Message('workflow.definition.between_invalid', 'A list of two values: the lowest and the highest.') : new Message('workflow.definition.values_invalid', 'A list of values.'));
             } else {
                 $this->templates($value, $at.'.value');
             }
@@ -570,7 +571,7 @@ final class DefinitionParser
     private function values(mixed $values, string $path): array
     {
         if (!\is_array($values) || (array_is_list($values) && [] !== $values) || [] === $values) {
-            $this->error($path, 'A map of field names to values, one at least.');
+            $this->error($path, new Message('workflow.definition.values_map_invalid', 'A map of field names to values, one at least.'));
 
             return [];
         }
@@ -595,7 +596,7 @@ final class DefinitionParser
     private function inputs(mixed $inputs, string $path): array
     {
         if (!\is_array($inputs) || (array_is_list($inputs) && [] !== $inputs)) {
-            $this->error($path, 'A map of the called workflow\'s inputs to values.');
+            $this->error($path, new Message('workflow.definition.call_input_invalid', 'A map of the called workflow\'s inputs to values.'));
 
             return [];
         }
@@ -625,14 +626,14 @@ final class DefinitionParser
             return;
         }
         if (\is_string($value) && substr_count($value, '{{') !== preg_match_all(self::TEMPLATE, $value)) {
-            $this->error($path, 'Each {{ … }} holds a path on the data chain, e.g. {{ $trigger.record.name }}: nothing else.');
+            $this->error($path, new Message('workflow.definition.placeholder_invalid', 'Each {{ … }} holds a path on the data chain, e.g. {{ $trigger.record.name }}: nothing else.'));
         }
     }
 
     private function name(mixed $name, string $path): ?string
     {
         if (!\is_string($name) || 1 !== preg_match('/^[a-z][a-z0-9_]*$/', $name)) {
-            $this->error($path, 'Required: a machine name, lowercase letters, digits and underscores.');
+            $this->error($path, new Message('workflow.definition.machine_name_required', 'Required: a machine name, lowercase letters, digits and underscores.'));
 
             return null;
         }
@@ -646,7 +647,7 @@ final class DefinitionParser
     private function names(mixed $names, string $path): array
     {
         if (!\is_array($names) || !array_is_list($names) || [] === $names) {
-            $this->error($path, 'A list of field names.');
+            $this->error($path, new Message('workflow.definition.field_names_invalid', 'A list of field names.'));
 
             return [];
         }
@@ -657,7 +658,7 @@ final class DefinitionParser
     private function text(mixed $text, string $path): ?string
     {
         if (!\is_string($text) || '' === trim($text)) {
-            $this->error($path, 'Required: a text, with {{ … }} paths if needed.');
+            $this->error($path, new Message('workflow.definition.text_required', 'Required: a text, with {{ … }} paths if needed.'));
 
             return null;
         }
@@ -673,7 +674,7 @@ final class DefinitionParser
     {
         $text = $this->text($text, $path);
         if (null !== $text && 1 === preg_match('/[\r\n]/', $text)) {
-            return $this->error($path, 'One line.');
+            return $this->error($path, new Message('workflow.definition.one_line', 'One line.'));
         }
 
         return $text;
@@ -689,7 +690,7 @@ final class DefinitionParser
     private function recipients(mixed $to, string $path, StepType $type): ?array
     {
         if (!\is_array($to) || !array_is_list($to) || [] === $to || \count($to) > self::MAX_RECIPIENT_ENTRIES) {
-            return $this->error($path, \sprintf('A list of 1 to %d recipients, each { role: ROLE_… }, { member: … }%s.', self::MAX_RECIPIENT_ENTRIES, StepType::SendEmail === $type ? ' or { field: \'{{ … }}\' }' : ''));
+            return $this->error($path, StepType::SendEmail === $type ? new Message('workflow.definition.email_recipients_invalid', 'A list of 1 to %max% recipients, each { role: ROLE_… }, { member: … } or { field: \'{{ … }}\' }.', ['max' => self::MAX_RECIPIENT_ENTRIES]) : new Message('workflow.definition.recipients_invalid', 'A list of 1 to %max% recipients, each { role: ROLE_… } or { member: … }.', ['max' => self::MAX_RECIPIENT_ENTRIES]));
         }
         $kinds = match (true) {
             // No workspace's roles nor records on the platform's events: its members only.
@@ -701,13 +702,13 @@ final class DefinitionParser
         foreach ($to as $i => $entry) {
             $at = $path.'.'.$i;
             if (!\is_array($entry) || 1 !== \count($entry) || !\in_array($kind = (string) array_key_first($entry), $kinds, true)) {
-                $this->error($at, \sprintf('One of %s, alone.', implode(', ', array_map(static fn (string $kind): string => '{ '.$kind.': … }', $kinds))));
+                $this->error($at, new Message('workflow.definition.recipient_invalid', 'One of %kinds%, alone.', ['kinds' => implode(', ', array_map(static fn (string $kind): string => '{ '.$kind.': … }', $kinds))]));
                 continue;
             }
             $value = $entry[$kind];
             $value = match ($kind) {
                 'role' => $this->role($value, $at.'.role'),
-                'field' => \is_string($value) && 1 === preg_match('/^\{\{\s*'.self::PATH.'\s*\}\}$/', $value) ? $value : $this->error($at.'.field', 'One {{ path }} to an email field of a record, e.g. {{ $trigger.record.email }}.'),
+                'field' => \is_string($value) && 1 === preg_match('/^\{\{\s*'.self::PATH.'\s*\}\}$/', $value) ? $value : $this->error($at.'.field', new Message('workflow.definition.email_field_invalid', 'One {{ path }} to an email field of a record, e.g. {{ $trigger.record.email }}.')),
                 default => $this->text($value, $at.'.member'),
             };
             if (null !== $value) {
@@ -726,7 +727,7 @@ final class DefinitionParser
     private function link(mixed $link, string $path): ?array
     {
         if (!\is_array($link) || [] !== array_diff(array_keys($link), ['object', 'id']) || !isset($link['object'], $link['id'])) {
-            return $this->error($path, 'The record it leads to: { object: invoice, id: \'{{ $trigger.record.id }}\' }.');
+            return $this->error($path, new Message('workflow.definition.link_invalid', 'The record it leads to: { object: invoice, id: \'{{ $trigger.record.id }}\' }.'));
         }
         $object = $this->name($link['object'], $path.'.object');
         $id = $this->text($link['id'], $path.'.id');
@@ -737,7 +738,7 @@ final class DefinitionParser
     private function role(mixed $role, string $path): ?string
     {
         if (!\is_string($role) || 1 !== preg_match(self::ROLE, $role)) {
-            $this->error($path, 'A role of the workspace, e.g. ROLE_ACCOUNTANT.');
+            $this->error($path, new Message('workflow.definition.role_invalid', 'A role of the workspace, e.g. ROLE_ACCOUNTANT.'));
 
             return null;
         }
@@ -748,7 +749,7 @@ final class DefinitionParser
     private function flag(mixed $flag, string $path): bool
     {
         if (!\is_bool($flag)) {
-            $this->error($path, 'true or false.');
+            $this->error($path, new Message('workflow.definition.boolean', 'true or false.'));
         }
 
         return true === $flag;
@@ -761,14 +762,14 @@ final class DefinitionParser
     private function unknownKeys(array $map, array $allowed, string $path): void
     {
         foreach (array_diff(array_map(strval(...), array_keys($map)), $allowed) as $key) {
-            $this->error(ltrim($path.'.'.$key, '.'), \sprintf('Unknown: here, %s.', implode(', ', $allowed)));
+            $this->error(ltrim($path.'.'.$key, '.'), new Message('workflow.definition.unknown_key', 'Unknown: here, %allowed%.', ['allowed' => implode(', ', $allowed)]));
         }
     }
 
     /**
      * @return null what an option it refuses is worth
      */
-    private function error(string $path, string $message): null
+    private function error(string $path, Message $message): null
     {
         $this->errors[$path][] = $message;
 

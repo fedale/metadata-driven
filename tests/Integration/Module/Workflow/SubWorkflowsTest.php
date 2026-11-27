@@ -153,7 +153,7 @@ final class SubWorkflowsTest extends KernelTestCase
             $this->records->create(new RecordInput('person', ['full_name' => 'Rex']));
             self::fail('Refused.');
         } catch (RecordValidationFailed $e) {
-            self::assertSame(['' => ['No pet for Rex.']], $e->errors);
+            self::assertSame(['' => ['No pet for Rex.']], array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors));
         }
         self::assertSame(['completed', 'completed', 'refused', 'refused'], self::getContainer()->get(Connection::class)->fetchFirstColumn('SELECT status FROM core.workflow_run ORDER BY started_at, depth'));
     }
@@ -267,7 +267,7 @@ final class SubWorkflowsTest extends KernelTestCase
             try {
                 (new DefinitionParser())->parse($yaml);
             } catch (InvalidWorkflowDefinition $e) {
-                return $e->errors;
+                return array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors);
             }
 
             return [];
@@ -305,7 +305,7 @@ final class SubWorkflowsTest extends KernelTestCase
         try {
             $activation();
         } catch (InvalidWorkflowDefinition $e) {
-            return $e->errors;
+            return array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors);
         }
 
         return [];

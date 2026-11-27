@@ -80,7 +80,7 @@ final class WorkflowQuotaTest extends KernelTestCase
             $records->create(new RecordInput('person', ['full_name' => 'Bea']));
             self::fail('Refused.');
         } catch (RecordValidationFailed $e) {
-            self::assertStringContainsString('allows a month', implode(' ', $e->errors['']));
+            self::assertStringContainsString('allows a month', implode(' ', array_map(strval(...), $e->errors[''])));
         }
 
         // Another plan: they run again.

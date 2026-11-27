@@ -82,7 +82,7 @@ final class TransitionWorkflowsTest extends KernelTestCase
             $transitions->apply('invoice', $this->invoice->id, 'state', 'send');
             self::fail('Refused.');
         } catch (RecordValidationFailed $e) {
-            self::assertSame([RecordValidationFailed::GLOBAL_ERRORS => ['Number it before send.']], $e->errors);
+            self::assertSame([RecordValidationFailed::GLOBAL_ERRORS => ['Number it before send.']], array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors));
         }
         self::getContainer()->get(RecordManagerInterface::class)->update($this->invoice->id, new RecordInput('invoice', ['number' => 'A1']));
         self::assertSame('sent', $transitions->apply('invoice', $this->invoice->id, 'state', 'send')->get('state'));
@@ -140,13 +140,13 @@ final class TransitionWorkflowsTest extends KernelTestCase
             $manager->activate($manager->create('Sneaky', null, $yaml));
             self::fail('Refused.');
         } catch (InvalidWorkflowDefinition $e) {
-            self::assertSame(['You hold none of ROLE_BOSS: a step taking "Reopen" as whoever triggered the event may not do what you cannot. Give it an act_as.'], $e->errors['steps.0.name']);
+            self::assertSame(['You hold none of ROLE_BOSS: a step taking "Reopen" as whoever triggered the event may not do what you cannot. Give it an act_as.'], array_map(strval(...), $e->errors['steps.0.name']));
         }
         try {
             $manager->activate($manager->create('Sneakier', null, str_replace('name: reopen }', 'name: reopen, act_as: ROLE_CLERK }', $yaml)));
             self::fail('Refused.');
         } catch (InvalidWorkflowDefinition $e) {
-            self::assertSame(['"Reopen" is taken by ROLE_BOSS only: ROLE_CLERK is none of them.'], $e->errors['steps.0.act_as']);
+            self::assertSame(['"Reopen" is taken by ROLE_BOSS only: ROLE_CLERK is none of them.'], array_map(strval(...), $e->errors['steps.0.act_as']));
         }
     }
 
@@ -185,8 +185,8 @@ final class TransitionWorkflowsTest extends KernelTestCase
             $manager->activate($workflow);
             self::fail('Refused.');
         } catch (InvalidWorkflowDefinition $e) {
-            self::assertSame(['Object "invoice" has no status field "number".'], $e->errors['trigger.field']);
-            self::assertSame(['The status "state" has no transition "burn".'], $e->errors['steps.0.name']);
+            self::assertSame(['Object "invoice" has no status field "number".'], array_map(strval(...), $e->errors['trigger.field']));
+            self::assertSame(['The status "state" has no transition "burn".'], array_map(strval(...), $e->errors['steps.0.name']));
         }
     }
 

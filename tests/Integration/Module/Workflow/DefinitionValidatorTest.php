@@ -10,6 +10,7 @@ use App\Module\Metadata\Contract\MetadataRegistryInterface;
 use App\Module\Workflow\Application\Definition\DefinitionParser;
 use App\Module\Workflow\Application\Definition\DefinitionValidator;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
+use App\Shared\Message\MessageTranslator;
 use App\Tests\Support\CreatesRelatedObjects;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
@@ -40,6 +41,23 @@ final class DefinitionValidatorTest extends KernelTestCase
               - { key: again, type: update_record, object: pet, id: '{{ note.id }}', values: { name: '{{ $last.name }}' } }
             YAML);
         $this->addToAssertionCount(1);
+    }
+
+    public function testItsProblemsAreReadInTheLanguageOfThePage(): void
+    {
+        try {
+            $this->validate(<<<'YAML'
+                trigger: { on: created, object: person, when: after }
+                steps:
+                  - { key: note, type: update_record, object: person, id: '{{ $trigger.record.id }}', values: { shoe_size: 42 } }
+                YAML);
+            self::fail('Refused.');
+        } catch (InvalidWorkflowDefinition $e) {
+            $messages = self::getContainer()->get(MessageTranslator::class);
+            self::assertSame(['steps.0.values.shoe_size: L\'oggetto "person" non ha il campo "shoe_size".'], $messages->transAll($e->located(), 'it'));
+            // In English for the console, the logs and a package's refusal.
+            self::assertSame('The workflow is invalid: steps.0.values.shoe_size: Object "person" has no field "shoe_size".', $e->getMessage());
+        }
     }
 
     public function testReportsWhatItNamesAndCannotBe(): void
@@ -183,7 +201,7 @@ final class DefinitionValidatorTest extends KernelTestCase
         try {
             $this->validate($yaml);
         } catch (InvalidWorkflowDefinition $e) {
-            return $e->errors;
+            return array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors);
         }
         self::fail('Refused.');
     }

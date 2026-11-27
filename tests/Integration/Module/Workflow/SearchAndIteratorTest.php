@@ -146,7 +146,7 @@ final class SearchAndIteratorTest extends KernelTestCase
             self::getContainer()->get(RecordManagerInterface::class)->update($this->ada->id, new RecordInput('person', ['city' => 'Pisa']));
             self::fail('Refused.');
         } catch (RecordValidationFailed $e) {
-            self::assertSame(['' => ['The workflow "Guard" could not run: Object "visit" does not exist.']], $e->errors);
+            self::assertSame(['' => ['The workflow "Guard" could not run: Object "visit" does not exist.']], array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors));
         }
 
         self::getContainer()->get(RbacManagerInterface::class)->assign('owner@example.com', Permissions::workflowRun($manual->getId()->toRfc4122()));

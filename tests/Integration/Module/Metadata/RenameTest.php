@@ -53,7 +53,7 @@ final class RenameTest extends KernelTestCase
         $rbac->addChild('ROLE_CLERK', 'record.profile.read');
         $rbac->assign('someone', 'record.profile.update');
 
-        self::assertSame(['form "registration"'], $this->manager->renameObject('profile', 'person'));
+        self::assertSame(['form "registration"'], array_map(strval(...), $this->manager->renameObject('profile', 'person')));
 
         self::assertFalse($this->metadata->hasObject('profile'));
         $person = $this->metadata->getObject('person');
@@ -99,7 +99,7 @@ final class RenameTest extends KernelTestCase
 
         $rewritten = $this->manager->renameField('account', 'username', 'login');
 
-        self::assertSame(['form view "compact"', 'grid view "list"', 'form "registration"'], $rewritten);
+        self::assertSame(['form view "compact"', 'grid view "list"', 'form "registration"'], array_map(strval(...), $rewritten));
         $account = $this->metadata->getObject('account');
         self::assertFalse($account->hasField('username'));
         self::assertSame('login', $account->field('login')->columnName);

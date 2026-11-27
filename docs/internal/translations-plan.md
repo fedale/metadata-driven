@@ -44,6 +44,15 @@ message as JSON and reads it back; `Message::restored()` builds one whose key is
 **Phase 2: workflows.** The definition's errors (parser, validator, the visual editor's), the
 uses an archive is refused for, the definitions a rename rewrote.
 
+Done on 2026-11-27 (branch `translate_workflows`): the parser's, the validator's and the
+manager's errors are messages (`workflow.definition.*`, `workflow.name_*`);
+`InvalidWorkflowDefinition` and `InvalidWorkflowSource` locate them (`located()`: "path:
+message"), for the editor, the YAML page and a package's refusal, which no longer quotes them in
+English. The uses an archive is refused for and the definitions a rename rewrote are messages
+too (`workflow.uses`, `workflow.rewritten`, with the version's status; the metadata module's own
+`metadata.rewritten.*`). Left in English: what a run reports (`StepFailed`, `ManualRunRefused`,
+the run limits), stored in the run's log as text; a phase of its own if wanted.
+
 **Phase 3: the package format.** `Problem` gets a key and parameters next to its English text
 (format 2.7.0, a minor: the text stays); the app translates them by key in `errors.it.yaml`, as
 it does the field types' settings. The catalog's check keeps the English.

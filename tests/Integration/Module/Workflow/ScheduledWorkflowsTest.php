@@ -78,14 +78,14 @@ final class ScheduledWorkflowsTest extends KernelTestCase
             (new DefinitionParser())->parse("trigger: { on: schedule, cron: 'every monday' }\nsteps: [{ key: a, type: refuse, message: no }]");
             self::fail('Refused.');
         } catch (InvalidWorkflowDefinition $e) {
-            self::assertSame(['A cron expression, in UTC: minute hour day month weekday, e.g. "0 8 * * 1" (Mondays at 8).'], $e->errors['trigger.cron']);
+            self::assertSame(['A cron expression, in UTC: minute hour day month weekday, e.g. "0 8 * * 1" (Mondays at 8).'], array_map(strval(...), $e->errors['trigger.cron']));
         }
         $manager = self::getContainer()->get(WorkflowManager::class);
         try {
             $manager->activate($manager->create('As no one', null, str_replace(', act_as: ROLE_SUPER_ADMIN', '', self::WEEKLY)));
             self::fail('Refused.');
         } catch (InvalidWorkflowDefinition $e) {
-            self::assertSame(['No one is behind a schedule: a step that reads or writes records acts as a role you may give.'], $e->errors['steps.0.act_as']);
+            self::assertSame(['No one is behind a schedule: a step that reads or writes records acts as a role you may give.'], array_map(strval(...), $e->errors['steps.0.act_as']));
         }
     }
 

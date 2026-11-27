@@ -28,14 +28,14 @@ interface MetadataDependentInterface
     /**
      * Called inside the rename's transaction, once the object is renamed.
      *
-     * @return list<string> the definitions rewritten, one line each
+     * @return list<string|Message> the definitions rewritten, one line each
      */
     public function objectRenamed(string $oldName, string $newName): array;
 
     /**
      * Called inside the rename's transaction, once the field is renamed.
      *
-     * @return list<string> the definitions rewritten, one line each
+     * @return list<string|Message> the definitions rewritten, one line each
      */
     public function fieldRenamed(string $objectName, string $oldName, string $newName): array;
 }

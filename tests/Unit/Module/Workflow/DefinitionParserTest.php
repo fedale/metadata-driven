@@ -101,7 +101,7 @@ final class DefinitionParserTest extends TestCase
             self::fail('Refused.');
         } catch (InvalidWorkflowDefinition $e) {
             foreach ($expected as $path => $messages) {
-                self::assertSame($messages, $e->errors[$path] ?? null, $path.': '.json_encode($e->errors));
+                self::assertSame($messages, array_map(strval(...), $e->errors[$path] ?? []), $path.': '.json_encode(array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors)));
             }
         }
     }
@@ -177,7 +177,7 @@ final class DefinitionParserTest extends TestCase
                 'steps.0.limit' => ['A number of records, one at least.'],
                 'steps.1.items' => ['One {{ path }} to a list, e.g. {{ open.records }}.'],
                 'steps.1.steps' => ['Required: a list of steps, one at least.'],
-            ], $e->errors);
+            ], array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors));
         }
     }
 
@@ -210,7 +210,7 @@ final class DefinitionParserTest extends TestCase
                 'trigger.form.4.options' => ['Only a select takes options.'],
                 'trigger.form.4.required' => ['true or false.'],
                 'steps.0.type' => ['set_values changes the values being written: only in a workflow run before the write.'],
-            ], $e->errors);
+            ], array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors));
         }
     }
 
@@ -245,13 +245,13 @@ final class DefinitionParserTest extends TestCase
                 'trigger.object' => ['Unknown: here, on.'],
                 'steps.0.type' => ['A workflow on the platform\'s events takes if, filter, refuse, http_request, send_email, install_package and assign_role only.'],
                 'steps.1.package' => ['A package of the indexes: vendor/name, or vendor/name@1.0.0.'],
-            ], $e->errors);
+            ], array_map(static fn (array $messages): array => array_map(strval(...), $messages), $e->errors));
         }
         try {
             (new DefinitionParser())->parse("trigger: { on: created, object: person, when: after }\nsteps: [{ key: clerk, type: assign_role, email: a@b.c, role: ROLE_X }]");
             self::fail('Refused.');
         } catch (InvalidWorkflowDefinition $e) {
-            self::assertSame(['assign_role is a step of the system admin\'s workflows, on the platform\'s events.'], $e->errors['steps.0.type']);
+            self::assertSame(['assign_role is a step of the system admin\'s workflows, on the platform\'s events.'], array_map(strval(...), $e->errors['steps.0.type']));
         }
     }
 
@@ -264,7 +264,7 @@ final class DefinitionParserTest extends TestCase
             (new DefinitionParser())->parse($yaml);
             self::fail('Too many steps.');
         } catch (InvalidWorkflowDefinition $e) {
-            self::assertSame(['At most 50 steps, branches included: there are 51.'], $e->errors['steps']);
+            self::assertSame(['At most 50 steps, branches included: there are 51.'], array_map(strval(...), $e->errors['steps']));
         }
     }
 }

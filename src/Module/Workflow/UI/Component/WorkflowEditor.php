@@ -27,6 +27,7 @@ use App\Module\Workflow\Application\WorkflowTester;
 use App\Module\Workflow\Domain\Exception\InvalidWorkflowDefinition;
 use App\Module\Workflow\Domain\Model\Workflow;
 use App\Module\Workflow\Domain\Repository\WorkflowRepository;
+use App\Shared\Message\MessageTranslator;
 use App\Shared\Workspace\SystemConsole;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -89,6 +90,7 @@ final class WorkflowEditor extends AbstractController
         private readonly PathCatalog $paths,
         private readonly WorkflowTester $tester,
         private readonly TranslatorInterface $translator,
+        private readonly MessageTranslator $messages,
         private readonly RequestStack $requests,
         private readonly ActiveWorkflows $active,
     ) {
@@ -306,7 +308,7 @@ final class WorkflowEditor extends AbstractController
             $this->saveDraft($this->workflow($this->workflowId));
         } catch (InvalidWorkflowDefinition $e) {
             // A name missing or taken.
-            $this->problems = self::problems($e);
+            $this->problems = $this->problems($e);
 
             return null;
         }
@@ -323,7 +325,7 @@ final class WorkflowEditor extends AbstractController
             $this->saveDraft($workflow);
             $version = $this->manager->activate($workflow);
         } catch (InvalidWorkflowDefinition $e) {
-            $this->problems = self::problems($e);
+            $this->problems = $this->problems($e);
 
             return null;
         }
@@ -341,7 +343,7 @@ final class WorkflowEditor extends AbstractController
             $draft = $this->saveDraft($workflow);
             $this->test = $this->tester->test($workflow->getName(), $draft, '' === $this->testRecord ? null : $this->testRecord);
         } catch (InvalidWorkflowDefinition $e) {
-            $this->problems = self::problems($e);
+            $this->problems = $this->problems($e);
         } catch (TestRefused $e) {
             $this->testError = $this->translator->trans('admin.workflow.test_'.$e->reason, ['%object%' => $e->object]);
         }
@@ -537,12 +539,13 @@ final class WorkflowEditor extends AbstractController
     /**
      * @return list<array{string, string}>
      */
-    private static function problems(InvalidWorkflowDefinition $e): array
+    private function problems(InvalidWorkflowDefinition $e): array
     {
+        // Translated now: a LiveProp holds plain data, and the page is in this user's language.
         $problems = [];
         foreach ($e->errors as $path => $messages) {
             foreach ($messages as $message) {
-                $problems[] = [$path, $message];
+                $problems[] = [$path, $this->messages->trans($message)];
             }
         }
 
