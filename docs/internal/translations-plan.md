@@ -57,6 +57,14 @@ the run limits), stored in the run's log as text; a phase of its own if wanted.
 (format 2.7.0, a minor: the text stays); the app translates them by key in `errors.it.yaml`, as
 it does the field types' settings. The catalog's check keeps the English.
 
+Done on 2026-11-27: the format has `Text` (key, English, parameters, as `Message` here) and
+`Problem::$text`; `FieldTypeCatalog::problems()` gives a field's setting problems as texts,
+`check()` stays. Here `ProblemMessages` turns a problem into a message under
+`package_format.<key>`, for the install and upgrade pages, an uploaded or downloaded archive;
+`ErrorCatalogsTest` reads the format's `new Text(...)` too. The schema violations (opis writes
+them) and an unreadable version constraint keep their English; the console and the publisher
+stay English, as everywhere.
+
 ## Decisions
 
 1. Old reasons stored in `core.record_import` stay in English (no migration rewrites them).

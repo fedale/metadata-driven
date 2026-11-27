@@ -19,8 +19,14 @@ final class ErrorCatalogsTest extends KernelTestCase
 {
     public function testTheCatalogsTranslateEveryMessageWithItsPlaceholders(): void
     {
-        $messages = self::messagesInTheSources(self::getContainer()->getParameter('kernel.project_dir').'/src');
+        $root = self::getContainer()->getParameter('kernel.project_dir');
+        $messages = self::messagesInTheSources($root.'/src', ['Message', '\\App\\Shared\\Message\\Message'], '');
         self::assertNotEmpty($messages);
+        // The package format's texts, translated here (see ProblemMessages).
+        $texts = self::messagesInTheSources($root.'/vendor/fedale/metadata-driven-package-format/src', ['Text'], 'package_format.');
+        self::assertNotEmpty($texts);
+        $messages = [...$messages, ...$texts];
+        ksort($messages);
 
         $locales = array_diff(self::getContainer()->getParameter('kernel.enabled_locales'), [self::getContainer()->getParameter('kernel.default_locale')]);
         self::assertNotEmpty($locales);
@@ -40,9 +46,12 @@ final class ErrorCatalogsTest extends KernelTestCase
     }
 
     /**
+     * @param list<string> $classes the class of the texts, as `new` names it
+     * @param string       $prefix  of their keys in the catalogs
+     *
      * @return array<string, string> key => English text
      */
-    private static function messagesInTheSources(string $directory): array
+    private static function messagesInTheSources(string $directory, array $classes, string $prefix): array
     {
         $messages = [];
         foreach ((new Finder())->files()->in($directory)->name('*.php') as $file) {
@@ -51,7 +60,7 @@ final class ErrorCatalogsTest extends KernelTestCase
                 static fn (\PhpToken $token): bool => !$token->is([\T_WHITESPACE, \T_COMMENT, \T_DOC_COMMENT]),
             ));
             foreach ($tokens as $i => $token) {
-                if (!$token->is(\T_NEW) || !\in_array($tokens[$i + 1]->text ?? '', ['Message', '\\App\\Shared\\Message\\Message'], true)) {
+                if (!$token->is(\T_NEW) || !\in_array($tokens[$i + 1]->text ?? '', $classes, true)) {
                     continue;
                 }
                 $where = \sprintf('%s:%d', $file->getRelativePathname(), $token->line);
@@ -61,7 +70,7 @@ final class ErrorCatalogsTest extends KernelTestCase
                     \sprintf('%s: the key and the text of a Message must be literal single-quoted strings.', $where),
                 );
                 \assert(null !== $key && null !== $text);
-                $key = self::literal($key);
+                $key = $prefix.self::literal($key);
                 $text = self::literal($text);
                 self::assertTrue(!isset($messages[$key]) || $messages[$key] === $text, \sprintf('%s: "%s" has another text elsewhere: "%s".', $where, $key, $messages[$key] ?? ''));
                 $messages[$key] = $text;
