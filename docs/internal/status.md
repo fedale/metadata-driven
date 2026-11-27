@@ -369,7 +369,7 @@ Smaller ones, left as they are by the user's choice (2026-11-12; they may pick t
   `BackgroundImports`, `CheckImport` / `RunImport` on `async`, the pages at
   `/o/<object>/imports`, guide import.md. (A) and (B) are done (see "Done").
 - Still English in every language (see i18n.md, "Not yet"): the package format's schema
-  violations, a grid column renderer's options. Plan in
+  violations. Plan in
   [translations-plan.md](translations-plan.md): phase 0 (gridview 1.11.2) and phase 1 (the CSV
   import, the record's errors) done on 2026-11-26, phases 2 (the workflow definitions), 3 (the
   package format's problems, format 2.7.0) and 4 (what a workflow reports as it runs; migration

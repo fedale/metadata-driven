@@ -8,6 +8,7 @@ use App\Module\Metadata\Contract\Dto\ViewKind;
 use App\Module\Metadata\Contract\Exception\MetadataInputInvalid;
 use App\Module\Metadata\Contract\MetadataManagerInterface;
 use App\Module\Metadata\Contract\MetadataRegistryInterface;
+use App\Shared\Message\MessageTranslator;
 use App\Tests\Support\CreatesAccountObject;
 use App\Tests\Support\CreatesPetObject;
 use App\Tests\Support\CreatesRegistrationForm;
@@ -107,6 +108,20 @@ final class GridViewTest extends KernelTestCase
         self::assertSame(['Column "line": {profile} is a relation: show it in a column of its own.'], $this->errorsOf('phone', "columns:\n  - { name: line, template: '{number} {profile}' }"));
         self::assertSame(['"columns" must be a non-empty list.'], $this->errorsOf('pet', 'columns: []'));
         self::assertStringStartsWith('Invalid YAML: ', $this->errorsOf('pet', 'columns: [name')[0]);
+    }
+
+    public function testTheOptionsOfARendererAreCheckedInTheLanguageOfThePage(): void
+    {
+        self::createAccountObject(self::getContainer());
+        try {
+            $this->manager()->saveView('account', ViewKind::Grid, 'main', "columns:\n  - { field: username, renderer: truncate, options: { length: 0, width: 3 } }");
+            self::fail('The definition is invalid.');
+        } catch (MetadataInputInvalid $e) {
+            self::assertSame([
+                'Colonna #1: opzione sconosciuta "width" del renderer truncate (ammesse: length).',
+                'Colonna #1: "length" deve essere un numero intero da 1 a 1000.',
+            ], self::getContainer()->get(MessageTranslator::class)->transAll($e->errors['source'], 'it'));
+        }
     }
 
     /**
